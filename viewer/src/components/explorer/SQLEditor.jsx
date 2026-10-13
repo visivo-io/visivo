@@ -37,15 +37,8 @@ const SQLEditor = ({
   const handleRunRef = useRef(null);
   const handleCancelRef = useRef(null);
   const isRunningRef = useRef(false);
-  // M27: what was actually SENT, snapshotted at execute time for the same
-  // reason `runContextRef` below is. The text sent may be a SELECTION rather
-  // than the whole buffer, and the user can keep typing (or change source)
-  // while the job runs — so a caller that keyed a cached result on whatever
-  // the editor holds when the rows land would file one query's rows under
-  // another query's identity. Declared here, and assigned ahead of
-  // `runContextRef` in `handleRun`, deliberately: PR #659 is adding its own
-  // ref and its own statement at exactly those two anchors, and leaving its
-  // context lines untouched keeps the two merges apart.
+  // SQL and source actually sent, snapshotted at execute time like
+  // `runContextRef` below (the editor may change while the job runs).
   const runSqlRef = useRef(null);
   const runSourceRef = useRef(null);
 
@@ -137,9 +130,6 @@ const SQLEditor = ({
     }
 
     setShowError(true);
-    // M27 — the run snapshot, taken before the job starts. Assigned above
-    // `runContextRef` rather than below `executeQuery` so the three lines that
-    // follow stay byte-identical to main; see the ref declarations.
     runSqlRef.current = queryText.trim();
     runSourceRef.current = sourceName;
     runContextRef.current = queryContext ?? null;

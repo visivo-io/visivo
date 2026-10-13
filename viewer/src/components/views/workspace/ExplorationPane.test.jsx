@@ -81,9 +81,6 @@ describe('ExplorationPane — ready state', () => {
     expect(screen.getByTestId('exploration-workbench-mock')).toBeInTheDocument();
   });
 
-  // M27: the pane is the only place that knows WHICH exploration is hot in
-  // the shared legacy singleton, so it is the only place that can scope the
-  // session result cache. Drop this and two explorations share one cache key.
   test('hands the workbench this exploration’s id', () => {
     seed({ workspaceExplorations: { byId: { exp_1: record() }, order: ['exp_1'] } });
     render(<ExplorationPane id="exp_1" />);

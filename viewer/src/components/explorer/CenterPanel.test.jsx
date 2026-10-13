@@ -14,11 +14,8 @@ jest.mock('./DraggableColumnHeader', () => {
 });
 
 // Mock SQLEditor — mirrors the real editor's run snapshot: the "capture"
-// button records queryContext AND the sql/source in flight (as handleRun does
-// at execute time) and the completion buttons deliver results with that
-// captured snapshot. Keeping the sql/source in the snapshot is what lets
-// CenterPanel key M27's result cache on what actually ran rather than on
-// whatever the editor holds when the rows land.
+// button records queryContext and the sql/source in flight (as handleRun does
+// at execute time) and the completion buttons deliver results with that snapshot.
 jest.mock('./SQLEditor', () => {
   let capturedContext;
   let capturedSql;
@@ -740,24 +737,10 @@ describe('CenterPanel', () => {
     });
   });
 
-  /**
-   * M27 — results survive a tab switch.
-   *
-   * These drive the FULL round trip through the real store and the real cache
-   * module: run a query, then reproduce exactly what parking an exploration
-   * tab does (`ExplorationPane`'s deactivate/activate pair — unmount, and
-   * rebuild the model state from the persisted draft, which by design carries
-   * no `queryResult`), then mount again and assert what the grid shows.
-   *
-   * Asserting on the rendered grid rather than on store internals is the
-   * point: "the rows came back" is the user-visible claim, and the empty
-   * state is the honest alternative whenever the cache must miss.
-   */
   describe('exploration result cache (M27)', () => {
     const EXPLORATION_ID = 'exp-a';
 
-    // Exactly what restoreExplorerWorkingState does on activate: rebuild the
-    // model state from the draft, which never carried the rows.
+    // Mirrors restoreExplorerWorkingState on activate: the draft never carries rows.
     const parkAndResume = (overrides = {}) => {
       useStore.setState({
         explorerModelStates: {
@@ -798,8 +781,6 @@ describe('CenterPanel', () => {
       runAQuery();
       view.unmount();
 
-      // Resume with edited SQL — the rows on hand answer a question the user
-      // is no longer asking.
       parkAndResume({ sql: 'SELECT 2' });
       render(<CenterPanel explorationId={EXPLORATION_ID} />);
 
@@ -829,8 +810,6 @@ describe('CenterPanel', () => {
       runAQuery();
       view.unmount();
 
-      // A rename moves the whole model state to a new key — which is exactly
-      // what the promote-naming rail does.
       useStore.setState({
         explorerActiveModelName: 'test_model_renamed',
         explorerModelTabs: ['test_model_renamed'],
@@ -857,9 +836,6 @@ describe('CenterPanel', () => {
     it('does not resurrect rows once the same query starts failing', () => {
       const view = render(<CenterPanel explorationId={EXPLORATION_ID} />);
       runAQuery();
-      // Same SQL, same source — it just errors now (a dropped table, a source
-      // that went away). The rows it used to return are precisely the rows
-      // that must not come back.
       fireEvent.click(screen.getByTestId('trigger-query-error'));
       view.unmount();
 
@@ -870,10 +846,6 @@ describe('CenterPanel', () => {
     });
 
     it('parks the rows under the query that RAN, not the tab that is active when they land', () => {
-      // The user starts a run on `test_model` and switches to `other_model`
-      // while it is in flight. The rows belong to `test_model`'s query — key
-      // them by whatever the editor happens to be showing when they arrive
-      // and this chip's cache entry describes a query that never ran.
       useStore.setState({
         explorerActiveModelName: 'test_model',
         explorerModelTabs: ['test_model', 'other_model'],
@@ -891,7 +863,6 @@ describe('CenterPanel', () => {
       fireEvent.click(screen.getByTestId('trigger-query-complete'));
       view.unmount();
 
-      // Resume with test_model active and holding the SQL it actually ran.
       useStore.setState({
         explorerActiveModelName: 'test_model',
         explorerModelStates: {
@@ -905,8 +876,6 @@ describe('CenterPanel', () => {
     });
 
     it('parks nothing when the panel is not inside an exploration', () => {
-      // `explorationId` omitted — CenterPanel's default. Nothing is keyed,
-      // so nothing is stored and nothing is served.
       const view = render(<CenterPanel />);
       runAQuery();
       view.unmount();

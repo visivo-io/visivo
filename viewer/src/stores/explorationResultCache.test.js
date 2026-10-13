@@ -1,14 +1,4 @@
-/**
- * M27 tier 1 — the session result cache.
- *
- * The behaviour worth protecting here is almost entirely what it REFUSES to
- * serve. A cache that hands back rows for a query that has since been edited,
- * for a chip that has since been renamed, or for a run that has since been
- * repeated, is strictly worse than no cache at all: the user cannot tell by
- * looking that the grid is lying to them. So every miss below is a deliberate
- * miss, and each one is asserted against the exact hit it is a near-neighbour
- * of — proving the key discriminates, not just that some lookup failed.
- */
+// Session result cache: key discrimination, invalidation, and LRU bounds.
 import {
   explorationResultCacheKey,
   getCachedExplorationResult,
@@ -47,31 +37,21 @@ describe('the key', () => {
   it('MISSES after the query is edited', () => {
     putCachedExplorationResult(SCOPE, resultOf('first'));
     expect(getCachedExplorationResult({ ...SCOPE, sql: 'SELECT 2' })).toBeNull();
-    // ...and the original scope still hits, so the miss is the key
-    // discriminating, not the entry having vanished.
     expect(getCachedExplorationResult(SCOPE)?.label).toBe('first');
   });
 
   it('MISSES on a whitespace-only edit inside the query', () => {
-    // No normalisation, no parsing: any edit at all is a miss. Erring toward
-    // re-running is the cheap side of this trade.
     putCachedExplorationResult(SCOPE, resultOf('first'));
     expect(getCachedExplorationResult({ ...SCOPE, sql: 'SELECT  1' })).toBeNull();
   });
 
   it('ignores leading/trailing whitespace, matching what SQLEditor sends', () => {
-    // `handleRun` executes `queryText.trim()`, so the stored key is trimmed;
-    // the tab's own buffer usually is not. If these two disagreed, a plain
-    // "run, switch away, switch back" would miss for a trailing newline.
+    // handleRun executes queryText.trim(), so the stored key is trimmed; the tab buffer is not.
     putCachedExplorationResult(SCOPE, resultOf('first'));
     expect(getCachedExplorationResult({ ...SCOPE, sql: '  SELECT 1\n' })?.label).toBe('first');
   });
 
   it('MISSES after the chip is renamed', () => {
-    // The name does not determine the ROWS, but it determines what every
-    // downstream consumer thinks the rows ARE (the DuckDB table, computed
-    // column parenting, the promote checklist). Serving rows recorded under
-    // one identity to a tab claiming another is not worth the saved re-run.
     putCachedExplorationResult(SCOPE, resultOf('first'));
     expect(getCachedExplorationResult({ ...SCOPE, modelName: 'orders_2' })).toBeNull();
   });
@@ -82,7 +62,6 @@ describe('the key', () => {
   });
 
   it('never serves one exploration the rows of another', () => {
-    // Same chip name, same source, same SQL — different documents.
     putCachedExplorationResult(SCOPE, resultOf('A rows'));
     putCachedExplorationResult({ ...SCOPE, explorationId: 'exp-b' }, resultOf('B rows'));
 
@@ -91,8 +70,7 @@ describe('the key', () => {
   });
 
   it('cannot be forged by a name containing the separator', () => {
-    // The key is JSON-serialised rather than string-joined, so no name can
-    // impersonate a different (exploration, chip) pair.
+    // The key is JSON-serialised, not string-joined.
     const forged = { ...SCOPE, explorationId: 'exp', modelName: 'a", "b' };
     const honest = { ...SCOPE, explorationId: 'exp', modelName: 'a', sourceName: 'b' };
     expect(explorationResultCacheKey(forged)).not.toBe(explorationResultCacheKey(honest));
@@ -128,9 +106,6 @@ describe('re-running', () => {
   });
 
   it('retires the chip’s PREVIOUS query, so reverting the text is a miss', () => {
-    // Run Q1, edit to Q2, run Q2. Typing Q1's text back in must not resurrect
-    // rows from before the re-run — the underlying data may have moved on and
-    // nothing on screen would say so.
     putCachedExplorationResult(SCOPE, resultOf('Q1 rows'));
     putCachedExplorationResult({ ...SCOPE, sql: 'SELECT 2' }, resultOf('Q2 rows'));
 
@@ -183,16 +158,6 @@ describe('invalidation', () => {
   });
 });
 
-/**
- * The key names a source; a name is not a connection.
- *
- * Repoint `local` from `a.duckdb` to `b.duckdb`, or change its schema or
- * credentials, and every parked key still matches while the rows behind them
- * came out of a database the user has stopped pointing at. Nothing on screen
- * would say so — `from_cache` is provenance for the module's own tests, not a
- * banner. This is the one stale serve the key alone cannot prevent, and the
- * app itself makes the change, so it can be invalidated exactly.
- */
 describe('a source whose definition changes', () => {
   it('drops every result it produced, across explorations', () => {
     putCachedExplorationResult(SCOPE, resultOf('from warehouse'));
@@ -211,8 +176,6 @@ describe('a source whose definition changes', () => {
     expect(
       getCachedExplorationResult({ ...SCOPE, explorationId: 'exp-b', modelName: 'other' })
     ).toBeNull();
-    // A different source is untouched: this invalidates by source, not by
-    // panic.
     expect(
       getCachedExplorationResult({ ...SCOPE, modelName: 'untouched', sourceName: 'other_db' })?.label
     ).toBe('from other_db');
@@ -235,8 +198,6 @@ describe('a source whose definition changes', () => {
 
 describe('bounds', () => {
   it('evicts the least recently used entry at the shipped entry cap', () => {
-    // No test seam here on purpose: this asserts the DEFAULT the product
-    // actually ships with is enforced, not a number a test invented.
     const { maxEntries } = explorationResultCacheStats();
     for (let i = 0; i < maxEntries; i += 1) {
       putCachedExplorationResult({ ...SCOPE, modelName: `chip_${i}` }, resultOf(`rows ${i}`));
@@ -256,9 +217,7 @@ describe('bounds', () => {
     putCachedExplorationResult({ ...SCOPE, modelName: 'a' }, resultOf('a'));
     putCachedExplorationResult({ ...SCOPE, modelName: 'b' }, resultOf('b'));
 
-    // Return to 'a' — that is the whole point of this cache, and it must
-    // count as recency, or the tab a user keeps coming back to is the first
-    // one thrown away.
+    // Reading 'a' refreshes its recency.
     expect(getCachedExplorationResult({ ...SCOPE, modelName: 'a' })?.label).toBe('a');
 
     putCachedExplorationResult({ ...SCOPE, modelName: 'c' }, resultOf('c'));
@@ -294,8 +253,6 @@ describe('bounds', () => {
   });
 
   it('charges at least one cell per row for a result with no declared columns', () => {
-    // A malformed result still costs memory; it must never look free and slip
-    // past the budget.
     putCachedExplorationResult(SCOPE, { rows: [{ a: 1 }, { a: 2 }], columns: [] });
     expect(explorationResultCacheStats().cells).toBe(2);
   });
@@ -306,17 +263,8 @@ describe('bounds', () => {
     expect(explorationResultCacheStats().cells).toBe(4);
   });
 
-  /**
-   * The cell bound tests above all run against an INJECTED `maxCells`, which
-   * would let a mis-sized shipped constant ship green. These exercise the
-   * number the product actually carries.
-   *
-   * A holey `new Array(n)` is what makes that affordable: `cellsIn` only reads
-   * `.length`, and V8 allocates nothing for the elements, so a result can
-   * claim a quarter of a million cells without a quarter of a million objects
-   * existing.
-   */
   describe('at the SHIPPED cell budget', () => {
+    // A holey new Array(n) has length n without allocating elements, which keeps these cheap.
     const sized = (label, cells) => ({
       label,
       columns: ['c0'],
@@ -353,33 +301,15 @@ describe('bounds', () => {
     });
   });
 
-  /**
-   * Renaming a chip leaves the entry under the old name unreachable but still
-   * counted. It is left to the LRU on purpose (see the module docstring), and
-   * this is the property that makes that safe: an orphan is never read, so it
-   * never moves to the recently-used end, so it goes first — a live result the
-   * user is still tabbing between is never evicted to make room while an
-   * orphan is sitting there.
-   */
   it('evicts a renamed chip’s orphaned entry ahead of a live one', () => {
     _setExplorationResultCacheBoundsForTests({ maxEntries: 2 });
 
-    // One real session, in order:
-    //   1. run `orders` — parked, and the user keeps coming back to it.
     putCachedExplorationResult({ ...SCOPE, modelName: 'orders' }, resultOf('live'));
-    //   2. add a second chip, run it as `query_1`, then rename it. The entry
-    //      under `query_1` is now stranded: no key will ever reach it again.
-    //      Note it was inserted AFTER `orders`, so insertion order alone would
-    //      throw `orders` away first.
     putCachedExplorationResult({ ...SCOPE, modelName: 'query_1' }, resultOf('orphan'));
-    //   3. the user tabs back to `orders`.
     expect(getCachedExplorationResult({ ...SCOPE, modelName: 'orders' })?.label).toBe('live');
-    //   4. the renamed chip runs, and parks under its new name.
     putCachedExplorationResult({ ...SCOPE, modelName: 'revenue' }, resultOf('newest'));
 
-    // The orphan is the one that goes, because it is the only entry nothing
-    // has used. Recency — not arrival order — is what protects the result the
-    // user is actually working with.
+    // 'query_1' was inserted after 'orders' but never read, so it is the least recently used.
     expect(getCachedExplorationResult({ ...SCOPE, modelName: 'query_1' })).toBeNull();
     expect(getCachedExplorationResult({ ...SCOPE, modelName: 'orders' })?.label).toBe('live');
     expect(getCachedExplorationResult({ ...SCOPE, modelName: 'revenue' })?.label).toBe('newest');

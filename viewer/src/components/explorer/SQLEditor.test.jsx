@@ -440,12 +440,6 @@ describe('SQLEditor', () => {
       });
     });
 
-    /**
-     * M27 — the run snapshot carries the SQL and source that were actually
-     * SENT, not what the editor holds when the rows land. `CenterPanel` keys
-     * its result cache on these; keying on the live buffer instead would file
-     * one query's rows under a query that never produced them.
-     */
     it('reports the SELECTION that ran, not the whole buffer', async () => {
       const onQueryComplete = jest.fn();
       mockSelectionIsEmpty = false;
@@ -458,8 +452,7 @@ describe('SQLEditor', () => {
           onQueryComplete={onQueryComplete}
         />
       );
-      // Wait for the mocked Monaco's deferred onMount — without the editor
-      // ref there is no selection to read.
+      // Wait for the mocked Monaco onMount; the selection is read from the editor ref.
       await waitFor(() => expect(mockEditor.addCommand).toHaveBeenCalled());
 
       fireEvent.click(screen.getByRole('button', { name: /run/i }));
@@ -490,7 +483,6 @@ describe('SQLEditor', () => {
       fireEvent.click(screen.getByRole('button', { name: /run/i }));
       await waitFor(() => expect(mockExecuteQuery).toHaveBeenCalled());
 
-      // The buffer and the source both move on while the job is in flight.
       mockQueryJobState = { ...mockQueryJobState, result: { columns: [], rows: [], row_count: 0 } };
       rerender(
         <SQLEditor

@@ -73,10 +73,6 @@ describe('ExplorationWorkbench', () => {
     expect(screen.getByTestId('center-panel')).toHaveAttribute('data-enable-library-drop', 'true');
   });
 
-  // M27: the exploration id is the isolation half of the session result
-  // cache's key — without it two explorations with an identically-named chip
-  // running identical SQL would be one cache entry, and one document would be
-  // shown the other's rows.
   test('hands CenterPanel the exploration id so parked results stay per-document', () => {
     render(<ExplorationWorkbench explorationId="exp_1" />);
     expect(screen.getByTestId('center-panel')).toHaveAttribute('data-exploration-id', 'exp_1');

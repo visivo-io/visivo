@@ -126,9 +126,7 @@ export default defineConfig({
         // edit, type switch): mints a real exploration + computed columns
         // against the shared `.visivo/explorations/` repository.
         '**/exploration-chart-build-updates.spec.mjs',
-        // M27 (results survive a tab switch): mints TWO real exploration
-        // records and runs a real query job against the shared
-        // `.visivo/explorations/` repository — same isolation need.
+        // Mints real exploration records against the shared repository.
         '**/exploration-result-continuity.spec.mjs',
         // M28 geometry guard: mints a real exploration to get a live draft
         // chart on screen, then measures pane-vs-plot rects. Same shared
@@ -309,8 +307,6 @@ export default defineConfig({
         // the draft compile/execute endpoints — same shared-repository
         // isolation need as its computed-column siblings above.
         '**/exploration-computed-metric-grouping.spec.mjs',
-        // M27 (results survive a tab switch) — see the 'parallel' project's
-        // testIgnore entry for the same file for why.
         '**/exploration-result-continuity.spec.mjs',
       ],
       fullyParallel: false,

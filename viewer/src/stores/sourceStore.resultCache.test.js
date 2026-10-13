@@ -1,22 +1,4 @@
-/**
- * M27 — editing or deleting a source retires the exploration results it
- * produced.
- *
- * `explorationResultCache`'s key identifies a source by NAME, and a name is
- * not a connection. Repoint `local` from `a.duckdb` to `b.duckdb` — or change
- * its schema, host, or credentials — and the name is unchanged, so every
- * parked key still matches while the rows behind them came out of a database
- * the user has stopped pointing at. `useModelTabPrefill` would hit, and
- * `setModelQueryResult` would paint the old database's rows as the current
- * result with no re-run and nothing on screen saying so.
- *
- * The saving grace is that the APP makes this change, so it knows exactly when
- * to forget. These pin that it actually does.
- *
- * Deliberately narrow: this is a wiring test for the invalidation, not a
- * general `sourceStore` suite. The cache's own semantics live in
- * `explorationResultCache.test.js`.
- */
+// Saving or deleting a source invalidates the exploration results it produced.
 import useStore from './store';
 import * as sourcesApi from '../api/sources';
 import {
@@ -49,7 +31,6 @@ it('saveSource retires the results that source produced', async () => {
   putCachedExplorationResult(SCOPE, RESULT);
   expect(getCachedExplorationResult(SCOPE)).not.toBeNull();
 
-  // The source now points at a different database file. Same name.
   await useStore.getState().saveSource('local', { type: 'duckdb', database: 'b.duckdb' });
 
   expect(getCachedExplorationResult(SCOPE)).toBeNull();
@@ -64,8 +45,6 @@ it('deleteSource retires them too', async () => {
 });
 
 it('leaves results from OTHER sources alone', async () => {
-  // Invalidating by source must not be a panic-clear: a user editing one
-  // connection should not lose every exploration result they have.
   putCachedExplorationResult(SCOPE, RESULT);
   const other = { ...SCOPE, modelName: 'revenue', sourceName: 'warehouse' };
   putCachedExplorationResult(other, RESULT);
@@ -77,9 +56,6 @@ it('leaves results from OTHER sources alone', async () => {
 });
 
 it('keeps the parked rows when the save FAILS', async () => {
-  // The definition did not change, so the rows are still an honest answer —
-  // and throwing them away would charge the user a re-run for the backend's
-  // error.
   putCachedExplorationResult(SCOPE, RESULT);
   sourcesApi.saveSource.mockRejectedValue(new Error('connection refused'));
 

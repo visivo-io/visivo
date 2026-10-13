@@ -2490,15 +2490,6 @@ describe('flywheel telemetry (VIS-1072)', () => {
   });
 });
 
-/**
- * M27 — the session result cache is not allowed to outlive the reason the
- * rows were trustworthy.
- *
- * `explorationResultCache.js` keys itself so that an edited query, a renamed
- * chip or a changed source simply misses. These are the two invalidations the
- * KEY cannot express, because nothing about the key changes when they happen —
- * they have to be told.
- */
 describe('exploration result cache invalidation (M27)', () => {
   const scopeFor = (id, modelName) => ({
     explorationId: id,
@@ -2526,10 +2517,6 @@ describe('exploration result cache invalidation (M27)', () => {
   });
 
   test('promoting a model retires that chip’s parked rows', async () => {
-    // Once the model is a project object its rows belong to the project's own
-    // build (`useModelTabPrefill`'s last-build path), and the promoted config
-    // is the checklist's — not necessarily the raw text the chip last ran.
-    // A session result must not shadow either.
     park('exp_1', 'orders_q');
     buildPromoteChecklist.mockResolvedValue([checklistRow()]);
     seedRecord();
@@ -2546,8 +2533,6 @@ describe('exploration result cache invalidation (M27)', () => {
   });
 
   test('a promote that FAILS to save leaves the parked rows alone', async () => {
-    // Nothing changed hands — the chip is still an exploration chip and its
-    // rows are still the honest answer to its query.
     park('exp_1', 'orders_q');
     buildPromoteChecklist.mockResolvedValue([checklistRow()]);
     seedRecord();
@@ -2565,8 +2550,6 @@ describe('exploration result cache invalidation (M27)', () => {
   });
 
   test('promoting an INSIGHT leaves the model chip’s parked rows alone', async () => {
-    // Only a model promotion hands rows to the project; an insight promotion
-    // says nothing about where the underlying rows should come from.
     park('exp_1', 'orders_q');
     buildPromoteChecklist.mockResolvedValue([
       checklistRow({ type: 'insight', tier: 'insight', name: 'churn', config: { props: {} } }),
@@ -2597,7 +2580,6 @@ describe('exploration result cache invalidation (M27)', () => {
 
     expect(getCachedExplorationResult(scopeFor('exp_1', 'orders_q'))).toBeNull();
     expect(getCachedExplorationResult(scopeFor('exp_1', 'users_q'))).toBeNull();
-    // A different document's rows are none of this delete's business.
     expect(getCachedExplorationResult(scopeFor('exp_other', 'orders_q'))).not.toBeNull();
     expect(explorationResultCacheStats().entries).toBe(1);
   });
