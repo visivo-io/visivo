@@ -639,12 +639,6 @@ def _validate_pending_project(flask_app):
     mutates via ``setattr``, which does not re-validate, so only a fresh
     ``Project(**dump)`` exercises the project-level rules.
 
-    The overlay puts model-scoped fields back under their model itself
-    (``renest_model_scoped_fields``), so what is validated here has the shape
-    ``project_writer`` would land on disk. That matters both ways: a nested
-    ``count(*)`` must not be judged by the project-level rule, and a
-    project-level field must not escape it.
-
     Fails OPEN on an unexpected error: this gate exists to catch a *known*
     invalid project, and must not become a new way for a commit to fail.
     """

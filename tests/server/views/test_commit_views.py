@@ -524,10 +524,7 @@ class TestPendingProjectValidation:
         assert _validate_pending_project(flask_app) is None
 
     def test_a_MODEL_SCOPED_draft_is_re_nested_and_allowed(self):
-        """A model-scoped draft must not be judged by the project-level rule.
-        The overlay itself puts it back under its model — see
-        `tests/server/jobs/test_project_injection.py` for the re-nesting rule;
-        this holds the gate's end of it."""
+        """A model-scoped draft must not be judged by the project-level rule."""
         from tests.factories.model_factories import MetricFactory
         from visivo.server.views.commit_views import _validate_pending_project
 
@@ -538,9 +535,6 @@ class TestPendingProjectValidation:
         assert _validate_pending_project(flask_app) is None
 
     def test_the_gate_validates_the_nested_shape_that_would_land_on_disk(self):
-        """`project_writer` nests by parent model when it writes, so what the
-        gate validates has to be nested too — otherwise it passes a project on a
-        shape the next parse never sees."""
         from tests.factories.model_factories import DimensionFactory, MetricFactory
         from visivo.server.jobs.project_injection import inject_cached_objects
 
