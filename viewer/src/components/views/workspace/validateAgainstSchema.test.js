@@ -61,6 +61,22 @@ describe('validateRecordConfig (async, authoritative)', () => {
     expect(extra.message).toMatch(/bogus_key/);
   });
 
+  test('a model-scoped dimension carries its parentModel without failing the schema', async () => {
+    const result = await validateRecordConfig('dimension', {
+      name: 'x_rounded',
+      expression: 'ROUND(x, 1)',
+      parentModel: 'local_test_table',
+    });
+    expect(result.valid).toBe(true);
+    // Only the scope key is exempt: the object's own fields are still checked.
+    const extra = await validateRecordConfig('metric', {
+      expression: 'SUM(x)',
+      parentModel: 'local_test_table',
+      bogus_key: 1,
+    });
+    expect(extra.errors.map(e => e.path)).toEqual(['bogus_key']);
+  });
+
   test('a wrong-typed field fails at its path', async () => {
     const result = await validateRecordConfig('item', { width: 'wide' });
     expect(result.valid).toBe(false);
@@ -102,5 +118,11 @@ describe('validateRecordConfigSync (inline UX fast path)', () => {
 
     const good = validateRecordConfigSync('markdown', { content: 'hi', align: 'center' });
     expect(good.valid).toBe(true);
+
+    const scoped = validateRecordConfigSync('metric', {
+      expression: 'AVG(value)',
+      parentModel: 'daily_metrics',
+    });
+    expect(scoped.valid).toBe(true);
   });
 });

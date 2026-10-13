@@ -138,6 +138,17 @@ const runValidator = (validate, config) => {
 
 const SKIP = { valid: true, errors: [], skipped: true };
 
+// A metric/dimension defined inside a model carries `parentModel`, which its save
+// endpoint reads to place it under that model. It is not a field of the object.
+const SCOPED_TYPES = ['metric', 'dimension'];
+const schemaShape = (type, config) => {
+  if (!SCOPED_TYPES.includes(type) || typeof config !== 'object' || !('parentModel' in config)) {
+    return config;
+  }
+  const { parentModel: _scope, ...shape } = config;
+  return shape;
+};
+
 /**
  * Fail-open guard for gate-internal work (VIS-993 canvas-persist regression).
  * The module's contract is that internal failures NEVER produce a rejection
@@ -193,7 +204,9 @@ export async function validateRecordConfig(type, config) {
       return SKIP;
     }
   }
-  const structural = failOpen('validate', () => runValidator(validate, config));
+  const structural = failOpen('validate', () =>
+    runValidator(validate, schemaShape(type, config))
+  );
 
   // Insight props precision: the registered graph relaxes props to a plain
   // object (see registerRoot), so run the per-type Plotly validator here and
@@ -238,7 +251,7 @@ export function validateRecordConfigSync(type, config) {
       return SKIP;
     }
   }
-  return failOpen('validate', () => runValidator(validate, config));
+  return failOpen('validate', () => runValidator(validate, schemaShape(type, config)));
 }
 
 /**
