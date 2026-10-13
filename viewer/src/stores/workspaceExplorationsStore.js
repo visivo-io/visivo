@@ -85,6 +85,7 @@ import {
   draftToLegacyState,
 } from '../components/views/workspace/explorationLegacyBridge';
 import { buildPromoteChecklist } from './promoteChecklist';
+import { invalidateExplorationResults } from './explorationResultCache';
 import { SAVE_ACTION } from '../components/views/workspace/collectionKeys';
 import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
 import { emitWorkspaceEvent, markExplorationCreated } from '../components/views/workspace/telemetry';
@@ -453,6 +454,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         return { success: false, error: error.message };
       }
       clearPendingSyncTimer(id);
+      invalidateExplorationResults(id);
       const tabId = `exploration:${id}`;
       const wasOpen = (get().workspaceTabs || []).some(t => t.id === tabId);
       get().closeWorkspaceTab?.(tabId);
@@ -887,6 +889,11 @@ const createWorkspaceExplorationsSlice = (set, get) => {
 
         if (row.type === 'insight' && frozenSignaturesByInsightName[row.name]) {
           get().recordPromotedInsightSignature?.(row.name, frozenSignaturesByInsightName[row.name]);
+        }
+
+        // The project's build is now authoritative for this model's rows.
+        if (row.type === 'model') {
+          invalidateExplorationResults(id, row.name);
         }
 
         if (row.type === 'metric' || row.type === 'dimension') {

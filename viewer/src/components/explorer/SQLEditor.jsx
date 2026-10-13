@@ -37,6 +37,17 @@ const SQLEditor = ({
   const handleRunRef = useRef(null);
   const handleCancelRef = useRef(null);
   const isRunningRef = useRef(false);
+  // SQL and source actually sent, snapshotted at execute time like
+  // `runContextRef` below (the editor may change while the job runs).
+  const runSqlRef = useRef(null);
+  const runSourceRef = useRef(null);
+
+  const completionPayload = () => ({
+    context: runContextRef.current,
+    executedSql: runSqlRef.current,
+    executedSourceName: runSourceRef.current,
+  });
+
   // Snapshot of queryContext at execute time — passed back through
   // onQueryComplete so the caller can route results to the tab/model that
   // started the run even if the context changed while the job was in flight.
@@ -70,13 +81,13 @@ const SQLEditor = ({
   // Notify parent when query completes
   useEffect(() => {
     if (onQueryComplete && result) {
-      onQueryComplete({ result, error: null, context: runContextRef.current });
+      onQueryComplete({ result, error: null, ...completionPayload() });
     }
   }, [result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (onQueryComplete && error) {
-      onQueryComplete({ result: null, error, context: runContextRef.current });
+      onQueryComplete({ result: null, error, ...completionPayload() });
     }
   }, [error]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -119,6 +130,8 @@ const SQLEditor = ({
     }
 
     setShowError(true);
+    runSqlRef.current = queryText.trim();
+    runSourceRef.current = sourceName;
     runContextRef.current = queryContext ?? null;
     executeQuery(sourceName, queryText.trim());
     recordOnboardingAction('query_run');

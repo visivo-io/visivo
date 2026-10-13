@@ -383,6 +383,8 @@ describe('SQLEditor', () => {
           result: { columns: ['id'], rows: [{ id: 1 }], row_count: 1 },
           error: null,
           context: { modelName: 'model_a' },
+          executedSql: 'SELECT 1',
+          executedSourceName: 'test_source',
         });
       });
     });
@@ -432,8 +434,72 @@ describe('SQLEditor', () => {
           result: null,
           error: 'boom',
           context: null,
+          executedSql: null,
+          executedSourceName: null,
         });
       });
+    });
+
+    it('reports the SELECTION that ran, not the whole buffer', async () => {
+      const onQueryComplete = jest.fn();
+      mockSelectionIsEmpty = false;
+      mockSelectedText = 'SELECT 2';
+
+      const { rerender } = render(
+        <SQLEditor
+          initialValue={'SELECT 1;\nSELECT 2'}
+          sourceName="test_source"
+          onQueryComplete={onQueryComplete}
+        />
+      );
+      // Wait for the mocked Monaco onMount; the selection is read from the editor ref.
+      await waitFor(() => expect(mockEditor.addCommand).toHaveBeenCalled());
+
+      fireEvent.click(screen.getByRole('button', { name: /run/i }));
+      await waitFor(() => expect(mockExecuteQuery).toHaveBeenCalledWith('test_source', 'SELECT 2'));
+
+      mockQueryJobState = { ...mockQueryJobState, result: { columns: [], rows: [], row_count: 0 } };
+      rerender(
+        <SQLEditor
+          initialValue={'SELECT 1;\nSELECT 2'}
+          sourceName="test_source"
+          onQueryComplete={onQueryComplete}
+        />
+      );
+
+      await waitFor(() =>
+        expect(onQueryComplete).toHaveBeenCalledWith(
+          expect.objectContaining({ executedSql: 'SELECT 2' })
+        )
+      );
+    });
+
+    it('reports the SQL that ran even after the user keeps typing mid-flight', async () => {
+      const onQueryComplete = jest.fn();
+      const { rerender } = render(
+        <SQLEditor initialValue="SELECT 1" sourceName="test_source" onQueryComplete={onQueryComplete} />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /run/i }));
+      await waitFor(() => expect(mockExecuteQuery).toHaveBeenCalled());
+
+      mockQueryJobState = { ...mockQueryJobState, result: { columns: [], rows: [], row_count: 0 } };
+      rerender(
+        <SQLEditor
+          initialValue="SELECT 999"
+          sourceName="a_different_source"
+          onQueryComplete={onQueryComplete}
+        />
+      );
+
+      await waitFor(() =>
+        expect(onQueryComplete).toHaveBeenCalledWith(
+          expect.objectContaining({
+            executedSql: 'SELECT 1',
+            executedSourceName: 'test_source',
+          })
+        )
+      );
     });
 
     it('passes context null when no queryContext prop is provided', async () => {
