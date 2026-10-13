@@ -1,10 +1,12 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import Dashboard from '../../../project/Dashboard';
 import useStore from '../../../../stores/store';
 import { useWorkspaceCommit } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
+import { mintWrapperChartName, buildWrapperChartConfig } from '../../../../utils/insightWrap';
 import { setItemRef, removeItemAtPath } from './canvasReorder';
 import BrokenRefCard from './BrokenRefCard';
+import ReferencePicker from './ReferencePicker';
 import CanvasSelectionOverlay from './CanvasSelectionOverlay';
 import CanvasDndLayer from './CanvasDndLayer';
 import CanvasResizeLayer from './CanvasResizeLayer';
@@ -66,8 +68,8 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
   }, [dashboards, dashboardName]);
 
   const handleCreateNew = useCallback(
-    typeKey => {
-      emitWorkspaceEvent('inline_create_used', { source: 'broken_ref', kind: typeKey });
+    (typeKey, source = 'broken_ref') => {
+      emitWorkspaceEvent('inline_create_used', { source, kind: typeKey });
       switch (typeKey) {
         case 'chart':
           if (openCreateChartModal) openCreateChartModal();
@@ -86,6 +88,66 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
       }
     },
     [openCreateChartModal, openCreateTableModal, openCreateMarkdownModal, openCreateInputModal]
+  );
+
+  // Empty-slot click-to-pick. An insight pick is wrapped in a minted chart, saved
+  // only after the placement succeeds so a rejected placement leaves no orphan.
+  const [pickerItemPath, setPickerItemPath] = useState(null);
+
+  const handleEmptySlotClick = useCallback(({ itemPath }) => {
+    if (itemPath) setPickerItemPath(itemPath);
+  }, []);
+
+  const handlePickerSelect = useCallback(
+    (pickedName, pickedType) => {
+      const itemPath = pickerItemPath;
+      setPickerItemPath(null);
+      if (!itemPath || !pickedName || !dashboardConfig) return;
+      if (typeof commitCanvasConfig !== 'function') return;
+
+      if (pickedType === 'insight') {
+        const state = useStore.getState();
+        const existingCharts = (state.charts || []).map(chart => chart.name);
+        const chartName = mintWrapperChartName(pickedName, existingCharts);
+        const next = setItemRef(dashboardConfig, itemPath, 'chart', chartName);
+        if (next === dashboardConfig) return;
+        if (typeof state.saveChart === 'function') {
+          state.saveChart(chartName, buildWrapperChartConfig(pickedName));
+        }
+        commitCanvasConfig(dashboardName, next, { kind: 'picker_insert' });
+        emitWorkspaceEvent('canvas_action', {
+          kind: 'add_item',
+          source: 'picker',
+          type: 'insight',
+          name: pickedName,
+          wrapped_chart: chartName,
+          dashboardName,
+          path: itemPath,
+        });
+        return;
+      }
+
+      const next = setItemRef(dashboardConfig, itemPath, pickedType, pickedName);
+      if (next === dashboardConfig) return;
+      commitCanvasConfig(dashboardName, next, { kind: 'picker_insert' });
+      emitWorkspaceEvent('canvas_action', {
+        kind: 'add_item',
+        source: 'picker',
+        type: pickedType,
+        name: pickedName,
+        dashboardName,
+        path: itemPath,
+      });
+    },
+    [pickerItemPath, dashboardConfig, commitCanvasConfig, dashboardName]
+  );
+
+  const handlePickerCreateNew = useCallback(
+    typeKey => {
+      setPickerItemPath(null);
+      handleCreateNew(typeKey, 'picker');
+    },
+    [handleCreateNew]
   );
 
   const renderBrokenRef = useCallback(
@@ -152,7 +214,16 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
         hideEmptyPlaceholder
         canvasMode
         renderBrokenRef={renderBrokenRef}
+        onEmptySlotClick={handleEmptySlotClick}
       />
+      {pickerItemPath && (
+        <ReferencePicker
+          types={['chart', 'insight']}
+          onSelect={handlePickerSelect}
+          onClose={() => setPickerItemPath(null)}
+          onCreateNew={handlePickerCreateNew}
+        />
+      )}
       <CanvasSelectionOverlay rootRef={rootRef} />
       {/* VIS-771 / D-3: drag-and-drop affordance layer (drag handles + drop
           zones). A SIBLING over the render, wired to the shell's shared

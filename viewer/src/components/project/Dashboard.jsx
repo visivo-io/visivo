@@ -79,6 +79,22 @@ const stackedItemHeight = (items, item, rowPixelHeight) => {
   return Math.max(Math.round(rowPixelHeight * (spanOf(item) / totalWidth)), minStackedHeight(item));
 };
 
+// Shared with the slot's accessible name (WCAG 2.5.3, Label in Name).
+export const EMPTY_SLOT_LABEL = 'Empty slot — click to choose';
+
+// `row.0.item.2` -> "row 1, item 3"; '' when the path is absent or unparseable.
+export const describeSlotPath = itemPath => {
+  const tokens = String(itemPath || '').split('.');
+  const parts = [];
+  for (let i = 0; i + 1 < tokens.length; i += 2) {
+    const axis = tokens[i];
+    const index = Number(tokens[i + 1]);
+    if ((axis !== 'row' && axis !== 'item') || !Number.isInteger(index)) return '';
+    parts.push(`${axis} ${index + 1}`);
+  }
+  return parts.join(', ');
+};
+
 /**
  * Normalize a chart/table `insights` array so Chart/Table always receive
  * `[{ name: 'insight-name' }]` objects rather than raw context-string refs
@@ -291,6 +307,8 @@ const Dashboard = ({
   // renderer falls back to the legacy "<Type> not found: <name>" placeholder so
   // static viewing stays at parity.
   renderBrokenRef = null,
+  // Canvas only: makes the empty-slot placeholder a button calling `({ itemPath })`.
+  onEmptySlotClick = null,
 }) => {
   // Dashboard store (fetched by Project container)
   const dashboards = useStore(state => state.dashboards);
@@ -724,6 +742,23 @@ const Dashboard = ({
     // visible dashed placeholder so the slot is discoverable + a drop target
     // (VIS-901 #3). Backend persistence of a truly-empty item lands with VIS-900.
     if (canvasMode) {
+      if (typeof onEmptySlotClick === 'function') {
+        // The location suffix tells apart the identical slots a row template paints.
+        const slotLocation = describeSlotPath(itemPath);
+        return (
+          <button
+            key={key}
+            type="button"
+            data-testid="canvas-empty-slot"
+            aria-label={slotLocation ? `${EMPTY_SLOT_LABEL} (${slotLocation})` : undefined}
+            onClick={() => onEmptySlotClick({ itemPath })}
+            className="flex h-full w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/40 text-[11px] font-medium text-gray-400 transition-colors hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            style={{ minHeight: 48 }}
+          >
+            {EMPTY_SLOT_LABEL}
+          </button>
+        );
+      }
       return (
         <div
           key={key}

@@ -1,5 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import RefDropZone from './RefDropZone';
+import ReferencePicker from '../project/canvas/ReferencePicker';
+import useStore from '../../../stores/store';
+import { emitWorkspaceEvent } from '../workspace/telemetry';
+import { isReadOnly } from '../../../stores/branchingStore';
+import { mintWrapperChartName, buildWrapperChartConfig } from '../../../utils/insightWrap';
 import { parseRefValue } from '../../../utils/refString';
 import {
   LEAF_REF_FIELDS,
@@ -51,6 +56,94 @@ export const getItemLeafRef = item => {
 
 /** True when the item is acting as a row-container (`Item.rows` is set). */
 export const isContainerItem = item => Array.isArray(item?.rows);
+
+// `setItemLeaf` trims (or drops) the name, so read the placed ref back: an
+// insight wrapper must never be saved under a name the slot doesn't point at.
+const placeLeafRef = (item, type, name) => {
+  const next = applyLeafRef(item, { type, name });
+  if (!next || parseRefValue(next[type]) !== name) return null;
+  return next;
+};
+
+// Click alternative to the leaf drop zone, mounted only for empty leaves.
+// Read-only must be held here: `saveChart` fires outside `onChange`, so the
+// rail's own read-only hold would discard the placement after the wrapper
+// chart was already saved.
+const LeafChooseControl = ({ item, itemId, onChange }) => {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const readOnly = useStore(isReadOnly);
+
+  const handlePickerSelect = (pickedName, pickedType) => {
+    setPickerOpen(false);
+    if (!pickedName || !pickedType) return;
+    if (readOnly) return;
+
+    if (pickedType === 'insight') {
+      const state = useStore.getState();
+      const existingCharts = (state.charts || []).map(chart => chart.name);
+      const chartName = mintWrapperChartName(pickedName, existingCharts);
+      const next = placeLeafRef(item, 'chart', chartName);
+      if (!next) return; // rejected placement mints nothing
+      if (typeof state.saveChart === 'function') {
+        state.saveChart(chartName, buildWrapperChartConfig(pickedName));
+      }
+      onChange(next);
+      emitWorkspaceEvent('canvas_action', {
+        kind: 'add_item',
+        source: 'picker',
+        type: 'insight',
+        name: pickedName,
+        wrapped_chart: chartName,
+        itemId,
+      });
+      return;
+    }
+
+    const next = placeLeafRef(item, pickedType, pickedName);
+    if (!next) return;
+    onChange(next);
+    emitWorkspaceEvent('canvas_action', {
+      kind: 'add_item',
+      source: 'picker',
+      type: pickedType,
+      name: pickedName,
+      itemId,
+    });
+  };
+
+  const handleCreateNew = typeKey => {
+    setPickerOpen(false);
+    if (readOnly) return;
+    emitWorkspaceEvent('inline_create_used', { source: 'picker', kind: typeKey });
+    const openCreateChartModal = useStore.getState().openCreateChartModal;
+    if (typeKey === 'chart' && typeof openCreateChartModal === 'function') {
+      openCreateChartModal();
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        data-testid={`item-${itemId}-choose`}
+        onClick={() => setPickerOpen(true)}
+        disabled={readOnly}
+        title={readOnly ? 'Read-only — create a draft to edit' : undefined}
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 transition-colors hover:text-primary-700 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:text-gray-400"
+      >
+        Choose…
+      </button>
+      {pickerOpen && (
+        <ReferencePicker
+          types={['chart', 'insight']}
+          onSelect={handlePickerSelect}
+          onClose={() => setPickerOpen(false)}
+          onCreateNew={handleCreateNew}
+        />
+      )}
+    </>
+  );
+};
 
 /**
  * ItemEditForm — VIS-787 / Track F F-2.
@@ -287,15 +380,18 @@ const ItemEditForm = ({
           </button>
         </div>
       ) : (
-        <RefDropZone
-          id={resolvedLeafDropZoneId}
-          allowedTypes={ALLOWED_LEAF_TYPES}
-          value={leafRef}
-          onClear={() => handleLeafRefChange(null)}
-          onChange={ref => handleLeafRefChange(ref)}
-          onSelectRef={onSelectRef}
-          hint="Drop a chart, table, markdown, or input"
-        />
+        <div className="space-y-1.5">
+          <RefDropZone
+            id={resolvedLeafDropZoneId}
+            allowedTypes={ALLOWED_LEAF_TYPES}
+            value={leafRef}
+            onClear={() => handleLeafRefChange(null)}
+            onChange={ref => handleLeafRefChange(ref)}
+            onSelectRef={onSelectRef}
+            hint="Drop a chart, table, markdown, or input"
+          />
+          {!leafRef && <LeafChooseControl item={item} itemId={itemId} onChange={onChange} />}
+        </div>
       )}
     </div>
   );

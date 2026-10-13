@@ -1,5 +1,12 @@
 import * as branchingApi from '../api/branching';
 
+// VIS-1025: `capabilities` is null under local serve (always editable); in cloud
+// `can_edit === false` marks the branch read-only. Shared by every write path.
+export const isReadOnly = state => {
+  const caps = state?.capabilities;
+  return !!(caps && caps.can_edit === false);
+};
+
 /**
  * Branching slice — backend-agnostic.
  *
