@@ -13,12 +13,8 @@ from tests.factories.model_factories import SourceFactory
 class TestFieldResolverWithInputs:
     """Tests for FieldResolver handling of input references."""
 
-    def test_field_resolver_crashes_on_unsanitized_input_ref(self):
-        """Document that FieldResolver crashes when given unsanitized input reference.
-
-        This test documents the expected behavior - FieldResolver should crash on
-        unsanitized input refs because they have no parents in the DAG.
-        """
+    def test_field_resolver_rejects_unsanitized_input_ref(self):
+        """Input references must be sanitized before field resolution."""
         source = SourceFactory()
         orders_model = SqlModel(
             name="orders",
@@ -45,9 +41,7 @@ class TestFieldResolverWithInputs:
             native_dialect="duckdb",
         )
 
-        # This will crash with IndexError because FieldResolver tries to get parent
-        # of Input node, but Inputs have no parents in the DAG
-        with pytest.raises(IndexError):
+        with pytest.raises(ValueError, match="must name a metric or dimension"):
             field_resolver.resolve(expression="${ref(threshold)}")
 
     def test_field_resolver_ignores_sanitized_input_placeholder(self):

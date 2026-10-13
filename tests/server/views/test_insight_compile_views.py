@@ -63,6 +63,16 @@ def write_schema(tmp_path, model_name, model_hash, columns):
 
 
 class TestCompileDraftHappyPath:
+    def test_misplaced_field_accessor_returns_actionable_error(self, client):
+        payload = insight_payload()
+        payload["insight"]["props"]["x"] = "?{${ref(orders_q)}.region}"
+        resp = client.post("/api/insight-compile-draft/", json=payload)
+        assert resp.status_code == 400
+        error = resp.get_json()["error"]
+        assert "props.x" in error
+        assert "${ref(orders_q).region}" in error
+        assert "AttributeError" not in error
+
     def test_returns_query_info_for_an_already_published_model(self, client, tmp_path):
         from visivo.models.base.named_model import alpha_hash
 

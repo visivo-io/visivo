@@ -57,3 +57,11 @@ class TestSelfAliasedExpressions:
         # it always did.
         expression = "some_udf(x) filter (where y) over ()"
         assert Dimension(name="d", expression=expression).expression == expression
+
+
+@pytest.mark.parametrize("field_type", [Dimension, Metric])
+def test_field_expression_rejects_accessor_outside_reference(field_type):
+    with pytest.raises(ValidationError) as excinfo:
+        field_type(name="total", expression="sum(${ref(orders)}.amount)")
+    assert "expression" in str(excinfo.value)
+    assert "${ref(orders).amount}" in str(excinfo.value)

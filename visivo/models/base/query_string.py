@@ -2,6 +2,7 @@ from typing import Any
 
 import re
 from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
+from visivo.query.reference_validation import validate_field_reference_syntax
 
 
 def _query_string_rejection(value: str) -> str:
@@ -91,6 +92,7 @@ class QueryString:
             # empty expression as `?{}` by another spelling.
             if match is None or not match.group("query_string").strip():
                 raise ValueError(_query_string_rejection(str_value))
+            validate_field_reference_syntax(match.group("query_string"))
             return cls(str_value)
 
         return core_schema.no_info_after_validator_function(

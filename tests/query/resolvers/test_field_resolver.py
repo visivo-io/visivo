@@ -1313,3 +1313,20 @@ class TestFieldResolverB10SqlModelFallback:
         # Should look like '"<orders_hash>"."revenue" AS "<alias_hash>"'
         assert orders.name_hash() in result
         assert "revenue" in result.lower()
+
+    @pytest.mark.parametrize(
+        "expression, hint",
+        [
+            ("${ref(orders)}.revenue", "${ref(orders).revenue}"),
+            ("SUM(${ref(orders)}.revenue)", "${ref(orders).revenue}"),
+            ("${ref(orders)}", "${ref(orders).column_name}"),
+        ],
+    )
+    def test_model_in_field_expression_gives_actionable_error(self, tmpdir, expression, hint):
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        orders = SqlModel(name="orders", sql="SELECT 1 AS revenue", source="ref(test_source)")
+        project = Project(name="test_project", sources=[source], models=[orders])
+        resolver = FieldResolver(dag=project.dag(), output_dir=str(tmpdir), native_dialect="duckdb")
+        with pytest.raises(ValueError) as excinfo:
+            resolver.resolve(expression)
+        assert hint in str(excinfo.value)

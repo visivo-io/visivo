@@ -1,5 +1,7 @@
 """Shared validation for the SQL expression on a Metric or a Dimension."""
 
+from visivo.query.reference_validation import validate_field_reference_syntax
+
 
 def reject_aliased_expression(expression: str, field_kind: str) -> str:
     """Reject an expression that aliases itself.
@@ -31,6 +33,8 @@ def reject_aliased_expression(expression: str, field_kind: str) -> str:
     """
     if not expression or not isinstance(expression, str):
         return expression
+
+    validate_field_reference_syntax(expression)
 
     # A context string (`${ref(...)}`) is not SQL until it is resolved, so
     # there is nothing meaningful to parse yet.

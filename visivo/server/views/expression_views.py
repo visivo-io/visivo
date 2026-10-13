@@ -5,6 +5,7 @@ from visivo.logger.logger import Logger
 import sqlglot
 from sqlglot import exp
 from visivo.query.patterns import CONTEXT_STRING_VALUE_PATTERN
+from visivo.query.reference_validation import validate_field_reference_syntax
 from visivo.query.sqlglot_utils import get_sqlglot_dialect, has_aggregate_function
 
 # ---------------------------------------------------------------------------
@@ -231,8 +232,9 @@ def register_expression_views(app, flask_app, output_dir):
                     results.append({"name": name, "valid": False, "error": "Empty expression"})
                     continue
 
-                quoted = quote_context_tokens(expression, read_dialect or "duckdb")
                 try:
+                    validate_field_reference_syntax(expression)
+                    quoted = quote_context_tokens(expression, read_dialect or "duckdb")
                     sqlglot.parse_one(quoted, read=read_dialect or "duckdb")
                     results.append({"name": name, "valid": True})
                 except Exception as e:

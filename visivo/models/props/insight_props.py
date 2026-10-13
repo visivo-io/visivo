@@ -9,6 +9,7 @@ import re
 from visivo.models.props.json_schema_base import JsonSchemaBase, get_message_from_error
 from visivo.models.props.types import PropType
 from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
+from visivo.query.reference_validation import validate_field_reference_syntax
 
 #: Field names that the parser may attach to props during YAML loading
 #: but that are not valid Plotly insight properties. Strip them out of the
@@ -73,6 +74,12 @@ class InsightProps(JsonSchemaBase):
             raise ValueError(
                 f"Validation error for insight type {self.type.value} at location: {e.instance_path}: {str(message)}"
             )
+
+        for path, expression, _slice in self._iter_query_strings("props"):
+            try:
+                validate_field_reference_syntax(expression)
+            except ValueError as e:
+                raise ValueError(f"Invalid query at {path}: {e}") from e
 
         return self
 

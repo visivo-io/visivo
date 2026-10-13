@@ -223,6 +223,27 @@ class TestExpressionValidateView:
     def client(self, app):
         return app.test_client()
 
+    @pytest.mark.parametrize(
+        "expression, corrected",
+        [
+            ("${ref(model)}.lat", "${ref(model).lat}"),
+            ("sum(${ref(model)}.restaurant_count)", "${ref(model).restaurant_count}"),
+        ],
+    )
+    def test_validate_rejects_misplaced_field_accessor(self, client, expression, corrected):
+        response = client.post(
+            "/api/expressions/validate/",
+            json={
+                "expressions": [{"name": "field", "expression": expression}],
+                "source_dialect": "duckdb",
+            },
+        )
+        assert response.status_code == 200
+        result = response.get_json()["results"][0]
+        assert result["valid"] is False
+        assert corrected in result["error"]
+        assert "inside the reference braces" in result["error"]
+
     def _validate(self, client, expression, name="expr", dialect="duckdb"):
         response = client.post(
             "/api/expressions/validate/",
