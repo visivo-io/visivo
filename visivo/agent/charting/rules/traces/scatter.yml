@@ -4,20 +4,28 @@ secondary_families: [area, xy]
 status: preferred
 one_liner: One trace type, three idioms — a line over an ordered axis, a filled area, or x/y markers.
 use_when:
-  - "A metric over time or any ordered axis (days since signup, step, rank) with ≥3 points: `mode: lines`."
-  - "Several series share the axis and there are ≤5 (≤12 at a stretch): split on the categorical."
-  - "Two numeric measures per entity, 50–10 000 points, to see a relationship: `mode: markers`."
+  - "A metric over time or any ordered axis (days since signup, step, rank): `mode: lines`."
+  - "A few series share the axis: split on the categorical."
+  - "Two numeric measures per entity, to see a relationship: `mode: markers`."
   - "Stacked composition over time when the parts are additive: `fill` + `stackgroup`."
+other_uses:
+  - use: Error bars, e.g. an average with its spread per group or period.
+    how: "`mode: markers`, `y: ?{ avg(<m>) }` and `error_y: {type: data, array: ?{ stddev(<m>) }}`."
+  - use: A confidence or forecast band around a line.
+    how: "A lower-bound insight with `line.width: 0`, then an upper-bound insight with `fill: tonexty` and `line.width: 0`, then the line itself; order them so in `charts.insights`."
+  - use: A step line for values that change at points in time (prices, plan tier, inventory).
+    how: "`mode: lines` with `line.shape: hv`."
 avoid_when:
-  - The axis is an unordered categorical — the line implies a sequence that is not there; use bar.
-  - More than 12 series — repair with top-N + Other, an input filter, or a heatmap.
-  - More than 10 000 points — use scattergl, or aggregate in SQL first.
-  - A stacked area of non-additive measures (rates, averages) — stacking sums them, which is meaningless.
+  - The axis is an unordered categorical; the line implies a sequence that is not there, use bar.
+  - Too many series to tell apart; repair with top-N + Other, an input filter, or a heatmap.
+  - Too many points for SVG to stay responsive; use scattergl, or aggregate in SQL first.
+  - A stacked area of non-additive measures (rates, averages); stacking sums them, which is meaningless.
 data_shape:
   metrics: {min: 1, max: 3}
   dimensions: {min: 1, max: 2}
   dimension_roles: [time, numeric_continuous, numeric_discrete, categorical, boolean]
-  cardinality: {min: 3}
+  axis_points: {min: 3}
+  rows: {max: 10000}
 required_props: [x, y]
 example: |
   insights:
@@ -31,14 +39,14 @@ example: |
         - split: ?{ ${ref(trips).company} }
         - sort: ?{ date_trunc('day', ${ref(trips).pickup_at}) ASC }
 variations:
-  - when: "second categorical (few)"
-    then: "`split` interaction; one line per value, shared axes"
-  - when: "second metric with a different unit"
-    then: "`yaxis: y2` on a second insight (duel-axis example)"
-  - when: "a third numeric on markers"
-    then: "`marker.size` (area, not radius); never `marker.color` unless it encodes data"
-  - when: "many series"
-    then: "heatmap (series × axis) keeps every value readable"
+  - when: "a second `few` categorical dimension"
+    then: "`split` interaction; one line per value on shared axes"
+  - when: "a second metric with a different unit"
+    then: "put it on a second insight with `yaxis: y2` and set the chart `layout.yaxis2: {overlaying: y, side: right}`"
+  - when: "a third numeric measure per point in markers mode"
+    then: "`marker.size` (it scales area, not radius); never `marker.color` unless it encodes data"
+  - when: "too many series for one legend"
+    then: "a heatmap (series × axis) keeps every value readable"
 limits:
   series_ideal: 5
   series_max: 12
@@ -49,7 +57,7 @@ gotchas:
   - "`x` and `y` must be aggregated at the same grain: `date_trunc('day', ts)` with `count(*)`, never raw rows for a line."
   - "Setting `line.color` or `marker.color` opts the insight out of the theme colorway; only do it when the color encodes data (a CASE)."
   - "A `split` adds a series per distinct value: check the column's cardinality bucket first (`few` is fine, `some` needs top-N)."
-  - "`fill: tonexty` stacks on the previous insight in the chart, so insight order in `charts.insights` is the stacking order; prefer `stackgroup`."
+  - "`fill: tonexty` fills to the previous insight in the chart, so insight order in `charts.insights` is the stacking order; prefer `stackgroup` for stacked areas."
 pairings: [indicator_total_overlay, bar_line_dual_axis, detail_table_below]
 layout: {height: medium, width_share: 1.0, row_role: hero}
-mobile: Keep ≤3 series and the legend horizontal; a full-width line survives the stack, a half-width one gets too short to read.
+mobile: Keep fewer series than on desktop and the legend horizontal; a full-width line survives the stack, a half-width one gets too short to read.

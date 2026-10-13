@@ -3,19 +3,27 @@ family: heatmap
 status: preferred
 one_liner: A metric over two dimensions as a colored grid; the repair for a line with too many series.
 use_when:
-  - Two dimensions with ≤400 cells in total (e.g. hour × weekday, borough × company, week × product).
-  - A line chart would need 12+ series — company × week as a grid keeps every value visible.
+  - Two dimensions with few enough cells to see each one (hour × weekday, borough × company, week × product).
+  - A line chart would need more series than it can separate; company × week as a grid keeps every value visible.
   - Looking for a pattern (seasonality, a hot corner), not for exact magnitudes.
+other_uses:
+  - use: Calendar heatmap, one cell per day laid out as weeks × weekdays.
+    how: "`x: ?{ date_trunc('week', <date>) }`, `y: ?{ isodow(<date>) }`, `z: ?{ <metric> }`, `xgap`/`ygap` for cell borders; label `layout.yaxis` with day names."
+  - use: Cohort retention grid, signup cohort against periods since signup.
+    how: "`y: ?{ <cohort_month> }`, `x: ?{ <months_since_signup> }`, `z: ?{ <retained_share> }` computed in SQL, `texttemplate: '%{z:.0%}'`, `hoverongaps: false` for the empty triangle."
+  - use: Correlation matrix between numeric columns.
+    how: "Unpivot the pairwise `corr()` results in SQL to x/y/z rows; `zmin: -1`, `zmax: 1`, `zmid: 0` and a diverging `colorscale` such as `RdBu`."
 avoid_when:
-  - More than ~400 cells or more than ~40 on one axis — labels collide; pivot table or filter with an input.
-  - Fewer than 3 values on either axis — a grouped bar is clearer.
-  - Exact numbers are the point — a pivot table with `format_cells` is a heatmap you can read.
-  - Sparse grids (most cells empty) — the blanks dominate; aggregate coarser first.
+  - Too many cells, or too many values on one axis, to label; use a pivot table or fix one dimension with an input.
+  - Too few values on either axis; a grouped bar is clearer.
+  - Exact numbers are the point; a pivot table with `format_cells` is a heatmap you can read.
+  - Sparse grids (most cells empty); the blanks dominate, so aggregate coarser first.
 data_shape:
   metrics: {min: 1, max: 1}
   dimensions: {min: 2, max: 2}
   dimension_roles: [time, categorical, boolean, numeric_discrete, geo_region]
   cardinality: {min: 3, max: 40}
+  cells: {max: 400}
 required_props: [x, y, z]
 example: |
   insights:
@@ -29,23 +37,23 @@ example: |
       interactions:
         - sort: ?{ extract(hour from ${ref(trips).pickup_at}) ASC }
 variations:
-  - when: "numbers on the cells for ≤100 cells"
-    then: "`text: ?{ <metric> }` + `texttemplate: '%{text}'` (text-annotations example)"
-  - when: "a rate rather than a count"
+  - when: "the grid is small and the exact values matter"
+    then: "`texttemplate: '%{z:,.0f}'` prints each cell's value on it"
+  - when: "the metric is a rate rather than a count"
     then: "compute the ratio in SQL; a heatmap of raw counts is dominated by the busiest row"
-  - when: "more than 400 cells"
-    then: "`table_pivot` with `format_cells`, or an input that fixes one dimension"
+  - when: "there are too many cells to read as a grid"
+    then: "a `table_pivot` with `format_cells`, or an input that fixes one dimension"
 limits:
   series_ideal: 1
   series_max: 1
   repair: [regrain, top_n_other, input_filter]
 transforms: [regrain, top_n_other, bucket]
 gotchas:
-  - "x, y and z come from one GROUP BY over both dimensions; a heatmap over raw rows draws one cell per row."
+  - "x, y and z come from one GROUP BY over both dimensions; over raw rows, rows that share an x/y pair overwrite each other and the cell shows only the last one."
   - "Set `layout.xaxis.type: category`/`yaxis.type: category` when the axes are labels, or Plotly spaces them as numbers."
   - "Weekday or month names sort alphabetically; sort by the number (`isodow`, `month`) and label with the name."
-  - "A `split` interaction makes one heatmap per value, all on the same axes — overlapping; never split a heatmap."
+  - "A `split` interaction makes one heatmap per value, all on the same axes and overlapping; never split a heatmap."
   - "Pick one theme-neutral `colorscale` (Viridis, Blues); a diverging scale needs `zmid` at the meaningful centre."
 pairings: [detail_table_below, kpi_strip_above]
 layout: {height: medium, width_share: 1.0, row_role: breakdown}
-mobile: Keep the longer axis vertical; a 24-column grid becomes unreadable under 1024 px.
+mobile: Keep the longer axis vertical; a grid with many columns becomes unreadable on narrow screens.

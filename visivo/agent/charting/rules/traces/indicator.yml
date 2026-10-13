@@ -3,13 +3,16 @@ family: kpi
 status: preferred
 one_liner: One number, optionally with a delta against a reference or a gauge against a target.
 use_when:
-  - A single aggregate the dashboard is about (total rides, revenue, average fare) — a KPI strip of 2–4.
-  - "The same aggregate for the current and previous period — `mode: number+delta`."
-  - "Progress against a fixed target or bound — `mode: gauge+number`."
+  - A single aggregate the dashboard is about (total rides, revenue, average fare); several of them make a KPI strip.
+  - "The same aggregate for the current and previous period: `mode: number+delta`."
+  - "Progress against a fixed target or bound: `mode: gauge+number`."
+other_uses:
+  - use: Bullet chart, a horizontal bar against a target with qualitative bands.
+    how: "`mode: number+gauge+delta`, `gauge.shape: bullet`, `gauge.threshold.value` for the target and `gauge.steps` (each with `range`) for the bands."
 avoid_when:
-  - More than one row would be interesting — the indicator shows `[0]` only; use a bar or table.
-  - The number has no context (no unit, no comparison, no target) — pair it with a delta or a sparkline.
-  - More than 4 KPIs in a row — split into a 2×2 cluster or drop the weakest.
+  - More than one row would be interesting; the indicator shows `[0]` only, so use a bar or table.
+  - The number has no context (no unit, no comparison, no target); pair it with a delta or a sparkline.
+  - More KPIs than fit one row; split them into a 2×2 cluster or drop the weakest.
 data_shape:
   metrics: {min: 1, max: 1}
   dimensions: {min: 0, max: 1}
@@ -30,12 +33,12 @@ example: |
       interactions:
         - sort: ?{ date_trunc('month', ${ref(trips).pickup_at}) DESC }
 variations:
-  - when: "period-over-period"
-    then: "aggregate by period, `sort` DESC, `value: [0]`, `delta.reference: [1]`"
-  - when: "target"
-    then: "`gauge.axis.range` and `gauge.threshold.value`"
-  - when: "several KPIs in one chart"
-    then: "`domain.x`/`domain.y` per insight (indicators-and-trends example), or one chart per KPI in a `kpi` row"
+  - when: "the KPI is compared with the previous period"
+    then: "aggregate by period, `sort` DESC, `value: ?{ <metric> }[0]` and `delta.reference: ?{ <metric> }[1]`"
+  - when: "there is a target or bound to measure progress against"
+    then: "`mode: gauge+number` with `gauge.axis.range` and `gauge.threshold.value`"
+  - when: "several KPIs share one chart"
+    then: "a `domain.x`/`domain.y` per insight so they sit side by side, or one chart per KPI in a `kpi` row"
 limits:
   series_ideal: 1
   series_max: 1
@@ -44,9 +47,9 @@ transforms: [regrain]
 gotchas:
   - "`value` must be a single cell: `?{ sum(x) }[0]`. Without `[0]` the whole column is passed and nothing renders."
   - "A delta needs two rows in a known order: group by period and `sort` DESC so `[0]` is current and `[1]` previous."
-  - "Units go in `number.prefix`/`number.suffix`; the number itself should stay a plain aggregate for `valueformat` to work."
-  - "An indicator ignores `split`; a split KPI is a bar chart."
-  - "A `small` row (256 px) is the floor: Plotly's default margins eat 120 px, so an `xsmall` KPI has no plot area unless `layout.margin` top+bottom ≤ 40."
+  - "Units go in `number.prefix`/`number.suffix`; keep the value a plain aggregate so `number.valueformat` can format it."
+  - "A `split` draws one indicator per value in the same `domain`, stacked on top of each other; a split KPI is a bar chart."
+  - "A `small` row (256 px) is the floor: the viewer's default margins take 120 px, so an `xsmall` KPI has no plot area unless `layout.margin` top+bottom ≤ 40."
 pairings: [indicator_total_overlay, kpi_strip_above, kpi_cluster_beside]
 layout: {height: small, width_share: 0.25, row_role: kpi}
-mobile: KPIs stack one per line; order them by importance and keep to four.
+mobile: KPIs stack one per line; order them by importance and keep only the strongest.

@@ -3,11 +3,11 @@ family: ternary_smith
 status: niche
 one_liner: Smith chart of normalized complex impedance for RF engineering; essentially never right for BI data.
 use_when:
-  - "RF / network-analyzer data only: normalized complex impedance or reflection (real, imag ÷ Z0) swept over frequency, and the user asked for a Smith chart."
+  - "RF or network-analyzer data only: normalized complex impedance or reflection (real and imaginary parts divided by Z0) swept over frequency, and the user asked for a Smith chart."
 avoid_when:
-  - "Any business metric — there is no BI shape that maps to impedance; the recommender should never propose it without an explicit request."
-  - "Two arbitrary numbers per row — that is an x/y scatter; the Smith grid would distort them non-linearly."
-  - "Impedance not normalized to the reference impedance (50 Ω) — the points land in the wrong place."
+  - "Any business metric; no BI shape maps to impedance, so never propose it without an explicit request."
+  - "Two arbitrary numbers per row; that is an x/y scatter, and the Smith grid would distort them non-linearly."
+  - "Impedance not normalized to the reference impedance (usually 50 Ω); the points land in the wrong place."
 data_shape:
   metrics: {min: 2, max: 2}
   dimensions: {min: 0, max: 1}
@@ -15,7 +15,6 @@ data_shape:
   cardinality: null
 required_props: [real, imag]
 example: |
-  # vna_sweep: one row per frequency point (frequency_hz, r_ohm, x_ohm, device)
   insights:
     - name: antenna-impedance
       props:
@@ -28,19 +27,19 @@ example: |
         - split: ?{ ${ref(vna_sweep).device} }
         - sort: ?{ ${ref(vna_sweep).frequency_hz} ASC }
 variations:
-  - when: "devices / runs"
-    then: "`split` (≤5)"
-  - when: "frequency"
-    then: "`text` on hover or `marker.color` with a colorscale (it encodes data)"
+  - when: "the sweep covers several devices or runs"
+    then: "`split`, one line per device"
+  - when: "the reader needs to see frequency"
+    then: "`text` for hover, or `marker.color` with a colorscale since it encodes data"
 limits:
   series_ideal: 3
   series_max: 5
   repair: [input_filter]
 transforms: []
 gotchas:
-  - "`real`/`imag` are normalized impedance: divide by Z0 in SQL; raw ohms put every point at the rim."
-  - "Sort by frequency or the sweep zig-zags (same rule as scatter lines)."
-  - "Write every column as `${ref(model).col}`; the docs examples use a bare `?{real}`, and `real` is also a SQL type keyword."
+  - "`real` and `imag` are normalized impedance: divide by Z0 in SQL; raw ohms put every point at the rim."
+  - "Sort by frequency or the sweep zig-zags (the same rule as scatter lines)."
+  - "Write every column as `${ref(model).col}`; a bare `?{ real }` collides with `real`, which is also a SQL type keyword."
 pairings: []
 layout: {height: large, width_share: 0.5, row_role: relationship}
-mobile: Needs a square; at phone width gridline labels collide — hover is the only readable channel.
+mobile: Needs a square; at phone width the gridline labels collide and hover is the only readable channel.

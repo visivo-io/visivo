@@ -39,9 +39,9 @@ variations:
   - when: "second `few` dimension"
     then: "`split`; set chart `layout.barmode: stack` for part-of-whole, `group` otherwise"
   - when: "long category labels"
-    then: "`orientation: h` with the category on `y` (horizontal-cohorts example)"
+    then: "`orientation: h` with the category on `y`"
   - when: "a second metric with another unit"
-    then: "a scatter insight on `yaxis: y2` (bar_line_dual_axis pairing)"
+    then: "a scatter insight in the same chart with `yaxis: y2`, and `layout.yaxis2.overlaying: y`"
   - when: "exact values wanted"
     then: "`text: ?{ <metric> }` + `textposition: outside`"
 limits:

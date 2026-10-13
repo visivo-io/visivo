@@ -3,12 +3,12 @@ family: three_d
 status: niche
 one_liner: Cones at x/y/z points pointing along u/v/w vectors; for 3D vector fields (wind, flow), never business data.
 use_when:
-  - "Only on an explicit request (otherwise the recommender scores it ≤ 0.3): a sampled vector field with position (x, y, z) and direction (u, v, w)."
-  - Up to a few hundred sample points, where each arrow can still be seen.
+  - "Only on an explicit request, for a sampled vector field with position (x, y, z) and direction (u, v, w)."
+  - A sparse sample, where each arrow can still be seen.
 avoid_when:
-  - Two-dimensional vectors (wind on a map) — draw arrows on a 2D chart or a map; the third axis adds nothing.
-  - "Thousands of points — the cones overlap into a hedgehog; subsample the grid or use `streamtube`."
-  - Any metric that is not a direction — a cone's size and angle are not readable as magnitude.
+  - Two-dimensional vectors such as wind on a map; draw arrows on a 2D chart or a map, the third axis adds nothing.
+  - "Too many points; the cones overlap into a hedgehog. Subsample the grid or use `streamtube`."
+  - Any metric that is not a direction; a cone's size and angle are not readable as magnitude.
 data_shape:
   metrics: {min: 3, max: 3}
   dimensions: {min: 3, max: 3}
@@ -30,16 +30,18 @@ example: |
         sizemode: absolute
         sizeref: 0.5
 variations:
-  - when: "TODO"
-    then: "color encodes vector magnitude automatically; `colorbar.title` names the unit (wind-direction example)"
+  - when: "the reader needs the speed's unit"
+    then: "`colorbar.title.text` names it; the cone color already encodes vector magnitude"
+  - when: "each arrow should start at its sample point"
+    then: "`anchor: tail`; the default centres the cone on the point"
 limits:
   series_ideal: 1
   series_max: 1
   repair: [sample, bucket]
 transforms: [sample, bucket]
 gotchas:
-  - "`sizeref` depends on the data's scale; without it cones are invisible or swallow the scene — tune it per dataset."
-  - "Hover shows only coordinates unless `text`/`hovertemplate` is set (the wind-direction example passes speed as `text`)."
+  - "`sizeref` depends on the data's scale; without it cones are invisible or swallow the scene, so tune it per dataset."
+  - "Default hover shows coordinates and the vector norm without a unit; pass the speed as `text` or set `hovertemplate`."
   - "Camera position belongs in `layout.scene.camera.eye`, not in the insight props."
 pairings: []
 layout: {height: large, width_share: 0.5, row_role: relationship}

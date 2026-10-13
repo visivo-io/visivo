@@ -3,18 +3,18 @@ family: ternary_smith
 status: niche
 one_liner: Points in a triangle for three parts that sum to a whole, one point per entity; needs explicit intent.
 use_when:
-  - "Exactly three additive parts of a whole per entity (card / cash / other share of trips per pickup zone) across many entities (≥15)."
-  - "The question is where entities cluster in the mix (card-heavy vs cash-heavy zones), not the size of any one part."
+  - "Exactly three additive parts of a whole per entity (card, cash and other share of trips per pickup zone) across many entities."
+  - "The question is where entities cluster in the mix (card-heavy against cash-heavy zones), not the size of any one part."
 avoid_when:
-  - "Fewer than ~15 entities — a 100% stacked bar per entity is readable and needs no triangle literacy."
-  - "Two parts (a single share, use a bar or histogram) or four+ parts (pick three, or use a heatmap of entity × part)."
-  - "Parts that are not additive or can be negative — ternary coordinates are normalized to the sum, so the point means nothing."
+  - "Too few entities to form clusters; a 100% stacked bar per entity is readable and needs no triangle literacy."
+  - "Other than three parts: a single share is a bar or histogram; with more parts pick three, or use a heatmap of entity × part."
+  - "Parts that are not additive or can be negative; ternary coordinates are normalized to the sum, so the point means nothing."
   - Any general audience without an explicit request; most readers cannot read ternary gridlines.
 data_shape:
   metrics: {min: 3, max: 3}
   dimensions: {min: 1, max: 2}
   dimension_roles: [categorical, identifier, geo_region]
-  cardinality: {min: 15, max: 2000}
+  rows: {min: 15, max: 2000}
 required_props: [a, b, c]
 example: |
   insights:
@@ -33,22 +33,22 @@ example: |
       layout:
         ternary: {aaxis: {title: {text: Card}}, baxis: {title: {text: Cash}}, caxis: {title: {text: Other}}}
 variations:
-  - when: "entity size"
+  - when: "entities differ a lot in volume"
     then: "`marker.size: ?{ sqrt(count(*)) }` so a 3-trip zone does not look as certain as a 30k-trip one"
-  - when: "a few-valued grouping (borough)"
+  - when: "a grouping with a few values, such as borough"
     then: "`split`, one color per borough"
-  - when: "> 2000 entities"
-    then: "filter small entities out (HAVING count(*) ≥ n) before plotting"
+  - when: "more entities than the triangle can hold"
+    then: "drop small entities with HAVING before plotting"
 limits:
   series_ideal: 3
   series_max: 6
   repair: [collapse_rare, input_filter, bar]
 transforms: [collapse_rare, bucket]
 gotchas:
-  - "Pass all three of a, b, c as raw counts; Plotly normalizes. Passing two forces `sum` and silently misplaces rows that do not add up."
-  - "Without `layout.ternary.*axis.title` the corners are unlabeled and the chart is unreadable; there is no docs example to copy from, so set them explicitly."
-  - "Tiny entities sit on corners (1 trip = 100% cash); filter with HAVING or size markers by volume."
+  - "Pass all three of `a`, `b` and `c` as raw counts and Plotly normalizes each point. With only two, the third is `sum` minus them (default 1), so raw counts land off the triangle."
+  - "Without `layout.ternary.aaxis.title` (and `baxis`, `caxis`) the corners are unlabeled and the chart is unreadable; set them explicitly."
+  - "Tiny entities sit on the corners (1 trip is 100% cash); filter them with HAVING or size markers by volume."
   - "`text` is the grouping column (one point per zone); it is not an aggregate, so it defines the GROUP BY."
 pairings: [detail_table_below, bar_beside]
 layout: {height: large, width_share: 0.5, row_role: relationship}
-mobile: The triangle needs a square; at half width the axis titles crowd, so keep tick labels off and rely on hover.
+mobile: The triangle needs a square; at half width the axis titles crowd, so turn tick labels off and rely on hover.

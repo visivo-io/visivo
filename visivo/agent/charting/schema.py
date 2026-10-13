@@ -289,11 +289,19 @@ class FamilyRule(_Strict):
 
 
 class DataShape(_Strict):
+    """Every threshold for an entry, in one place. ``cardinality`` counts the
+    distinct values of the main dimension, ``axis_points`` the points along
+    an ordered axis, ``rows`` the rows the trace draws, ``rows_per_group``
+    the rows each category needs, and ``cells`` a grid's rows × columns."""
+
     metrics: MinMax = Field(default_factory=MinMax)
     dimensions: MinMax = Field(default_factory=MinMax)
     dimension_roles: List[Role] = Field(default_factory=list)
     cardinality: Optional[MinMax] = None
     axis_points: Optional[MinMax] = None
+    rows: Optional[MinMax] = None
+    rows_per_group: Optional[MinMax] = None
+    cells: Optional[MinMax] = None
 
 
 class Variation(_Strict):

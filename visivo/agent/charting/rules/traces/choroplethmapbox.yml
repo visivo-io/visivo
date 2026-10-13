@@ -5,9 +5,9 @@ one_liner: Deprecated Mapbox GL twin of choroplethmap; never pick it for a new c
 use_when:
   - "Never for new charts. Only when editing an existing insight that already uses it; migrate it to `choroplethmap`."
 avoid_when:
-  - Always — `choroplethmap` fills the same GeoJSON regions on MapLibre with identical props and no deprecation warning.
-  - "Countries or US states — `choropleth` needs no GeoJSON at all."
-  - "Any custom `mapbox://` style — it needs `layout.mapbox.accesstoken`, a secret that would ship to every viewer."
+  - Always; `choroplethmap` fills the same GeoJSON regions on MapLibre with identical props and no deprecation warning.
+  - "Countries or US states; `choropleth` needs no GeoJSON at all."
+  - "Any custom `mapbox://` style; it needs `layout.mapbox.accesstoken`, a secret that would ship to every viewer."
 data_shape:
   metrics: {min: 1, max: 1}
   dimensions: {min: 1, max: 1}
@@ -25,8 +25,8 @@ example: |
         z: ?{ count(*) }
         marker: {opacity: 0.75}
 variations:
-  - when: "TODO"
-    then: "same as choroplethmap: a second metric goes to `text`/`hovertemplate`, a period to an input `filter`"
+  - when: "an existing insight of this type needs any change"
+    then: "change `type` to `choroplethmap` first, then apply its variations: a second metric in `text`/`hovertemplate`, a period as an input `filter`"
 limits:
   series_ideal: 1
   series_max: 1

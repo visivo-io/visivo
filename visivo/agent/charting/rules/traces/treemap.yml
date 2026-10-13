@@ -1,16 +1,19 @@
 type: treemap
 family: hierarchy
 status: preferred
-one_liner: Nested rectangles sized by an additive metric; the default for a 2–3 level hierarchy.
+one_liner: Nested rectangles sized by an additive metric; the default for a shallow hierarchy.
 use_when:
-  - A hierarchy with 2–3 levels (borough → zone, category → product) and one additive metric.
-  - Many leaves (20–200) where a bar would overflow but the parent level still groups them.
+  - A shallow hierarchy (borough → zone, category → product) and one additive metric.
+  - Many leaves where a bar would overflow but the parent level still groups them.
   - "`semantics.hierarchy` or `intent: composition` with a parent dimension."
+other_uses:
+  - use: Performance map (a market map), size by weight and color by signed change, e.g. revenue sized and colored by growth.
+    how: "`marker.colors: ?{ <change> }` with a diverging `marker.colorscale` (RdBu) and `marker.cmid: 0` so zero sits on the neutral color."
 avoid_when:
-  - A flat categorical with ≤ 7 values — a bar compares them; a treemap of 5 boxes adds nothing.
-  - A non-additive metric (averages do not sum up the tree; the parent box would lie).
-  - More than ~300 leaves or deeper than 3 levels — labels vanish; use `maxdepth` or an input to pick a branch.
-  - Negative values — there is no negative area; use a waterfall or a bar.
+  - A flat categorical with few values; a bar compares them, and a treemap of a handful of boxes adds nothing.
+  - A non-additive metric; averages do not sum up the tree, so the parent box would lie.
+  - Too many leaves or too many levels; labels vanish, so use `maxdepth` or an input to pick a branch.
+  - Negative values; there is no negative area, so use a waterfall or a bar.
 data_shape:
   metrics: {min: 1, max: 1}
   dimensions: {min: 1, max: 3}
@@ -18,33 +21,39 @@ data_shape:
   cardinality: {min: 2, max: 300}
 required_props: [labels, parents]
 example: |
+  models:
+    - name: revenue_nodes
+      sql: >-
+        select borough as id, borough as label, '' as parent, sum(revenue) as revenue from zone_revenue group by all
+        union all select borough || '/' || zone, zone, borough, sum(revenue) from zone_revenue group by all
   insights:
     - name: revenue-by-borough-and-zone
       props:
         type: treemap
-        labels: ?{ ${ref(zone_revenue).zone} }
-        parents: ?{ ${ref(zone_revenue).borough} }
-        values: ?{ sum(${ref(zone_revenue).revenue}) }
+        ids: ?{ ${ref(revenue_nodes).id} }
+        labels: ?{ ${ref(revenue_nodes).label} }
+        parents: ?{ ${ref(revenue_nodes).parent} }
+        values: ?{ sum(${ref(revenue_nodes).revenue}) }
         branchvalues: total
         maxdepth: 2
 variations:
-  - when: "a second metric (a rate)"
+  - when: "a second metric that is a rate"
     then: "`marker.colors: ?{ avg(tip_pct) }` with `marker.colorscale`; size says how much, color says how good"
-  - when: "deeper trees"
+  - when: "the tree is deeper than the tile can label"
     then: "`maxdepth: 2` with click-to-zoom instead of showing every level"
-  - when: "root total"
-    then: "a root row with an empty parent and `branchvalues: total`"
+  - when: "a single root total should frame the chart"
+    then: "one root row with an empty parent and `branchvalues: total`"
 limits:
   series_ideal: 1
   series_max: 1
   repair: [top_n_other, input_filter]
 transforms: [top_n_other, collapse_rare]
 gotchas:
-  - "Every parent value must also appear as a label row (with its own parent, or '' for the root); a missing parent drops the whole branch silently."
-  - "With `branchvalues: total` the parent's value must equal the sum of its children, or children are clipped; with `remainder` (default) parents add their own value on top."
-  - "`values` is a DuckDB reserved word: the docs example writes `values: ?{\"values\"}` — quote it or alias the column."
-  - "Build the hierarchy rows with a UNION ALL (one SELECT per level), not a join; the trace wants label/parent/value rows."
+  - "Every parent must also be a node row (with its own parent, or '' for a root). A parent that never appears as a node is an implied root, and more than one implied root draws nothing at all."
+  - "With `branchvalues: total` a parent smaller than the sum of its children makes the whole trace fail to draw, and a larger one leaves an empty gap; with `remainder` (default) parents add their own value on top."
+  - "`values` is a reserved SQL word; alias the column (or quote it as `?{ \"values\" }`)."
+  - "Build the hierarchy rows with a UNION ALL (one SELECT per level), not a join; the trace wants id/label/parent/value rows."
   - "`marker.colors` on the insight is the one color prop here that *should* be set, and only to a data column."
 pairings: [detail_table_below, kpi_strip_above]
 layout: {height: large, width_share: 1.0, row_role: breakdown}
-mobile: "Full width, `maxdepth: 1`; labels on small tiles disappear first."
+mobile: "Full width with one level fewer in `maxdepth`; labels on small tiles disappear first."
