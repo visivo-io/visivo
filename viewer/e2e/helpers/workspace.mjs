@@ -71,18 +71,43 @@ export const openDashboardCanvas = async (page, name) => {
 const SECTION_LABEL = type => `${type.charAt(0).toUpperCase()}${type.slice(1)}s`;
 
 /**
+ * Expand or collapse a Library row (a source's tables, a model's fields). The
+ * toggle lives in the row's hover-revealed action cluster, so hover the row
+ * first, as a pointer user does.
+ */
+export const toggleLibraryRow = async (page, type, name) => {
+  await page.getByTestId(`library-row-${type}-${name}`).hover();
+  await page.getByTestId(`library-row-${type}-${name}-toggle`).click();
+};
+
+const expandLibrarySection = async (page, type) => {
+  const section = page.getByRole('button', {
+    name: new RegExp(`^${SECTION_LABEL(type)} \\(\\d+\\)`),
+  });
+  if (await section.first().isVisible().catch(() => false)) {
+    await section.first().click();
+  }
+};
+
+/**
  * Select a Library object by type + name. Expands the object's collapsible
  * section first if the row isn't already mounted. The count in the section
  * header ("Insights (32)") disambiguates it from the type-filter chip.
+ *
+ * A metric or dimension defined inside a model is listed under that model's
+ * row, not in its own section: pass the owning `model` to expand it instead.
  */
-export const selectLibraryObject = async (page, type, name) => {
+export const selectLibraryObject = async (page, type, name, { model } = {}) => {
   const row = page.getByTestId(`library-row-${type}-${name}`);
   if (!(await row.isVisible().catch(() => false))) {
-    const section = page.getByRole('button', {
-      name: new RegExp(`^${SECTION_LABEL(type)} \\(\\d+\\)`),
-    });
-    if (await section.first().isVisible().catch(() => false)) {
-      await section.first().click();
+    if (model) {
+      const modelRow = page.getByTestId(`library-row-model-${model}`);
+      if (!(await modelRow.isVisible().catch(() => false))) {
+        await expandLibrarySection(page, 'model');
+      }
+      await toggleLibraryRow(page, 'model', model);
+    } else {
+      await expandLibrarySection(page, type);
     }
   }
   await expect(row).toBeVisible({ timeout: WAIT });

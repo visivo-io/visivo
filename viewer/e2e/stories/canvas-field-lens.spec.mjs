@@ -42,7 +42,7 @@ test.describe('Field Lens canvases (VIS-1009)', () => {
     const errors = collectErrors(page);
     await openWorkspace(page);
 
-    await selectLibraryObject(page, 'dimension', 'x_rounded');
+    await selectLibraryObject(page, 'dimension', 'x_rounded', { model: 'local_test_table' });
 
     // The dimension canvas frame mounts on the Canvas (preview) lens.
     await expect(page.getByTestId('workspace-middle-dimension-preview')).toBeVisible({
@@ -67,7 +67,7 @@ test.describe('Field Lens canvases (VIS-1009)', () => {
     const errors = collectErrors(page);
     await openWorkspace(page);
 
-    await selectLibraryObject(page, 'metric', 'avg_value');
+    await selectLibraryObject(page, 'metric', 'avg_value', { model: 'daily_metrics' });
 
     // The metric canvas frame mounts on the Canvas (preview) lens.
     await expect(page.getByTestId('workspace-middle-metric-preview')).toBeVisible({

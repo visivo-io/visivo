@@ -29,6 +29,7 @@
 
 import { test, expect } from '@playwright/test';
 import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
+import { toggleLibraryRow } from '../helpers/workspace.mjs';
 
 test.use({ viewport: { width: 1280, height: 1600 } });
 
@@ -87,7 +88,7 @@ async function expandSourceTable(page) {
   // sandbox (integration-gate fix cycle). Mirrors the `sourceBody` check
   // just above.
   if (!(await tableRow.isVisible().catch(() => false))) {
-    await page.getByTestId(`library-row-source-${SOURCE}-toggle`).click();
+    await toggleLibraryRow(page, 'source', SOURCE);
   }
   await expect(tableRow).toBeVisible({ timeout: 15000 });
   return tableRow;

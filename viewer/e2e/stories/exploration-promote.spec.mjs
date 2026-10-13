@@ -41,6 +41,7 @@
 import { test, expect } from '@playwright/test';
 import { typeSql, runQuery } from '../helpers/explorer.mjs';
 import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
+import { toggleLibraryRow } from '../helpers/workspace.mjs';
 
 test.use({ viewport: { width: 1280, height: 1600 } });
 
@@ -90,7 +91,7 @@ async function expandSourceTable(page) {
   if (!(await sourceBody.isVisible().catch(() => false))) await sourceHeader.click();
   await expect(sourceBody).toBeVisible({ timeout: 5000 });
 
-  await page.getByTestId(`library-row-source-${SOURCE}-toggle`).click();
+  await toggleLibraryRow(page, 'source', SOURCE);
   const tableRow = page.getByTestId(`library-source-table-${SOURCE}-${TABLE}`);
   await expect(tableRow).toBeVisible({ timeout: 15000 });
   return tableRow;
