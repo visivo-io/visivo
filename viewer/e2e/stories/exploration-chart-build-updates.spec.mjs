@@ -206,6 +206,7 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
     // says so in its tooltip), so apply a preset first — which is itself an
     // edit the chart has to survive.
     await page.getByTestId('pill-menu-preset-sum').click();
+    await page.getByTestId('pill-menu-apply').click();
     await expectLiveChart(page, 'after applying the SUM preset to y');
     await expect(ySlot).toContainText('SUM');
 
@@ -417,6 +418,7 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
     await ySlot.getByTestId('pill-menu-trigger').click();
     await expect(page.getByTestId('pill-menu')).toBeVisible({ timeout: 10000 });
     await page.getByTestId('pill-menu-preset-sum').click();
+    await page.getByTestId('pill-menu-apply').click();
 
     await expect
       .poll(() => executeCalls.length, {

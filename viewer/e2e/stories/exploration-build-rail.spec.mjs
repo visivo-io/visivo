@@ -14,7 +14,7 @@
  *      never raw `?{`/`${` syntax.
  *   4. Advisory red-ring on a bad in-draft ref is NON-BLOCKING (Save stays
  *      enabled; the draft keeps rendering).
- *   5. Slice affordance (SliceBadge/SliceMenu) is untouched by the rebuild.
+ *   5. The slice rides on the pill (its menu's Index section).
  *
  * `pill-aggregation.spec.mjs` covers the D10 preset-toggle/MEDIAN-gating/
  * opaque-round-trip half of the grammar; this file is about the Build
@@ -290,7 +290,7 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     await expect(page.getByTestId('explorer-save-button')).toBeEnabled();
   });
 
-  test('slice affordance (SliceBadge/SliceMenu) is untouched by the pill rebuild', async ({
+  test('the slice rides on the pill, and its Index menu respects a scalar-only slot', async ({
     page,
   }) => {
     await gotoExplorerHome(page);
@@ -310,20 +310,18 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     await expect(valueSlot).toBeVisible({ timeout: 15000 });
     await dragAndDrop(page, column, valueSlot);
 
-    // A numeric column drops as a SUM pill (D10 default) — the scalar-only
-    // slice-default banner still fires alongside the NEW pill widget,
-    // proving SliceBadge/SliceMenu compose with PillMenu rather than being
-    // replaced by it (05-e2e-ledger.md orchestrator resolution #2).
+    // A numeric column drops as a SUM pill (D10 default) and the scalar-only
+    // slice-default banner still fires. The chosen slice is carried by the
+    // pill itself — shown on it, and edited from its menu's Index section.
     await expect(page.getByTestId('slice-banner')).toBeVisible({ timeout: 10000 });
     await page.getByTestId('slice-banner-first').click();
-    const badge = page.getByTestId('slice-badge');
-    await expect(badge).toBeVisible({ timeout: 5000 });
-    await expect(badge).toContainText('First (0)');
+    await expect(valueSlot).toContainText('[0]');
 
-    await badge.click();
-    await expect(page.getByTestId('slice-menu')).toBeVisible({ timeout: 3000 });
-    await expect(page.getByTestId('slice-option-range')).toBeDisabled();
-    await expect(page.getByTestId('slice-option-all')).toBeDisabled();
+    await valueSlot.getByTestId('pill-menu-trigger').click();
+    const index = page.getByTestId('pill-menu-index');
+    await expect(index).toHaveValue('[0]');
+    await expect(index.locator('option[value="range"]')).toBeDisabled();
+    await expect(index.locator('option[value=""]')).toBeDisabled();
   });
 
   // e2e-gap-review.md D4 [MEDIUM, Phase 3b delta]: toggling a PillMenu
@@ -331,10 +329,10 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
   // `handleSelectPreset` -> `handleQueryChange` re-wraps the NEW aggregate
   // body with the CURRENT `slice` closure value (PropertyRow.jsx), so `[0]`
   // should survive an aggregate-function rewrite, but nothing asserts the
-  // resulting persisted value, nor that SliceBadge still reads correctly
+  // resulting persisted value, nor that the pill still shows it
   // afterward. Extends the slice-on-drop test above with a SUM -> AVG
   // preset toggle on the SAME pill.
-  test('toggling a preset (SUM -> AVG) on a slot with an authored slice preserves the slice, both in the persisted value and in SliceBadge', async ({
+  test('toggling a preset (SUM -> AVG) on a slot with an authored slice preserves the slice, both in the persisted value and on the pill', async ({
     page,
   }) => {
     await gotoExplorerHome(page);
@@ -358,9 +356,7 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     // fixture as the test above).
     await expect(page.getByTestId('slice-banner')).toBeVisible({ timeout: 10000 });
     await page.getByTestId('slice-banner-first').click();
-    const badge = page.getByTestId('slice-badge');
-    await expect(badge).toBeVisible({ timeout: 5000 });
-    await expect(badge).toContainText('First (0)');
+    await expect(valueSlot).toContainText('[0]');
 
     await waitForBackendDraft(
       page,
@@ -380,6 +376,7 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
     await valueSlot.getByTestId('pill-menu-trigger').click();
     await expect(page.getByTestId('pill-menu')).toBeVisible({ timeout: 5000 });
     await page.getByTestId('pill-menu-preset-avg').click();
+    await page.getByTestId('pill-menu-apply').click();
 
     await expect(valueSlot).toContainText('AVG');
     await expect(valueSlot).not.toContainText('SUM');
@@ -404,9 +401,7 @@ test.describe('Exploration Build rail (Explore 2.0 Phase 3b)', () => {
         ),
       30000
     );
-    // ...and SliceBadge still reads correctly afterward — never reset/blanked
-    // by the pill's own label/type change underneath it.
-    await expect(badge).toBeVisible();
-    await expect(badge).toContainText('First (0)');
+    // ...and the pill still shows it — never reset/blanked by the rewrite.
+    await expect(valueSlot).toContainText('[0]');
   });
 });

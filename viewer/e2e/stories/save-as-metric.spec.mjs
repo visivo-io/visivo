@@ -401,6 +401,7 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     // Toggle to plain Dimension (no aggregation).
     await xSlot.getByTestId('pill-menu-trigger').click();
     await page.getByTestId('pill-menu-preset-dimension').click();
+    await page.getByTestId('pill-menu-apply').click();
 
     await xSlot.getByTestId('pill-menu-trigger').click();
     await expect(page.getByTestId('pill-menu-save-as-metric')).toBeDisabled();

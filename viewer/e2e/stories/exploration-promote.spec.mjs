@@ -147,7 +147,8 @@ async function renameChart(page, name) {
 }
 
 async function renameInsight(page, insightName, newName) {
-  await page.getByTestId(`insight-name-${insightName}`).click();
+  // The name is a field of the (expanded) insight section; the header is not
+  // a rename control.
   const input = page.getByTestId(`insight-rename-input-${insightName}`);
   await input.fill(newName);
   await input.press('Enter');
