@@ -596,6 +596,39 @@ describe('PivotableTable', () => {
         expect(screen.getByText('2021-01-02 09:30:15.000')).toBeInTheDocument();
       });
 
+      it('sorts them in time order in a column-select result', () => {
+        mockPivotReturn = {
+          ...mockPivotReturn,
+          rows: [
+            { at: '2021-01-10T08:00:00.000Z' },
+            { at: '1999-12-31T23:59:59.000Z' },
+            { at: '2021-01-02T10:00:00.000Z' },
+            { at: '2021-01-02T09:30:00.000Z' },
+          ],
+          columns: [{ accessorKey: 'at', header: 'At' }],
+          nestedColumns: null,
+        };
+        render(
+          <PivotableTable
+            table={{ name: 'colsel', rows_per_page: 50, columns: ['${ref(i).at}'] }}
+            sourceData={mockInsightData}
+            itemWidth={600}
+            height={400}
+            width={600}
+          />
+        );
+        const order = () => screen.getAllByText(/^\d{4}-\d{2}-\d{2} /).map(el => el.textContent);
+        fireEvent.click(screen.getByText('At'));
+        expect(order()).toEqual([
+          '1999-12-31 23:59:59.000',
+          '2021-01-02 09:30:00.000',
+          '2021-01-02 10:00:00.000',
+          '2021-01-10 08:00:00.000',
+        ]);
+        fireEvent.click(screen.getByText('At'));
+        expect(order()[0]).toBe('2021-01-10 08:00:00.000');
+      });
+
       it('formats them in a pivot result with nested headers', () => {
         renderResult(pivotTable, [
           { id: 'day', accessorKey: 'day', header: 'Day' },
