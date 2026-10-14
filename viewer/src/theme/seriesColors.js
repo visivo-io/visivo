@@ -31,5 +31,6 @@ export const seriesColorway = (traces, seriesOrder, colorway) => {
   if (!seriesOrder?.length || !colorway?.length || !sharesSeriesColors(traces)) return undefined;
   const positions = colorwayTraces(traces).map(trace => seriesOrder.indexOf(trace.name));
   if (positions.includes(-1)) return undefined;
-  return positions.map(position => colorway[position % colorway.length]);
+  const colors = positions.map(position => colorway[position % colorway.length]);
+  return new Set(colors).size === colors.length ? colors : undefined;
 };

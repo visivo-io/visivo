@@ -39,10 +39,15 @@ describe('dashboard series colours', () => {
   });
 
   test('wraps the theme colorway when the dashboard has more series than colours', () => {
-    const many = traces('a', 'b', 'c', 'd', 'e');
-    const order = seriesOrderOf([many]);
+    const order = seriesOrderOf([traces('a', 'b', 'c', 'd', 'e')]);
 
-    expect(seriesColorway(traces('e', 'a'), order, COLORWAY)).toEqual(['teal', 'teal']);
+    expect(seriesColorway(traces('e', 'b'), order, COLORWAY)).toEqual(['teal', 'orange']);
+  });
+
+  test('keeps a chart its own colours rather than repeat one after wrapping', () => {
+    const order = seriesOrderOf([traces('a', 'b', 'c', 'd', 'e')]);
+
+    expect(seriesColorway(traces('e', 'a'), order, COLORWAY)).toBeUndefined();
   });
 
   test('label-coloured charts keep the theme colorway for their slices', () => {
