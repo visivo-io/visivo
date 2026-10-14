@@ -10,7 +10,8 @@ const MIN_RESIZE_WIDTH = 60;
 export const useDataTableColumns = ({ columns, nestedColumns, sorting, onSortChange, onColumnProfileRequest, HeaderComponent, isCompressed = false }) => {
   return useMemo(() => {
     if (nestedColumns) {
-      return attachRenderers(nestedColumns, { sorting, onSortChange, onColumnProfileRequest, isCompressed });
+      const typeByName = new Map(columns.map(col => [col.name, col.normalizedType]));
+      return attachRenderers(nestedColumns, typeByName, { sorting, onSortChange, onColumnProfileRequest, isCompressed });
     }
 
     return columns.map(col => buildLeafColumnDef(col, { sorting, onSortChange, onColumnProfileRequest, HeaderComponent, isCompressed }));
@@ -40,7 +41,7 @@ function buildLeafColumnDef(col, { sorting, onSortChange, onColumnProfileRequest
   };
 }
 
-function attachRenderers(columnDefs, opts) {
+function attachRenderers(columnDefs, typeByName, opts) {
   return columnDefs.map(def => {
     if (def.columns) {
       // Group header
@@ -48,15 +49,16 @@ function attachRenderers(columnDefs, opts) {
         id: def.id,
         header: () => <DataTableGroupHeader label={def.header} />,
         meta: { isGroupHeader: true },
-        columns: attachRenderers(def.columns, opts),
+        columns: attachRenderers(def.columns, typeByName, opts),
       };
     }
 
     // Leaf column — build a column metadata object matching the flat column shape
+    const name = def.accessorKey || def.id;
     const col = {
-      name: def.accessorKey || def.id,
+      name,
       displayName: def.displayName || def.header || def.id,
-      normalizedType: COLUMN_TYPES.UNKNOWN,
+      normalizedType: typeByName.get(name) ?? COLUMN_TYPES.UNKNOWN,
       duckdbType: 'VARCHAR',
       isPivotRow: def.meta?.isPivotRow || false,
     };

@@ -15,6 +15,7 @@ import { usePivotData } from './usePivotData';
 import useStore from '../stores/store';
 import * as queries from '../duckdb/queries';
 import * as DuckDBContext from '../contexts/DuckDBContext';
+import { Table, vectorFromArray, Int32, DateDay, TimestampMicrosecond } from 'apache-arrow';
 
 jest.mock('../duckdb/queries');
 jest.mock('../contexts/DuckDBContext');
@@ -354,6 +355,28 @@ describe('usePivotData', () => {
       const { result } = renderHook(() => usePivotData(config, insightSource));
       await waitFor(() => expect(result.current.isLoading).toBe(false));
       expect(result.current.rows[0]).toEqual({ [X_HASH]: 7, big: 5, empty: null, nil: null });
+    });
+  });
+
+  describe('date and timestamp columns', () => {
+    it('returns DATE and TIMESTAMP values as ISO strings', async () => {
+      const config = { columns: ['${ref(ins).x}'] };
+      queries.runDuckDBQuery.mockResolvedValue(
+        new Table({
+          n: vectorFromArray([1, 2], new Int32()),
+          day: vectorFromArray([new Date('1990-06-01T00:00:00Z'), null], new DateDay()),
+          at: vectorFromArray(
+            [new Date('2021-01-01T08:30:15Z'), new Date('2021-01-02T00:00:00Z')],
+            new TimestampMicrosecond()
+          ),
+        })
+      );
+      const { result } = renderHook(() => usePivotData(config, insightSource));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      expect(result.current.rows).toEqual([
+        { n: 1, day: '1990-06-01T00:00:00.000Z', at: '2021-01-01T08:30:15.000Z' },
+        { n: 2, day: null, at: '2021-01-02T00:00:00.000Z' },
+      ]);
     });
   });
 });

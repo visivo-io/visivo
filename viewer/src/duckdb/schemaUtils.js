@@ -84,6 +84,14 @@ const MIN_COLUMN_WIDTH = 120;
 const MIN_TIMESTAMP_COLUMN_WIDTH = 232;
 
 /**
+ * Minimum column width for a type: wide enough to show a date or timestamp in full.
+ * @param {string} normalizedType - One of COLUMN_TYPES values
+ * @returns {number} Width in pixels
+ */
+export const minColumnWidth = normalizedType =>
+  normalizedType === COLUMN_TYPES.TIMESTAMP ? MIN_TIMESTAMP_COLUMN_WIDTH : MIN_COLUMN_WIDTH;
+
+/**
  * Calculate an appropriate column width from the header length and column type.
  * @param {string} columnName - The column header text
  * @param {string} normalizedType - One of COLUMN_TYPES values
@@ -91,7 +99,5 @@ const MIN_TIMESTAMP_COLUMN_WIDTH = 232;
  */
 export const calculateColumnWidth = (columnName, normalizedType) => {
   const textWidth = columnName.length * CHAR_WIDTH_PX;
-  const minWidth =
-    normalizedType === COLUMN_TYPES.TIMESTAMP ? MIN_TIMESTAMP_COLUMN_WIDTH : MIN_COLUMN_WIDTH;
-  return Math.max(minWidth, textWidth + HEADER_OVERHEAD_PX);
+  return Math.max(minColumnWidth(normalizedType), textWidth + HEADER_OVERHEAD_PX);
 };

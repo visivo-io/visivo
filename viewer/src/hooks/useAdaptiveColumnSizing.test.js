@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useAdaptiveColumnSizing } from './useAdaptiveColumnSizing';
-import { calculateColumnWidth } from '../duckdb/schemaUtils';
+import { calculateColumnWidth, minColumnWidth, COLUMN_TYPES } from '../duckdb/schemaUtils';
 
 // Mock ResizeObserver: capture the most recent callback so tests can drive
 // width changes synchronously.
@@ -166,5 +166,36 @@ describe('useAdaptiveColumnSizing', () => {
     expect(result.current.columnSizing).not.toHaveProperty('col0');
     expect(result.current.columnSizing).toHaveProperty('other0');
     expect(result.current.columnSizing).toHaveProperty('other1');
+  });
+
+  describe('date and timestamp columns when compressed', () => {
+    const columns = [
+      { name: 'id', displayName: 'id', normalizedType: COLUMN_TYPES.NUMBER },
+      { name: 'label', displayName: 'a longer label', normalizedType: COLUMN_TYPES.STRING },
+      { name: 'day', displayName: 'day', normalizedType: COLUMN_TYPES.DATE },
+      { name: 'at', displayName: 'at', normalizedType: COLUMN_TYPES.TIMESTAMP },
+    ];
+    const sizeAt = width => {
+      const { result } = renderHook(() => useAdaptiveColumnSizing(columns, makeRef()));
+      fireResize(width);
+      expect(result.current.isCompressed).toBe(true);
+      return result.current.columnSizing;
+    };
+    it('keeps them wide enough for their values and lets the table overflow', () => {
+      const sizing = sizeAt(340);
+      expect(sizing.day).toBe(minColumnWidth(COLUMN_TYPES.DATE));
+      expect(sizing.at).toBe(minColumnWidth(COLUMN_TYPES.TIMESTAMP));
+      expect(sizing.id).toBe(80);
+      expect(sizing.label).toBe(80);
+    });
+
+    it('shares the width left over among the other columns', () => {
+      const sizing = sizeAt(620);
+      expect(sizing.at).toBe(minColumnWidth(COLUMN_TYPES.TIMESTAMP));
+      const rest = (620 - sizing.at) / 3;
+      expect(sizing.id).toBeCloseTo(rest);
+      expect(sizing.label).toBeCloseTo(rest);
+      expect(sizing.day).toBeCloseTo(rest);
+    });
   });
 });

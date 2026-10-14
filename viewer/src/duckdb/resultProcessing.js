@@ -31,6 +31,13 @@ export const getTimestampColumns = schema => {
 };
 
 /**
+ * Convert an Arrow date/timestamp value to an ISO string.
+ * apache-arrow's getters already normalise every date/timestamp unit to epoch milliseconds.
+ */
+export const arrowDateToIso = value =>
+  new Date(typeof value === 'bigint' ? Number(value) : value).toISOString();
+
+/**
  * Process an Arrow query result into an array of plain JS objects.
  * Timestamps become ISO strings; bigints and decimals become exact numeric strings.
  *
@@ -53,13 +60,7 @@ export const processArrowResult = arrowResult => {
           return [key, decimalToString(value, decimalScales.get(key))];
         }
         if (timestampColumns.has(key) && value != null) {
-          const numVal = typeof value === 'bigint' ? Number(value) : value;
-          // apache-arrow's JS getters already normalise every timestamp/date
-          // unit (s/ms/us/ns, DateDay/DateMillisecond) to epoch MILLISECONDS
-          // before we ever see the value. The parquet on disk may store
-          // microseconds, but that never reaches this layer — dividing here
-          // again is what rendered every time axis as January 1970 (B7).
-          return [key, new Date(numVal).toISOString()];
+          return [key, arrowDateToIso(value)];
         }
         if (typeof value === 'bigint') {
           return [key, value.toString()];

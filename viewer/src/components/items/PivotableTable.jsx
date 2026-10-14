@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import DataTable from '../common/DataTable';
+import { formatCellText } from '../common/DataTableCell';
 import { ItemContainer } from './ItemContainer';
 import { itemNameToSlug } from './utils';
 import { usePivotData } from '../../hooks/usePivotData';
@@ -48,13 +49,16 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
 
   const { allRows, dataTableColumns } = useMemo(() => {
     if (hasDuckDBMode) {
-      const cols = pivotColumns.map(col => ({
-        name: col.accessorKey || col.id,
-        displayName: col.header,
-        normalizedType: COLUMN_TYPES.UNKNOWN,
-        duckdbType: 'VARCHAR',
-        isPivotRow: col.isPivotRow || false,
-      }));
+      const cols = pivotColumns.map(col => {
+        const name = col.accessorKey || col.id;
+        return {
+          name,
+          displayName: col.header,
+          normalizedType: inferType(pivotRows, name),
+          duckdbType: 'VARCHAR',
+          isPivotRow: col.isPivotRow || false,
+        };
+      });
       return { allRows: pivotRows, dataTableColumns: cols };
     }
 
@@ -78,13 +82,23 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   }, [hasDuckDBMode, pivotRows, pivotColumns, sourceData]);
 
   // Client-side global filter
-  const filteredRows = useMemo(() => {
-    if (!globalFilter) return allRows;
-    const lower = globalFilter.toLowerCase();
-    return allRows.filter(row =>
-      Object.values(row).some(val => val != null && String(val).toLowerCase().includes(lower))
+  const isSearching = globalFilter !== '';
+  const rowSearchText = useMemo(() => {
+    if (!isSearching) return null;
+    return allRows.map(row =>
+      dataTableColumns
+        .filter(col => row[col.name] != null)
+        .flatMap(col => [String(row[col.name]), formatCellText(row[col.name], col.normalizedType)])
+        .join('\n')
+        .toLowerCase()
     );
-  }, [allRows, globalFilter]);
+  }, [allRows, dataTableColumns, isSearching]);
+
+  const filteredRows = useMemo(() => {
+    if (!isSearching) return allRows;
+    const lower = globalFilter.toLowerCase();
+    return allRows.filter((_, i) => rowSearchText[i].includes(lower));
+  }, [allRows, rowSearchText, isSearching, globalFilter]);
 
   // Client-side sorting
   const sortedRows = useMemo(() => {
