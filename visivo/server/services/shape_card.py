@@ -187,18 +187,19 @@ def _skew(mean, median, stddev):
     return 3 * (mean - median) / stddev
 
 
-def shape_card(column, row_count):
+def shape_card(column, profiled_rows):
     """One column of a unified profile as a ``ShapeCard``.
 
     ``column`` is one entry of ``profile["columns"]``: ``name, type,
     null_count, null_percentage, distinct, min, max, avg, median, std_dev,
     q25, q75, p99, zeros_pct, avg_length, top_values``. Missing stats are
-    tolerated; the card is as good as the profile.
+    tolerated; the card is as good as the profile. ``profiled_rows`` is the
+    number of rows the stats were computed over: the sample, when sampled.
     """
     name = column["name"]
     distinct = int(column.get("distinct") or 0)
     null_count = int(column.get("null_count") or 0)
-    non_null = max(int(row_count or 0) - null_count, 0)
+    non_null = max(int(profiled_rows or 0) - null_count, 0)
     top_values = column.get("top_values") or []
     role, geo_kind = _role(name, column, distinct, non_null, top_values)
 
@@ -236,7 +237,7 @@ def shape_card(column, row_count):
         column=name,
         role=role,
         cardinality=distinct,
-        null_pct=round(_ratio(null_count, row_count), 4) if row_count else 0.0,
+        null_pct=round(_ratio(null_count, profiled_rows), 4) if profiled_rows else 0.0,
         time_grain=time_grain,
         time_span_points=distinct if role == "time" else None,
         geo_kind=geo_kind,
@@ -248,5 +249,5 @@ def shape_card(column, row_count):
 
 def shape_cards(profile):
     """Every column of a unified profile as cards, in profile order."""
-    row_count = profile.get("row_count") or 0
-    return [shape_card(c, row_count) for c in profile["columns"]]
+    profiled_rows = profile.get("sample_rows") or profile.get("row_count") or 0
+    return [shape_card(c, profiled_rows) for c in profile["columns"]]

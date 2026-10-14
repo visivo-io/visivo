@@ -179,14 +179,14 @@ class ProfilingService:
         timeout_s: float = AGENT_QUERY_TIMEOUT_S,
         top_n: int = DEFAULT_TOP_N,
     ):
-        """Profile ``sql`` on ``source`` from a sample of at most ``sample_rows``
-        rows, pulled in the source's dialect. A sample that fills the limit is
-        followed by one ``COUNT(*)`` for the exact row count."""
+        """Profile ``sql`` on ``source`` from a random sample of at most
+        ``sample_rows`` rows, pulled in the source's dialect. A sample that
+        fills the limit is followed by one ``COUNT(*)`` for the exact row count."""
         columns = self.column_subset(columns)
         dialect = source.get_sqlglot_dialect()
         parsed = sqlglot.parse_one(sql, read=dialect)
         inner = parsed.subquery(alias="visivo_profiled")
-        sample_sql = exp.select("*").from_(inner).limit(sample_rows).sql(dialect=dialect)
+        sample_sql = self._random_sample(inner, sample_rows, dialect).sql(dialect=dialect)
 
         rows = execute_and_get_result(source, sample_sql, timeout_s=timeout_s)["rows"]
         total_rows = None
@@ -223,6 +223,17 @@ class ProfilingService:
             row_count=total_rows if total_rows is not None else profile["row_count"],
         )
         return profile
+
+    @staticmethod
+    def _random_sample(relation, rows: int, dialect: str):
+        query = exp.select("*").from_(relation)
+        if dialect == "duckdb":
+            query.set(
+                "sample",
+                exp.TableSample(method=exp.var("RESERVOIR"), size=exp.Literal.number(rows)),
+            )
+            return query
+        return query.order_by(exp.Rand()).limit(rows)
 
     def shape_cards(self, profile):
         return [card.model_dump(mode="json") for card in shape_cards(profile)]
