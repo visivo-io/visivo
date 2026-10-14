@@ -2,7 +2,7 @@
 # specs/chart-selection/06-tables.md, verified against visivo/models/table.py
 # and the viewer's PivotableTable / usePivotData / cellFormatting.
 rows_per_page:
-  enum: [3, 5, 15, 25, 50, 100, 500, 1000]     # there is no 10; the enum member `ten` is 15
+  enum: [3, 5, 10, 25, 50, 100, 500, 1000]
   lookup: smallest enum value >= expected rows when rows <= 50, so no pager appears
   long: 50
   with_format_cells: smallest enum value >= pivot row count, because the gradient is computed per page
@@ -24,7 +24,7 @@ pivot_rules:
     forbid: [signed or diverging metrics, non-hex colours, scope table with mixed units]
 gotchas:
   - "Alias every `columns` entry (`${ref(x).col} as \"Label\"`); an unaliased header is the raw, or on an insight the hashed, column name."
-  - "`rows_per_page` has no 10: the enum is 3, 5, 15, 25, 50, 100, 500, 1000."
+  - "`rows_per_page` is one of 3, 5, 10, 25, 50, 100, 500, 1000; any other value fails to compile."
   - "`data` excludes `columns`/`rows`/`values`; a `data:` table over an insight shows prop paths (X, Y) as headers."
   - "`rows` needs `values` and `columns`; every `values` entry must be `agg(...)` or the browser query fails after a clean compile."
   - "Pivoting an already aggregated insight re-aggregates silently (avg, count, median come out wrong); point pivots at a row-grain model."

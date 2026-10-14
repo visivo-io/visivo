@@ -100,7 +100,7 @@ class TestTheTableSkill:
     def test_the_block_quotes_both_rule_files(self):
         text = render.table_rules_markdown()
         assert "`table_pivot` when cross cells in (400, 2000]" in text
-        assert "`rows_per_page` ∈ [3, 5, 15, 25, 50, 100, 500, 1000]" in text
+        assert "`rows_per_page` ∈ [3, 5, 10, 25, 50, 100, 500, 1000]" in text
         assert "#713b57" in text and "≤6 columns may sit beside its chart" in text
 
 

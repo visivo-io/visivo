@@ -25,14 +25,14 @@ exploratory dashboard ends with one detail table.
 - `table_pivot` when exact_values: the figures must be read exactly.
 
 **Authoring**
-- `rows_per_page` ∈ [3, 5, 15, 25, 50, 100, 500, 1000]: smallest enum value >= expected rows when rows <= 50, so no pager appears; 50 for long tables; smallest enum value >= pivot row count, because the gradient is computed per page.
+- `rows_per_page` ∈ [3, 5, 10, 25, 50, 100, 500, 1000]: smallest enum value >= expected rows when rows <= 50, so no pager appears; 50 for long tables; smallest enum value >= pivot row count, because the gradient is computed per page.
 - Pivot: rows = the higher-cardinality dimension (scrolls; sticky left); columns = the lower-cardinality dimension; row fields + values x its cardinality must fit the column budget; ≤3 `values` as `agg(${ref(model).field})` with sum, avg, count, min, max, median; source = a row-grain model; an aggregated insight only with sum over additive pre-aggregates.
 - Period labels lexicographically sortable (YYYY-MM, YYYY-Qn); pivots have no ORDER BY. Totals: not rendered by the table; build them as a category in SQL (GROUPING SETS).
 - `format_cells.scope`: `column` to compare rows within each column (vendors within a month); `row` to follow one entity across columns (one vendor across months); `table` to only when every value column shares one unit and scale. Colours `#e8d5df` → `#713b57` (hex only). Never for signed or diverging metrics, non-hex colours, scope table with mixed units.
 
 **Valid but wrong**
 - Alias every `columns` entry (`${ref(x).col} as "Label"`); an unaliased header is the raw, or on an insight the hashed, column name.
-- `rows_per_page` has no 10: the enum is 3, 5, 15, 25, 50, 100, 500, 1000.
+- `rows_per_page` is one of 3, 5, 10, 25, 50, 100, 500, 1000; any other value fails to compile.
 - `data` excludes `columns`/`rows`/`values`; a `data:` table over an insight shows prop paths (X, Y) as headers.
 - `rows` needs `values` and `columns`; every `values` entry must be `agg(...)` or the browser query fails after a clean compile.
 - Pivoting an already aggregated insight re-aggregates silently (avg, count, median come out wrong); point pivots at a row-grain model.

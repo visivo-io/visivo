@@ -7,6 +7,7 @@ import yaml
 from visivo.agent.charting import rules
 from visivo.agent.charting.recommend import recommend
 from visivo.agent.charting.schema import RecommendRequest, ShapeCard
+from visivo.models.table import RowsPerPageEnum
 
 
 def card(column, role, cardinality, **extra):
@@ -608,8 +609,8 @@ class TestGoldenTables:
 class TestTheTableRuleFile:
     def test_tables_yml_loads_and_pages_sensibly(self):
         doc = rules.load_tables()
-        assert doc.rows_per_page.enum == [3, 5, 15, 25, 50, 100, 500, 1000]
-        assert doc.rows_per_page.pick(7) == 15 and doc.rows_per_page.pick(263) == 50
+        assert doc.rows_per_page.enum == [size.value for size in RowsPerPageEnum]
+        assert doc.rows_per_page.pick(7) == 10 and doc.rows_per_page.pick(263) == 50
         assert doc.rows_per_page.pick(40, gradient=True) == 50
         assert doc.rows_per_page.pick(None) == 50
         assert doc.placement.pivot_beside_chart.max_columns == 6
