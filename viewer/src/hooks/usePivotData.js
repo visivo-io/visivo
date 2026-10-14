@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
 import { runDuckDBQuery, loadInsightParquetFiles, prepPostQuery } from '../duckdb/queries';
+import { arrowDateToIso, getTimestampColumns } from '../duckdb/resultProcessing';
 import { buildPivotQuery, buildColumnSelectQuery } from '../utils/pivotQueryBuilder';
 import {
   extractAggAndColumn,
@@ -90,13 +91,14 @@ export const usePivotData = (config, sourceData) => {
 
         if (cancelled) return;
 
+        const dateColumns = getTimestampColumns(result.schema);
         const rawRows = result.toArray();
         const resultRows = rawRows.map(row => {
           const rowData = row.toJSON();
           return Object.fromEntries(
             Object.entries(rowData).map(([key, value]) => [
               key,
-              cleanPivotValue(value),
+              dateColumns.has(key) && value != null ? arrowDateToIso(value) : cleanPivotValue(value),
             ])
           );
         });

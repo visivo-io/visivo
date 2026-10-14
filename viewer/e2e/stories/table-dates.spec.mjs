@@ -3,7 +3,8 @@
  *
  * Fixture: `table_dates` (test-projects/integration) has a DATE column, a
  * TIMESTAMP column that is always midnight, and a TIMESTAMP column with a
- * time part, rendered on `table-dates-dashboard` at full and half width.
+ * time part, rendered on `table-dates-dashboard` as `data:` tables at full and
+ * half width, a column-select table, and a pivot with dates as its rows.
  *
  * Precondition: a sandbox serving test-projects/integration, e.g.
  *   VISIVO_SANDBOX_BACKEND_PORT=8084 VISIVO_SANDBOX_FRONTEND_PORT=3084 \
@@ -39,7 +40,7 @@ async function firstRowCells(table) {
     );
 }
 
-for (const tableId of ['dates-full-width-table', 'dates-half-width-table']) {
+for (const tableId of ['dates-full-width-table', 'dates-half-width-table', 'dates-columns-table']) {
   test(`${tableId}: dates show the date, timestamps show date and time, untruncated`, async ({
     page,
   }) => {
@@ -64,3 +65,13 @@ test('sorting a date column orders by the underlying date', async ({ page }) => 
   await header.click();
   expect((await firstRowCells(table))[1].text).toBe('2021-02-09');
 });
+
+test('a pivot with date rows shows each row as a date', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const table = await gotoTable(page, 'dates-pivot-table');
+  const [orderDate] = await firstRowCells(table);
+  await page.screenshot({ path: `${SCREENS}/table-dates-dates-pivot-table.png` });
+
+  expect(orderDate).toEqual({ text: '2021-01-01', truncated: false });
+});
+

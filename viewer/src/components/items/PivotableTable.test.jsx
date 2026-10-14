@@ -318,6 +318,7 @@ describe('PivotableTable', () => {
       expect(screen.getByText('Bob')).toBeInTheDocument();
       expect(screen.getByText('3 total rows')).toBeInTheDocument();
     });
+
   });
 
   describe('sorting', () => {
@@ -535,6 +536,52 @@ describe('PivotableTable', () => {
       expect(screen.getByText('A Col')).toBeInTheDocument();
       expect(screen.getByText('only-a')).toBeInTheDocument();
       expect(screen.queryByText('Columns:')).not.toBeInTheDocument();
+    });
+
+    describe('date and timestamp values', () => {
+      const rows = [
+        { day: '2021-01-01T00:00:00.000Z', at: '2021-01-01T08:30:15.000Z', total: 3 },
+        { day: '2021-01-02T00:00:00.000Z', at: '2021-01-02T09:30:15.000Z', total: 4 },
+      ];
+      const columns = [
+        { accessorKey: 'day', header: 'Day', isPivotRow: true },
+        { accessorKey: 'at', header: 'At' },
+        { accessorKey: 'total', header: 'Total' },
+      ];
+      const renderResult = (table, nestedColumns) => {
+        mockPivotReturn = { ...mockPivotReturn, rows, columns, nestedColumns };
+        render(
+          <PivotableTable
+            table={table}
+            sourceData={mockInsightData}
+            itemWidth={600}
+            height={400}
+            width={600}
+          />
+        );
+      };
+
+      it('formats them in a column-select result', () => {
+        renderResult({ name: 'colsel', rows_per_page: 50, columns: ['${ref(i).a}'] }, null);
+        expect(screen.getByText('2021-01-01')).toBeInTheDocument();
+        expect(screen.getByText('2021-01-02 09:30:15.000')).toBeInTheDocument();
+      });
+
+      it('formats them in a pivot result with nested headers', () => {
+        renderResult(pivotTable, [
+          { id: 'day', accessorKey: 'day', header: 'Day' },
+          {
+            id: 'group-0-East',
+            header: 'East',
+            columns: [
+              { id: 'at', accessorKey: 'at', header: 'At' },
+              { id: 'total', accessorKey: 'total', header: 'Total' },
+            ],
+          },
+        ]);
+        expect(screen.getByText('2021-01-01')).toBeInTheDocument();
+        expect(screen.getByText('2021-01-02 09:30:15.000')).toBeInTheDocument();
+      });
     });
 
     it('shows Loading while the pivot query is running', () => {

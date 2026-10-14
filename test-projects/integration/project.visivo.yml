@@ -1075,7 +1075,7 @@ dashboards:
               rows_per_page: 10
 
   # Dashboard used by the table-dates E2E story: date and timestamp cells in
-  # a full-width and a half-width slot.
+  # data, column-select and pivot tables.
   - name: table-dates-dashboard
     level: 1
     tags:
@@ -1100,6 +1100,29 @@ dashboards:
               name: dates-half-width-table
               data: ${ref(table_dates)}
               rows_per_page: 10
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: dates-columns-table
+              rows_per_page: 25
+              columns:
+                - ${ref(table_dates).n}
+                - ${ref(table_dates).order_date}
+                - ${ref(table_dates).day_start}
+                - ${ref(table_dates).event_at}
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: dates-pivot-table
+              rows_per_page: 25
+              columns:
+                - ${ref(table_dates).parity}
+              rows:
+                - ${ref(table_dates).order_date}
+              values:
+                - sum(${ref(table_dates).n})
 tables:
   - name: new_table
     rows_per_page: 25

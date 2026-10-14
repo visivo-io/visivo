@@ -48,13 +48,16 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
 
   const { allRows, dataTableColumns } = useMemo(() => {
     if (hasDuckDBMode) {
-      const cols = pivotColumns.map(col => ({
-        name: col.accessorKey || col.id,
-        displayName: col.header,
-        normalizedType: COLUMN_TYPES.UNKNOWN,
-        duckdbType: 'VARCHAR',
-        isPivotRow: col.isPivotRow || false,
-      }));
+      const cols = pivotColumns.map(col => {
+        const name = col.accessorKey || col.id;
+        return {
+          name,
+          displayName: col.header,
+          normalizedType: inferType(pivotRows, name),
+          duckdbType: 'VARCHAR',
+          isPivotRow: col.isPivotRow || false,
+        };
+      });
       return { allRows: pivotRows, dataTableColumns: cols };
     }
 
