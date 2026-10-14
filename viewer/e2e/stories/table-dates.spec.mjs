@@ -85,4 +85,18 @@ for (const tableId of ['dates-full-width-table', 'dates-columns-table']) {
     await expect(table.getByText('1 total rows')).toBeVisible();
     expect((await firstRowCells(table))[3].text).toBe('2021-01-01 09:30:15.000');
   });
+
+  test(`${tableId}: at phone width, timestamps stay whole and the table scrolls`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const table = await gotoTable(page, tableId);
+    const [, orderDate, , eventAt] = await firstRowCells(table);
+    await page.screenshot({ path: `${SCREENS}/table-dates-${tableId}-phone.png` });
+
+    expect(orderDate).toEqual({ text: '2021-01-01', truncated: false });
+    expect(eventAt).toEqual({ text: '2021-01-01 08:30:15.000', truncated: false });
+    const scroller = table.locator('div.overflow-auto').first();
+    expect(await scroller.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+  });
 }
