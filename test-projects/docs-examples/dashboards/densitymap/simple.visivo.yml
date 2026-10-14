@@ -1,0 +1,40 @@
+sources:
+  - name: densitymap-data-source
+    type: duckdb
+    database: target/seeds/densitymap_data.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            lat,lon
+            40.71,-74.01
+            40.71,-74.01
+            40.71,-74.01
+            40.73,-73.99
+            40.73,-73.99
+            40.75,-73.98
+models:
+  - name: densitymap-data
+    source: ${ref(densitymap-data-source)}
+    sql: select * from model where lat is not null
+charts:
+  - name: simple-densitymap-chart
+    layout:
+      title:
+        text: Simple Density Map<br><sub>Point Density From count(*)</sub>
+      map:
+        center:
+          lat: 40.73
+          lon: -73.99
+        zoom: 11
+    insights:
+      - ${ref(simple-densitymap-plot)}
+insights:
+  - name: simple-densitymap-plot
+    props:
+      type: densitymap
+      lat: ?{${ref(densitymap-data).lat}}
+      lon: ?{${ref(densitymap-data).lon}}
+      z: ?{count(*)}
+      radius: 20

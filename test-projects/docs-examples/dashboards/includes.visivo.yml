@@ -9,6 +9,7 @@ includes:
   - path: cone/dashboard.visivo.yml
   - path: contour/dashboard.visivo.yml
   - path: contourcarpet/dashboard.visivo.yml
+  - path: densitymap/dashboard.visivo.yml
   - path: funnel/dashboard.visivo.yml
   - path: funnelarea/dashboard.visivo.yml
   - path: heatmap/dashboard.visivo.yml

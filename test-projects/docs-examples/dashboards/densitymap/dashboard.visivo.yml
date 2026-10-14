@@ -1,0 +1,19 @@
+includes:
+  - path: "simple.visivo.yml"
+
+dashboards:
+  - name: densitymap
+    level: 1
+    tags:
+      - "Trace Prop"
+    rows:
+      - height: compact
+        items:
+          - markdown:
+              content: "# Density Map"
+          - markdown:
+              content: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ${ref(simple-densitymap-chart)}
