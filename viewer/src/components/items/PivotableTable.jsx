@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import DataTable from '../common/DataTable';
+import { formatCellText } from '../common/DataTableCell';
 import { ItemContainer } from './ItemContainer';
 import { itemNameToSlug } from './utils';
 import { usePivotData } from '../../hooks/usePivotData';
@@ -21,6 +22,7 @@ import { useDashboardTheme } from '../../theme/DashboardThemeContext';
 import { createDashboardMuiTheme } from '../../theme/muiTheme';
 import { mkConfig, generateCsv } from 'export-to-csv';
 import { ROWS_PER_PAGE_OPTIONS } from './rowsPerPageOptions';
+import { buildReverseMapping, formatColumnHeader } from '../../utils/pivotRefResolver';
 
 const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   const { tokens: themeTokens } = useDashboardTheme();
@@ -47,49 +49,56 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
 
   const { allRows, dataTableColumns } = useMemo(() => {
     if (hasDuckDBMode) {
-      const cols = pivotColumns.map(col => ({
-        name: col.accessorKey || col.id,
-        displayName: col.header,
-        normalizedType: COLUMN_TYPES.UNKNOWN,
-        duckdbType: 'VARCHAR',
-        isPivotRow: col.isPivotRow || false,
-      }));
+      const cols = pivotColumns.map(col => {
+        const name = col.accessorKey || col.id;
+        return {
+          name,
+          displayName: col.header,
+          normalizedType: inferType(pivotRows, name),
+          duckdbType: 'VARCHAR',
+          isPivotRow: col.isPivotRow || false,
+        };
+      });
       return { allRows: pivotRows, dataTableColumns: cols };
     }
 
     const data = sourceData?.data || [];
     if (data.length === 0) return { allRows: [], dataTableColumns: [] };
 
-    const reverseMapping = {};
-    if (sourceData.props_mapping) {
-      for (const [propPath, columnKey] of Object.entries(sourceData.props_mapping)) {
-        const displayName = propPath
-          .replace(/^props\./, '')
-          .replace(/\./g, ' ')
-          .replace(/\b\w/g, char => char.toUpperCase());
-        reverseMapping[columnKey] = displayName;
-      }
-    }
+    const reverseMapping = buildReverseMapping(sourceData.props_mapping);
 
     const firstRow = data[0];
-    const cols = Object.keys(firstRow).map(key => ({
-      name: key,
-      displayName: reverseMapping[key] || formatColumnHeader(key),
-      normalizedType: inferType(data, key),
-      duckdbType: inferType(data, key) === COLUMN_TYPES.NUMBER ? 'DOUBLE' : 'VARCHAR',
-    }));
+    const cols = Object.keys(firstRow).map(key => {
+      const normalizedType = inferType(data, key);
+      return {
+        name: key,
+        displayName: reverseMapping[key] || formatColumnHeader(key),
+        normalizedType,
+        duckdbType: normalizedType === COLUMN_TYPES.NUMBER ? 'DOUBLE' : 'VARCHAR',
+      };
+    });
 
     return { allRows: data, dataTableColumns: cols };
   }, [hasDuckDBMode, pivotRows, pivotColumns, sourceData]);
 
   // Client-side global filter
-  const filteredRows = useMemo(() => {
-    if (!globalFilter) return allRows;
-    const lower = globalFilter.toLowerCase();
-    return allRows.filter(row =>
-      Object.values(row).some(val => val != null && String(val).toLowerCase().includes(lower))
+  const isSearching = globalFilter !== '';
+  const rowSearchText = useMemo(() => {
+    if (!isSearching) return null;
+    return allRows.map(row =>
+      dataTableColumns
+        .filter(col => row[col.name] != null)
+        .flatMap(col => [String(row[col.name]), formatCellText(row[col.name], col.normalizedType)])
+        .join('\n')
+        .toLowerCase()
     );
-  }, [allRows, globalFilter]);
+  }, [allRows, dataTableColumns, isSearching]);
+
+  const filteredRows = useMemo(() => {
+    if (!isSearching) return allRows;
+    const lower = globalFilter.toLowerCase();
+    return allRows.filter((_, i) => rowSearchText[i].includes(lower));
+  }, [allRows, rowSearchText, isSearching, globalFilter]);
 
   // Client-side sorting
   const sortedRows = useMemo(() => {
@@ -294,23 +303,19 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   );
 };
 
-function formatColumnHeader(key) {
-  const cleanKey = key.replace(/_hash_[a-f0-9]+$/i, '');
-  return cleanKey
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, char => char.toUpperCase());
-}
+// The shape processArrowResult gives every DATE / TIMESTAMP value.
+const ARROW_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const isMidnight = value => value.endsWith('T00:00:00.000Z');
 
 function inferType(rows, key) {
-  for (const row of rows) {
-    const val = row[key];
-    if (val != null) {
-      if (typeof val === 'number') return COLUMN_TYPES.NUMBER;
-      if (typeof val === 'boolean') return COLUMN_TYPES.BOOLEAN;
-      return COLUMN_TYPES.STRING;
-    }
+  const values = rows.map(row => row[key]).filter(val => val != null);
+  if (values.length === 0) return COLUMN_TYPES.UNKNOWN;
+  if (typeof values[0] === 'number') return COLUMN_TYPES.NUMBER;
+  if (typeof values[0] === 'boolean') return COLUMN_TYPES.BOOLEAN;
+  if (values.every(val => typeof val === 'string' && ARROW_DATE_RE.test(val))) {
+    return values.every(isMidnight) ? COLUMN_TYPES.DATE : COLUMN_TYPES.TIMESTAMP;
   }
-  return COLUMN_TYPES.UNKNOWN;
+  return COLUMN_TYPES.STRING;
 }
 
 export default PivotableTable;

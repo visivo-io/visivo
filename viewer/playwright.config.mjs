@@ -45,6 +45,8 @@ export default defineConfig({
         '**/delete-lifecycle.spec.mjs',
         // Saves and discards a draft project theme (see state-mutating).
         '**/theme-edit.spec.mjs',
+        // Drafts a broken model + insight and runs them (see state-mutating).
+        '**/canvas-insight-run-failure.spec.mjs',
         // Phase 2 e2e gate (VIS-1050): explorations live in ONE file-backed
         // repository shared by every worker (`.visivo/explorations/`, no
         // per-worker isolation like localStorage-scoped Phase 0 state) — see
@@ -157,6 +159,9 @@ export default defineConfig({
         '**/delete-lifecycle.spec.mjs',
         // Saves a draft project theme, then discards it.
         '**/theme-edit.spec.mjs',
+        // Drafts a model selecting from a missing table plus an insight on it,
+        // runs them to a failure, then deletes both.
+        '**/canvas-insight-run-failure.spec.mjs',
       ],
       dependencies: ['parallel'],
     },

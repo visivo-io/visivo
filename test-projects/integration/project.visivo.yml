@@ -6,6 +6,7 @@ includes:
   - path: nested_layouts.visivo.yml
   - path: sizing_dashboard.visivo.yml
   - path: template_dashboard.visivo.yml
+  - path: series_colors_dashboard.visivo.yml
 
 defaults:
   source_name: local-duckdb
@@ -720,6 +721,35 @@ dashboards:
               data: ${ref(filter-nonaggregate-input-test-insight)}
               rows_per_page: 25
 
+      # ===== SECTION 2b: INPUT-FILTERED COLUMN-SELECT + PIVOT (VIS-1462) =====
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                ## Input-Filtered Column-Select and Pivot Tables
+                Both tables read the same input-filtered insight as the table above.
+                **Change "Min X Value" and both row counts change.** Unaliased
+                headers show the plain prop name (never a hashed column).
+
+      - height: large
+        items:
+          - width: 6
+            table:
+              name: filter-input-columns-table
+              rows_per_page: 25
+              columns:
+                - ${ref(filter-nonaggregate-input-test-insight).x}
+                - ${ref(filter-nonaggregate-input-test-insight).y} as "Y Value"
+          - width: 6
+            table:
+              name: filter-input-pivot-table
+              columns:
+                - ${ref(filter-nonaggregate-input-test-insight).x}
+              rows:
+                - ${ref(filter-nonaggregate-input-test-insight).y}
+              values:
+                - sum(${ref(filter-nonaggregate-input-test-insight).y})
+
       # ===== SECTION 3: PIVOT TABLE =====
       - height: compact
         items:
@@ -1043,6 +1073,56 @@ dashboards:
               name: gradient-grid-source-table
               data: ${ref(gradient-grid-insight)}
               rows_per_page: 10
+
+  # Dashboard used by the table-dates E2E story: date and timestamp cells in
+  # data, column-select and pivot tables.
+  - name: table-dates-dashboard
+    level: 1
+    tags:
+      - "tables"
+    rows:
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                # Table Dates Test
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: dates-full-width-table
+              data: ${ref(table_dates)}
+              rows_per_page: 25
+      - height: large
+        items:
+          - width: 6
+            table:
+              name: dates-half-width-table
+              data: ${ref(table_dates)}
+              rows_per_page: 10
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: dates-columns-table
+              rows_per_page: 25
+              columns:
+                - ${ref(table_dates).n}
+                - ${ref(table_dates).order_date}
+                - ${ref(table_dates).day_start}
+                - ${ref(table_dates).event_at}
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: dates-pivot-table
+              rows_per_page: 25
+              columns:
+                - ${ref(table_dates).parity}
+              rows:
+                - ${ref(table_dates).order_date}
+              values:
+                - sum(${ref(table_dates).n})
 tables:
   - name: new_table
     rows_per_page: 25

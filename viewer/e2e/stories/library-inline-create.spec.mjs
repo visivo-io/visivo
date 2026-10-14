@@ -1,11 +1,11 @@
 /**
- * Story: Library inline create — "+ New" header menu + per-type "+ New X"
+ * Story: Library inline create — the "+ New" header menu
  * (user-reported: "no way to create a new object in the editor").
  *
- * The Library header's "+ New" menu and every creatable subsection's
- * "+ New X" button draft a minimal valid config into the backend cache via
- * the shared inline-create flow, then open the new object as a workspace tab
- * so the right-rail Edit form is the editing surface. No modals.
+ * The Library header's "+ New" menu drafts a minimal valid config into the
+ * backend cache via the shared inline-create flow, then opens the new object
+ * as a workspace tab so the right-rail Edit form is the editing surface. No
+ * modals.
  *
  * Mutates the backend draft cache (in-memory only, no YAML) — registered in
  * the 'state-mutating' playwright project so it runs after the read-only
@@ -81,14 +81,10 @@ test.describe('Library inline create', () => {
     await page.screenshot({ path: `${SCREENS}/inline-create-02-model-tab.png` });
   });
 
-  test('a data-layer subsection "+ New Insight" drafts and opens an insight', async () => {
-    const header = page.getByTestId('library-subsection-insight-header');
-    await header.scrollIntoViewIfNeeded();
-    await header.click();
-    const create = page.getByTestId('library-subsection-insight-create');
-    await create.scrollIntoViewIfNeeded();
-    await create.hover();
-    await create.click();
+  test('the header "+ New" menu drafts and opens an insight', async () => {
+    await page.getByTestId('library-new-object-button').click();
+    await expect(page.getByTestId('library-new-object-menu')).toBeVisible();
+    await page.getByTestId('library-new-object-insight').click();
 
     await expect
       .poll(() => readStore(page, "s.workspaceActiveObject && s.workspaceActiveObject.type"), {
@@ -125,6 +121,44 @@ test.describe('Library inline create', () => {
       `(() => { const r = (s.relations || []).find(x => x.name === '${name}'); const c = r && (r.config || r); return c && c.condition; })()`
     );
     expect(condition).toMatch(/ref\([^)]+\).*=.*ref\([^)]+\)/);
+  });
+
+  test('a new dashboard does not inherit unsaved edits from a deleted one with the same name', async () => {
+    const createDashboard = async () => {
+      await page.getByTestId('library-new-object-button').click();
+      await page.getByTestId('library-new-object-dashboard').click();
+      await expect
+        .poll(() => readStore(page, "s.workspaceActiveObject && s.workspaceActiveObject.type"), {
+          timeout: WAIT,
+        })
+        .toBe('dashboard');
+      return readStore(page, 's.workspaceActiveObject.name');
+    };
+    const rowCount = name =>
+      readStore(page, `(s.dashboards.find(d => d.name === '${name}') || {}).config?.rows?.length`);
+    const rail = page.getByTestId('workspace-right-rail-edit');
+    await page.goto(`${BASE_URL}/workspace`);
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('workspace-left-rail')).toBeVisible({ timeout: WAIT });
+
+    const first = await createDashboard();
+    await expect.poll(() => rowCount(first), { timeout: WAIT }).toBe(1);
+    await page.getByTestId('right-rail-edit-add-row').click();
+    await expect.poll(() => rowCount(first), { timeout: WAIT }).toBe(2);
+    expect(await readStore(page, `s.isDashboardDirty('${first}')`)).toBe(true);
+
+    await rail.getByTitle('Delete').click();
+    await rail.getByRole('button', { name: 'Confirm Delete' }).click();
+    await expect
+      .poll(() => readStore(page, `s.dashboards.some(d => d.name === '${first}')`), { timeout: WAIT })
+      .toBe(false);
+
+    const second = await createDashboard();
+    expect(second).toBe(first);
+    await expect.poll(() => rowCount(second), { timeout: WAIT }).toBe(1);
+    expect(await readStore(page, `s.isDashboardDirty('${second}')`)).toBe(false);
+    await expect(rail).toContainText('1 row');
+    await page.screenshot({ path: `${SCREENS}/inline-create-03-dashboard-name-reuse.png` });
   });
 
   test('no console errors across the create gestures', async () => {

@@ -78,7 +78,8 @@ test.describe('Library — Dashboards in Layout Items (VIS-824)', () => {
     // Grab the first dashboard row inside the dashboard subsection.
     const dashboardRow = page
       .getByTestId('library-subsection-dashboard-rows')
-      .locator('[data-testid^="library-row-dashboard-"]')
+      // [role="button"] skips the row's `-anchor` wrapper, which shares the prefix.
+      .locator('[data-testid^="library-row-dashboard-"][role="button"]')
       .first();
     await expect(dashboardRow).toBeVisible({ timeout: 10000 });
     await dashboardRow.click();

@@ -41,6 +41,7 @@
 import { test, expect } from '@playwright/test';
 import { typeSql, runQuery } from '../helpers/explorer.mjs';
 import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
+import { toggleLibraryRow } from '../helpers/workspace.mjs';
 
 test.use({ viewport: { width: 1280, height: 1600 } });
 
@@ -90,7 +91,7 @@ async function expandSourceTable(page) {
   if (!(await sourceBody.isVisible().catch(() => false))) await sourceHeader.click();
   await expect(sourceBody).toBeVisible({ timeout: 5000 });
 
-  await page.getByTestId(`library-row-source-${SOURCE}-toggle`).click();
+  await toggleLibraryRow(page, 'source', SOURCE);
   const tableRow = page.getByTestId(`library-source-table-${SOURCE}-${TABLE}`);
   await expect(tableRow).toBeVisible({ timeout: 15000 });
   return tableRow;
@@ -146,7 +147,8 @@ async function renameChart(page, name) {
 }
 
 async function renameInsight(page, insightName, newName) {
-  await page.getByTestId(`insight-name-${insightName}`).click();
+  // The name is a field of the (expanded) insight section; the header is not
+  // a rename control.
   const input = page.getByTestId(`insight-rename-input-${insightName}`);
   await input.fill(newName);
   await input.press('Enter');
@@ -432,6 +434,10 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
     await clickPromote(page);
     await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
     createdObjects.push({ segment: 'models', name: queryName }, { segment: 'insights', name: insightName });
+    createdObjects.push({
+      segment: 'charts',
+      name: await page.evaluate(() => window.useStore.getState().explorerChartName),
+    });
 
     // The valid insight promoted; the dangling-ref one never got a save call.
     await waitForObjectPublished(page, 'insights', insightName);
@@ -454,6 +460,10 @@ test.describe('Exploration promote (Explore 2.0 Phase 4)', () => {
     await clickPromote(page);
     await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
     createdObjects.push({ segment: 'models', name: queryName }, { segment: 'insights', name: insightName });
+    createdObjects.push({
+      segment: 'charts',
+      name: await page.evaluate(() => window.useStore.getState().explorerChartName),
+    });
     await waitForObjectPublished(page, 'insights', insightName);
     await closePromoteModal(page);
 

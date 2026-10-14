@@ -64,6 +64,12 @@ describe('calculateColumnWidth', () => {
     const width = calculateColumnWidth('x', 'number');
     expect(width).toBe(120);
   });
+
+  it('widens a short-named timestamp column to fit a formatted timestamp', () => {
+    expect(calculateColumnWidth('ts', COLUMN_TYPES.TIMESTAMP)).toBeGreaterThan(
+      calculateColumnWidth('ts', COLUMN_TYPES.STRING)
+    );
+  });
 });
 
 describe('parseSchema', () => {

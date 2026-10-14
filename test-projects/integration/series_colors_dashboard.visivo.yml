@@ -1,0 +1,42 @@
+# Two split bar charts whose series sets overlap on "Cost" but list it in a
+# different position; viewer/e2e/stories/dashboard-series-colors.spec.mjs
+# asserts "Cost" resolves to the same colour on both.
+insights:
+  - name: revenue-cost-split-insight
+    props:
+      type: bar
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+    interactions:
+      - split: ?{ CASE WHEN ${ref(local_test_table).x} <= 3 THEN 'Revenue' ELSE 'Cost' END }
+      - sort: ?{${ref(local_test_table).x} ASC}
+  - name: cost-margin-split-insight
+    props:
+      type: bar
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+    interactions:
+      - split: ?{ CASE WHEN ${ref(local_test_table).x} <= 3 THEN 'Cost' ELSE 'Margin' END }
+      - sort: ?{${ref(local_test_table).x} ASC}
+
+charts:
+  - name: revenue-cost-chart
+    insights:
+      - ${ref(revenue-cost-split-insight)}
+  - name: cost-margin-chart
+    insights:
+      - ${ref(cost-margin-split-insight)}
+
+dashboards:
+  - name: series-colors-dashboard
+    level: 1
+    tags:
+      - "theme"
+    description: A split value keeps one colour across the charts of a dashboard.
+    rows:
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ref(revenue-cost-chart)}
+          - width: 6
+            chart: ${ref(cost-margin-chart)}

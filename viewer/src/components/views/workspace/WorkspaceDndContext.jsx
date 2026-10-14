@@ -17,7 +17,7 @@ import { DROPPABLE_TYPES } from './library/LibraryRow';
 import { groupDashboardsByLevel } from '../project/editor/useProjectEditorData';
 import { emitWorkspaceEvent } from './telemetry';
 import { formatRefExpression } from '../../../utils/refString';
-import { generateUniqueName } from '../../../utils/uniqueName';
+import { mintWrapperChartName, buildWrapperChartConfig } from '../../../utils/insightWrap';
 import {
   reorderItemsInRow,
   moveItemBetweenRows,
@@ -968,13 +968,11 @@ const WorkspaceDndContext = ({ children }) => {
         wrapInsight: {
           mintChartName: insightName => {
             const existingCharts = (useStore.getState().charts || []).map(chart => chart.name);
-            return generateUniqueName(`${insightName}-chart`, existingCharts, {
-              separator: '-',
-            });
+            return mintWrapperChartName(insightName, existingCharts);
           },
           createChart: (chartName, insightName) => {
             const save = useStore.getState().saveChart;
-            if (save) save(chartName, { insights: [`ref(${insightName})`] });
+            if (save) save(chartName, buildWrapperChartConfig(insightName));
           },
         },
         exploration: {

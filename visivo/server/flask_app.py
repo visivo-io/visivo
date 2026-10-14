@@ -74,7 +74,7 @@ class FlaskApp:
         # Initialize object managers with DAG for efficient loading
         dag = project.dag()
 
-        self.source_manager = SourceManager()
+        self.source_manager = SourceManager(project_dir=working_dir)
         self.source_manager.load(dag)
 
         self.model_manager = ModelManager()
@@ -130,12 +130,22 @@ class FlaskApp:
             self.dashboard_manager,
         ]
 
+    def changed_project_settings(self) -> dict:
+        """Draft project-level settings (``defaults``, ``theme``) that differ from the published ones."""
+        changed = {}
+        for key, cached in (("defaults", self._cached_defaults), ("theme", self._cached_theme)):
+            if cached is None:
+                continue
+            published = getattr(self.project, key, None)
+            dump = {"mode": "json", "exclude_none": True}
+            if published is None or cached.model_dump(**dump) != published.model_dump(**dump):
+                changed[key] = cached
+        return changed
+
     def has_draft_changes(self) -> bool:
-        """True when any manager holds an unpublished draft (or project settings are cached)."""
-        return (
-            any(m.has_unpublished_changes() for m in self._all_object_managers())
-            or self._cached_defaults is not None
-            or self._cached_theme is not None
+        """True when any manager holds an unpublished draft or a project setting changed."""
+        return any(m.has_unpublished_changes() for m in self._all_object_managers()) or bool(
+            self.changed_project_settings()
         )
 
     def clear_draft_caches(self) -> None:

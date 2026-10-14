@@ -1,5 +1,5 @@
 /* eslint-disable no-template-curly-in-string */
-import { buildPivotQuery, buildColumnSelectQuery } from './pivotQueryBuilder';
+import { buildPivotQuery, buildColumnSelectQuery, sourceRelation } from './pivotQueryBuilder';
 
 describe('buildPivotQuery', () => {
   const propsMapping = {
@@ -199,5 +199,51 @@ describe('buildColumnSelectQuery', () => {
   it('passes through plain (non-ref) column names', () => {
     const sql = buildColumnSelectQuery(['region'], null, 'model_tbl');
     expect(sql).toBe('SELECT "region" FROM "model_tbl"');
+  });
+});
+
+// VIS-1462 T1: with a prepared post-query the table reads the SAME input-filtered
+// result set the chart renders (a derived table), not the raw parquet.
+describe('sourceSql relation (VIS-1462 T1)', () => {
+  const propsMapping = { 'props.region': 'r_hash', 'props.revenue': 'v_hash' };
+  const postQuery = 'SELECT "t"."region" AS "r_hash", "t"."revenue" AS "v_hash" FROM "t" WHERE "t"."x" > 3';
+
+  it('sourceRelation quotes the table name without sourceSql', () => {
+    expect(sourceRelation('tbl', null)).toBe('"tbl"');
+    expect(sourceRelation('tbl', undefined)).toBe('"tbl"');
+    expect(sourceRelation('tbl', '')).toBe('"tbl"');
+  });
+
+  it('sourceRelation wraps sourceSql as an aliased derived table', () => {
+    expect(sourceRelation('tbl', 'SELECT 1')).toBe('(SELECT 1) AS "__visivo_source"');
+  });
+
+  it('column-select reads FROM the derived table', () => {
+    const sql = buildColumnSelectQuery(['${ref(i).region}'], propsMapping, 'tbl', postQuery);
+    expect(sql).toBe(`SELECT "r_hash" FROM (${postQuery}) AS "__visivo_source"`);
+  });
+
+  it('pivot with rows reads FROM the derived table', () => {
+    const sql = buildPivotQuery(
+      { columns: ['${ref(i).region}'], rows: ['${ref(i).region}'], values: ['sum(${ref(i).revenue})'] },
+      propsMapping,
+      'tbl',
+      postQuery
+    );
+    expect(sql).toBe(
+      `PIVOT (SELECT * FROM (${postQuery}) AS "__visivo_source") ON "r_hash" USING sum("v_hash") GROUP BY "r_hash"`
+    );
+  });
+
+  it('pivot without rows reads FROM the derived table', () => {
+    const sql = buildPivotQuery(
+      { columns: ['${ref(i).region}'], rows: [], values: ['sum(${ref(i).revenue})'] },
+      propsMapping,
+      'tbl',
+      postQuery
+    );
+    expect(sql).toBe(
+      `PIVOT (SELECT "r_hash", "v_hash" FROM (${postQuery}) AS "__visivo_source") ON "r_hash" USING sum("v_hash")`
+    );
   });
 });

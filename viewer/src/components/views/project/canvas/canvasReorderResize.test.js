@@ -2,7 +2,7 @@
  * canvasReorder resize-helper tests (VIS-777 / Track D D-4).
  *
  * The pure, immutable config transforms behind the canvas resize gestures:
- *   - setItemWidth        → item col-span (1–12), siblings rebalance relatively.
+ *   - setItemWidth        → item col-span (≥ 1), siblings rebalance relatively.
  *   - setRowHeight        → Row.height (HeightEnum token OR int px / fluid mode).
  *   - HeightEnum helpers  → enum ↔ pixel mapping + nearest-stop snapping.
  *
@@ -52,9 +52,9 @@ describe('setItemWidth (VIS-777)', () => {
     expect(JSON.stringify(cfg)).toBe(snapshot);
   });
 
-  test('clamps width to [1, 12]', () => {
+  test('floors width at 1 with no upper bound (widths are relative weights)', () => {
     const cfg = baseConfig();
-    expect(setItemWidth(cfg, 'row.0.item.0', 99).rows[0].items[0].width).toBe(12);
+    expect(setItemWidth(cfg, 'row.0.item.0', 99).rows[0].items[0].width).toBe(99);
     expect(setItemWidth(cfg, 'row.0.item.0', 0).rows[0].items[0].width).toBe(1);
     expect(setItemWidth(cfg, 'row.0.item.0', -5).rows[0].items[0].width).toBe(1);
   });

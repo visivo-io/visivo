@@ -198,22 +198,18 @@ test.describe('Workspace per-object Preview lens (Track N)', () => {
     ).toBeVisible({ timeout: 30000 });
   });
 
-  test('Step 9: a preview-less object (source) falls back to the Lineage lens', async ({ page }) => {
+  test('Step 9: a source opens on its Canvas preview, not the Lineage lens', async ({ page }) => {
     await page.goto(`${BASE_URL}/workspace`);
     await page.waitForLoadState('networkidle');
 
-    // Sources have no custom preview — the pane must lock onto Lineage.
-    const sourceRow = page
-      .getByTestId('library-subsection-source-rows')
-      .locator('[data-testid^="library-row-source-"]')
-      .first();
     await page.getByTestId('library-subsection-source-header').click();
+    const sourceRow = page.getByTestId('library-row-source-local-duckdb');
     await expect(sourceRow).toBeVisible({ timeout: 10000 });
     await sourceRow.click();
 
-    await expect(page.getByTestId('workspace-middle-source-lineage')).toBeVisible({
+    await expect(page.getByTestId('workspace-middle-source-preview')).toBeVisible({
       timeout: 15000,
     });
-    await expect(page.getByTestId('workspace-middle-source-preview')).toHaveCount(0);
+    await expect(page.getByTestId('workspace-middle-source-lineage')).toHaveCount(0);
   });
 });

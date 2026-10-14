@@ -1,0 +1,55 @@
+type: histogram
+family: distribution
+status: preferred
+one_liner: The shape of one numeric column, binned; compare a few groups by overlaying or stacking.
+use_when:
+  - One numeric_continuous or numeric_discrete column and the question is "how is it distributed".
+  - A few groups to compare (`few` categorical) as overlaid or stacked histograms.
+  - Spotting skew, outliers, bimodality before choosing an average vs a median for the KPIs.
+other_uses:
+  - use: A cumulative distribution (CDF), e.g. the share of trips under a given distance.
+    how: "`cumulative: {enabled: true}` with `histnorm: percent`."
+  - use: A metric summed per bin instead of a row count, e.g. revenue by distance band.
+    how: "`x: ?{ <numeric column> }`, `y: ?{ <metric column> }` and `histfunc: sum` (or `avg`)."
+avoid_when:
+  - Too many groups to overlay; a box plot per group compares distributions without the overlap.
+  - Too many rows to bin in the browser; pre-bucket in SQL (`width_bucket`, `floor(x/step)*step`) and draw a bar.
+  - A heavy tail (p99 ≪ max) without clipping; one outlier stretches the axis and squashes the body.
+  - A categorical column; that is a bar of counts, not a histogram.
+data_shape:
+  metrics: {min: 0, max: 0}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [numeric_continuous, numeric_discrete, categorical, boolean]
+required_props: [x]
+example: |
+  insights:
+    - name: trip-distance-distribution
+      props:
+        type: histogram
+        x: ?{ least(${ref(trips).trip_distance}, 30) }
+        nbinsx: 40
+        histnorm: percent
+      interactions:
+        - filter: ?{ ${ref(trips).trip_distance} > 0 }
+        - split: ?{ ${ref(trips).payment_type} }
+variations:
+  - when: "a second `few` dimension"
+    then: "`split` with the chart `layout.barmode: overlay` and `opacity: 0.6`, or `barmode: stack`"
+  - when: "comparing groups of different size"
+    then: "`histnorm: percent` so shapes compare, not totals"
+  - when: "the column is a timestamp"
+    then: "that is counts per period, i.e. a bar or line after `date_trunc`, not a histogram"
+limits:
+  series_ideal: 2
+  series_max: 3
+  repair: [top_n_other, input_filter, box]
+transforms: [clip_p99, bucket, log_scale]
+gotchas:
+  - "A histogram takes the raw column, not an aggregate: `x: ?{ trip_distance }` with no GROUP BY; every row is sent to the browser."
+  - "Clip the tail in SQL (`least(x, p99)`) rather than with `xaxis.range`, which hides bins but still bins them."
+  - "`nbinsx` is a hint; Plotly picks nice edges. Set `xbins.size` when the step matters (e.g. 1 km)."
+  - "Overlaid groups need `opacity` < 1, `barmode: overlay` on the chart layout, and one `bingroup`; otherwise the front group hides the rest and each group gets its own bin width."
+  - "Zero and null are different: filter nulls in SQL, and ask whether zeros are real before binning them."
+pairings: [box_beside, kpi_strip_above]
+layout: {height: medium, width_share: 0.5, row_role: relationship}
+mobile: Fewer groups than on desktop; with `histnorm` set, name the unit (percent of trips) in the axis title.

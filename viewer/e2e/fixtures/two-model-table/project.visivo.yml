@@ -1,0 +1,30 @@
+# E2E fixture for VIS-1462 T7a: a column-select table whose refs span TWO models
+# with no declared relationship must fail `visivo compile` with a message naming
+# both models. Driven by viewer/e2e/stories/tables-inputs.spec.mjs.
+name: two-model-table
+
+sources:
+  - name: local
+    type: duckdb
+    database: ./two-model-table.duckdb
+
+models:
+  - name: orders
+    source: ${ref(local)}
+    sql: SELECT 1 AS id, 25.0 AS amount
+  - name: users
+    source: ${ref(local)}
+    sql: SELECT 1 AS id, 'North' AS region
+
+tables:
+  - name: orders-and-users
+    columns:
+      - ${ref(orders).amount} as Amount
+      - ${ref(users).region} as Region
+
+dashboards:
+  - name: two-model-dashboard
+    rows:
+      - height: medium
+        items:
+          - table: ${ref(orders-and-users)}

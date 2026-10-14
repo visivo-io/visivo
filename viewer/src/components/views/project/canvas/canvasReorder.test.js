@@ -139,8 +139,20 @@ describe('moveItemBetweenRows (VIS-973 cross-row move)', () => {
       kind: 'end-of-row',
       rowPath: 'row.1.item.0.row.0',
     });
-    expect(names(after.rows[0].items)).toEqual([]);
+    expect(after.rows[0].items).toEqual([{ width: 1 }]);
     expect(names(after.rows[1].items[0].rows[0].items)).toEqual(['ref(n)', 'ref(a)']);
+  });
+
+  test('moving the last item out of a row leaves one empty slot behind (VIS-989)', () => {
+    const solo = {
+      rows: [
+        { height: 'small', items: [{ width: 4, chart: 'ref(a)' }] },
+        { height: 'medium', items: [{ width: 6, table: 'ref(b)' }] },
+      ],
+    };
+    const after = moveItemBetweenRows(solo, 'row.0', 0, { kind: 'end-of-row', rowPath: 'row.1' });
+    expect(after.rows[0]).toEqual({ height: 'small', items: [{ width: 1 }] });
+    expect(names(after.rows[1].items)).toEqual(['ref(b)', 'ref(a)']);
   });
 
   test('is a no-op for a same-row target, a missing item, or a non-row target', () => {
@@ -241,13 +253,13 @@ describe('moveItemIntoSlot (VIS-989 fill an empty slot)', () => {
   test('fills an empty slot in another row with the dragged item (a move)', () => {
     // Drag row.1 item 0 (chart d) onto row.0's empty slot at index 1.
     const after = moveItemIntoSlot(slotConfig(), 'row.1', 0, 'row.0.item.1');
-    // The empty slot is now the moved item; the source row is left with an
-    // empty items array — a valid (if visually empty) row (VIS-993).
+    // The empty slot is now the moved item; the emptied source row keeps one
+    // empty slot so it is still something to drop into (VIS-989).
     expect(names(after.rows[0].items)).toEqual(['ref(a)', 'ref(d)', 'ref(c)']);
     expect(after.rows[0].items[1].chart).toBe('ref(d)');
     // The moved item kept its own width (12), the slot's width (3) is discarded.
     expect(after.rows[0].items[1].width).toBe(12);
-    expect(after.rows[1].items).toEqual([]); // source emptied — valid as-is
+    expect(after.rows[1].items).toEqual([{ width: 1 }]);
   });
 
   test('fills an empty slot within the SAME row (index shift handled)', () => {

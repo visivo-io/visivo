@@ -13,6 +13,7 @@
  */
 import { test, expect } from '@playwright/test';
 import { API } from '../helpers/sandbox.mjs';
+import { selectLibraryObject } from '../helpers/workspace.mjs';
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
 const WAIT = 20000;
@@ -20,8 +21,9 @@ const WAIT = 20000;
 // before any POST could fire. 1500ms comfortably covers it.
 const SETTLE = 1500;
 
-const DIMENSION = 'x_rounded';
-const METRIC = 'avg_value';
+// Both are defined inside a model, so the Library lists them under it.
+const DIMENSION = { name: 'x_rounded', model: 'local_test_table' };
+const METRIC = { name: 'avg_value', model: 'daily_metrics' };
 
 test.describe('Validation-as-save gates the rail (VIS-993)', () => {
   test.describe.configure({ mode: 'serial' });
@@ -46,25 +48,15 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
     await page.close();
   });
 
-  const openForm = async (type, name) => {
+  const openForm = async (type, { name, model }) => {
     await page.goto(`${BASE}/workspace`);
     await page.waitForLoadState('networkidle');
-    const section = page.getByTestId(`library-subsection-${type}-header`);
-    if (await section.isVisible().catch(() => false)) {
-      await section.click();
-    }
-    const row = page.getByTestId(`library-row-${type}-${name}`);
-    await row.scrollIntoViewIfNeeded();
-    await row.click();
-    await expect(page.getByTestId('ref-textarea-editable')).toBeVisible({ timeout: WAIT });
+    await selectLibraryObject(page, type, name, { model });
+    await expect(page.getByTestId('plain-sql-input')).toBeVisible({ timeout: WAIT });
   };
 
   const setExpression = async text => {
-    const editable = page.getByTestId('ref-textarea-editable');
-    await editable.click();
-    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
-    await page.keyboard.press('Backspace');
-    await editable.pressSequentially(text, { delay: 10 });
+    await page.getByTestId('plain-sql-input').fill(text);
   };
 
   // Save is gated on real edits; an edit enables it, then it flushes the config
@@ -102,7 +94,7 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
 
     // Nothing persisted: no dimension POST left the browser, backend agrees.
     expect(posts.dimensions.length).toBe(postsBefore);
-    expect(await backendPending(DIMENSION)).toBe(false);
+    expect(await backendPending(DIMENSION.name)).toBe(false);
   });
 
   test('fixing the expression and saving persists: POST fires', async () => {
@@ -114,7 +106,7 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
     await expect
       .poll(() => posts.dimensions.length, { timeout: WAIT })
       .toBeGreaterThan(postsBefore);
-    await expect.poll(() => backendPending(DIMENSION), { timeout: WAIT }).toBe(true);
+    await expect.poll(() => backendPending(DIMENSION.name), { timeout: WAIT }).toBe(true);
   });
 
   test("an unparseable metric expression blocks: the user's AVG(value)} repro", async () => {
@@ -131,18 +123,19 @@ test.describe('Validation-as-save gates the rail (VIS-993)', () => {
     ).toBeVisible({ timeout: WAIT });
 
     expect(posts.metrics.length).toBe(postsBefore);
-    expect(await backendPending(METRIC)).toBe(false);
+    expect(await backendPending(METRIC.name)).toBe(false);
   });
 
   test('fixing the metric expression and saving persists', async () => {
     const postsBefore = posts.metrics.length;
 
-    await setExpression('AVG(value)');
+    // Not the original AVG(value): saving an unchanged expression is not a change.
+    await setExpression('MAX(value)');
     await clickSave();
 
     await expect
       .poll(() => posts.metrics.length, { timeout: WAIT })
       .toBeGreaterThan(postsBefore);
-    await expect.poll(() => backendPending(METRIC), { timeout: WAIT }).toBe(true);
+    await expect.poll(() => backendPending(METRIC.name), { timeout: WAIT }).toBe(true);
   });
 });

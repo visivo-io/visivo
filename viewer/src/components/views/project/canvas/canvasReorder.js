@@ -561,6 +561,21 @@ export const removeItemAtPath = (config, itemPath) => {
 };
 
 /**
+ * Lift the item a move carries out of its row. Moving the LAST item out leaves
+ * one empty slot behind, so the row stays a visible drop target (VIS-989); an
+ * empty `items` array would leave a row with nowhere to drop into.
+ */
+const liftItemForMove = (config, fromRowPath, fromIndex) => {
+  const removed = removeItemAtPath(config, `${fromRowPath}.item.${fromIndex}`);
+  if (removed === config || itemsAtRowPath(removed, fromRowPath).length > 0) return removed;
+  const rowSegments = parseCanvasPath(fromRowPath);
+  const lastRowIndex = rowSegments[rowSegments.length - 1].index;
+  return withRowsAtRowPath(removed, rowSegments, rows =>
+    rows.map((row, ri) => (ri === lastRowIndex ? { ...row, items: [{ width: 1 }] } : row))
+  );
+};
+
+/**
  * Re-base a drop-target path for the removal of the item at
  * `fromRowPath`/`fromIndex`. Removing the source shifts the sibling item
  * indices in the source row, so a target path that passes THROUGH that row —
@@ -607,7 +622,7 @@ export const moveItemBetweenRows = (config, fromRowPath, fromIndex, target) => {
   const segments = parseCanvasPath(targetRowPath);
   if (!segments.length || segments[segments.length - 1].kind !== 'row') return config;
 
-  const removed = removeItemAtPath(config, `${fromRowPath}.item.${fromIndex}`);
+  const removed = liftItemForMove(config, fromRowPath, fromIndex);
   if (removed === config) return config;
 
   let inserted = false;
@@ -634,9 +649,8 @@ export const moveItemBetweenRows = (config, fromRowPath, fromIndex, target) => {
  * width are preserved (a move), and the empty placeholder it lands on is
  * discarded. Returns config unchanged unless the target is a genuine empty slot
  * and the source/target differ (a self-drop — a slot inside the dragged item's
- * own subtree — is also a no-op). The source row may be left with an empty
- * `items` array — a valid (if visually empty) row the backend accepts; the
- * canvas still renders it as a drop target via its row-level zones.
+ * own subtree — is also a no-op). A source row the move empties keeps one
+ * empty slot (see `liftItemForMove`).
  */
 export const moveItemIntoSlot = (config, fromRowPath, fromIndex, targetItemPath) => {
   if (!config || !targetItemPath) return config;
@@ -659,7 +673,7 @@ export const moveItemIntoSlot = (config, fromRowPath, fromIndex, targetItemPath)
   const adjustedTargetPath = adjustTargetPathForRemoval(targetItemPath, fromRowPath, fromIndex);
   if (adjustedTargetPath === null) return config; // self-drop
 
-  const removed = removeItemAtPath(config, `${fromRowPath}.item.${fromIndex}`);
+  const removed = liftItemForMove(config, fromRowPath, fromIndex);
   if (removed === config) return config;
 
   const next = withItemAtPath(removed, adjustedTargetPath, () => item);
@@ -728,13 +742,13 @@ const clampInt = (value, min, max) => {
  * are relative within their row (the row's grid total is the sum of item
  * widths), so changing one item's span rebalances its siblings automatically —
  * a 6/6 row where item 0 grows to 8 becomes an 8/6 row (8/14 vs 6/14). Width is
- * clamped to [1, 12]. Works at any nesting depth. Returns the config unchanged
+ * at least 1, with no upper bound. Works at any nesting depth. Returns the config unchanged
  * when the width is already `nextWidth` or the path is invalid.
  */
 export const setItemWidth = (config, itemPath, nextWidth) => {
   const segments = parseCanvasPath(itemPath);
   if (!segments.length || segments[segments.length - 1].kind !== 'item') return config;
-  const width = clampInt(nextWidth, 1, 12);
+  const width = clampInt(nextWidth, 1, Infinity);
   const itemSeg = segments[segments.length - 1];
   const rowSegments = segments.slice(0, -1);
   if (!rowSegments.length || rowSegments[rowSegments.length - 1].kind !== 'row') return config;

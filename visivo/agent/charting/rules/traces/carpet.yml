@@ -1,0 +1,51 @@
+type: carpet
+family: carpet
+status: niche
+one_liner: The a/b parameter grid that contourcarpet and scattercarpet draw on; alone it is only a warped mesh.
+use_when:
+  - "Only as the base layer of a `contourcarpet` or `scattercarpet` in the same chart, sharing a `carpet` id."
+  - "A what-if grid: two input levers (base fare × per-mile rate) mapped to two outputs (avg fare, trips) per node."
+avoid_when:
+  - On its own as the answer to a question; the mesh carries no metric a reader can compare, so use a heatmap or contour.
+  - The two dimensions are independent axes (hour × weekday); a plain heatmap is the same picture, undistorted.
+  - Too few levels on either parameter to form a grid, or so many that the mesh becomes an unreadable hatch.
+  - Categorical or time parameters; `a` and `b` must be numeric and form a (near-)complete grid.
+data_shape:
+  metrics: {min: 1, max: 2}
+  dimensions: {min: 2, max: 2}
+  dimension_roles: [numeric_discrete, numeric_continuous]
+  cardinality: {min: 3, max: 20}
+required_props: [carpet, a, b, y]
+example: |
+  insights:
+    - name: fare-grid
+      props:
+        type: carpet
+        carpet: fare-grid
+        a: ?{ ${ref(fare_scenarios).base_fare} }
+        b: ?{ ${ref(fare_scenarios).per_mile} }
+        x: ?{ ${ref(fare_scenarios).avg_fare} }
+        y: ?{ ${ref(fare_scenarios).trips} }
+        aaxis: {title: {text: Base fare}, tickprefix: "$"}
+        baxis: {title: {text: Per mile}, tickprefix: "$"}
+variations:
+  - when: "a third output per node"
+    then: "a `contourcarpet` on the same `carpet` id, with the output as `z`"
+  - when: "observed points belong on the grid, such as each company's actual pricing"
+    then: "a `scattercarpet` on the same id, `split` by company"
+  - when: "the grid has only one output per node"
+    then: "omit `x` for a cheater plot (`y` against a skewed index, tuned by `cheaterslope`) and hide the meaningless x axis"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [heatmap, input_filter, regrain]
+transforms: [regrain, bucket]
+gotchas:
+  - "One row per (a, b) node; Visivo sends long rows and Plotly pivots them, but missing nodes are smooth-filled silently with invented values."
+  - "Set a literal `carpet: <id>` string on the carpet and every dependent; `${ref(insight)}` is passed through as text, not resolved."
+  - "Never `split` a carpet: each value becomes another carpet with the same id, and dependents bind to the first one."
+  - "`aaxis` and `baxis` titles label the grid; `layout.xaxis` and `layout.yaxis` titles label the outputs. Set both or the chart is unreadable."
+  - "A `filter` interaction drops grid nodes and the smoothing fills the hole; filter the dependents, not the carpet."
+pairings: [contourcarpet_overlay, scattercarpet_overlay, detail_table_below]
+layout: {height: large, width_share: 1.0, row_role: relationship}
+mobile: The mesh labels collide below 1024 px; use fewer levels per parameter than on desktop and drop the minor grid lines.

@@ -13,12 +13,17 @@ from copy import deepcopy
 
 from visivo.constants import DEFAULT_RUN_ID
 from visivo.jobs.filtered_runner import FilteredRunner
+from visivo.jobs.job import diagnostic_object_ref
 from visivo.logger.logger import Logger
+from visivo.models.diagnostic import Diagnostic, DiagnosticPhase
 from visivo.server.jobs.project_injection import inject_cached_objects
 from visivo.server.managers.run_manager import RunState
 
 # Coalesce rapid saves (e.g. one editor action touching several rows) into one run.
 _DEBOUNCE_SECONDS = 0.5
+
+# error_json is polled; the full text stays on GET /api/runs/<run_id>/logs/.
+_MAX_DIAGNOSTICS = 50
 
 _pending_names = set()
 _pending_lock = threading.Lock()
@@ -129,7 +134,9 @@ def _execute(flask_app, run_id, dag_filter):
 
         logs = _format_logs(runner)
         if runner.failed_job_results:
-            run_manager.set_state(run_id, RunState.FAILED, logs=logs, error_json={"phase": "run"})
+            run_manager.set_state(
+                run_id, RunState.FAILED, logs=logs, error_json=_error_json_from(runner)
+            )
         else:
             # Record what this run built, so the staged list drops exactly the
             # items it covered. A failure deliberately leaves them staged — the
@@ -142,8 +149,46 @@ def _execute(flask_app, run_id, dag_filter):
             run_id,
             RunState.FAILED,
             logs=str(exc),
-            error_json={"phase": "run", "error": str(exc)},
+            # `error` stays for viewers that predate `diagnostics`.
+            error_json={
+                "phase": "run",
+                "error": str(exc),
+                "diagnostics": [
+                    Diagnostic.from_exception(exc, phase=DiagnosticPhase.RUN).model_dump(
+                        mode="json", exclude_none=True
+                    )
+                ],
+            },
         )
+
+
+def record_failed_run(flask_app, runner):
+    """List a build that ran outside the run loop (serve's start-up build) as a failed run."""
+    run = flask_app.run_manager.create(runner.dag_filter)
+    flask_app.run_manager.set_state(
+        run.id, RunState.FAILED, logs=_format_logs(runner), error_json=_error_json_from(runner)
+    )
+
+
+def _error_json_from(runner):
+    diagnostics = [
+        result.diagnostic or _fallback_diagnostic(result)
+        for result in runner.failed_job_results[:_MAX_DIAGNOSTICS]
+    ]
+    return {
+        "phase": "run",
+        "diagnostics": [d.model_dump(mode="json", exclude_none=True) for d in diagnostics],
+    }
+
+
+def _fallback_diagnostic(result):
+    # result.message is the ANSI, dot-padded terminal line, so point at the logs instead.
+    return Diagnostic(
+        phase=DiagnosticPhase.RUN,
+        code="unexpected_error",
+        message=f"Job for '{getattr(result.item, 'name', 'unknown')}' failed — see the run logs.",
+        object=diagnostic_object_ref(result.item),
+    )
 
 
 def mark_staged_built(flask_app, dag_filter):

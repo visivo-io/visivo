@@ -327,7 +327,8 @@ test.describe('Canvas editing persists to the backend (VIS-993 regression)', () 
     // Expand the Charts subsection in the Library and grab a chart row.
     const chartHeader = page.getByTestId('library-subsection-chart-header');
     await chartHeader.waitFor({ timeout: WAIT });
-    const anyChartRow = page.locator('[data-testid^="library-row-chart-"]').first();
+    // [role="button"] skips the row's `-anchor` wrapper, which shares the prefix.
+    const anyChartRow = page.locator('[data-testid^="library-row-chart-"][role="button"]').first();
     if (!(await anyChartRow.count())) {
       await chartHeader.click();
     }

@@ -43,11 +43,10 @@ const formatTimestamp = date => {
   return `${datePart} ${h}:${min}:${s}.${ms}`;
 };
 
-const formatValue = (value, columnType) => {
-  if (value === null || value === undefined) {
-    return <span className="text-secondary-400 italic">null</span>;
-  }
-
+/**
+ * The text a cell shows for a non-null value.
+ */
+export const formatCellText = (value, columnType) => {
   // Handle date/timestamp columns first — values may arrive as epoch numbers
   if (columnType === COLUMN_TYPES.DATE || columnType === COLUMN_TYPES.TIMESTAMP) {
     let date;
@@ -88,6 +87,13 @@ const formatValue = (value, columnType) => {
   }
 
   return str;
+};
+
+const formatValue = (value, columnType) => {
+  if (value === null || value === undefined) {
+    return <span className="text-secondary-400 italic">null</span>;
+  }
+  return formatCellText(value, columnType);
 };
 
 const getAlignmentClass = columnType => {

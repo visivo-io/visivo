@@ -2,7 +2,16 @@
  * Shared utilities for processing DuckDB Arrow query results into JS objects.
  */
 
-import { DataType } from 'apache-arrow';
+import { DataType, Vector, util } from 'apache-arrow';
+
+function decimalToString(value, scale) {
+  const integer = util.bigNumToString(value);
+  if (scale === 0) return integer;
+  if (scale < 0) return integer === '0' ? '0' : integer + '0'.repeat(-scale);
+  const sign = integer.startsWith('-') ? '-' : '';
+  const digits = (sign ? integer.slice(1) : integer).padStart(scale + 1, '0');
+  return `${sign}${digits.slice(0, -scale)}.${digits.slice(-scale)}`;
+}
 
 /**
  * Extract timestamp/date column names from an Arrow schema.
@@ -21,33 +30,52 @@ export const getTimestampColumns = schema => {
   return timestampColumns;
 };
 
+/** Safe-range bigints become numbers (others exact strings); LIST cells become arrays. */
+export const toPlainValue = value => {
+  if (typeof value === 'bigint') {
+    const isSafe = value >= Number.MIN_SAFE_INTEGER && value <= Number.MAX_SAFE_INTEGER;
+    return isSafe ? Number(value) : value.toString();
+  }
+  if (value instanceof Vector) {
+    return Array.from(value, toPlainValue);
+  }
+  return value;
+};
+
+/**
+ * Convert an Arrow date/timestamp value to an ISO string.
+ * apache-arrow's getters already normalise every date/timestamp unit to epoch milliseconds.
+ */
+export const arrowDateToIso = value =>
+  new Date(typeof value === 'bigint' ? Number(value) : value).toISOString();
+
 /**
  * Process an Arrow query result into an array of plain JS objects.
- * Handles bigint conversion (timestamps → ISO strings, others → string).
+ * Timestamps become ISO strings; decimals become exact numeric strings; every other
+ * cell goes through toPlainValue.
  *
  * @param {Object} arrowResult - Arrow Table result from runDuckDBQuery
  * @returns {Array<Object>} Array of row objects with properly typed values
  */
 export const processArrowResult = arrowResult => {
   const timestampColumns = getTimestampColumns(arrowResult.schema);
+  const decimalScales = new Map(
+    (arrowResult.schema?.fields || [])
+      .filter(field => DataType.isDecimal(field.type))
+      .map(field => [field.name, field.type.scale])
+  );
 
   return arrowResult.toArray().map(row => {
     const rowData = row.toJSON();
     return Object.fromEntries(
       Object.entries(rowData).map(([key, value]) => {
+        if (decimalScales.has(key) && value != null) {
+          return [key, decimalToString(value, decimalScales.get(key))];
+        }
         if (timestampColumns.has(key) && value != null) {
-          const numVal = typeof value === 'bigint' ? Number(value) : value;
-          // apache-arrow's JS getters already normalise every timestamp/date
-          // unit (s/ms/us/ns, DateDay/DateMillisecond) to epoch MILLISECONDS
-          // before we ever see the value. The parquet on disk may store
-          // microseconds, but that never reaches this layer — dividing here
-          // again is what rendered every time axis as January 1970 (B7).
-          return [key, new Date(numVal).toISOString()];
+          return [key, arrowDateToIso(value)];
         }
-        if (typeof value === 'bigint') {
-          return [key, value.toString()];
-        }
-        return [key, value];
+        return [key, toPlainValue(value)];
       })
     );
   });

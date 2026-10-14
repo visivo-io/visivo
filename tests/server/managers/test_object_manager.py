@@ -1,5 +1,9 @@
 import pytest
+from visivo.models.chart import Chart
+from visivo.models.dashboard import Dashboard
+from visivo.models.models.sql_model import SqlModel
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
+from tests.factories.model_factories import DashboardFactory, MetricFactory, SqlModelFactory
 
 
 class ConcreteObjectManager(ObjectManager[dict]):
@@ -419,3 +423,156 @@ class TestSerializeObjectShape:
         assert "file_path" not in result["config"]
         assert "path" not in result["config"]
         assert result["config"]["description"] == "kept"
+
+
+class TestObjectsEqualIgnoresLocationFields:
+    """`objects_equal` compares content, not the parser-stamped location fields."""
+
+    def test_path_only_difference_is_equal(self):
+        """A published model and its round-tripped twin differ only in `path`."""
+        published = SqlModelFactory(name="orders", path="project.models[3]")
+        round_tripped = SqlModelFactory(name="orders")
+
+        assert published.path == "project.models[3]"
+        assert round_tripped.path is None
+        assert ConcreteObjectManager().objects_equal(round_tripped, published)
+
+    def test_file_path_only_difference_is_equal(self):
+        """Objects defined in an include file carry `file_path`; configs don't."""
+        published = SqlModelFactory(name="orders", file_path="/repo/models.visivo.yml")
+        round_tripped = SqlModelFactory(name="orders")
+
+        assert ConcreteObjectManager().objects_equal(round_tripped, published)
+
+    def test_real_content_difference_is_still_unequal(self):
+        """Excluding location fields must not blind the comparison to content."""
+        published = SqlModelFactory(name="orders", sql="select 1", path="project.models[3]")
+        edited = SqlModelFactory(name="orders", sql="select 2")
+
+        assert not ConcreteObjectManager().objects_equal(edited, published)
+
+    def test_get_status_is_published_after_a_no_op_round_trip(self):
+        """The end-to-end symptom: re-saving the config the API just returned."""
+        manager = ConcreteObjectManager()
+        published = SqlModelFactory(name="orders", path="project.models[3]")
+        manager._published_objects["orders"] = published
+
+        config = manager._serialize_object("orders", published, ObjectStatus.PUBLISHED)["config"]
+        manager.save("orders", SqlModel(**config))
+
+        assert manager.get_status("orders") == ObjectStatus.PUBLISHED
+        assert manager.has_unpublished_changes() is False
+
+    def test_get_status_is_modified_when_the_config_actually_changed(self):
+        """The complement: a real edit still reports MODIFIED."""
+        manager = ConcreteObjectManager()
+        published = SqlModelFactory(name="orders", sql="select 1", path="project.models[3]")
+        manager._published_objects["orders"] = published
+
+        config = manager._serialize_object("orders", published, ObjectStatus.PUBLISHED)["config"]
+        config["sql"] = "select 2"
+        manager.save("orders", SqlModel(**config))
+
+        assert manager.get_status("orders") == ObjectStatus.MODIFIED
+        assert manager.has_unpublished_changes() is True
+
+
+class TestLocationStripReachesEveryDepth:
+    """``model_dump(exclude=...)`` is top-level only; nested rows/items carry ``path`` too."""
+
+    @staticmethod
+    def _dashboard_with_nested_bookkeeping():
+        dashboard = DashboardFactory(name="sales")
+        dashboard.path = "project.dashboards[0]"
+        dashboard.file_path = "/repo/dashboards.visivo.yml"
+        dashboard.rows[0].path = "project.dashboards[0].rows[0]"
+        dashboard.rows[0].items[0].path = "project.dashboards[0].rows[0].items[0]"
+        dashboard.rows[0].items[0].chart.path = "project.dashboards[0].rows[0].items[0].chart"
+        return dashboard
+
+    def test_serialize_object_strips_nested_bookkeeping(self):
+        dashboard = self._dashboard_with_nested_bookkeeping()
+
+        config = ConcreteObjectManager()._serialize_object(
+            "sales", dashboard, ObjectStatus.PUBLISHED
+        )["config"]
+
+        assert "path" not in config and "file_path" not in config
+        assert "path" not in config["rows"][0]
+        assert "path" not in config["rows"][0]["items"][0]
+        assert "path" not in config["rows"][0]["items"][0]["chart"]
+
+    def test_a_clean_composite_config_is_equal_to_its_published_twin(self):
+        """A config with no bookkeeping at any depth equals its published twin."""
+        manager = ConcreteObjectManager()
+        published = self._dashboard_with_nested_bookkeeping()
+        manager._published_objects["sales"] = published
+
+        clean = manager._serialize_object("sales", published, ObjectStatus.PUBLISHED)["config"]
+        manager.save("sales", Dashboard(**clean))
+
+        assert manager.get_status("sales") == ObjectStatus.PUBLISHED
+
+    def test_a_nested_content_edit_is_still_modified(self):
+        """The complement: stripping deeply must not blind the comparison."""
+        manager = ConcreteObjectManager()
+        published = self._dashboard_with_nested_bookkeeping()
+        manager._published_objects["sales"] = published
+
+        clean = manager._serialize_object("sales", published, ObjectStatus.PUBLISHED)["config"]
+        clean["rows"][0]["height"] = "large"
+        manager.save("sales", Dashboard(**clean))
+
+        assert manager.get_status("sales") == ObjectStatus.MODIFIED
+
+    def test_a_plotly_shape_path_is_left_alone(self):
+        """``layout.shapes[].path`` is a Plotly prop, not bookkeeping."""
+        chart = Chart(
+            name="shaped",
+            layout={"shapes": [{"type": "path", "path": "M 0 0 L 10 10 Z"}]},
+        )
+        chart.path = "project.charts[0]"
+        chart.file_path = "/repo/charts.visivo.yml"
+
+        config = ConcreteObjectManager()._serialize_object("shaped", chart, ObjectStatus.PUBLISHED)[
+            "config"
+        ]
+
+        assert "path" not in config and "file_path" not in config
+        assert config["layout"]["shapes"][0]["path"] == "M 0 0 L 10 10 Z"
+
+
+class TestObjectsEqualComparesModelScope:
+    """``_parent_name`` picks a metric/dimension's YAML home, so re-parenting is a change."""
+
+    def test_re_parenting_alone_is_not_equal(self):
+        published = MetricFactory(name="revenue")
+        published.set_parent_name("orders")
+        re_parented = MetricFactory(name="revenue")
+        re_parented.set_parent_name("orders_v2")
+
+        assert published.model_dump() == re_parented.model_dump(), "premise: dumps are identical"
+        assert not ConcreteObjectManager().objects_equal(re_parented, published)
+
+    def test_un_scoping_a_field_is_not_equal(self):
+        published = MetricFactory(name="revenue")
+        published.set_parent_name("orders")
+        unscoped = MetricFactory(name="revenue")
+
+        assert not ConcreteObjectManager().objects_equal(unscoped, published)
+
+    def test_the_same_scope_is_still_equal(self):
+        """The complement: an unchanged scope must not invent a change."""
+        published = MetricFactory(name="revenue", path="project.models[0].metrics[0]")
+        published.set_parent_name("orders")
+        round_tripped = MetricFactory(name="revenue")
+        round_tripped.set_parent_name("orders")
+
+        assert ConcreteObjectManager().objects_equal(round_tripped, published)
+
+    def test_objects_without_the_attribute_are_unaffected(self):
+        """Objects without ``_parent_name`` compare as before."""
+        published = SqlModelFactory(name="orders", path="project.models[0]")
+        round_tripped = SqlModelFactory(name="orders")
+
+        assert ConcreteObjectManager().objects_equal(round_tripped, published)

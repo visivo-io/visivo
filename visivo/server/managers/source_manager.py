@@ -1,13 +1,25 @@
+import os
 from typing import Any, Dict, List, Optional
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import SecretStr, TypeAdapter, ValidationError
 
 from visivo.logger.logger import Logger
+from visivo.models.base.env_var_string import EnvVarString
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.sources.fields import SourceField
 from visivo.models.sources.source import Source
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
+from visivo.server.source_credentials import (
+    SECRET_MASK,
+    ensure_env_gitignored,
+    env_var_name,
+    merge_env_file,
+    read_env_file,
+)
 from visivo.server.source_metadata import _test_source_connection
+
+# EnvVarString built directly skips validation; go through pydantic so a bad ref fails here.
+_ENV_VAR_STRING_ADAPTER = TypeAdapter(EnvVarString)
 
 
 class SourceManager(ObjectManager[Source]):
@@ -18,11 +30,15 @@ class SourceManager(ObjectManager[Source]):
     - Immediate validation using Pydantic TypeAdapter(SourceField)
     - Connection testing on cached sources
     - Database/schema/table introspection on cached sources
+    - Credential protection on save: secret fields never reach the project YAML
+      as plaintext or as Pydantic's "**********" mask
     """
 
-    def __init__(self):
+    def __init__(self, project_dir: Optional[str] = None):
         super().__init__()
         self._source_adapter = TypeAdapter(SourceField)
+        # Where externalized credentials are written (<project_dir>/.env); cwd when None.
+        self.project_dir = project_dir
 
     def validate_object(self, obj_data: dict) -> Source:
         """
@@ -57,6 +73,11 @@ class SourceManager(ObjectManager[Source]):
             if source.name:
                 self._published_objects[source.name] = source
 
+    def save(self, name: str, obj: Source) -> None:
+        """Every draft write (API, rename, agent) lands here, so none can stage a
+        plaintext or masked secret."""
+        super().save(name, self._protect_secrets(obj))
+
     def save_from_config(self, config: dict) -> Source:
         """
         Validate and save source from configuration dict.
@@ -65,14 +86,138 @@ class SourceManager(ObjectManager[Source]):
             config: Dictionary containing source configuration
 
         Returns:
-            The validated Source object
+            The cached Source object, with secrets protected
 
         Raises:
             ValidationError: If the source configuration is invalid
         """
         source = self.validate_object(config)
         self.save(source.name, source)
-        return source
+        return self.cached_objects[source.name]
+
+    @staticmethod
+    def _secret_field_names(source: Source) -> List[str]:
+        """Fields currently holding a plaintext SecretStr (``${env.*}`` refs are EnvVarString)."""
+        return [
+            field_name
+            for field_name in type(source).model_fields
+            if isinstance(getattr(source, field_name, None), SecretStr)
+        ]
+
+    def _protect_secrets(self, source: Source) -> Source:
+        """Return ``source`` with no secret a commit could write into YAML.
+
+        A commit dumps with ``model_dump(mode="json")``, which renders a plaintext
+        SecretStr as the ``**********`` mask. Per secret field:
+
+        1. The mask (the API's echo, round-tripped) keeps whatever is stored under
+           this name; with nothing stored it is dropped.
+        2. An empty value is dropped.
+        3. Remaining plaintext moves to ``.env`` behind a ``${env.<SOURCE>_<FIELD>}``
+           ref, unless the source equals its published form (a no-op save leaves
+           the YAML untouched).
+        """
+        # get() answers None for a source marked for deletion; its credential is still published.
+        existing = self.get(source.name) or self._published_objects.get(source.name)
+        updates: Dict[str, Any] = {}
+
+        for field_name in self._secret_field_names(source):
+            raw = getattr(source, field_name).get_secret_value()
+            if not raw:
+                updates[field_name] = None
+                continue
+            if raw == SECRET_MASK:
+                prior = getattr(existing, field_name, None) if existing is not None else None
+                if isinstance(prior, SecretStr) and prior.get_secret_value() == SECRET_MASK:
+                    # A project already corrupted by the mask bug: externalizing it would hide that.
+                    Logger.instance().warn(
+                        f"Source '{source.name}': stored secret '{field_name}' is the "
+                        f"'{SECRET_MASK}' placeholder, not a credential — dropping it. "
+                        "Re-enter the value to restore this source."
+                    )
+                    prior = None
+                elif prior is None:
+                    Logger.instance().warn(
+                        f"Source '{source.name}': dropping masked secret field "
+                        f"'{field_name}' — nothing is stored under that name to "
+                        "preserve. Re-enter the value to restore this source."
+                    )
+                updates[field_name] = prior
+
+        if updates:
+            source = source.model_copy(update=updates)
+
+        remaining = self._secret_field_names(source)
+        if not remaining:
+            return source
+
+        published = self._published_objects.get(source.name)
+        if published is not None and self.objects_equal(source, published):
+            return source
+
+        stored_env = read_env_file(self.project_dir)
+        owned = self._env_var_names_referenced_by(source.name, existing, published)
+
+        env_values: Dict[str, str] = {}
+        ref_updates: Dict[str, Any] = {}
+        for field_name in remaining:
+            secret = getattr(source, field_name).get_secret_value()
+            var_name = self._allocate_env_var_name(
+                source.name, field_name, secret, stored_env, owned
+            )
+            stored_env[var_name] = secret
+            env_values[var_name] = secret
+            ref_updates[field_name] = _ENV_VAR_STRING_ADAPTER.validate_python(
+                f"${{env.{var_name}}}"
+            )
+
+        ensure_env_gitignored(self.project_dir)
+        merge_env_file(self.project_dir, env_values)
+        # So the new refs resolve in this running server.
+        os.environ.update(env_values)
+        return source.model_copy(update=ref_updates)
+
+    @staticmethod
+    def _env_var_names_referenced_by(name: str, *sources) -> set:
+        """The ``${env.*}`` names this source already points at — keys it may overwrite."""
+        owned = set()
+        for candidate in sources:
+            if candidate is None or getattr(candidate, "name", None) != name:
+                continue
+            for field_name in type(candidate).model_fields:
+                value = getattr(candidate, field_name, None)
+                if isinstance(value, EnvVarString):
+                    owned.update(value.get_env_var_names())
+        return owned
+
+    def _allocate_env_var_name(
+        self,
+        source_name: str,
+        field_name: str,
+        secret: str,
+        stored_env: Dict[str, str],
+        owned: set,
+    ) -> str:
+        """An .env key for this secret that cannot clobber another source's.
+
+        ``analytics-db`` and ``analytics_db`` both map to ``ANALYTICS_DB_PASSWORD``;
+        a key holding a different value this source does not own gets a ``_N`` suffix.
+        """
+        base = env_var_name(source_name, field_name)
+        for attempt in range(1, 101):
+            candidate = base if attempt == 1 else f"{base}_{attempt}"
+            current = stored_env.get(candidate)
+            if candidate in owned or current is None or current == secret:
+                if candidate != base:
+                    Logger.instance().warn(
+                        f"Source '{source_name}': environment variable '{base}' is already "
+                        f"used by another credential — storing '{field_name}' as "
+                        f"'{candidate}' instead."
+                    )
+                return candidate
+        raise ValueError(  # pragma: no cover - defensive
+            f"Could not find a free environment variable name for '{base}'"
+        )
 
     def test_connection(self, name: str) -> Dict[str, Any]:
         """

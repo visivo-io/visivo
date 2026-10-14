@@ -48,3 +48,11 @@ export const apiBase = (() => {
 
 /** Alias — several specs named this constant `API` rather than `apiBase`. */
 export const API = apiBase;
+
+/**
+ * A URL matcher for one API path, for `page.route` / `waitForResponse`. The
+ * viewer scopes its calls with `?project_id=…`, so a bare glob like
+ * `**\/api/explorations/` never matches the real request.
+ */
+export const apiPathPattern = path =>
+  new RegExp(`${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\?.*)?$`);

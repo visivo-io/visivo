@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import Mock, patch
 from flask import Flask
 
+from visivo.server.flask_app import FlaskApp
 from visivo.server.views.commit_views import register_commit_views
 from visivo.server.managers.object_manager import ObjectStatus
 
@@ -61,6 +62,12 @@ class TestCommitViews:
         flask_app.input_manager.cached_objects = {}
         flask_app._cached_defaults = None
         flask_app._cached_theme = None
+        # The REAL comparison, not a Mock that is always truthy.
+        flask_app.project.defaults = None
+        flask_app.project.theme = None
+        flask_app.changed_project_settings.side_effect = lambda: FlaskApp.changed_project_settings(
+            flask_app
+        )
 
         register_commit_views(app, flask_app, "/tmp/output")
 
@@ -517,9 +524,7 @@ class TestPendingProjectValidation:
         assert _validate_pending_project(flask_app) is None
 
     def test_a_MODEL_SCOPED_draft_is_re_nested_and_allowed(self):
-        """`inject_cached_objects` appends every cached object to the matching
-        TOP-LEVEL list, so a model-scoped draft arrives looking standalone. Left
-        that way it trips the project-level rule and refuses a good commit."""
+        """A model-scoped draft must not be judged by the project-level rule."""
         from tests.factories.model_factories import MetricFactory
         from visivo.server.views.commit_views import _validate_pending_project
 
@@ -529,9 +534,9 @@ class TestPendingProjectValidation:
 
         assert _validate_pending_project(flask_app) is None
 
-    def test_re_nesting_moves_the_field_under_its_model(self):
+    def test_the_gate_validates_the_nested_shape_that_would_land_on_disk(self):
         from tests.factories.model_factories import DimensionFactory, MetricFactory
-        from visivo.server.views.commit_views import _renest_model_scoped_fields
+        from visivo.server.jobs.project_injection import inject_cached_objects
 
         metric = MetricFactory(name="nested_metric", expression="count(*)")
         metric.set_parent_name("orders")
@@ -539,32 +544,19 @@ class TestPendingProjectValidation:
         dimension.set_parent_name("orders")
         standalone = MetricFactory(name="standalone", expression="sum(${ref(orders).amount})")
 
-        project = self._project(metrics=[standalone], dimensions=[])
-        project.metrics = [standalone, metric]
-        project.dimensions = [dimension]
-
-        _renest_model_scoped_fields(project)
+        project = self._project()
+        flask_app = self._flask_app(
+            project,
+            metric={"standalone": standalone, "nested_metric": metric},
+            dimension={"nested_dim": dimension},
+        )
+        inject_cached_objects(flask_app, project)
 
         (model,) = project.models
         assert [m.name for m in project.metrics] == ["standalone"]
         assert project.dimensions == []
         assert [m.name for m in model.metrics] == ["nested_metric"]
         assert [d.name for d in model.dimensions] == ["nested_dim"]
-
-    def test_a_field_scoped_to_a_model_that_does_not_exist_stays_top_level(self):
-        """Dropping it would hide the mistake; leaving it lets the normal
-        validators name it."""
-        from tests.factories.model_factories import MetricFactory
-        from visivo.server.views.commit_views import _renest_model_scoped_fields
-
-        orphan = MetricFactory(name="orphan", expression="count(*)")
-        orphan.set_parent_name("deleted_model")
-        project = self._project()
-        project.metrics = [orphan]
-
-        _renest_model_scoped_fields(project)
-
-        assert [m.name for m in project.metrics] == ["orphan"]
 
     def test_the_gate_fails_OPEN_on_an_unexpected_error(self):
         """It exists to catch a known-invalid project — it must never become a

@@ -41,7 +41,9 @@
 
 import { test, expect } from '@playwright/test';
 import { typeSql } from '../helpers/explorer.mjs';
-import { BASE_URL, API } from '../helpers/sandbox.mjs';
+import { BASE_URL, API, apiPathPattern } from '../helpers/sandbox.mjs';
+
+const EXPLORATIONS = apiPathPattern('/api/explorations/');
 
 async function listExplorationIds(page) {
   const res = await page.request.get(`${API}/api/explorations/`).catch(() => null);
@@ -128,8 +130,7 @@ test.describe('Exploration Duplicate — happy path + reload race (e2e-gap-revie
   });
 
   test.afterEach(async ({ page }) => {
-    await page.unroute('**/api/explorations/').catch(() => {});
-    await page.unroute('**/api/explorations/**').catch(() => {});
+    await page.unroute(EXPLORATIONS).catch(() => {});
     const idsAfterTest = await listExplorationIds(page);
     const createdIds = idsAfterTest.filter(id => !idsBeforeTest.includes(id));
     for (const id of createdIds) {
@@ -184,7 +185,8 @@ test.describe('Exploration Duplicate — happy path + reload race (e2e-gap-revie
     // Hold LEG 1 (the pre-duplicate flush, POST /api/explorations/<id>/)
     // before it ever reaches the real network — never call route.continue(),
     // so this specific write can never land server-side.
-    await page.route(`**/api/explorations/${id}/`, async route => {
+    const explorationDetail = apiPathPattern(`/api/explorations/${id}/`);
+    await page.route(explorationDetail, async route => {
       if (route.request().method() !== 'POST') {
         await route.continue();
         return;
@@ -198,7 +200,7 @@ test.describe('Exploration Duplicate — happy path + reload race (e2e-gap-revie
     await intercepted;
     await page.reload();
     await page.waitForLoadState('networkidle');
-    await page.unroute(`**/api/explorations/${id}/`).catch(() => {});
+    await page.unroute(explorationDetail).catch(() => {});
 
     // The held flush request never reached the real backend, so this
     // specific edit is lost — the CURRENT, documented behavior (this test is
@@ -237,7 +239,7 @@ test.describe('Exploration Duplicate — happy path + reload race (e2e-gap-revie
     // LEG 1's own update endpoint (/api/explorations/<id>/) is a DIFFERENT
     // URL and is left completely unintercepted, so it completes normally
     // before this route ever fires.
-    await page.route('**/api/explorations/', async route => {
+    await page.route(EXPLORATIONS, async route => {
       if (route.request().method() !== 'POST') {
         await route.continue();
         return;
@@ -251,7 +253,7 @@ test.describe('Exploration Duplicate — happy path + reload race (e2e-gap-revie
     await intercepted;
     await page.reload();
     await page.waitForLoadState('networkidle');
-    await page.unroute('**/api/explorations/').catch(() => {});
+    await page.unroute(EXPLORATIONS).catch(() => {});
 
     // LEG 1 (the flush) was never intercepted, so it already completed by
     // the time LEG 2's create request was even issued — the source's edit

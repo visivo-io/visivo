@@ -1,0 +1,57 @@
+type: box
+family: distribution
+status: preferred
+one_liner: Compare the distribution of a numeric column across groups with medians, quartiles and outliers.
+use_when:
+  - One numeric column by a `few`/`some` categorical (trip minutes by borough, fare by payment type).
+  - Too many groups for overlaid histograms, which turn to mud; a box per group stays readable.
+  - Outliers matter and should be visible as points rather than clipped away.
+other_uses:
+  - use: A strip (jitter) plot that shows every point of small groups without the box.
+    how: "`boxpoints: all`, `jitter: 0.4`, `pointpos: 0`, `fillcolor: rgba(0,0,0,0)` and `line.width: 0`."
+  - use: Mean and standard deviation drawn over the quartiles.
+    how: "`boxmean: sd`."
+avoid_when:
+  - A single group; a histogram shows the shape, and a lone box hides bimodality.
+  - Too many groups to label; use a top-N or an input.
+  - The audience needs exact figures; show median and p99 as a table or KPIs.
+  - "Very small groups, where quartiles of a handful of points mislead; show the points (`boxpoints: all`) or a table."
+data_shape:
+  metrics: {min: 0, max: 0}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [numeric_continuous, numeric_discrete, categorical, boolean, time]
+  cardinality: {min: 1, max: 20}
+  rows_per_group: {min: 20}
+  cells: {max: 32}
+required_props: [y]
+example: |
+  insights:
+    - name: trip-minutes-by-borough
+      props:
+        type: box
+        x: ?{ ${ref(trips).pickup_borough} }
+        y: ?{ least(${ref(trips).trip_minutes}, 120) }
+        boxpoints: outliers
+      interactions:
+        - filter: ?{ ${ref(trips).trip_minutes} > 0 }
+variations:
+  - when: "a second `few` dimension"
+    then: "`split` with the chart `layout.boxmode: group`"
+  - when: "time on x at a coarse grain such as month"
+    then: "one box per period shows how the distribution drifts"
+  - when: "the table is too large to ship raw rows"
+    then: "aggregate quartiles in SQL (`quantile_cont`) and pass `q1`, `median`, `q3`, `lowerfence`, `upperfence` instead of raw rows"
+limits:
+  series_ideal: 5
+  series_max: 8
+  repair: [top_n_other, input_filter]
+transforms: [clip_p99, precomputed_quartiles]
+gotchas:
+  - "A box takes raw rows, not an aggregate: `y: ?{ trip_minutes }` with no GROUP BY; on large tables precompute quartiles in SQL."
+  - "`x` is the group, `y` the value; swapping them with `orientation: h` also swaps the props."
+  - "`boxpoints: all` on a large group draws every row; use `outliers` (the default) or `false`."
+  - "Groups appear in storage order; add `- sort: ?{ <group expr> }` or sort by the median in SQL."
+  - "A heavy tail stretches the axis for every group; clip in SQL (`least(x, p99)`) and say so in the title."
+pairings: [histogram_beside, kpi_strip_above]
+layout: {height: medium, width_share: 0.5, row_role: relationship}
+mobile: Fewer groups than on desktop, horizontal orientation when the labels are long.

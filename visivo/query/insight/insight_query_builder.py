@@ -434,12 +434,7 @@ class InsightQueryBuilder:
         self._default_sort_applied = False
         if not has_sort and renders_as_line(self.insight.props):
             resolved_x = next((s for k, s in resolved_query_statements if k == "props.x"), None)
-            bare_x = (
-                re.sub(r"\s+AS\s+\"[^\"]+\"\s*$", "", resolved_x, flags=re.IGNORECASE)
-                if resolved_x
-                else None
-            )
-            x_type = self._infer_expression_type(bare_x) if bare_x else None
+            x_type = self._infer_expression_type(resolved_x) if resolved_x else None
             if is_deterministically_orderable(x_type):
                 for expression in default_sort_expressions(self.unresolved_query_statements):
                     resolved_query_statements.append(
@@ -542,16 +537,9 @@ class InsightQueryBuilder:
         # group by its columns (see the emission gate below).
         select_has_aggregate = False
         for select_clause in select_clauses:
-            # Strip only the TRAILING alias (`... AS "col"`), not the first
-            # ` AS `. Splitting on the first ` AS ` truncated an aggregate that
-            # contains an inner ` AS ` — e.g. SUM(CAST(x AS DOUBLE)) — into
-            # unbalanced SQL that fails to parse, so the aggregate went
-            # undetected and a NEEDED GROUP BY was dropped in the dynamic
-            # (Explorer preview) path (adversarial-review regression).
-            expr_part = re.sub(r'\s+AS\s+"[^"]+"\s*$', "", select_clause, flags=re.IGNORECASE)
             # Replace input placeholders with sample values for SQLGlot parsing
             safe_expr, _ = replace_input_placeholders_for_parsing(
-                expr_part, dag=self.dag, insight=self.insight, output_dir=self.output_dir
+                select_clause, dag=self.dag, insight=self.insight, output_dir=self.output_dir
             )
             parsed = parse_expression(safe_expr, "duckdb")
             if parsed:
@@ -1226,15 +1214,9 @@ class InsightQueryBuilder:
         if not trace_type:
             return
 
-        # Map prop path -> resolved SQL expression (no alias suffix).
-        # `resolved_query_statements` is `[(key, sql_with_alias)]`. We
-        # strip a trailing `AS "<hash>"` to get a usable bare expression.
-        resolved_by_path: Dict[str, str] = {}
-        for key, sql in self.resolved_query_statements or []:
-            if not key or "props." not in key:
-                continue
-            bare = re.sub(r"\s+AS\s+\"[^\"]+\"\s*$", "", sql, flags=re.IGNORECASE)
-            resolved_by_path[key] = bare
+        resolved_by_path: Dict[str, str] = {
+            key: sql for key, sql in self.resolved_query_statements or [] if key and "props." in key
+        }
 
         for prop_path, slice_expr in props_slices.items():
             if not is_scalar_slice(slice_expr):
@@ -1256,7 +1238,8 @@ class InsightQueryBuilder:
                 raise ValueError(message)
 
     def _infer_expression_type(self, expression_sql: str) -> Optional[exp.DataType]:
-        """Best-effort sqlglot type inference for a resolved expression.
+        """Best-effort sqlglot type inference for a resolved, optionally aliased,
+        expression.
 
         Builds a SELECT with the expression and runs it through
         ``annotate_types`` against the union of all referenced models'
@@ -1295,7 +1278,7 @@ class InsightQueryBuilder:
             # Wrap the expression in a tiny SELECT so annotate_types has
             # somewhere to attach its inferences.
             from_table = next(iter(mapping.keys()))
-            wrapped = f'SELECT {expression_sql} AS _vtype FROM "{from_table}"'
+            wrapped = f'SELECT {expression_sql} FROM "{from_table}"'
             parsed = sqlglot.parse_one(wrapped, dialect=sqlglot_dialect)
             annotated = annotate_types(parsed, schema=mapping_schema)
             select = annotated.find(exp.Select)

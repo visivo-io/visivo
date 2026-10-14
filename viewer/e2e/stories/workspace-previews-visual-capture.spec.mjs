@@ -4,8 +4,7 @@
  * NOT an assertion spec — it navigates to each preview surface at desktop and
  * mobile viewports and saves a full-page PNG to /tmp/hard-n/ so the captured
  * frames can be reviewed for contrast / overflow / responsiveness. Each preview
- * type is captured in BOTH its Preview and (for previewable types) Lineage lens,
- * plus the preview-less Lineage-lock case.
+ * type is captured in BOTH its Preview and Lineage lens.
  *
  * Run: VISIVO_BASE_URL=http://localhost:3021 npx playwright test \
  *        e2e/stories/workspace-previews-visual-capture.spec.mjs --project=parallel
@@ -34,17 +33,14 @@ const PREVIEWABLE = [
   { type: 'insight', name: 'simple-scatter-insight' },
   { type: 'input', name: 'show_markers' },
   { type: 'model', name: 'sales_data' },
-];
-const PREVIEW_LESS = [
   { type: 'source', name: 'local-sqlite' },
   { type: 'metric', name: 'total_value' },
 ];
 
+// Deep-link rather than click the Library: at phone width the Library is a
+// collapsed icon strip, so its rows are not on screen to click.
 async function openObject(page, type, name) {
-  await page.getByTestId(`library-subsection-${type}-header`).click();
-  const row = page.getByTestId(`library-row-${type}-${name}`);
-  await expect(row).toBeVisible({ timeout: 10000 });
-  await row.click();
+  await page.goto(`${BASE_URL}/workspace?edit=${encodeURIComponent(`${type}:${name}`)}`);
 }
 
 for (const vp of VIEWPORTS) {
@@ -105,19 +101,6 @@ for (const vp of VIEWPORTS) {
         await page.waitForTimeout(1500);
         await shotMiddle(
           `${OUT}/${vp.tag}-${String(idx).padStart(2, '0')}-${type}-lineage.png`
-        );
-        idx += 1;
-      }
-
-      for (const { type, name } of PREVIEW_LESS) {
-        await openObject(page, type, name).catch(() => {});
-        await page
-          .getByTestId(`workspace-middle-${type}-lineage`)
-          .waitFor({ timeout: 12000 })
-          .catch(() => {});
-        await page.waitForTimeout(1500);
-        await shotMiddle(
-          `${OUT}/${vp.tag}-${String(idx).padStart(2, '0')}-${type}-lineagelock.png`
         );
         idx += 1;
       }

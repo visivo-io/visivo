@@ -1,0 +1,57 @@
+type: pie
+family: part_of_whole
+status: preferred
+one_liner: Share of one whole across a few slices; a bar is better whenever slices must be compared.
+use_when:
+  - "A genuine part-of-whole (`semantics.part_of_whole`): one additive metric over one categorical whose values are exhaustive."
+  - "A few slices, one of them dominant; the message is 'most of it is X'."
+  - "`intent: composition` and the reader wants the share, not the rank."
+other_uses:
+  - use: Progress ring, one share of a target (quota attained, budget spent).
+    how: "Two rows, achieved and remaining, as `labels`/`values`; `hole: 0.7`, `sort: false`, `direction: clockwise`, `textinfo: percent`, and the KPI name in `title` with `title.position: middle center`."
+  - use: Call out one slice, e.g. the segment the dashboard is about.
+    how: "`pull: ?{ case when <label> = '<value>' then 0.1 else 0 end }` pulls that slice out of the pie."
+avoid_when:
+  - Too many slices to tell apart; collapse to a top-N + Other, or use a bar sorted by share.
+  - Slices of similar size; a pie cannot show that 23% differs from 26%, a bar can.
+  - A non-additive metric; an average fare per payment type is not a share of anything.
+  - Comparing composition across groups; use one stacked bar per group instead of several pies.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [categorical, boolean, geo_region]
+  cardinality: {min: 2, max: 5}
+required_props: [labels, values]
+example: |
+  insights:
+    - name: rides-by-payment-type
+      props:
+        type: pie
+        labels: ?{ ${ref(trips).payment_type} }
+        values: ?{ count(*) }
+        hole: 0.4
+        textinfo: label+percent
+        sort: false
+      interactions:
+        - sort: ?{ count(*) DESC }
+variations:
+  - when: "more categories than a pie can show"
+    then: "`top_n_other` in SQL down to the slice limit; never draw past it"
+  - when: "the total should show alongside the shares"
+    then: "a donut (`hole: 0.4`) with the total in the hole via `layout.annotations`"
+  - when: "the same composition is wanted for several groups"
+    then: "one stacked bar per group instead of several pies"
+limits:
+  series_ideal: 4
+  series_max: 5
+  repair: [top_n_other, bar]
+transforms: [top_n_other, collapse_rare]
+gotchas:
+  - "`values` should be an aggregate over `labels` so the query returns one row per slice; Plotly sums rows that share a label, but only after every raw row has been shipped."
+  - "Plotly sorts slices by value and starts at 12 o'clock; set `sort: false` and a `sort` interaction to control the order."
+  - "The theme colours slices in row order, not by category; to give a category a fixed colour, pin it with `marker.colors: ?{ CASE <col> WHEN ... END }`."
+  - "A `split` draws one pie per value on top of each other in the same circle; a split pie is a stacked bar."
+  - "Nulls become a slice labelled 'null'; filter or coalesce them in SQL."
+pairings: [kpi_total_in_hole, bar_beside]
+layout: {height: medium, width_share: 0.33, row_role: breakdown}
+mobile: One-third width is fine until the stack; then it takes a full row, so keep the labels on the slices (`textinfo`) and drop the legend.

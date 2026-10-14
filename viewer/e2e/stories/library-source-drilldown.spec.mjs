@@ -181,7 +181,7 @@ test.describe('Library source drill-down (Explore 2.0 Phase 3a — D9)', () => {
   // Replaces the old "-open button navigates" test: that button is gone (the
   // row body does its job), so the equivalent explicit affordance to pin is
   // the context menu, which sources could not reach at all before.
-  test('a source row exposes the standard context menu, including Open in new tab', async ({
+  test('a source row exposes the standard context menu, including Show lineage', async ({
     page,
   }) => {
     const sourceRow = page.getByTestId(`library-row-source-${SOURCE}`);
@@ -191,8 +191,11 @@ test.describe('Library source drill-down (Explore 2.0 Phase 3a — D9)', () => {
     const menu = page.getByTestId(`library-row-source-${SOURCE}-context-menu`);
     await expect(menu).toBeVisible();
 
-    await menu.getByText('Open in new tab').click();
+    await menu.getByText('Show lineage').click();
     await expect(page.getByTestId(`workspace-tab-source:${SOURCE}`)).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.getByTestId('workspace-middle-source-lineage')).toBeVisible({
       timeout: 15000,
     });
   });

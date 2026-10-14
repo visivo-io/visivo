@@ -2,6 +2,7 @@ includes:
   - path: "simple.visivo.yml"
   - path: "multiple-dimensions.visivo.yml"
   - path: "line-width.visivo.yml"
+  - path: "counts.visivo.yml"
 
 dashboards:
   - name: parcats
@@ -22,4 +23,5 @@ dashboards:
           - chart: ${ref(parcats-chart-with-multiple-dimensions)}
       - height: medium
         items:
-          - chart: ${ref(parcats-chart-with-custom-line-widths)} 
+          - chart: ${ref(parcats-chart-with-custom-line-widths)}
+          - chart: ${ref(parcats-chart-with-counts)} 

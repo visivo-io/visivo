@@ -1,4 +1,5 @@
 import { inputRefRegex, matchName } from '../utils/inputNames';
+import { toPlainValue } from '../duckdb/resultProcessing';
 
 /**
  * Process input references in props, replacing ${input.accessor} patterns with actual values.
@@ -261,11 +262,7 @@ export function mapQueryResultsToProps(results, propsMapping) {
 
   // Initialize arrays for each column
   for (const columnName of Object.keys(firstRow)) {
-    dataArrays[columnName] = results.map(row => {
-      const value = row[columnName];
-      // Convert BigInt to string (DuckDB returns bigints)
-      return typeof value === 'bigint' ? value.toString() : value;
-    });
+    dataArrays[columnName] = results.map(row => toPlainValue(row[columnName]));
   }
 
   // Build props object using props_mapping
@@ -284,7 +281,15 @@ export function mapQueryResultsToProps(results, propsMapping) {
 
     // Parse the prop path and set the value
     const pathParts = parsePropPath(cleanPath);
-    setNestedValue(props, pathParts, dataArray);
+    // MapLibre requires numbers in GeoJSON coordinates/weights, not numeric strings.
+    const boundValues = ['lat', 'lon', 'z'].includes(cleanPath)
+      ? dataArray.map(value =>
+          typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))
+            ? Number(value)
+            : value
+        )
+      : dataArray;
+    setNestedValue(props, pathParts, boundValues);
   }
 
   return props;

@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 import Chart from '../../items/Chart';
+import useStore from '../../../stores/store';
+import { findLatestRunFailureFor } from '../../../stores/runFailures';
 import { usePreviewInsightData } from '../../../hooks/usePreviewData';
 import { usePreviewInputDependencies } from '../workspace/usePreviewInputDependencies';
 import PreviewInputControls from '../workspace/PreviewInputControls';
@@ -29,6 +31,10 @@ import CircularProgress from '@mui/material/CircularProgress';
 const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
   const { isLoading, error, errorDetails, progress, progressMessage, chartInsightKey, resetPreview } =
     usePreviewInsightData(insightConfig, { projectId });
+
+  const insightName = insightConfig?.name;
+  const runs = useStore(s => s.runs);
+  const runFailure = useMemo(() => findLatestRunFailureFor(runs, insightName), [runs, insightName]);
 
   // Union of input widgets this insight depends on (runtime inputDependencies +
   // pendingInputs, with a props/layout/interactions config fallback), defaults
@@ -103,16 +109,22 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
       return <AmbiguousRelationCard models={errorModels} onRelationSaved={handleRelationSaved} />;
     }
 
-    const errorMessage = typeof error === 'string' ? error : error?.message || String(error);
+    const fetchError = typeof error === 'string' ? error : error?.message || String(error);
+    // A failed run writes no insight file, so the fetch error is only a symptom.
+    const errorMessage = runFailure ? runFailure.error : fetchError;
+    const hint = runFailure?.diagnostic?.hint;
     return (
       <div
         className="flex flex-col items-center justify-center h-full p-8 text-center"
-        data-testid="preview-error"
+        data-testid={runFailure ? 'preview-run-failed' : 'preview-error'}
       >
-        <h3 className="text-lg font-medium text-red-600 mb-2">Preview Failed</h3>
+        <h3 className="text-lg font-medium text-red-600 mb-2">
+          {runFailure ? 'Last run failed' : 'Preview Failed'}
+        </h3>
         <p className="text-sm text-gray-700 max-w-sm font-mono bg-red-50 p-3 rounded">
           {errorMessage}
         </p>
+        {hint && <p className="mt-2 text-sm text-gray-500 max-w-sm">{hint}</p>}
       </div>
     );
   }

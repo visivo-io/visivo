@@ -69,7 +69,7 @@ async function pickSelectOption(page, testId, optionLabel) {
 test.describe('Trace props (VIS-1464)', () => {
   test.describe.configure({ timeout: 90000 });
 
-  test('P4: the image dashboard renders three static image traces from inlined pixel grids', async ({
+  test('P4: the image dashboard renders its static and query-built image traces', async ({
     page,
   }) => {
     test.skip(!(await projectHasDashboard(page, 'image')), 'docs-examples sandbox only');
@@ -79,7 +79,7 @@ test.describe('Trace props (VIS-1464)', () => {
       .poll(async () => (await readPlotlyData(page)).filter(d => d.length > 0).length, {
         timeout: 45000,
       })
-      .toBe(3);
+      .toBe(4);
 
     const plots = (await readPlotlyData(page)).filter(d => d.length > 0);
     for (const traces of plots) {
@@ -89,10 +89,10 @@ test.describe('Trace props (VIS-1464)', () => {
       expect(traces[0].zRows).toBeGreaterThanOrEqual(3);
       expect(traces[0].zPixelChannels).toBe(3);
     }
-    // Three real rasters were drawn: Plotly renders an image trace as an SVG
+    // Four real rasters were drawn: Plotly renders an image trace as an SVG
     // <image> (data: PNG) inside the plot's imagelayer, with a real extent.
     const rasters = page.locator('.js-plotly-plot .imagelayer image');
-    await expect(rasters).toHaveCount(3);
+    await expect(rasters).toHaveCount(4);
     for (const raster of await rasters.all()) {
       expect(await raster.getAttribute('href')).toMatch(/^data:image\/png/);
       expect(Number(await raster.getAttribute('width'))).toBeGreaterThan(100);

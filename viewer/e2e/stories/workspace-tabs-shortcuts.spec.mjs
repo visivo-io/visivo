@@ -177,7 +177,7 @@ test.describe('Tab shortcuts + reorder + overflow + dirty-close (VIS-812)', () =
     // 1 chart + 9 overflow models (no project tab — it left the tab model, Phase 0).
     await expect(strip.locator('[role="tab"]')).toHaveCount(10, { timeout: 10000 });
 
-    const scroller = strip.locator('> div').first();
+    const scroller = page.getByTestId('workspace-tab-scroll-track');
     const overflows = await scroller.evaluate(el => el.scrollWidth > el.clientWidth);
     expect(overflows).toBe(true);
 
@@ -187,11 +187,15 @@ test.describe('Tab shortcuts + reorder + overflow + dirty-close (VIS-812)', () =
       window.useStore.getState().switchWorkspaceTab('model:overflow-model-9')
     );
     await expect(page.getByTestId('workspace-tab-model:overflow-model-9')).toBeVisible();
-    const inView = await lastSelect.evaluate(el => {
-      const r = el.getBoundingClientRect();
-      return r.right <= window.innerWidth && r.left >= 0;
-    });
-    expect(inView).toBe(true);
+    // The track scrolls smoothly, so the tab arrives over a few frames.
+    await expect
+      .poll(() =>
+        lastSelect.evaluate(el => {
+          const r = el.getBoundingClientRect();
+          return r.right <= window.innerWidth && r.left >= 0;
+        })
+      )
+      .toBe(true);
   });
 
   test('closing a dirty tab raises the confirmation dialog', async ({ page }) => {

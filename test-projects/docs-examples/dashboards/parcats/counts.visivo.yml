@@ -1,0 +1,41 @@
+sources:
+  - name: parcats-counts-source
+    type: duckdb
+    database: target/seeds/parcats_counts.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            class,survived
+            First,Yes
+            First,Yes
+            First,No
+            Second,Yes
+            Second,No
+            Second,No
+            Third,Yes
+            Third,No
+            Third,No
+            Third,No
+models:
+  - name: parcats-counts-data
+    source: ${ref(parcats-counts-source)}
+    sql: select * from model where class is not null
+charts:
+  - name: parcats-chart-with-counts
+    layout:
+      title:
+        text: Parcats Chart with Counts<br><sub>Path Widths From count(*)</sub>
+    insights:
+      - ${ref(parcats-plot-with-counts)}
+insights:
+  - name: parcats-plot-with-counts
+    props:
+      type: parcats
+      dimensions:
+        - label: "Class"
+          values: ?{${ref(parcats-counts-data).class}}
+        - label: "Survived"
+          values: ?{${ref(parcats-counts-data).survived}}
+      counts: ?{count(*)}

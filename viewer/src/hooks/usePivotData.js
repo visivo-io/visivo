@@ -1,19 +1,44 @@
 import { useState, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useDuckDB } from '../contexts/DuckDBContext';
-import { runDuckDBQuery, loadInsightParquetFiles } from '../duckdb/queries';
+import useStore from '../stores/store';
+import { runDuckDBQuery, loadInsightParquetFiles, prepPostQuery } from '../duckdb/queries';
+import { arrowDateToIso, getTimestampColumns } from '../duckdb/resultProcessing';
 import { buildPivotQuery, buildColumnSelectQuery } from '../utils/pivotQueryBuilder';
-import { extractAggAndColumn, resolveValueExpression, resolveFieldRef } from '../utils/pivotRefResolver';
+import {
+  extractAggAndColumn,
+  resolveValueExpression,
+  resolveFieldRef,
+  parseColumnAlias,
+  buildReverseMapping,
+  dehashColumnKey,
+  formatColumnHeader,
+  plainHeader,
+} from '../utils/pivotRefResolver';
 import { parsePivotColumnHierarchy } from '../utils/pivotColumnParser';
 
 /**
- * Hook that executes a DuckDB PIVOT or column-select query against already-loaded data.
+ * Hook that executes a DuckDB PIVOT or column-select query over a source's
+ * input-resolved post-query result (insight) or raw parquet table (model).
  *
  * @param {Object} config - { columns, rows, values } from table config
- * @param {Object} sourceData - Insight data from store (with files, props_mapping)
+ * @param {Object} sourceData - Insight/model data from store (with files, query, props_mapping)
  * @returns {{ rows: Array, columns: Array, pivotMeta: Object|null, isLoading: boolean, error: string|null }}
  */
 export const usePivotData = (config, sourceData) => {
   const db = useDuckDB();
+  // Only the inputs this source's post-query references (useInsightsData
+  // precomputes `inputDependencies`), selected shallowly so an unrelated input
+  // write neither re-renders nor re-queries — the same selector Chart.jsx uses.
+  const inputs = useStore(
+    useShallow(state => {
+      const picked = {};
+      for (const inputName of sourceData?.inputDependencies || []) {
+        if (state.inputJobs[inputName]) picked[inputName] = state.inputJobs[inputName];
+      }
+      return picked;
+    })
+  );
   const [rows, setRows] = useState([]);
   const [columns, setColumns] = useState([]);
   const [pivotMeta, setPivotMeta] = useState(null);
@@ -37,6 +62,12 @@ export const usePivotData = (config, sourceData) => {
       setError(null);
 
       try {
+        // An insight source carries its post-query with `${input.accessor}`
+        // placeholders; substituting the current input values yields exactly the
+        // input-filtered result the chart renders, so the table reacts to inputs
+        // the way `data:` tables do (VIS-1462 T1). A model source has no
+        // post-query and reads its raw parquet table.
+        const sourceSql = sourceData.query ? prepPostQuery(sourceData, inputs) : null;
         const tableName = sourceData.files[0].name_hash;
         const propsMapping = sourceData.props_mapping || {};
 
@@ -44,20 +75,13 @@ export const usePivotData = (config, sourceData) => {
         await loadInsightParquetFiles(db, sourceData.files);
         if (cancelled) return;
 
-        const reverseMapping = {};
-        for (const [propPath, hashedName] of Object.entries(propsMapping)) {
-          const displayName = propPath
-            .replace(/^props\./, '')
-            .replace(/\./g, ' ')
-            .replace(/\b\w/g, char => char.toUpperCase());
-          reverseMapping[hashedName] = displayName;
-        }
+        const reverseMapping = buildReverseMapping(propsMapping);
 
         let sql;
         if (isPivotMode) {
-          sql = buildPivotQuery(config, propsMapping, tableName);
+          sql = buildPivotQuery(config, propsMapping, tableName, sourceSql);
         } else if (isColumnSelectMode) {
-          sql = buildColumnSelectQuery(config.columns, propsMapping, tableName);
+          sql = buildColumnSelectQuery(config.columns, propsMapping, tableName, sourceSql);
         } else {
           setIsLoading(false);
           return;
@@ -67,13 +91,14 @@ export const usePivotData = (config, sourceData) => {
 
         if (cancelled) return;
 
+        const dateColumns = getTimestampColumns(result.schema);
         const rawRows = result.toArray();
         const resultRows = rawRows.map(row => {
           const rowData = row.toJSON();
           return Object.fromEntries(
             Object.entries(rowData).map(([key, value]) => [
               key,
-              cleanPivotValue(value),
+              dateColumns.has(key) && value != null ? arrowDateToIso(value) : cleanPivotValue(value),
             ])
           );
         });
@@ -99,10 +124,9 @@ export const usePivotData = (config, sourceData) => {
             .map(({ aggFunc, displayName }) => `${aggFunc} of ${displayName}`)
             .join(', ');
           const pivotFieldName = resolvedPivotCols
-            .map(col => reverseMapping[col] || formatSimpleHeader(col))
+            .map(col => plainHeader(col, reverseMapping))
             .join(', ');
-          const rowFieldNames = [...resolvedRowCols]
-            .map(col => reverseMapping[col] || formatSimpleHeader(col));
+          const rowFieldNames = [...resolvedRowCols].map(col => plainHeader(col, reverseMapping));
 
           setPivotMeta({ aggregationLabel, pivotFieldName, rowFieldNames });
 
@@ -117,10 +141,16 @@ export const usePivotData = (config, sourceData) => {
             setNestedColumns(null);
           }
         } else {
+          // An aliased column keeps the user's alias verbatim; an unaliased one
+          // maps its (hashed) result key back to the plain prop name — a hash
+          // must never be shown as a header (VIS-1462 T6).
+          const aliases = new Set(
+            config.columns.map(col => parseColumnAlias(col).alias).filter(Boolean)
+          );
           pivotColumns = resultRows.length > 0
             ? Object.keys(resultRows[0]).map(key => ({
                 id: key,
-                header: key,
+                header: aliases.has(key) ? key : plainHeader(key, reverseMapping),
                 accessorKey: key.replace(/\./g, '___'),
               }))
             : [];
@@ -146,7 +176,7 @@ export const usePivotData = (config, sourceData) => {
     return () => {
       cancelled = true;
     };
-  }, [db, config, sourceData, isPivotMode, isColumnSelectMode]);
+  }, [db, config, sourceData, inputs, isPivotMode, isColumnSelectMode]);
 
   return { rows, columns, nestedColumns, pivotMeta, isLoading, error };
 };
@@ -171,7 +201,7 @@ function buildAggInfo(values, propsMapping, reverseMapping) {
     if (!parts) return { aggFunc: '', displayName: value };
 
     const colName = parts.column.replace(/"/g, '');
-    const displayName = reverseMapping[colName] || formatSimpleHeader(colName);
+    const displayName = plainHeader(colName, reverseMapping);
     return { aggFunc: parts.aggFunc.toUpperCase(), displayName };
   });
 }
@@ -182,31 +212,13 @@ function buildAggInfo(values, propsMapping, reverseMapping) {
  * Returns just the pivot value (e.g. "Blue") since aggregation context is shown in the banner.
  */
 function formatPivotColumnName(key, aggInfo, reverseMapping) {
-  if (!aggInfo || aggInfo.length === 0) {
-    return formatSimpleHeader(key);
-  }
-
-  for (const { aggFunc } of aggInfo) {
+  let pivotValue = key;
+  for (const { aggFunc } of aggInfo || []) {
     const aggLower = aggFunc.toLowerCase();
-    const aggPattern = new RegExp(`_${aggLower}\\b|^${aggLower}\\b`, 'i');
-    if (aggPattern.test(key)) {
-      const parts = key.split(new RegExp(`_${aggLower}`, 'i'));
-      const pivotValue = parts[0] || key;
-      return formatSimpleHeader(pivotValue);
+    if (new RegExp(`_${aggLower}\\b|^${aggLower}\\b`, 'i').test(key)) {
+      pivotValue = key.split(new RegExp(`_${aggLower}`, 'i'))[0] || key;
+      break;
     }
   }
-
-  if (aggInfo.length === 1) {
-    if (reverseMapping[key]) return reverseMapping[key];
-    return formatSimpleHeader(key);
-  }
-
-  return formatSimpleHeader(key);
-}
-
-function formatSimpleHeader(key) {
-  const cleanKey = key.replace(/_hash_[a-f0-9]+$/i, '');
-  return cleanKey
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, char => char.toUpperCase());
+  return formatColumnHeader(dehashColumnKey(pivotValue, reverseMapping));
 }

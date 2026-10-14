@@ -1,0 +1,49 @@
+type: table
+family: table
+status: preferred
+one_liner: "Exact values in rows: the detail view a dashboard ends with, or a pivot grid you can read numbers off."
+use_when:
+  - "Identifier-level detail: any dimension with role `identifier`, or a lookup role at `high` cardinality (zones, drivers, invoices); never a chart."
+  - "More metrics than a grouped bar can compare, or mixed types per row (text, numbers, dates); exact values (money reconciliation, rankings with ties)."
+  - "Pivot: two categoricals with more cells than a heatmap can show and totals required, or periods × category when the figures matter."
+  - "`intent: detail`, or as the `detail_table_below` companion of a chart whose dimension is `many`/`high`."
+avoid_when:
+  - A few metrics across categories a bar can label; a bar compares them faster.
+  - A trend over many periods; that is a line, and a wide pivot overflows.
+  - Pattern-finding over two dimensions small enough for a heatmap.
+  - A pivot with too many columns for its width, especially beside a chart; columns shrink to an 80 px floor and then overflow.
+data_shape:
+  metrics: {min: 0}
+  dimensions: {min: 1}
+  dimension_roles: [identifier, categorical, text, time, geo_region, numeric_discrete, numeric_continuous, boolean]
+required_props: [columns]
+example: |
+  tables:
+    - name: zone-detail
+      rows_per_page: 25
+      columns:
+        - ${ref(zone_revenue).zone} as "Zone"
+        - ${ref(zone_revenue).borough} as "Borough"
+        - ${ref(zone_revenue).revenue} as "Revenue"
+        - ${ref(zone_revenue).rides} as "Rides"
+variations:
+  - when: "two categoricals should be crossed into a grid"
+    then: "a pivot: `rows` for the higher-cardinality dimension, `columns` for the lower one, `values` for a few aggregates, computed in the browser"
+  - when: "the numbers should be shaded by size, like a heatmap you can read"
+    then: "`format_cells` with `scope` (`column`, `row` or `table`), `min_color` and `max_color` as hex colors"
+  - when: "the table should respond to an input"
+    then: "`data: ${ref(<insight>)}` where the insight carries the `filter`; a table on a model ignores inputs"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [input_filter]
+transforms: [top_n_other, precomputed_totals]
+gotchas:
+  - "Alias every column (`… as \"Label\"`): unaliased headers are the raw expression, and on an insight the hashed column name."
+  - "`rows_per_page` accepts 3, 5, 10, 25, 50, 100, 500, 1000; any other value fails to compile. Use at least the row count for small lookup tables so there is no pager, 25–50 for long ones."
+  - "`data` is exclusive with `columns`/`rows`/`values`; `rows` requires `values` and `columns`; pivot `values` must be aggregates or the browser query fails after a clean compile."
+  - "Pivots have no ORDER BY and no totals: period labels must sort as text (`YYYY-MM`) and totals are a UNION ALL row in SQL."
+  - "`format_cells` colors the current page only, treats null as 0 and parses hex only; point `min_color`/`max_color` at the theme accent and a light tint of it."
+pairings: [chart_beside, kpi_strip_above]
+layout: {height: medium, width_share: 1.0, row_role: detail}
+mobile: Full width and the heaviest item on the page; lead the row with the chart and keep only the essential columns.

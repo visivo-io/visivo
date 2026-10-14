@@ -27,7 +27,7 @@ const expectThemed = async (page, mode, colors) => {
   const card = page
     .locator('.js-plotly-plot')
     .first()
-    .locator('xpath=ancestor::div[contains(@class, "rounded-2xl")][1]');
+    .locator('xpath=ancestor::div[contains(@class, "bg-(--vt-surface)")][1]');
   await expect(card).toHaveCSS('background-color', colors.surface);
   await expect.poll(() => plotPaperColors(page)).toContain(colors.paper);
   const papers = await plotPaperColors(page);

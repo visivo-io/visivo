@@ -80,7 +80,7 @@ test.describe('Metric Field Lens local preview (VIS-1026 — Run → DuckDB bars
     const errors = collectErrors(page);
     await openWorkspace(page);
 
-    await selectLibraryObject(page, 'metric', 'avg_value');
+    await selectLibraryObject(page, 'metric', 'avg_value', { model: 'daily_metrics' });
 
     // The metric canvas frame mounts on the Canvas (preview) lens.
     await expect(page.getByTestId('workspace-middle-metric-preview')).toBeVisible({ timeout: WAIT });
@@ -103,7 +103,7 @@ test.describe('Metric Field Lens local preview (VIS-1026 — Run → DuckDB bars
     const errors = collectErrors(page);
     await openWorkspace(page);
 
-    await selectLibraryObject(page, 'metric', 'avg_value');
+    await selectLibraryObject(page, 'metric', 'avg_value', { model: 'daily_metrics' });
     await expect(page.getByTestId('metric-playground')).toBeVisible({ timeout: WAIT });
 
     await runAndExpectBars(page);
@@ -123,7 +123,7 @@ test.describe('Metric Field Lens local preview (VIS-1026 — Run → DuckDB bars
     const errors = collectErrors(page);
     await openWorkspace(page);
 
-    await selectLibraryObject(page, 'metric', 'avg_value');
+    await selectLibraryObject(page, 'metric', 'avg_value', { model: 'daily_metrics' });
     await expect(page.getByTestId('metric-playground')).toBeVisible({ timeout: WAIT });
 
     await runAndExpectBars(page);

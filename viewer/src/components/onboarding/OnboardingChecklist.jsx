@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useViewerNavigate } from '../../hooks/useViewerNavigate';
 
 import './onboarding.css';
-import { hasCompletedOnboarding, readOnboardingState, writeOnboardingState } from './onboardingState';
+import { hasCompletedOnboarding, isOnboardingDismissed, readOnboardingState, writeOnboardingState } from './onboardingState';
 import { fireEvent } from './telemetry';
 import useChecklistProgress from './useChecklistProgress';
 import useStore from '../../stores/store';
@@ -11,8 +11,7 @@ const CHECKLIST_WIDTH = 320;
 const VIEWPORT_PAD = 8;
 
 function readDismissed() {
-  const s = readOnboardingState();
-  return !!(s && s.checklist_dismissed);
+  return isOnboardingDismissed();
 }
 
 function clampToViewport(top, left, height) {
@@ -151,7 +150,7 @@ export default function OnboardingChecklist() {
     }
   }, []);
 
-  if (dismissed) return null;
+  if (dismissed || isOnboardingDismissed()) return null;
   if (!hasCompletedOnboarding()) return null;
   if (total > 0 && completed === total) return null;
 

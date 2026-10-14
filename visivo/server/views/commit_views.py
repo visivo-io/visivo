@@ -3,7 +3,7 @@ import os
 from dotenv import dotenv_values
 from flask import jsonify
 from visivo.logger.logger import Logger
-from visivo.server.managers.object_manager import ObjectStatus
+from visivo.server.managers.object_manager import ObjectStatus, location_free_dump
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.user_config import get_run_trigger
 
@@ -23,9 +23,8 @@ def _env_file_keys(flask_app):
 
 
 def _cached_project_settings(flask_app):
-    """Draft project-level settings (top-level YAML keys like ``defaults``), keyed by YAML key."""
-    cached = {"defaults": flask_app._cached_defaults, "theme": flask_app._cached_theme}
-    return {key: value for key, value in cached.items() if value is not None}
+    """Changed project-level settings (top-level YAML keys like ``defaults``), keyed by YAML key."""
+    return flask_app.changed_project_settings()
 
 
 def register_commit_views(app, flask_app, output_dir):
@@ -47,8 +46,7 @@ def register_commit_views(app, flask_app, output_dir):
                 or flask_app.table_manager.has_unpublished_changes()
                 or flask_app.dashboard_manager.has_unpublished_changes()
                 or flask_app.input_manager.has_unpublished_changes()
-                or flask_app._cached_defaults is not None
-                or flask_app._cached_theme is not None
+                or bool(_cached_project_settings(flask_app))
             )
             return jsonify({"has_unpublished_changes": has_changes})
         except Exception as e:
@@ -631,41 +629,6 @@ def register_commit_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
 
-def _renest_model_scoped_fields(project):
-    """Put draft metrics/dimensions back under the model they belong to.
-
-    ``inject_cached_objects`` overlays every manager's cached objects onto the
-    project by appending to the matching TOP-LEVEL list — so a draft field that
-    is model-scoped lands in ``project.metrics`` rather than under its model.
-    For a run that is harmless; for validation it is not, because "is this
-    field nested?" is exactly the question the project-level rules ask. Without
-    this, a perfectly good nested draft is reported as a project-level field
-    that references nothing, and the commit is refused.
-
-    ``project_writer`` nests by ``parent_model`` when it writes, so this makes
-    the validated shape match the shape that would land on disk.
-    """
-    for field_attr, model_attr in (("metrics", "metrics"), ("dimensions", "dimensions")):
-        remaining = []
-        for field in getattr(project, field_attr, None) or []:
-            parent_name = getattr(field, "_parent_name", None)
-            if not parent_name:
-                remaining.append(field)
-                continue
-            owner = next(
-                (m for m in project.models if getattr(m, "name", None) == parent_name), None
-            )
-            if owner is None:
-                # Orphaned scope — leave it top-level so the normal validators
-                # report it rather than silently dropping the field.
-                remaining.append(field)
-                continue
-            owned = list(getattr(owner, model_attr, None) or [])
-            owned = [o for o in owned if getattr(o, "name", None) != field.name] + [field]
-            setattr(owner, model_attr, owned)
-        setattr(project, field_attr, remaining)
-
-
 def _validate_pending_project(flask_app):
     """The validation error a commit would produce, or None.
 
@@ -687,7 +650,6 @@ def _validate_pending_project(flask_app):
     try:
         pending = deepcopy(flask_app.project)
         inject_cached_objects(flask_app, pending)
-        _renest_model_scoped_fields(pending)
         Project(**pending.model_dump(exclude_none=True))
     except ValueError as error:
         message = str(error)
@@ -745,9 +707,6 @@ def _build_child_info(
     }
     writer_status = status_map.get(status, "Unchanged")
 
-    # Fields that should not be written to YAML files (internal tracking fields)
-    exclude_fields = {"path", "file_path"}
-
     # Detect a model-scoped metric/dimension via the PrivateAttr set in the
     # save endpoint. PrivateAttrs survive on the Pydantic instance.
     parent_model_name = None
@@ -770,9 +729,7 @@ def _build_child_info(
         else:
             file_path = project_file_path
             new_file_path = project_file_path
-        config = (
-            obj.model_dump(mode="json", exclude_none=True, exclude=exclude_fields) if obj else {}
-        )
+        config = location_free_dump(obj, mode="json", exclude_none=True) if obj else {}
     elif status == ObjectStatus.DELETED:
         # Deleted objects use path from published version
         file_path = _get_file_path(published_obj, project_file_path)
@@ -783,9 +740,7 @@ def _build_child_info(
         # which for a rename was resolved under the OLD name.
         file_path = _get_file_path(published_obj, project_file_path)
         new_file_path = file_path
-        config = (
-            obj.model_dump(mode="json", exclude_none=True, exclude=exclude_fields) if obj else {}
-        )
+        config = location_free_dump(obj, mode="json", exclude_none=True) if obj else {}
 
     info = {
         "status": writer_status,

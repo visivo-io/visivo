@@ -202,6 +202,48 @@ describe('PivotableTable', () => {
     expect(screen.getByText('1,234,567')).toBeInTheDocument();
   });
 
+  describe('date and timestamp columns', () => {
+    const renderDates = data =>
+      render(
+        <PivotableTable
+          table={{ name: 'dates', rows_per_page: 50 }}
+          sourceData={{ data, files: [] }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+    it('shows only the date when every value in a column is midnight', () => {
+      renderDates([
+        { day: '2021-01-01T00:00:00.000Z' },
+        { day: '2021-01-02T00:00:00.000Z' },
+      ]);
+      expect(screen.getByText('2021-01-01')).toBeInTheDocument();
+      expect(screen.getByText('2021-01-02')).toBeInTheDocument();
+    });
+
+    it('shows date and time when any value in a column has a time part', () => {
+      renderDates([
+        { event_at: '2021-01-01T00:00:00.000Z' },
+        { event_at: '2021-01-01T08:30:15.000Z' },
+      ]);
+      expect(screen.getByText('2021-01-01 00:00:00.000')).toBeInTheDocument();
+      expect(screen.getByText('2021-01-01 08:30:15.000')).toBeInTheDocument();
+    });
+
+    it('sorts a date column by its underlying value', () => {
+      renderDates([
+        { day: '2021-01-10T00:00:00.000Z' },
+        { day: '2020-12-31T00:00:00.000Z' },
+        { day: '2021-01-02T00:00:00.000Z' },
+      ]);
+      const dayOrder = () => screen.getAllByText(/^\d{4}-\d{2}-\d{2}$/).map(el => el.textContent);
+      fireEvent.click(screen.getByText('Day'));
+      expect(dayOrder()).toEqual(['2020-12-31', '2021-01-02', '2021-01-10']);
+    });
+  });
+
   // VIS-1011: the toolbar controls (search field + CSV download) must inherit
   // the brand-aligned MUI theme so they no longer render in default MUI blue.
   // We assert the toolbar's search field is themed with the primary palette by
@@ -275,6 +317,36 @@ describe('PivotableTable', () => {
       fireEvent.click(clearButton);
       expect(screen.getByText('Bob')).toBeInTheDocument();
       expect(screen.getByText('3 total rows')).toBeInTheDocument();
+    });
+
+    it('matches the displayed text of a formatted cell, and still its raw value', () => {
+      render(
+        <PivotableTable
+          table={{ name: 'dates', rows_per_page: 50 }}
+          sourceData={{
+            data: [
+              { event_at: '2021-01-01T08:30:15.000Z', amount: 1234567 },
+              { event_at: '2021-01-02T09:45:00.000Z', amount: 42 },
+            ],
+            files: [],
+          }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+      const search = value =>
+        fireEvent.change(screen.getByPlaceholderText('Search...'), { target: { value } });
+
+      search('2021-01-01 08:30');
+      expect(screen.getByText('2021-01-01 08:30:15.000')).toBeInTheDocument();
+      expect(screen.getByText('1 total rows')).toBeInTheDocument();
+
+      search('1,234,567');
+      expect(screen.getByText('1 total rows')).toBeInTheDocument();
+
+      search('1234567');
+      expect(screen.getByText('1 total rows')).toBeInTheDocument();
     });
   });
 
@@ -493,6 +565,85 @@ describe('PivotableTable', () => {
       expect(screen.getByText('A Col')).toBeInTheDocument();
       expect(screen.getByText('only-a')).toBeInTheDocument();
       expect(screen.queryByText('Columns:')).not.toBeInTheDocument();
+    });
+
+    describe('date and timestamp values', () => {
+      const rows = [
+        { day: '2021-01-01T00:00:00.000Z', at: '2021-01-01T08:30:15.000Z', total: 3 },
+        { day: '2021-01-02T00:00:00.000Z', at: '2021-01-02T09:30:15.000Z', total: 4 },
+      ];
+      const columns = [
+        { accessorKey: 'day', header: 'Day', isPivotRow: true },
+        { accessorKey: 'at', header: 'At' },
+        { accessorKey: 'total', header: 'Total' },
+      ];
+      const renderResult = (table, nestedColumns) => {
+        mockPivotReturn = { ...mockPivotReturn, rows, columns, nestedColumns };
+        render(
+          <PivotableTable
+            table={table}
+            sourceData={mockInsightData}
+            itemWidth={600}
+            height={400}
+            width={600}
+          />
+        );
+      };
+
+      it('formats them in a column-select result', () => {
+        renderResult({ name: 'colsel', rows_per_page: 50, columns: ['${ref(i).a}'] }, null);
+        expect(screen.getByText('2021-01-01')).toBeInTheDocument();
+        expect(screen.getByText('2021-01-02 09:30:15.000')).toBeInTheDocument();
+      });
+
+      it('sorts them in time order in a column-select result', () => {
+        mockPivotReturn = {
+          ...mockPivotReturn,
+          rows: [
+            { at: '2021-01-10T08:00:00.000Z' },
+            { at: '1999-12-31T23:59:59.000Z' },
+            { at: '2021-01-02T10:00:00.000Z' },
+            { at: '2021-01-02T09:30:00.000Z' },
+          ],
+          columns: [{ accessorKey: 'at', header: 'At' }],
+          nestedColumns: null,
+        };
+        render(
+          <PivotableTable
+            table={{ name: 'colsel', rows_per_page: 50, columns: ['${ref(i).at}'] }}
+            sourceData={mockInsightData}
+            itemWidth={600}
+            height={400}
+            width={600}
+          />
+        );
+        const order = () => screen.getAllByText(/^\d{4}-\d{2}-\d{2} /).map(el => el.textContent);
+        fireEvent.click(screen.getByText('At'));
+        expect(order()).toEqual([
+          '1999-12-31 23:59:59.000',
+          '2021-01-02 09:30:00.000',
+          '2021-01-02 10:00:00.000',
+          '2021-01-10 08:00:00.000',
+        ]);
+        fireEvent.click(screen.getByText('At'));
+        expect(order()[0]).toBe('2021-01-10 08:00:00.000');
+      });
+
+      it('formats them in a pivot result with nested headers', () => {
+        renderResult(pivotTable, [
+          { id: 'day', accessorKey: 'day', header: 'Day' },
+          {
+            id: 'group-0-East',
+            header: 'East',
+            columns: [
+              { id: 'at', accessorKey: 'at', header: 'At' },
+              { id: 'total', accessorKey: 'total', header: 'Total' },
+            ],
+          },
+        ]);
+        expect(screen.getByText('2021-01-01')).toBeInTheDocument();
+        expect(screen.getByText('2021-01-02 09:30:15.000')).toBeInTheDocument();
+      });
     });
 
     it('shows Loading while the pivot query is running', () => {

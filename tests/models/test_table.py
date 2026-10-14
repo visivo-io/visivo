@@ -434,3 +434,60 @@ def test_Table_with_data_insight_instance():
     table = Table(name="t", data=insight)
     assert table.data.name == "inline-insight"
     assert table.child_items() == [insight]
+
+
+# --- VIS-1462 T7a: a table reads from ONE source ------------------------------
+# The Table model itself cannot know whether two referenced models are related
+# (that needs the project DAG), so the check lives in the compile phase; these
+# tests pin the contract at the table level through that validator.
+
+
+def _project_with(tables, relations=None):
+    from tests.factories.model_factories import (
+        ProjectFactory,
+        SourceFactory,
+        SqlModelFactory,
+    )
+
+    source = SourceFactory(name="s")
+    return ProjectFactory(
+        sources=[source],
+        models=[
+            SqlModelFactory(name="model_a", source="ref(s)"),
+            SqlModelFactory(name="model_b", source="ref(s)"),
+        ],
+        relations=relations or [],
+        tables=tables,
+        dashboards=[],
+    )
+
+
+def test_Table_refs_to_two_unrelated_models_are_rejected_naming_both():
+    from visivo.query.table_source_validator import validate_project_table_sources
+
+    table = Table(name="mixed", columns=["${ref(model_a).x}", "${ref(model_b).y}"])
+    error = validate_project_table_sources(_project_with([table]))
+    assert error is not None
+    assert "Table 'mixed'" in error
+    assert "'model_a'" in error and "'model_b'" in error
+
+
+def test_Table_refs_to_one_model_are_accepted():
+    from visivo.query.table_source_validator import validate_project_table_sources
+
+    table = Table(
+        name="single",
+        columns=["${ref(model_a).region}"],
+        rows=["${ref(model_a).product}"],
+        values=["sum(${ref(model_a).revenue})"],
+    )
+    assert validate_project_table_sources(_project_with([table])) is None
+
+
+def test_Table_refs_to_two_related_models_are_accepted():
+    from tests.factories.model_factories import RelationFactory
+    from visivo.query.table_source_validator import validate_project_table_sources
+
+    relation = RelationFactory(name="a_to_b", condition="${ref(model_a).id} = ${ref(model_b).a_id}")
+    table = Table(name="joined", columns=["${ref(model_a).x}", "${ref(model_b).y}"])
+    assert validate_project_table_sources(_project_with([table], [relation])) is None

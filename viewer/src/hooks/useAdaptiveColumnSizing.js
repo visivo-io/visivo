@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { calculateColumnWidth } from '../duckdb/schemaUtils';
+import { calculateColumnWidth, minColumnWidth, COLUMN_TYPES } from '../duckdb/schemaUtils';
 
 const MIN_COMPRESSED_COLUMN_WIDTH = 80;
+
+const compressedMinWidth = col =>
+  col.normalizedType === COLUMN_TYPES.DATE || col.normalizedType === COLUMN_TYPES.TIMESTAMP
+    ? minColumnWidth(col.normalizedType)
+    : MIN_COMPRESSED_COLUMN_WIDTH;
 
 /**
  * Adaptive column sizing for DataTable.
  *
  * - Natural mode (natural total ≤ container): each column uses calculateColumnWidth.
  * - Compressed mode (natural total > container): non-manual columns are
- *   distributed evenly to fit the container; manual (user-resized) columns
- *   keep their dragged width.
+ *   distributed evenly to fit the container, but none below its minimum (dates
+ *   and timestamps keep room for their full value, so the table scrolls);
+ *   manual (user-resized) columns keep their dragged width.
  *
  * "Manual" tracking: when tanstack reports `columnSizingInfo.isResizingColumn`,
  * we add that column id to a manual set. Manual columns are excluded from
@@ -104,14 +110,20 @@ export function useAdaptiveColumnSizing(columns, containerRef) {
           manualSum += columnSizing[col.name];
         }
       }
-      const nonManual = columns.filter(c => !(c.name in next));
-      const remaining = Math.max(0, containerWidth - manualSum);
-      const each =
-        nonManual.length > 0
-          ? Math.max(MIN_COMPRESSED_COLUMN_WIDTH, remaining / nonManual.length)
-          : 0;
-      for (const col of nonManual) {
-        next[col.name] = each;
+      let flexible = columns.filter(c => !(c.name in next));
+      let remaining = Math.max(0, containerWidth - manualSum);
+      for (;;) {
+        const share = remaining / flexible.length;
+        const atMinimum = flexible.filter(col => compressedMinWidth(col) > share);
+        if (atMinimum.length === 0) {
+          for (const col of flexible) next[col.name] = share;
+          break;
+        }
+        for (const col of atMinimum) {
+          next[col.name] = compressedMinWidth(col);
+          remaining -= next[col.name];
+        }
+        flexible = flexible.filter(col => !atMinimum.includes(col));
       }
     }
 
