@@ -15,7 +15,9 @@ import asyncio
 import threading
 
 from visivo.agent.actions import attributed_to, log as action_log
-from visivo.agent.loop import build_agent, usage_limits
+from visivo.agent.loop import MAX_MODEL_REQUESTS, MAX_TOOL_CALLS, build_agent
+from visivo.agent import resilience
+from visivo.agent.resilience import TurnFailed, run_turn
 from visivo.agent.sessions import SessionManager, SessionState
 from visivo.logger.logger import Logger
 
@@ -73,7 +75,13 @@ def _execute(app, manager, session_id, prompt, model):
         # the threads it runs sync tools in.
         with attributed_to("agent", session_id):
             task = loop.create_task(
-                agent.run(prompt, message_history=history, usage_limits=usage_limits())
+                run_turn(
+                    agent,
+                    prompt,
+                    history=history,
+                    max_requests=MAX_MODEL_REQUESTS,
+                    max_tool_calls=MAX_TOOL_CALLS,
+                )
             )
 
         # Attached before the state flips to RUNNING, so there is no window in
@@ -99,6 +107,17 @@ def _execute(app, manager, session_id, prompt, model):
         )
         manager.set_state(session_id, SessionState.SUCCEEDED, output=answer)
     except Exception as error:  # noqa: BLE001 — reported to the session, never raised
+        # Whatever the turn learned before it died, so "try again" continues
+        # rather than restarting. Only `TurnFailed` carries this; a failure
+        # from anywhere else in this function has no conversation attached.
+        if isinstance(error, TurnFailed):
+            manager.remember(
+                session_id,
+                error.messages,
+                None,
+                actions=action_log().since(mark, session_id=session_id),
+            )
+            error = error.error
         # An agent failure is a failure: it belongs in the same place every
         # other error goes, not a bespoke red box. But a failure that is OURS
         # should not be reported as the model provider's.
@@ -110,7 +129,12 @@ def _execute(app, manager, session_id, prompt, model):
         manager.set_state(
             session_id,
             SessionState.FAILED,
-            error=cloud_model.explain(error, model=model) or str(error),
+            # Ours first: a 404 on our own inference route must not be
+            # reported as the provider's. Then the failures whose own message
+            # is addressed to a library author. Then the error as it came.
+            error=(
+                cloud_model.explain(error, model=model) or resilience.explain(error) or str(error)
+            ),
             # A spend limit is not a broken agent. Tagged so the tab can say
             # so rather than showing it in the same red box as a crash.
             action=cloud_model.LIMIT_REACHED if cloud_model.limit_reached(error) else None,
