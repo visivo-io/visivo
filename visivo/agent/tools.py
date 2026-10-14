@@ -28,6 +28,7 @@ hijacked agent is a draft someone can discard.
 
 from typing import Dict
 
+from visivo.agent import images
 from visivo.agent.actions import caller, log as action_log
 from visivo.agent.data_tools import DATA_TOOLS
 from visivo.agent.schema import SchemaSlicer
@@ -691,7 +692,11 @@ def _with_attached_skills(name, result):
     if not fresh:
         return result
     delivered.update(s["name"] for s in fresh)
-    return {
-        "result": result,
-        "skills_attached": [{"name": s["name"], "body": s["text"]} for s in fresh],
-    }
+    attached = [{"name": s["name"], "body": s["text"]} for s in fresh]
+    # An image result carries the picture in `content`, outside the JSON.
+    # Wrapping it the way a plain result is wrapped would drop that — and drop
+    # it silently, since the tool still answers and only the image goes
+    # missing. So the skills go into its return value instead.
+    if images.is_image_result(result):
+        return images.with_extra_return_value(result, skills_attached=attached)
+    return {"result": result, "skills_attached": attached}
