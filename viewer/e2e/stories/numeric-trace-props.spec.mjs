@@ -57,15 +57,27 @@ test.describe('Numeric trace props from aggregate columns', () => {
     expect(counts.every(c => typeof c === 'number')).toBe(true);
     expect(counts.reduce((a, b) => a + b, 0)).toBe(10);
 
-    const heights = await page.evaluate(() => {
-      const gd = [...document.querySelectorAll('.js-plotly-plot')].find(g => g.data?.[0]?.counts);
-      return Object.fromEntries(
-        [...gd.querySelectorAll('g.category')].map(cat => [
-          cat.querySelector('text.catlabel')?.textContent,
-          Number(cat.querySelector('rect.catrect')?.getAttribute('height')),
-        ])
-      );
-    });
+    const readHeights = () =>
+      page.evaluate(() => {
+        const gd = [...document.querySelectorAll('.js-plotly-plot')].find(g => g.data?.[0]?.counts);
+        return Object.fromEntries(
+          [...(gd?.querySelectorAll('g.category') || [])].map(cat => [
+            cat.querySelector('text.catlabel')?.textContent,
+            Number(cat.querySelector('rect.catrect')?.getAttribute('height')),
+          ])
+        );
+      });
+    // The trace data lands before Plotly finishes drawing the categories.
+    await expect
+      .poll(
+        async () => {
+          const drawn = await readHeights();
+          return ['Third', 'First', 'No', 'Yes'].every(k => drawn[k] > 0);
+        },
+        { timeout: 15000 }
+      )
+      .toBe(true);
+    const heights = await readHeights();
     // Third holds 4 of 10 rows and First 3; No holds 6 and Yes 4.
     expect(heights.Third / heights.First).toBeCloseTo(4 / 3, 1);
     expect(heights.No / heights.Yes).toBeCloseTo(6 / 4, 1);
