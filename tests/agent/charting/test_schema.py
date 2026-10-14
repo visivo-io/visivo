@@ -165,8 +165,9 @@ class TestFamilyRule:
         with pytest.raises(ValidationError, match="unknown trace types"):
             FamilyRule(name="x", trace_types=["sparkline"])
 
-    def test_tables_count_as_types(self):
-        assert FamilyRule(name="table", trace_types=["table", "table_pivot"])
+    def test_tables_are_not_trace_types(self):
+        with pytest.raises(ValidationError, match="unknown trace types"):
+            FamilyRule(name="table", trace_types=["table"])
 
     def test_series_limits_are_ordered(self):
         with pytest.raises(ValidationError, match="series_max"):
