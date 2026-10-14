@@ -1,0 +1,38 @@
+# KPI tiles at the two smallest row heights; viewer/e2e/stories/dashboard-kpi.spec.mjs
+# measures the rendered number against its tile.
+insights:
+  - name: titled-kpi-insight
+    props:
+      type: indicator
+      mode: number+delta
+      value: ?{${ref(csv).y}}[0]
+      title:
+        text: Revenue
+      delta:
+        reference: 320
+
+charts:
+  - name: titled-kpi-chart
+    insights:
+      - ${ref(titled-kpi-insight)}
+
+dashboards:
+  - name: kpi-dashboard
+    level: 1
+    tags:
+      - "layout"
+      - "sizing"
+    description: Indicator KPIs in xsmall and small rows, with and without a title.
+    rows:
+      - height: xsmall
+        items:
+          - width: 6
+            chart: ${ref(indicator_chart)}
+          - width: 6
+            chart: ${ref(titled-kpi-chart)}
+      - height: small
+        items:
+          - width: 6
+            chart: ${ref(indicator_chart)}
+          - width: 6
+            chart: ${ref(titled-kpi-chart)}

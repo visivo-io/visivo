@@ -77,6 +77,40 @@ describe('resolveTheme', () => {
     expect(theme.plotlyTemplate.layout.margin.t).toBe(30);
   });
 
+  describe('plotlyTemplateFor', () => {
+    const indicator = { type: 'indicator', mode: 'number+delta', value: 9 };
+    const gauge = { type: 'indicator', mode: 'gauge+number', value: 9 };
+    const bar = { type: 'bar', x: [1], y: [2] };
+
+    it('picks the KPI template when every trace is a gaugeless indicator', () => {
+      const theme = resolveTheme({}, 'light');
+      expect(theme.plotlyTemplateFor([indicator, indicator]).layout.margin).toEqual({
+        t: 32,
+        r: 8,
+        b: 8,
+        l: 8,
+      });
+    });
+
+    it('keeps the default template when any trace has axes or a gauge', () => {
+      const theme = resolveTheme({}, 'light');
+      expect(theme.plotlyTemplateFor([indicator, bar])).toBe(theme.plotlyTemplate);
+      expect(theme.plotlyTemplateFor([indicator, gauge])).toBe(theme.plotlyTemplate);
+      expect(theme.plotlyTemplateFor([])).toBe(theme.plotlyTemplate);
+    });
+
+    it('lets a project theme margin win over the KPI margin', () => {
+      const theme = resolveTheme({ plotly_layout: { margin: { t: 10, l: 2 } } }, 'light');
+      expect(theme.plotlyTemplateFor([indicator]).layout.margin).toEqual({
+        t: 10,
+        r: 8,
+        b: 8,
+        l: 2,
+      });
+      expect(theme.plotlyTemplate.layout.margin).toEqual({ t: 10, r: 20, b: 80, l: 2 });
+    });
+  });
+
   it('returns the same object for the same inputs so memoised consumers stay stable', () => {
     const projectTheme = { accent: '#123456' };
     expect(resolveTheme(projectTheme, 'light')).toBe(resolveTheme({ accent: '#123456' }, 'light'));

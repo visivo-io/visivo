@@ -276,6 +276,7 @@ class VisivoRunValidator:
             "query-default-filter-insight",
             "revenue-cost-split-insight",
             "cost-margin-split-insight",
+            "titled-kpi-insight",
         ]
 
         success = True
