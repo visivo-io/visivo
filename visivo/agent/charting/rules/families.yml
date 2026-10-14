@@ -4,7 +4,7 @@
 
 penalties:
   out_of_range: 0.3   # per range still out of bounds after repairs
-  repair: 0.1         # per repair applied
+  repair: 0.1         # per repair application
   niche: 0.5
 
 # Plotly draws these region kinds from `locationmode`; anything else needs a GeoJSON.

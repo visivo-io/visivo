@@ -15,7 +15,12 @@ from typing import List, Optional, get_args
 
 import yaml
 
-from visivo.agent.charting.rules import load_family_doc, load_tables, load_transforms
+from visivo.agent.charting.rules import (
+    load_family_doc,
+    load_pairings,
+    load_tables,
+    load_transforms,
+)
 from visivo.agent.charting.skeleton import Repaired, chart_skeleton
 from visivo.agent.charting.schema import (
     TRACE_TYPES,
@@ -27,6 +32,7 @@ from visivo.agent.charting.schema import (
     Rejection,
     Semantics,
     TimeGrain,
+    split_pairing,
 )
 
 # Roles whose values a reader looks up by name. A time axis or a continuous
@@ -367,11 +373,13 @@ def _measures(view, shape, limits):
 
 
 def _drawn_rows(view):
-    """Every row when nothing is aggregated, else one per group, never more
-    than the model has."""
+    """Every row when nothing is aggregated, else one per group (a latitude
+    and a longitude are one place), never more than the model has."""
     if not view.request.metrics:
         return view.rows
-    groups = math.prod(view.n(d) for d in view.dims())
+    dims = view.dims()
+    points = max((view.n(d) for d in dims if d.role == "geo_point"), default=1)
+    groups = points * math.prod(view.n(d) for d in dims if d.role != "geo_point")
     return groups if view.rows is None else min(groups, view.rows)
 
 
@@ -420,6 +428,7 @@ class _Outcome:
     score: float = 0.0
     why: List[str] = field(default_factory=list)
     unfixed: int = 0
+    steps: int = 0
     cuts: List[str] = field(default_factory=list)
     repaired: Repaired = Repaired()
 
@@ -481,6 +490,7 @@ def _repair(outcome, name, shape, limits, request, transforms):
             outcome.warnings.append(why)
             continue
         _apply(fix, measure, value, target, dim, view, transforms.regrain_steps)
+        outcome.steps += 1
         after = _measures(view, shape, limits).get(measure, (target,))[0]
         shown = view.n(dim) if dim is not None and measure != "dimensions" else after
         if fix.name not in outcome.transforms:
@@ -539,7 +549,7 @@ def _evaluate(rule, member, request, doc):
     facts = _Facts(series, limits.series_ideal, doc.builtin_boundaries)
     score, why = _score(rule, request, facts)
     penalties = doc.penalties
-    score -= penalties.repair * len(outcome.transforms) + penalties.out_of_range * outcome.unfixed
+    score -= penalties.repair * outcome.steps + penalties.out_of_range * outcome.unfixed
     if member is not None and member.status == "niche":
         score -= penalties.niche
         why.append(f"{member.type} is a niche type; it ranks only with a reason")
@@ -550,9 +560,9 @@ def _evaluate(rule, member, request, doc):
 
 def _best(rule, request, doc):
     """The requested member if it is admitted, else the admitted member with
-    the fewest ranges out of bounds, then the fewest repairs, then the highest
-    score, then the first listed; else the requested or first member's
-    rejection. Deprecated members never draw."""
+    the fewest ranges out of bounds, then preferred over niche, then the fewest
+    repairs, then the highest score, then the first listed; else the requested
+    or first member's rejection. Deprecated members never draw."""
     members = [m for m in rule.members if m.status != "deprecated"] or [None]
     outcomes = [_evaluate(rule, m, request, doc) for m in members]
     asked = next((o for o in outcomes if o.member and o.member.type == request.requested), None)
@@ -561,7 +571,15 @@ def _best(rule, request, doc):
         return asked or outcomes[0]
     if asked and asked.reason is None:
         return asked
-    best = min(admitted, key=lambda o: (o.unfixed, len(o.transforms), -o.score))
+    best = min(
+        admitted,
+        key=lambda o: (
+            o.unfixed,
+            o.member is not None and o.member.status == "niche",
+            o.steps,
+            -o.score,
+        ),
+    )
     if asked:
         best.warnings.append(
             f"{asked.member.type} was asked for, but {asked.reason}; drawn as {best.member.type}"
@@ -656,6 +674,7 @@ class _Doc:
     penalties: object
     builtin_boundaries: tuple
     transforms: object
+    pairings: object
     tables: object
 
 
@@ -667,6 +686,7 @@ def _doc():
         penalties=families.penalties,
         builtin_boundaries=tuple(families.builtin_boundaries),
         transforms=load_transforms(),
+        pairings=load_pairings(),
         tables=load_tables(),
     )
 
@@ -758,3 +778,35 @@ def recommend(request, rules=None):
         )
     suggested = list(dict.fromkeys(t for rec in top for t in rec.transforms))
     return RecommendResponse(recommendations=top, rejected=rejected, transforms_suggested=suggested)
+
+
+SKELETONS_RETURNED = 3
+
+
+def compact(response, skeletons=SKELETONS_RETURNED):
+    """The response as the tool returns it: empty fields dropped, skeletons
+    and encodings for the first ``skeletons`` only, and how to apply each
+    suggested transform and named pairing, once."""
+    doc = _doc()
+    recommendations, named = [], []
+    for index, rec in enumerate(response.recommendations):
+        item = {k: v for k, v in rec.model_dump(exclude_none=True).items() if v not in ([], {})}
+        if index >= skeletons:
+            for key in ("yaml_skeleton", "example_yaml", "table_yaml", "encodings"):
+                item.pop(key, None)
+        else:
+            named += [p for p in rec.pairings if p not in named]
+        recommendations.append(item)
+    return {
+        "recommendations": recommendations,
+        "transforms": {
+            name: doc.transforms.get(name).instructions() for name in response.transforms_suggested
+        },
+        "pairings": {
+            reference: doc.pairings.get(split_pairing(reference)[0]).model_dump(
+                exclude_none=True, exclude_defaults=True, exclude={"name"}
+            )
+            for reference in named
+        },
+        "rejected": [f"{r.family}: {r.reason}" for r in response.rejected],
+    }

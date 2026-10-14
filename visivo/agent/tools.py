@@ -26,9 +26,10 @@ is what makes an autonomous loop safe to ship, because the blast radius of a
 hijacked agent is a draft someone can discard.
 """
 
-from typing import Dict
+from typing import Dict, get_args
 
 from visivo.agent.actions import caller, log as action_log
+from visivo.agent.charting.schema import Intent
 from visivo.agent.data_tools import DATA_TOOLS
 from visivo.agent.schema import SchemaSlicer
 from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
@@ -327,6 +328,36 @@ def _recommend_layout_handler(app, arguments):
         raise ToolError(str(error))
 
 
+def _theme_first_color(app):
+    """The first colour of the theme's colorway (a list or a palette name), or None."""
+    from visivo.models.color_palette import ColorPalette
+
+    theme = _theme_config(app)
+    colorway = theme.get("colorway") or theme.get(theme.get("mode"), {}).get("colorway")
+    if isinstance(colorway, str):
+        colorway = ColorPalette.PREDEFINED_PALETTES.get(colorway)
+    return colorway[0] if colorway else None
+
+
+def _recommend_charts_handler(app, arguments):
+    from pydantic import ValidationError
+
+    from visivo.agent.charting.recommend import compact, recommend
+    from visivo.agent.charting.schema import RecommendRequest
+
+    color = _theme_first_color(app)
+    if color and isinstance(arguments.get("context", {}), dict):
+        arguments = {**arguments, "context": {"theme_color": color, **arguments.get("context", {})}}
+    try:
+        request = RecommendRequest(**arguments)
+    except ValidationError as error:
+        problems = "; ".join(
+            f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in error.errors()[:5]
+        )
+        raise ToolError(f"Invalid request: {problems}")
+    return compact(recommend(request))
+
+
 def _recommend_inputs_handler(app, arguments):
     from visivo.agent.charting.inputs import InputsError, recommend_inputs
 
@@ -355,6 +386,55 @@ def _check_input_wiring_handler(app, arguments):
 
 
 _HAND_WRITTEN = {
+    "recommend_charts": Tool(
+        name="recommend_charts",
+        description=(
+            "Choose the chart for an insight before writing it. Pass what you "
+            "learned from profile_columns: the metrics (name, agg, unit), the "
+            "dimensions as shape cards, an intent if the user has one, and "
+            "semantics the question carries (part_of_whole, ordered_stages, "
+            "exact_values, ...). Get back ranked families, each with why, the "
+            "repairs its ranges need (top_n_other, regrain, input_filter, ...) "
+            "and how to apply them, warnings, pairings, a layout hint, the skill "
+            "to read, and for the top three a YAML skeleton built from your "
+            "columns (example_yaml instead when the entry's example cannot carry "
+            "them: a pattern to map, never to paste); plus every family it "
+            "rejected and why."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "metrics": {
+                    "type": "array",
+                    "description": "{name, agg: sum|avg|count|count_distinct|min|max|median|rate, unit?, card?}.",
+                    "items": {"type": "object"},
+                },
+                "dimensions": {
+                    "type": "array",
+                    "description": "Shape cards from profile_columns, in the order you want them: {column, role, cardinality, time_grain?, time_span_points?, geo_kind?, ordered?, stats?}.",
+                    "items": {"type": "object"},
+                },
+                "intent": {
+                    "type": "string",
+                    "enum": list(get_args(Intent)),
+                    "description": "A preference, never a gate; omit it when the user has none.",
+                },
+                "semantics": {
+                    "type": "object",
+                    "description": "Booleans no profile can infer: part_of_whole, cumulative, ordered_stages, signed_contributions, hierarchy, boundaries_available, exact_values, totals_required.",
+                },
+                "context": {
+                    "type": "object",
+                    "description": "{row_count?, model? (for the ${ref()}s in skeletons), max_results? (default 5), existing_inputs?}.",
+                },
+                "requested": {
+                    "type": "string",
+                    "description": "A family (bar, line, part_of_whole, ...) or trace type (pie, violin, ...) the user named. It ranks first with its repairs and warnings, so you can tell the user the trade-off; omit it otherwise.",
+                },
+            },
+        },
+        handler=_recommend_charts_handler,
+    ),
     "recommend_inputs": Tool(
         name="recommend_inputs",
         description=(
