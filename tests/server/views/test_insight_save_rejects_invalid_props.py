@@ -127,3 +127,79 @@ class TestInsightSaveRejectsInvalidProps:
         saved = app.flask_app.insight_manager.get("good_insight")
         assert saved is not None
         assert saved.props.type.value == "bar"
+
+    @pytest.mark.parametrize(
+        "props, path, corrected",
+        [
+            (
+                {"type": "densitymapbox", "lat": "?{${ref(cuisine_heatmap_model)}.lat}"},
+                "props.lat",
+                "${ref(cuisine_heatmap_model).lat}",
+            ),
+            (
+                {"type": "densitymapbox", "lon": "?{${ref(cuisine_heatmap_model)}.lon}"},
+                "props.lon",
+                "${ref(cuisine_heatmap_model).lon}",
+            ),
+            (
+                {
+                    "type": "densitymapbox",
+                    "z": "?{sum(${ref(cuisine_heatmap_model)}.restaurant_count)}",
+                },
+                "props.z",
+                "${ref(cuisine_heatmap_model).restaurant_count}",
+            ),
+            (
+                {"type": "scatter", "marker": {"size": ["?{${ref(model)}.amount}"]}},
+                "props.marker.size[0]",
+                "${ref(model).amount}",
+            ),
+        ],
+    )
+    def test_misplaced_field_accessor_cannot_be_saved(self, client, app, props, path, corrected):
+        response = client.post("/api/insights/bad_field/", json={"props": props})
+        assert response.status_code == 400
+        error = response.get_json()["error"]
+        assert path in error
+        assert corrected in error
+        assert app.flask_app.insight_manager.get("bad_field") is None
+
+    def test_interaction_accessor_cannot_be_saved(self, client, app):
+        response = client.post(
+            "/api/insights/bad_filter/",
+            json={
+                "props": {"type": "scatter", "x": "?{${ref(model).lat}}"},
+                "interactions": [{"filter": "?{${ref(model)}.cuisine = '${ref(cuisine).value}'}"}],
+            },
+        )
+        assert response.status_code == 400
+        error = response.get_json()["error"]
+        assert "('interactions', 0, 'filter')" in error
+        assert "${ref(model).cuisine}" in error
+        assert app.flask_app.insight_manager.get("bad_filter") is None
+
+    def test_corrected_heatmap_references_can_be_saved(self, client, app):
+        response = client.post(
+            "/api/insights/good_heatmap/",
+            json={
+                "props": {
+                    "type": "densitymapbox",
+                    "lat": "?{${ref(cuisine_heatmap_model).lat}}",
+                    "lon": "?{${ref(cuisine_heatmap_model).lon}}",
+                    "z": "?{sum(${ref(cuisine_heatmap_model).restaurant_count})}",
+                }
+            },
+        )
+        assert response.status_code == 201
+
+    def test_literal_text_with_reference_like_content_can_be_saved(self, client):
+        response = client.post(
+            "/api/insights/literal_label/",
+            json={
+                "props": {
+                    "type": "scatter",
+                    "name": "${ref(model)}.lat",
+                }
+            },
+        )
+        assert response.status_code == 201

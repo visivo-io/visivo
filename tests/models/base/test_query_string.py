@@ -128,3 +128,37 @@ def test_QueryString_get_value():
 
     query_string = QueryString('?{ "value" }')
     assert query_string.get_value() == '"value"'
+
+
+@pytest.mark.parametrize(
+    "value, corrected",
+    [
+        ("?{${ref(model)}.lat}", "${ref(model).lat}"),
+        ("?{sum(${ref(model)}.restaurant_count)}", "${ref(model).restaurant_count}"),
+        ("?{ ${ ref('my-model') } .lon }", "${ ref('my-model').lon}"),
+        ('?{${ref(model)}."Column Name"}', '${ref(model)."Column Name"}'),
+        ("?{${ref(model)}.nested[0].field}[0]", "${ref(model).nested[0].field}"),
+    ],
+)
+def test_misplaced_field_accessor_is_rejected_with_corrected_syntax(value, corrected):
+    with pytest.raises(ValidationError) as excinfo:
+        _Holder(value=value)
+    message = str(excinfo.value)
+    assert "inside the reference braces" in message
+    assert corrected in message
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "?{${ref(model).lat}}",
+        "?{sum(${ref(model).restaurant_count})}[0]",
+        "?{${ref(total)}}",
+        "?{${ref(total)}[0]}",
+        "?{${ref(cuisine).value}}",
+        "?{'${ref(cuisine).value}.com'}",
+        "?{SELECT cuisine FROM ${ref(model)}}",
+    ],
+)
+def test_field_validation_preserves_supported_references(value):
+    assert str(_Holder(value=value).value) == value

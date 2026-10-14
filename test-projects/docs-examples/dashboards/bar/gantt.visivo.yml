@@ -20,12 +20,12 @@ insights:
   - name: bar-project-durations
     props:
       type: bar
-      x: ?{${ref(projects-gantt)}.finish_date }
-      y: ?{${ref(projects-gantt)}.project}
+      x: ?{${ref(projects-gantt).finish_date} }
+      y: ?{${ref(projects-gantt).project}}
       orientation: h
       base: ?{start_date}
     interactions:
-      - sort: ?{${ref(projects-gantt)}.project ASC}
+      - sort: ?{${ref(projects-gantt).project} ASC}
 
 charts:
   - name: project-durations-gantt-chart

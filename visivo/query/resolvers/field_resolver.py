@@ -6,6 +6,10 @@ from typing import Optional, Dict
 from visivo.models.base.project_dag import ProjectDag
 
 from visivo.models.models.sql_model import SqlModel
+from visivo.models.models.model import Model
+from visivo.models.metric import Metric
+from visivo.models.dimension import Dimension
+from visivo.query.reference_validation import validate_field_reference_syntax
 from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN_COMPILED,
     has_CONTEXT_STRING_REF_PATTERN,
@@ -405,6 +409,7 @@ class FieldResolver:
 
         Returns resolved sql str
         """
+        validate_field_reference_syntax(expression)
 
         def replace_one_by_one(text, repl_fn):
             # pattern is a compiled regex
@@ -442,6 +447,17 @@ class FieldResolver:
                             f"Qualify it, e.g. {qualified}."
                         )
                     raise
+                if not isinstance(field_node, (Metric, Dimension)):
+                    if isinstance(field_node, Model):
+                        raise ValueError(
+                            f"Reference '${{ref({model_name})}}' points to model '{model_name}', "
+                            "but this expression needs a field. "
+                            f"Use '${{ref({model_name}).column_name}}'."
+                        )
+                    raise ValueError(
+                        f"Reference '${{ref({model_name})}}' must name a metric or dimension "
+                        f"in a field expression; found {type(field_node).__name__}."
+                    )
             else:  # field name is not null — a MODEL-SCOPED field reference
                 model_node = self.dag.get_descendant_by_name(model_name)
                 # Strip leading dot from field_name since property_path includes it

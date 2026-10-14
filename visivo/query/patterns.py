@@ -118,6 +118,17 @@ PROPERTY_PATH_PATTERN = r"(?P<property_path>[\.\d\w\[\]]*?)"
 # property_path captures property paths like "nested.property" or "[0]" or "list[0].property"
 # property_path is optional - will be None if not present
 CONTEXT_STRING_REF_PATTERN = rf"\${{\s*{REF_FUNCTION_PATTERN}{PROPERTY_PATH_PATTERN}\s*}}"
+
+# The same property path, but written OUTSIDE the braces: the `.field` in
+# `${ref(model)}.field`, which is the mistake `validate_field_reference_syntax`
+# rejects. Unlike PROPERTY_PATH_PATTERN this is anchored to a leading dot and
+# admits a double-quoted segment (`."Order Date"`, `""` escaping an inner
+# quote), because by the time someone writes an accessor out here they are
+# usually copying a column name straight out of their warehouse.
+# Captures: path (including the leading dot, so it can be moved verbatim)
+# Examples: .amount, .items[0].sku, ."Order Date"
+EXTERNAL_PROPERTY_PATH_PATTERN = r'\s*(?P<path>(?:\.(?:\w+|"(?:[^"]|"")+")(?:\[\d+\])*)+)'
+
 FIELD_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
 
 
@@ -185,6 +196,7 @@ INDEXED_STATEMENT_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)\[(-?\d*)\]\s*$"
 # ============================================================================
 
 CONTEXT_STRING_REF_PATTERN_COMPILED = re.compile(CONTEXT_STRING_REF_PATTERN)
+EXTERNAL_PROPERTY_PATH_PATTERN_COMPILED = re.compile(EXTERNAL_PROPERTY_PATH_PATTERN)
 
 
 def get_model_name_from_match(match: re.Match) -> str:
