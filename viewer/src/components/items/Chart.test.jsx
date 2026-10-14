@@ -222,6 +222,42 @@ describe('Chart', () => {
     });
   });
 
+  describe('dashboard series colours', () => {
+    const splitJob = {
+      data: [
+        { xcol: 1, kind: 'Cost' },
+        { xcol: 2, kind: 'Margin' },
+      ],
+      props_mapping: { 'props.x': 'xcol' },
+      split_key: 'kind',
+      type: 'bar',
+    };
+    const colorway = BUILTIN_THEMES.light.colorway;
+
+    beforeEach(() => {
+      chart.insights = [{ name: 'by-kind' }];
+      useStore.setState({ insightJobs: { 'by-kind': splitJob } });
+    });
+
+    test('colours each series by its place in the dashboard series order', async () => {
+      render(<Chart chart={chart} project={{ id: 1 }} seriesOrder={['Revenue', 'Cost', 'Margin']} />, {
+        wrapper: withProviders,
+      });
+      await waitFor(() => expect(capturedLayout).not.toBeNull());
+      expect(capturedData.map(trace => trace.name)).toEqual(['Cost', 'Margin']);
+      expect(capturedLayout.colorway).toEqual([colorway[1], colorway[2]]);
+    });
+
+    test('a colorway set on the chart wins over the dashboard series order', async () => {
+      chart.layout = { colorway: ['#123456', '#654321'] };
+      render(<Chart chart={chart} project={{ id: 1 }} seriesOrder={['Revenue', 'Cost', 'Margin']} />, {
+        wrapper: withProviders,
+      });
+      await waitFor(() => expect(capturedLayout).not.toBeNull());
+      expect(capturedLayout.colorway).toEqual(['#123456', '#654321']);
+    });
+  });
+
   describe('imperative handle', () => {
     test('exposes isLoading, flipping false once the plot has drawn', async () => {
       const ref = React.createRef();

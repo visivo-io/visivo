@@ -75,10 +75,11 @@ jest.mock('../../hooks/useVisibleRows', () => ({
 // Chart (VIS-1459: unmeasured → undefined, stacked nested → split height).
 jest.mock('../items/Chart', () => ({
   __esModule: true,
-  default: ({ chart, shouldLoad, width, height, itemWidth }) => (
+  default: ({ chart, shouldLoad, width, height, itemWidth, seriesOrder }) => (
     <div
       data-testid="chart"
       data-insights={JSON.stringify(chart.insights || [])}
+      data-series-order={JSON.stringify(seriesOrder)}
       data-should-load={String(shouldLoad)}
       data-width={String(width)}
       data-height={String(height)}
@@ -906,6 +907,58 @@ describe('Dashboard', () => {
     });
   });
   /* eslint-enable no-template-curly-in-string */
+
+  describe('dashboard series order', () => {
+    const splitJob = kinds => ({
+      data: kinds.map((kind, x) => ({ x, kind })),
+      props_mapping: { 'props.x': 'x' },
+      split_key: 'kind',
+      type: 'bar',
+    });
+
+    it('hands every chart one series order, first seen in layout order', () => {
+      const charts = {
+        'revenue-cost': { name: 'revenue-cost', config: { name: 'revenue-cost', insights: [{ name: 'a' }] } },
+        'cost-margin': { name: 'cost-margin', config: { name: 'cost-margin', insights: [{ name: 'b' }] } },
+      };
+      useStore.mockImplementation(selector =>
+        selector({
+          project: mockProject,
+          dashboards: [
+            {
+              name: 'series',
+              rows: [{ height: 'medium', items: [{ chart: 'revenue-cost' }, { chart: 'cost-margin' }] }],
+            },
+          ],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          fetchModels: jest.fn(),
+          models: [],
+          insightJobs: { a: splitJob(['Revenue', 'Cost']), b: splitJob(['Cost', 'Margin']) },
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        })
+      );
+      render(
+        <BrowserRouter future={futureFlags}>
+          <Dashboard project={mockProject} dashboardName="series" />
+        </BrowserRouter>
+      );
+
+      const orders = screen
+        .getAllByTestId('chart')
+        .map(chart => JSON.parse(chart.getAttribute('data-series-order')));
+      expect(orders).toEqual([
+        ['Revenue', 'Cost', 'Margin'],
+        ['Revenue', 'Cost', 'Margin'],
+      ]);
+    });
+  });
 
   // ---------- VIS-829: container-relative stacking breakpoint ----------
 

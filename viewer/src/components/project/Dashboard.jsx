@@ -12,6 +12,8 @@ import { useVisibleRows } from '../../hooks/useVisibleRows';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
 import TemplateDashboard from './template/TemplateDashboard';
 import { prepareTemplate } from './template/templateHtml';
+import { chartDataFromInsightData } from '../../models/Insight';
+import { seriesOrderOf } from '../../theme/seriesColors';
 
 // Template slots are sized by the template, so they render through the grid's
 // item renderer with no row height of their own.
@@ -573,6 +575,23 @@ const Dashboard = ({
     [visibleInputNames, insightInputNames]
   );
 
+  // Serialised so the order keeps its identity while unrelated insight jobs update.
+  const seriesOrderKey = useMemo(() => {
+    const tracesPerChart = [];
+    forEachItemDeep(layoutRows, item => {
+      const chart = resolveItem(item.chart, getChartByName);
+      if (!chart?.insights?.length) return;
+      const chartJobs = {};
+      chart.insights.forEach(insight => {
+        const job = insightJobs?.[insight?.name];
+        if (job) chartJobs[insight.name] = job;
+      });
+      tracesPerChart.push(chartDataFromInsightData(chartJobs));
+    });
+    return JSON.stringify(seriesOrderOf(tracesPerChart));
+  }, [layoutRows, getChartByName, insightJobs]);
+  const seriesOrder = useMemo(() => JSON.parse(seriesOrderKey), [seriesOrderKey]);
+
   useInputsData(projectId, allInputNames, { cacheKey: runDataVersion });
   useInsightsData(projectId, visibleInsightNames, undefined, { cacheKey: runDataVersion });
   useModelsData(projectId, visibleModelNames, undefined, { cacheKey: runDataVersion });
@@ -700,6 +719,7 @@ const Dashboard = ({
           width={effectiveSlotWidth}
           itemWidth={spanOf(item)}
           shouldLoad={shouldLoad}
+          seriesOrder={seriesOrder}
         />
       );
     }

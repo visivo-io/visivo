@@ -7,8 +7,9 @@ import { chartDataFromInsightData } from '../../models/Insight';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 import { useDashboardTheme } from '../../theme/DashboardThemeContext';
+import { seriesColorway } from '../../theme/seriesColors';
 
-const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false, plotlyConfig, onRelayout }, ref) => {
+const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false, plotlyConfig, onRelayout, seriesOrder }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const chartInsightNames = useMemo(() => {
@@ -110,6 +111,11 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
       l.template = plotlyTemplate;
     }
 
+    if (!l.colorway) {
+      const colorway = seriesColorway(selectedPlotData, seriesOrder, l.template.layout?.colorway);
+      if (colorway) l.colorway = colorway;
+    }
+
     if (!l.legend) {
       l.legend = { orientation: 'h', y: -0.2, x: 0 };
     }
@@ -127,7 +133,7 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     }
 
     return l;
-  }, [chart.layout, chart.name, hideToolbar, plotlyTemplate]);
+  }, [chart.layout, chart.name, hideToolbar, plotlyTemplate, selectedPlotData, seriesOrder]);
 
   const plotLayout = useMemo(() => {
     const layout = { ...layoutRef };

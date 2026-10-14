@@ -274,6 +274,8 @@ class VisivoRunValidator:
             "string-slider-insight",
             "hyphen-mode-insight",
             "query-default-filter-insight",
+            "revenue-cost-split-insight",
+            "cost-margin-split-insight",
         ]
 
         success = True
