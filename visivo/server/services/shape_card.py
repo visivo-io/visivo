@@ -6,6 +6,8 @@ look up. Pure functions over the unified profile shape, so the Explorer and
 the agent classify a column the same way because they call the same code.
 """
 
+import re
+
 from visivo.agent.charting.schema import ShapeCard
 from visivo.server.services.column_types import (
     BOOLEAN,
@@ -88,7 +90,8 @@ GRAINS = (
 
 
 def _name_tokens(name):
-    return [t for t in str(name).lower().replace("-", "_").split("_") if t]
+    words = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", str(name))
+    return [t for t in words.lower().replace("-", "_").split("_") if t]
 
 
 def _has_hint(name, hints):
@@ -100,14 +103,23 @@ def _ratio(numerator, denominator):
     return (numerator / denominator) if denominator else 0.0
 
 
-def _looks_like_identifier(name, kind, distinct, non_null):
+def _fills_integer_range(column, distinct):
+    low, high = column.get("min"), column.get("max")
+    if not isinstance(low, int) or not isinstance(high, int):
+        return False
+    return _ratio(distinct, high - low + 1) >= IDENTIFIER_MIN_RATIO
+
+
+def _looks_like_identifier(name, column, kind, distinct, non_null):
     if non_null < IDENTIFIER_MIN_ROWS:
         return False
     if _ratio(distinct, non_null) < IDENTIFIER_MIN_RATIO:
         return False
-    if kind == FLOAT:
-        # A measured quantity is unique per row too; only a name says id.
-        return _has_hint(name, ID_NAME_HINTS)
+    if kind in (INTEGER, FLOAT):
+        # Measures are unique per row too, so a number is an id only by name or by sequence.
+        return _has_hint(name, ID_NAME_HINTS) or (
+            kind == INTEGER and _fills_integer_range(column, distinct)
+        )
     return True
 
 
@@ -162,7 +174,7 @@ def _role(name, column, distinct, non_null, top_values):
         tokens = _name_tokens(name)
         if any(t in LAT_HINTS or t in LON_HINTS for t in tokens):
             return "geo_point", "latlon"
-        if _looks_like_identifier(name, kind, distinct, non_null):
+        if _looks_like_identifier(name, column, kind, distinct, non_null):
             return "identifier", None
         if kind == INTEGER and distinct <= DISCRETE_MAX_DISTINCT:
             return "numeric_discrete", None
@@ -171,7 +183,7 @@ def _role(name, column, distinct, non_null, top_values):
         return "numeric_continuous", None
     avg_length = column.get("avg_length")
     prose = avg_length is not None and avg_length > LABEL_MAX_AVG_LENGTH
-    if not prose and _looks_like_identifier(name, kind, distinct, non_null):
+    if not prose and _looks_like_identifier(name, column, kind, distinct, non_null):
         return "identifier", None
     geo = geo_kind_for([tv["value"] for tv in top_values]) if top_values else None
     if geo:
@@ -187,18 +199,19 @@ def _skew(mean, median, stddev):
     return 3 * (mean - median) / stddev
 
 
-def shape_card(column, row_count):
+def shape_card(column, profiled_rows):
     """One column of a unified profile as a ``ShapeCard``.
 
     ``column`` is one entry of ``profile["columns"]``: ``name, type,
     null_count, null_percentage, distinct, min, max, avg, median, std_dev,
     q25, q75, p99, zeros_pct, avg_length, top_values``. Missing stats are
-    tolerated; the card is as good as the profile.
+    tolerated; the card is as good as the profile. ``profiled_rows`` is the
+    number of rows the stats were computed over: the sample, when sampled.
     """
     name = column["name"]
     distinct = int(column.get("distinct") or 0)
     null_count = int(column.get("null_count") or 0)
-    non_null = max(int(row_count or 0) - null_count, 0)
+    non_null = max(int(profiled_rows or 0) - null_count, 0)
     top_values = column.get("top_values") or []
     role, geo_kind = _role(name, column, distinct, non_null, top_values)
 
@@ -236,7 +249,7 @@ def shape_card(column, row_count):
         column=name,
         role=role,
         cardinality=distinct,
-        null_pct=round(_ratio(null_count, row_count), 4) if row_count else 0.0,
+        null_pct=round(_ratio(null_count, profiled_rows), 4) if profiled_rows else 0.0,
         time_grain=time_grain,
         time_span_points=distinct if role == "time" else None,
         geo_kind=geo_kind,
@@ -248,5 +261,5 @@ def shape_card(column, row_count):
 
 def shape_cards(profile):
     """Every column of a unified profile as cards, in profile order."""
-    row_count = profile.get("row_count") or 0
-    return [shape_card(c, row_count) for c in profile["columns"]]
+    profiled_rows = profile.get("sample_rows") or profile.get("row_count") or 0
+    return [shape_card(c, profiled_rows) for c in profile["columns"]]

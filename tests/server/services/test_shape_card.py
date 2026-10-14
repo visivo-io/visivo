@@ -49,6 +49,23 @@ class TestRoles:
         assert card(col("pickup_hour", "INTEGER", 24)).role == "numeric_discrete"
         assert card(col("rows", "BIGINT", 400)).role == "numeric_continuous"
 
+    def test_unique_measures_are_not_identifiers(self):
+        revenue = col("revenue", "DOUBLE", 72, rows=72, min=1520.75, max=98213.4)
+        kilograms = col("kilograms", "BIGINT", 45, rows=45, min=1200, max=9_800_000)
+        units_sold = col("units_sold", "BIGINT", 60, rows=60, min=310, max=48_900)
+
+        assert card(revenue, rows=72).role == "numeric_continuous"
+        assert card(kilograms, rows=45).role == "numeric_continuous"
+        assert card(units_sold, rows=60).role == "numeric_continuous"
+
+    def test_integer_keys_are_identifiers_by_name_or_dense_range(self):
+        assert card(col("order_id", "BIGINT", 1000, min=500_123, max=9_800_000)).role == (
+            "identifier"
+        )
+        assert card(col("id", "INTEGER", 1000, min=1, max=1000)).role == "identifier"
+        assert card(col("seq", "INTEGER", 1000, min=1, max=1020)).role == "identifier"
+        assert card(col("VendorID", "BIGINT", 1000, min=7, max=9_000_000)).role == "identifier"
+
     def test_floats_are_measures_unless_named_as_ids(self):
         assert card(col("trip_distance", "DOUBLE", 990)).role == "numeric_continuous"
         assert card(col("rating", "DOUBLE", 5)).role == "numeric_discrete"

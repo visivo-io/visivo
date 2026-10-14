@@ -1,12 +1,17 @@
 """Tests for the profiling service."""
 
 import os
+import sqlite3
 import pytest
 import tempfile
 import time
+from datetime import datetime, timedelta
+
+import duckdb
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from tests.factories.model_factories import DuckdbSourceFactory, SourceFactory
 from visivo.output_paths import model_data_file, run_dir
 
 
@@ -668,6 +673,70 @@ class TestProfileQuery:
         assert profile["row_count"] == 0
         assert profile["columns"] == []
         assert profile["sampled"] is False
+
+
+TRIPS = 20_000
+START = datetime(2024, 1, 1)
+
+
+def _trip_rows():
+    for i in range(TRIPS):
+        yield (
+            str(START + timedelta(minutes=i)),
+            "Queens" if i % 10 == 0 else "Manhattan",
+            None if i % 5 == 0 else i,
+        )
+
+
+@pytest.fixture(params=["duckdb", "sqlite"])
+def trips_source(request, tmp_path):
+    """A time-ordered, skewed table: 90% Manhattan, 20% of tips missing."""
+    if request.param == "duckdb":
+        path = str(tmp_path / "trips.duckdb")
+        conn = duckdb.connect(path)
+        rows = pa.table(dict(zip(["picked_up_at", "borough", "tip"], zip(*_trip_rows()))))
+        conn.execute(
+            "CREATE TABLE trips AS"
+            " SELECT * REPLACE (picked_up_at::TIMESTAMP AS picked_up_at) FROM rows"
+        )
+        conn.close()
+        return DuckdbSourceFactory(database=path)
+    path = str(tmp_path / "trips.sqlite")
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE trips (picked_up_at TEXT, borough TEXT, tip INTEGER)")
+    conn.executemany("INSERT INTO trips VALUES (?, ?, ?)", _trip_rows())
+    conn.commit()
+    conn.close()
+    return SourceFactory(database=path)
+
+
+class TestSampledProfiles:
+    SQL = "SELECT * FROM trips"
+
+    def _cards(self, service, profile):
+        return {c["column"]: c for c in service.shape_cards(profile)}
+
+    def test_a_sample_reports_the_same_shares_as_the_whole_table(self, trips_source, tmp_path):
+        service = ProfilingService(str(tmp_path))
+        full = service.profile_query(trips_source, self.SQL)
+        sampled = service.profile_query(trips_source, self.SQL, sample_rows=1000)
+
+        assert full["sampled"] is False
+        assert sampled["sampled"] is True and sampled["row_count"] == TRIPS
+        full_cards, sample_cards = self._cards(service, full), self._cards(service, sampled)
+        assert full_cards["borough"]["top_n"][0] == {"value": "Manhattan", "share": 0.9}
+        assert sample_cards["borough"]["top_n"][0]["share"] == pytest.approx(0.9, abs=0.05)
+        assert full_cards["tip"]["null_pct"] == 0.2
+        assert sample_cards["tip"]["null_pct"] == pytest.approx(0.2, abs=0.05)
+
+    def test_a_sample_spans_a_time_ordered_table(self, trips_source, tmp_path):
+        profile = ProfilingService(str(tmp_path)).profile_query(
+            trips_source, self.SQL, sample_rows=1000
+        )
+
+        picked_up = next(c for c in profile["columns"] if c["name"] == "picked_up_at")
+        assert picked_up["min"] < str(START + timedelta(minutes=TRIPS // 20))
+        assert picked_up["max"] > str(START + timedelta(minutes=TRIPS * 19 // 20))
 
 
 class TestColumnSubset:
