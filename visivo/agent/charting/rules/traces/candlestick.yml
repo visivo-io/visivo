@@ -13,7 +13,7 @@ avoid_when:
   - "Four metrics that merely share a time axis (fares, tips, tolls, total); the shape matches but the semantics do not, so use scatter lines."
   - "Only a close price is available, or the reader needs the level, not the range; a line is clearer."
   - "Too many candles for the width; they collapse to slivers, so regrain to weeks or months (first open, max high, min low, last close)."
-  - Several securities overlaid on one price axis; candles interleave, so use an input filter or small multiples.
+  - "Several securities on one chart with the default colours (every trace gets the same green and red, so tickers can't be told apart), at very different price levels on one axis, or more than the series limit; candles at the same date stack exactly and converging tickers tangle."
 data_shape:
   metrics: {min: 4, max: 4}
   dimensions: {min: 1, max: 1}
@@ -37,22 +37,26 @@ example: |
       layout: {xaxis: {rangeslider: {visible: false}, rangebreaks: [{bounds: [sat, mon]}]}}
 variations:
   - when: "trading volume should be shown with the price"
-    then: "a second insight `type: bar` with `yaxis: y2`, and on the chart layout `yaxis2.domain: [0, 0.2]` and `yaxis.domain: [0.25, 1]` so volume sits in its own band below the candles"
-  - when: "a second security is wanted"
-    then: "an input filter on the ticker, or one chart per ticker; never `split` on one price axis"
+    then: "a second insight `type: bar` with `yaxis: y2`, and on the chart layout `yaxis2.domain: [0, 0.2]`, `yaxis.domain: [0.25, 1]` and `xaxis.anchor: y2`, so volume sits in its own band below the candles and the dates sit under the volume"
+  - when: "two or three securities should be compared on one price axis"
+    then: "`split` on the ticker with a colour per ticker: `increasing.line.color`, `increasing.fillcolor` and `decreasing.line.color` each `\"?{ CASE ${ref(prices).ticker} WHEN 'AAPL' THEN '#0a9396' WHEN 'MSFT' THEN '#5b4bab' ELSE '#9e9e9e' END }[0]\"`, and `decreasing.fillcolor: 'rgba(0,0,0,0)'`, so colour is the ticker and a hollow body is a down day; avoid red and green, which read as up and down; normalise to % of the first open in SQL when price levels differ"
+  - when: "two or three securities should each keep their own price scale"
+    then: "one insight per ticker, named after the ticker, each on its own axis (`yaxis: y2`, `y3`); on the chart layout give `yaxis.domain`, `yaxis2.domain`, … equal bands with a small gap, `yaxis<N>.title.text` set to the ticker, `xaxis.anchor` set to the bottom band's axis so the dates sit under it, and `showlegend: false`"
+  - when: "one security is the focus and others are benchmarks"
+    then: "that security as candles and the others as `type: scatter`, `mode: lines` on close, all normalised to % of the first open, each line with its own `line.color` that is not red or green"
   - when: "a moving average should run over the candles"
     then: "a third insight `type: scatter`, `mode: lines` on the same axes, with the window function in SQL"
 limits:
   series_ideal: 1
-  series_max: 1
-  repair: [regrain, input_filter, small_multiples]
+  series_max: 3
+  repair: [input_filter, small_multiples, regrain]
 transforms: [regrain]
 gotchas:
   - "Plotly shows a range slider under candlestick and ohlc by default; set `layout.xaxis.rangeslider.visible: false` on dashboards, or it eats a third of a medium row."
   - "Weekends and holidays leave empty gaps on a date axis; add `xaxis.rangebreaks: [{bounds: [sat, mon]}]` (holidays need `values:` lists)."
   - "`x` must be a real date: string dates like `6/5/24` sort and type as categories; `strptime` or cast in the model."
   - "Regrain with first/last, not sum/avg: `arg_min(open, date)`, `max(high)`, `min(low)`, `arg_max(close, date)` per `date_trunc('week', date)`."
-  - "`increasing.line.color`/`decreasing.line.color` replace the theme's up/down colors; a volume bar colored by `CASE WHEN close >= open` is the one legitimate color binding."
+  - "Every candlestick trace, split or not, takes the theme's up/down colours, so several tickers draw identically and their legend swatches match; bind the colours per ticker with a CASE and `[0]`. The legend shows the split value or the insight name, never `name`."
 pairings: [volume_bar_subplot, kpi_strip_above, detail_table_below]
 layout: {height: large, width_share: 1.0, row_role: hero}
 mobile: Full width, showing a recent window via an input or a default range; candles thinner than ~3 px stop reading as candles.
