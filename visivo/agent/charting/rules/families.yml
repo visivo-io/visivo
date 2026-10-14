@@ -17,7 +17,7 @@ families:
       - {when: "intent == kpi", delta: 0.5, reason: "a single number is what was asked for"}
       - {when: "dimensions == 0", delta: 0.2, reason: "nothing to break down"}
     encodings: {time_dimension: "delta against the previous period, or a sparkline"}
-    layout: {height: small, width_share: 0.25, row_role: kpi}
+    layout: {height: xsmall, width_share: 0.25, row_role: kpi}
     skill: charts/kpi
 
   - name: line

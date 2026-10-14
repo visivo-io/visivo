@@ -79,8 +79,6 @@ def _item_height(item, role, rules):
     per heatmap rows or per table rows."""
     base = rules.rule(role).height
     if item.kind == "table":
-        if role == "kpi":
-            return base
         if item.hints.rows is not None:
             for limit, token in sorted(rules.detail_height_by_rows.items()):
                 if item.hints.rows <= limit:

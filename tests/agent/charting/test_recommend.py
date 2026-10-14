@@ -418,7 +418,7 @@ class TestGoldenTables:
                 dimensions=[card("vendor", "categorical", 4)],
             )
         )
-        assert families(five)[0] == "table" and "bar" in {r.family for r in five.rejected}
+        assert families(five)[:2] == ["table", "bar"]
         two = recommend(
             RecommendRequest(
                 metrics=[metric("rides", "count"), metric("revenue")],
