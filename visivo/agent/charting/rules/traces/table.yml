@@ -40,7 +40,7 @@ limits:
 transforms: [top_n_other, precomputed_totals]
 gotchas:
   - "Alias every column (`… as \"Label\"`): unaliased headers are the raw expression, and on an insight the hashed column name."
-  - "`rows_per_page` accepts 3, 5, 15, 25, 50, 100, 500, 1000; not 10 (the enum member `ten` is 15). Use at least the row count for small lookup tables so there is no pager, 25–50 for long ones."
+  - "`rows_per_page` accepts 3, 5, 10, 25, 50, 100, 500, 1000; any other value fails to compile. Use at least the row count for small lookup tables so there is no pager, 25–50 for long ones."
   - "`data` is exclusive with `columns`/`rows`/`values`; `rows` requires `values` and `columns`; pivot `values` must be aggregates or the browser query fails after a clean compile."
   - "Pivots have no ORDER BY and no totals: period labels must sort as text (`YYYY-MM`) and totals are a UNION ALL row in SQL."
   - "`format_cells` colors the current page only, treats null as 0 and parses hex only; point `min_color`/`max_color` at the theme accent and a light tint of it."
