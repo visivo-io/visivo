@@ -64,12 +64,15 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     const reverseMapping = buildReverseMapping(sourceData.props_mapping);
 
     const firstRow = data[0];
-    const cols = Object.keys(firstRow).map(key => ({
-      name: key,
-      displayName: reverseMapping[key] || formatColumnHeader(key),
-      normalizedType: inferType(data, key),
-      duckdbType: inferType(data, key) === COLUMN_TYPES.NUMBER ? 'DOUBLE' : 'VARCHAR',
-    }));
+    const cols = Object.keys(firstRow).map(key => {
+      const normalizedType = inferType(data, key);
+      return {
+        name: key,
+        displayName: reverseMapping[key] || formatColumnHeader(key),
+        normalizedType,
+        duckdbType: normalizedType === COLUMN_TYPES.NUMBER ? 'DOUBLE' : 'VARCHAR',
+      };
+    });
 
     return { allRows: data, dataTableColumns: cols };
   }, [hasDuckDBMode, pivotRows, pivotColumns, sourceData]);
@@ -286,16 +289,19 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   );
 };
 
+// The shape processArrowResult gives every DATE / TIMESTAMP value.
+const ARROW_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const isMidnight = value => value.endsWith('T00:00:00.000Z');
+
 function inferType(rows, key) {
-  for (const row of rows) {
-    const val = row[key];
-    if (val != null) {
-      if (typeof val === 'number') return COLUMN_TYPES.NUMBER;
-      if (typeof val === 'boolean') return COLUMN_TYPES.BOOLEAN;
-      return COLUMN_TYPES.STRING;
-    }
+  const values = rows.map(row => row[key]).filter(val => val != null);
+  if (values.length === 0) return COLUMN_TYPES.UNKNOWN;
+  if (typeof values[0] === 'number') return COLUMN_TYPES.NUMBER;
+  if (typeof values[0] === 'boolean') return COLUMN_TYPES.BOOLEAN;
+  if (values.every(val => typeof val === 'string' && ARROW_DATE_RE.test(val))) {
+    return values.every(isMidnight) ? COLUMN_TYPES.DATE : COLUMN_TYPES.TIMESTAMP;
   }
-  return COLUMN_TYPES.UNKNOWN;
+  return COLUMN_TYPES.STRING;
 }
 
 export default PivotableTable;

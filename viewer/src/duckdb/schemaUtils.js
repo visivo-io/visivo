@@ -80,14 +80,18 @@ const CHAR_WIDTH_PX = 7;
 // Overhead: type icon (14) + gap (6) + gap (6) + sort icon space (14) + gap (6) + info button (22) + padding (24)
 const HEADER_OVERHEAD_PX = 92;
 const MIN_COLUMN_WIDTH = 120;
+// Fits "YYYY-MM-DD HH:MM:SS.sss" in the cell's text-sm mono font plus padding.
+const MIN_TIMESTAMP_COLUMN_WIDTH = 232;
 
 /**
- * Calculate an appropriate column width based on the column name length.
+ * Calculate an appropriate column width from the header length and column type.
  * @param {string} columnName - The column header text
- * @param {string} normalizedType - One of COLUMN_TYPES values (unused for now, reserved for future)
+ * @param {string} normalizedType - One of COLUMN_TYPES values
  * @returns {number} Width in pixels
  */
 export const calculateColumnWidth = (columnName, normalizedType) => {
   const textWidth = columnName.length * CHAR_WIDTH_PX;
-  return Math.max(MIN_COLUMN_WIDTH, textWidth + HEADER_OVERHEAD_PX);
+  const minWidth =
+    normalizedType === COLUMN_TYPES.TIMESTAMP ? MIN_TIMESTAMP_COLUMN_WIDTH : MIN_COLUMN_WIDTH;
+  return Math.max(minWidth, textWidth + HEADER_OVERHEAD_PX);
 };
