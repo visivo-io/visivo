@@ -49,7 +49,7 @@ transforms: [top_n_other, collapse_rare]
 gotchas:
   - "`values` should be an aggregate over `labels` so the query returns one row per slice; Plotly sums rows that share a label, but only after every raw row has been shipped."
   - "Plotly sorts slices by value and starts at 12 o'clock; set `sort: false` and a `sort` interaction to control the order."
-  - "`marker.colors` on the insight overrides the theme colorway; let the theme color the slices."
+  - "The theme colours slices in row order, so a category's colour shifts between charts; pin it with `marker.colors: ?{ CASE <col> WHEN ... END }`."
   - "A `split` draws one pie per value on top of each other in the same circle; a split pie is a stacked bar."
   - "Nulls become a slice labelled 'null'; filter or coalesce them in SQL."
 pairings: [kpi_total_in_hole, bar_beside]

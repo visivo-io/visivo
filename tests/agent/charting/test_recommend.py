@@ -14,6 +14,7 @@ def card(column, role, cardinality, **extra):
 
 BOROUGH = card("pickup_borough", "categorical", 5)
 COMPANY_3 = card("company", "categorical", 3)
+COMPANY_10 = card("company", "categorical", 10)
 COMPANY_20 = card("company", "categorical", 20)
 DAY = card("pickup_day", "time", 365, time_grain="day", time_span_points=365)
 DISTANCE = card("trip_distance", "numeric_continuous", 48_000)
@@ -94,6 +95,12 @@ class TestGoldenB_RidesPerDayByCompany:
         assert "indicator_total_overlay" in best.pairings
         assert "few enough series to follow" in best.why
 
+    def test_ten_companies_stay_one_line_chart(self):
+        """Measured: lines stay traceable to 12 series once the colorway has enough colours."""
+        best = top(RecommendRequest(metrics=[RIDES], dimensions=[DAY, COMPANY_10], intent="trend"))
+
+        assert best.family == "line" and best.transforms == []
+
     def test_twenty_companies_is_repaired_first(self):
         response = recommend(
             RecommendRequest(metrics=[RIDES], dimensions=[DAY, COMPANY_20], intent="trend")
@@ -102,7 +109,7 @@ class TestGoldenB_RidesPerDayByCompany:
         best = response.recommendations[0]
         assert best.family == "line" and best.transforms == ["top_n_other"]
         assert response.transforms_suggested == ["top_n_other"]
-        assert any("exceeds 8" in w for w in best.warnings)
+        assert any("exceeds 12" in w for w in best.warnings)
 
     def test_a_year_of_days_ranks_the_line_above_the_bar(self):
         """Bars are admitted on a time axis but penalised at this many

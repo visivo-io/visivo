@@ -23,6 +23,7 @@ data_shape:
   cardinality: {min: 1, max: 20}
   rows: {max: 500000}
   rows_per_group: {min: 20}
+  cells: {max: 32}
 required_props: [y]
 example: |
   insights:
