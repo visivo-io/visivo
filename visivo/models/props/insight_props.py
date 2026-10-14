@@ -3,7 +3,7 @@ from jsonschema_rs import validator_for
 import json
 from importlib.resources import files
 from jsonschema_rs import ValidationError
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Set
 import re
 
 from visivo.models.props.json_schema_base import JsonSchemaBase, get_message_from_error
@@ -19,6 +19,21 @@ from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
 #: added an unrelated prop. See B08.
 _VISIVO_INTERNAL_PROPS = {"file_path", "path"}
 
+#: Annotation the schema generator (core/scripts/schema) stamps on a trace's
+#: own identifier prop. See :py:meth:`InsightProps.trace_id_props`.
+TRACE_ID_ANNOTATION = "x-visivo-trace-id"
+
+
+def _mentions_ref(schema: Any, ref: str) -> bool:
+    """True when ``{"$ref": ref}`` appears anywhere inside ``schema``."""
+    if isinstance(schema, dict):
+        if schema.get("$ref") == ref:
+            return True
+        return any(_mentions_ref(value, ref) for value in schema.values())
+    if isinstance(schema, list):
+        return any(_mentions_ref(item, ref) for item in schema)
+    return False
+
 
 class InsightProps(JsonSchemaBase):
 
@@ -32,10 +47,7 @@ class InsightProps(JsonSchemaBase):
             InsightProps._schemas = {}
 
         if self.type.value not in InsightProps._validators:
-            schema_path = files("visivo.schema").joinpath(f"{self.type.value}.schema.json")
-            with open(schema_path) as f:
-                schema = json.load(f)
-            InsightProps._schemas[self.type.value] = schema
+            schema = InsightProps.schema_for(self.type.value)
             InsightProps._validators[self.type.value] = validator_for(schema)
 
         validator = InsightProps._validators.get(self.type.value)
@@ -63,6 +75,41 @@ class InsightProps(JsonSchemaBase):
             )
 
         return self
+
+    @classmethod
+    def schema_for(cls, type_value: str) -> dict:
+        """Load (and cache) the generated JSON schema for a trace type."""
+        if not hasattr(cls, "_schemas"):
+            cls._schemas = {}
+        if type_value not in cls._schemas:
+            schema_path = files("visivo.schema").joinpath(f"{type_value}.schema.json")
+            with open(schema_path) as f:
+                cls._schemas[type_value] = json.load(f)
+        return cls._schemas[type_value]
+
+    @classmethod
+    def insight_ref_props(cls, type_value: str) -> Set[str]:
+        """Top-level props of ``type_value`` that bind this trace to another
+        trace by id and therefore accept ``${ref(<insight>)}`` — the generated
+        schema marks them with a ``#/$defs/insight-ref`` branch (e.g.
+        ``carpet`` on contourcarpet / scattercarpet)."""
+        return {
+            name
+            for name, prop_schema in cls.schema_for(type_value).get("properties", {}).items()
+            if _mentions_ref(prop_schema, "#/$defs/insight-ref")
+        }
+
+    @classmethod
+    def trace_id_props(cls, type_value: str) -> Set[str]:
+        """Top-level props of ``type_value`` that ARE the trace's identifier
+        (``carpet`` on a carpet trace) — annotated ``x-visivo-trace-id`` by the
+        generator. When unset, compile defaults them to the insight's name so
+        sibling insights can bind to it by ``${ref(...)}``."""
+        return {
+            name
+            for name, prop_schema in cls.schema_for(type_value).get("properties", {}).items()
+            if isinstance(prop_schema, dict) and prop_schema.get(TRACE_ID_ANNOTATION) is True
+        }
 
     def extract_query_strings(self, prefix: str = "props") -> List[Tuple[str, str]]:
         """

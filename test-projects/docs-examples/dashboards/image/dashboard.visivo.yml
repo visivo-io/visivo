@@ -4,7 +4,10 @@ includes:
   - path: "annotated.visivo.yml"
 
 dashboards:
-  - name: trace-props-examples-image
+  - name: image
+    level: 1
+    tags:
+      - "Trace Prop"
     rows:
       - height: compact
         items:

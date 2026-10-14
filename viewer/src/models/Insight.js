@@ -1,3 +1,5 @@
+import { inputRefRegex, matchName } from '../utils/inputNames';
+
 /**
  * Process input references in props, replacing ${input.accessor} patterns with actual values.
  *
@@ -24,11 +26,11 @@ export function processInputRefsInProps(props, inputs) {
   function processValue(value) {
     if (typeof value === 'string' && value.includes('${')) {
       // Check if this is an input ref pattern
-      const inputRefPattern = /^\$\{(\w+)\.(\w+)\}$/;
-      const match = value.match(inputRefPattern);
+      const match = value.match(inputRefRegex({ anchored: true }));
 
       if (match) {
-        const [, inputName, accessor] = match;
+        const inputName = matchName(match);
+        const accessor = match[3];
         const input = inputs[inputName];
 
         if (input && input[accessor] !== undefined) {
@@ -42,10 +44,11 @@ export function processInputRefsInProps(props, inputs) {
 
       // For more complex templates with embedded refs (e.g., "prefix_${input.value}_suffix")
       // Use regex replacement
-      const embeddedPattern = /\$\{(\w+)\.(\w+)\}/g;
       let hasMatch = false;
-      const replaced = value.replace(embeddedPattern, (fullMatch, inputName, accessor) => {
+      const replaced = value.replace(inputRefRegex({ global: true }), (fullMatch, ...groups) => {
         hasMatch = true;
+        const inputName = matchName(groups);
+        const accessor = groups[2];
         const input = inputs[inputName];
         if (input && input[accessor] !== undefined) {
           return String(input[accessor]);
@@ -98,24 +101,11 @@ export function extractInputDependenciesFromProps(configOrProps) {
 
   const allReferencedNames = new Set();
   // Match both ${inputName.accessor} and ${ref(inputName).accessor}
-  const simplePattern = /\$\{(\w+)\.\w+\}/g;
-  const refPattern = /\$\{ref\((\w+)\)\.\w+\}/g;
 
   function scanValue(value) {
     if (typeof value === 'string') {
-      // Check for ref(inputName) pattern first
-      const refMatches = value.matchAll(refPattern);
-      for (const match of refMatches) {
-        allReferencedNames.add(match[1]);
-      }
-
-      // Then check for simple inputName pattern
-      const simpleMatches = value.matchAll(simplePattern);
-      for (const match of simpleMatches) {
-        // Skip if it was already matched as a ref() pattern
-        if (!value.includes(`ref(${match[1]})`)) {
-          allReferencedNames.add(match[1]);
-        }
+      for (const match of value.matchAll(inputRefRegex({ global: true }))) {
+        allReferencedNames.add(matchName(match));
       }
     } else if (Array.isArray(value)) {
       value.forEach(item => scanValue(item));
@@ -417,11 +407,8 @@ export function chartDataFromInsightData(insightsData, inputs = {}, typeOverride
     // query results, files — still comes from the artifact.
     const effectiveType = typeOverrides[insightName] ?? type;
 
-    if (!data || data.length === 0) {
-      continue;
-    }
-
-    if (!props_mapping || Object.keys(props_mapping).length === 0) {
+    // data === null means the insight is still waiting on an input value.
+    if (data === null || data === undefined) {
       continue;
     }
 
@@ -429,6 +416,33 @@ export function chartDataFromInsightData(insightsData, inputs = {}, typeOverride
     const processedStaticProps = static_props
       ? processInputRefsInProps(static_props, inputs)
       : null;
+
+    const hasPropsMapping = props_mapping && Object.keys(props_mapping).length > 0;
+
+    // A STATIC insight binds nothing to a query (no files, no post_query, an
+    // empty props_mapping — see run_insight_job.static_action): its trace is
+    // its static props alone, e.g. an inlined image `z` grid.
+    if (!hasPropsMapping) {
+      if (
+        processedStaticProps &&
+        typeof processedStaticProps === 'object' &&
+        !Array.isArray(processedStaticProps) &&
+        Object.keys(processedStaticProps).length > 0
+      ) {
+        const traceProps = {};
+        deepMergeStaticProps(traceProps, processedStaticProps);
+        if (effectiveType) {
+          traceProps.type = effectiveType;
+        }
+        traceProps.name = insightName;
+        traces.push(traceProps);
+      }
+      continue;
+    }
+
+    if (data.length === 0) {
+      continue;
+    }
 
     // Check if this insight has a split interaction
     if (split_key && data[0] && data[0][split_key] !== undefined) {

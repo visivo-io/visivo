@@ -24,8 +24,8 @@ import {
  * (optimistic → validate → save).
  *
  * Handle types (D-3 contract):
- *   - Item RIGHT-EDGE (↔ width): drag changes the item's integer col-span
- *     (1–12). Widths are relative within the row, so siblings rebalance live. A
+ *   - Item RIGHT-EDGE (↔ width): drag changes the item's integer col-span.
+ *     Widths are relative within the row, so siblings rebalance live. A
  *     `N / total` readout pill rides the handle.
  *   - Item LEFT-EDGE (↔ width): drag moves the boundary shared with the PREVIOUS
  *     sibling, transferring grid columns between this item and its left neighbour
@@ -55,7 +55,6 @@ import {
  */
 
 const MULBERRY = 'var(--color-primary-500)';
-const COLS = 12;
 
 // Classify a composite selection key as item / row / chrome (mirrors the
 // selection overlay's kindForKey).
@@ -92,6 +91,11 @@ const measure = (el, rootEl) => {
     height: node.height,
   };
 };
+
+// A right-edge drag rebalances the row around the new span; a left-edge drag
+// trades columns with the neighbour, so the row total is unchanged.
+const liveRowTotal = (d, liveCols) =>
+  d.kind === 'width-left' ? d.startTotal : d.startTotal - d.startCols + liveCols;
 
 // Resolve the config node (item or row) addressed by a composite path, plus its
 // parent row's item-width context (so the width gesture can reason about the
@@ -240,13 +244,20 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
       // Width context: per-column px from the parent row's width / its grid total.
       let colPx = 0;
       let startCols = selection.item?.width || 1;
+      const widths = (selection.itemsInRow || []).map(it => it.width || 1);
+      const startTotal = widths.reduce((sum, w) => sum + w, 0) || 1;
+      const precedingCols = widths
+        .slice(0, Math.max(0, itemIndexInRow))
+        .reduce((sum, w) => sum + w, 0);
+      let row = { left: box.left, width: box.width, gap: 0 };
       if ((kind === 'width' || kind === 'width-left' || kind === 'corner') && rowPathForItem && root) {
         const rowEl = root.querySelector(`[data-canvas-path="${rowPathForItem}"]`);
-        const rowBox = rowEl ? measure(rowEl, root) : null;
-        const total =
-          (selection.itemsInRow || []).reduce((sum, it) => sum + (it.width || 1), 0) || 1;
-        const rowWidth = rowBox ? rowBox.width : box.width;
-        colPx = rowWidth / total;
+        if (rowEl) {
+          const rowBox = measure(rowEl, root);
+          const gap = parseFloat(window.getComputedStyle(rowEl).columnGap) || 0;
+          row = { left: rowBox.left, width: rowBox.width, gap };
+        }
+        colPx = row.width / startTotal;
       }
 
       // Left-edge context: the previous sibling's start width bounds how far the
@@ -269,6 +280,9 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
         colPx: colPx || 1,
         startCols,
         liveCols: startCols,
+        startTotal,
+        precedingCols,
+        row,
         neighborStartCols,
         startPx,
         livePx: startPx,
@@ -278,7 +292,7 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
             ? e.shiftKey
               ? `${Math.round(startPx)} px`
               : pixelsToNearestHeightEnum(startPx)
-            : `${startCols} / ${COLS}`,
+            : `${startCols} / ${startTotal}`,
         box,
       };
       dragRef.current = next;
@@ -316,7 +330,7 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
 
       if (d.kind === 'width' || d.kind === 'corner') {
         const deltaCols = Math.round(dx / d.colPx);
-        liveCols = Math.max(1, Math.min(COLS, d.startCols + deltaCols));
+        liveCols = Math.max(1, d.startCols + deltaCols);
       }
       if (d.kind === 'width-left') {
         // Dragging the LEFT edge left (dx < 0) grows the item; dragging it right
@@ -333,7 +347,7 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
 
       let label;
       if (d.kind === 'width' || d.kind === 'width-left') {
-        label = `${liveCols} / ${COLS}`;
+        label = `${liveCols} / ${liveRowTotal(d, liveCols)}`;
       } else if (d.kind === 'corner') {
         const hLabel = fluid ? `${Math.round(livePx)} px` : pixelsToNearestHeightEnum(livePx);
         label = `width ${liveCols} · height ${hLabel}`;
@@ -424,10 +438,9 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
 
   if (!dashboardConfig || !box || selectedKind === 'chrome' || !selection) return null;
 
-  // Ghost geometry while dragging: width gesture stretches the item box to its
-  // live col-span (relative to the start span); height gesture stretches the
-  // box to its live pixel height. Pure transform on the overlay — the Dashboard
-  // render below is untouched (chart stays static).
+  // Ghost geometry while dragging: a width gesture lays the item out on the row's
+  // post-drop grid; a height gesture stretches the box to its live pixel height.
+  // Pure transform on the overlay — the Dashboard render below is untouched.
   const ghost = (() => {
     if (!drag) return null;
     // A pure height drag resizes the ROW, so preview the full row box
@@ -444,14 +457,16 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
     let w = box.width;
     let h = box.height;
     let left = box.left;
-    if (drag.kind === 'width' || drag.kind === 'corner') {
-      w = box.width * (drag.liveCols / Math.max(1, drag.startCols));
-    }
-    if (drag.kind === 'width-left') {
-      // The left-edge gesture moves the LEFT boundary: anchor the right edge and
-      // extend leftward as the span grows.
-      w = box.width * (drag.liveCols / Math.max(1, drag.startCols));
-      left = box.left + box.width - w;
+    if (drag.kind === 'width' || drag.kind === 'corner' || drag.kind === 'width-left') {
+      const { row, liveCols } = drag;
+      const total = liveRowTotal(drag, liveCols);
+      const preceding =
+        drag.kind === 'width-left'
+          ? drag.precedingCols - (liveCols - drag.startCols)
+          : drag.precedingCols;
+      const track = (row.width - (total - 1) * row.gap) / total;
+      w = liveCols * track + (liveCols - 1) * row.gap;
+      left = row.left + preceding * (track + row.gap);
     }
     if (drag.kind === 'corner') {
       h = box.height * (drag.livePx / Math.max(1, drag.startPx));

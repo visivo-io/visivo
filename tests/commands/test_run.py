@@ -62,6 +62,21 @@ def test_run():
     assert response.exit_code == 0
 
 
+def test_run_exits_non_zero_when_a_query_fails():
+    output_dir = temp_folder()
+    project = _make_runnable_project()
+    project.models[0].sql = "select * from missing_table"
+
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
+    working_dir = os.path.dirname(tmp)
+
+    response = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"])
+
+    assert "Run failed" in response.output
+    assert response.exit_code == 1
+
+
 def test_run_with_threads():
     output_dir = temp_folder()
     project = _make_runnable_project()

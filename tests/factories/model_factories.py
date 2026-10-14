@@ -14,6 +14,7 @@ from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.sources.duckdb_source import DuckdbSource
 from visivo.models.sources.redshift_source import RedshiftSource
 from visivo.models.sources.bigquery_source import BigQuerySource
+from visivo.models.sources.mysql_source import MysqlSource
 from visivo.models.test import Test
 from visivo.models.insight import Insight
 from visivo.models.chart import Chart
@@ -167,6 +168,18 @@ class BigQuerySourceFactory(factory.Factory):
     project = "test-project"
     database = "test_dataset"
     type = "bigquery"
+
+
+class MysqlSourceFactory(factory.Factory):
+    class Meta:
+        model = MysqlSource
+
+    name = "source"
+    database = "test_db"
+    host = "localhost"
+    username = "test_user"
+    password = "test_pass"
+    type = "mysql"
 
 
 class SeedFactory(factory.Factory):

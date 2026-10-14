@@ -30,6 +30,10 @@ const URL_PATTERNS = {
     modelValidate: '/api/models/{name}/validate/',
     // OUTLIER: a sub-action on the detail route — drops the cached profile.
     modelProfileInvalidate: '/api/models/{name}/profile/invalidate/',
+    // One profiler for a built model or any SQL on a source. Local answers
+    // inline; cloud answers 202 and the result is polled at the detail route.
+    profiles: '/api/profiles/',
+    profileJobDetail: '/api/profiles/{jobId}/',
 
     dimensionsList: '/api/dimensions/',
     dimensionDetail: '/api/dimensions/{name}/',

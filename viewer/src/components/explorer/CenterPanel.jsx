@@ -25,6 +25,10 @@ import { inferColumnTypes } from '../../utils/inferColumnTypes';
 import { computeColumnProfile } from '../../utils/computeColumnProfile';
 import { usePanelResize } from '../../hooks/usePanelResize';
 import useExplorerDuckDB from '../../hooks/useExplorerDuckDB';
+import {
+  putCachedExplorationResult,
+  invalidateExplorationResults,
+} from '../../stores/explorationResultCache';
 
 const NARROW_THRESHOLD = 600;
 
@@ -50,6 +54,8 @@ const CenterPanel = ({
   // Explore 2.0 Phase 3a (D9): opts the SQL editor into being a Library
   // column/table drop target. Default false.
   enableLibraryDrop = false,
+  // Scopes the session result cache; null (outside an exploration) turns it off.
+  explorationId = null,
 }) => {
   const activeModelName = useStore((s) => s.explorerActiveModelName);
   const sourceName = useStore(selectActiveModelSourceName);
@@ -59,10 +65,14 @@ const CenterPanel = ({
   const setSql = useStore((s) => s.setActiveModelSql);
   const queryResult = useStore(selectActiveModelQueryResult);
 
-  // Show the last run's rows when a model tab opens with none, instead of an
-  // empty grid beside a parquet that already exists. Never overwrites a query
-  // the user just ran (see the hook).
-  useModelTabPrefill(activeModelName, Boolean(queryResult));
+  // Fill a tab that opened with no rows, from this session's cached result and
+  // then the last build's parquet. Never overwrites a query the user just ran
+  // (see the hook).
+  useModelTabPrefill(activeModelName, Boolean(queryResult), {
+    explorationId,
+    sourceName,
+    sql,
+  });
   const queryError = useStore(selectActiveModelQueryError);
   const setModelQueryResult = useStore((s) => s.setModelQueryResult);
   const setModelQueryError = useStore((s) => s.setModelQueryError);
@@ -170,18 +180,31 @@ const CenterPanel = ({
   }, [queryResult]);
 
   const handleQueryComplete = useCallback(
-    ({ result, error, context }) => {
+    ({ result, error, context, executedSql, executedSourceName }) => {
       // Deliver to the model tab that started the run (captured by SQLEditor
       // at execute time) — the user may have switched tabs mid-flight.
       const targetModel = context || activeModelName;
       if (result) {
         setModelQueryResult(targetModel, result);
+        // Keyed on what was executed, not the live editor text: the run may
+        // have been a selection, and the user may have typed on since.
+        putCachedExplorationResult(
+          {
+            explorationId,
+            modelName: targetModel,
+            sourceName: executedSourceName,
+            sql: executedSql,
+          },
+          result
+        );
       }
       if (error) {
         setModelQueryError(targetModel, error);
+        // A failed run retires whatever this chip had cached.
+        invalidateExplorationResults(explorationId, targetModel);
       }
     },
-    [setModelQueryResult, setModelQueryError, activeModelName]
+    [setModelQueryResult, setModelQueryError, activeModelName, explorationId]
   );
 
 

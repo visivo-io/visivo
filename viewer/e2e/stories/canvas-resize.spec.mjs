@@ -136,6 +136,49 @@ test.describe('Canvas resize handles (VIS-777 / D-4)', () => {
     await page.screenshot({ path: `${SCREENS}/vis777-02-width-resized.png`, fullPage: true });
   });
 
+  test('the width ghost previews the box the item lands in, labelled against the row total', async () => {
+    await openCanvas(page);
+    const rows = await readRows(page);
+    const ri = rows.findIndex(r => (r.items || []).length >= 2);
+    const ii = 1;
+    const itemKey = `row.${ri}.item.${ii}`;
+    const widths = rows[ri].items.map(it => it.width || 1);
+    const total = widths.reduce((s, w) => s + w, 0);
+
+    await selectKey(page, itemKey);
+    const handle = page.getByTestId(`canvas-resize-width-${itemKey}`);
+    await expect(handle).toBeVisible({ timeout: WAIT });
+    const rowBox = await page.locator(`[data-canvas-path="row.${ri}"]`).first().boundingBox();
+    const dx = Math.round((rowBox.width / total) * 1.2);
+
+    const b = await handle.boundingBox();
+    const sx = b.x + b.width / 2;
+    const sy = b.y + b.height / 2;
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    await page.mouse.move(sx + dx, sy, { steps: 12 });
+    const live = widths[ii] + 1;
+    await expect(page.getByTestId('canvas-resize-readout')).toHaveText(`${live} / ${total + 1}`);
+    const ghost = await page.getByTestId('canvas-resize-ghost').boundingBox();
+    await page.screenshot({ path: `${SCREENS}/vis1260-ghost-during-drag.png` });
+    await page.mouse.up();
+
+    await expect
+      .poll(async () => (await readRows(page))[ri].items[ii].width, { timeout: WAIT })
+      .toBe(live);
+    const slot = page.locator(`[data-canvas-path="${itemKey}"]`).first();
+    await expect
+      .poll(
+        async () => {
+          const landed = await slot.boundingBox();
+          return Math.max(Math.abs(landed.width - ghost.width), Math.abs(landed.x - ghost.x));
+        },
+        { timeout: WAIT }
+      )
+      .toBeLessThanOrEqual(2);
+    await page.screenshot({ path: `${SCREENS}/vis1260-after-drop.png` });
+  });
+
   test('dragging a row bottom-edge handle changes its height (tick mode)', async () => {
     await openCanvas(page);
     const rows = await readRows(page);

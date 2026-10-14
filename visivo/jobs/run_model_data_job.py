@@ -8,11 +8,65 @@ Used by:
 """
 
 import os
-from time import time
+import threading
+from time import monotonic, time
 
 from visivo.models.sources.source import Source
 from visivo.constants import DEFAULT_RUN_ID
 from visivo.jobs.parquet_io import write_dicts_to_parquet
+
+# Budgets for ad-hoc execution on behalf of a person or an agent. A build has
+# no cap: it writes whatever the model returns.
+UI_QUERY_TIMEOUT_S = 30
+AGENT_QUERY_TIMEOUT_S = 20
+UI_MAX_ROWS = 50_000
+
+
+class QueryTimeout(TimeoutError):
+    """The query did not return within its budget. The driver call is still
+    running in its thread — a Python thread cannot be killed — so this bounds
+    what a caller waits for, not what the database does."""
+
+
+# Bounded queries run on daemon threads so an abandoned driver call never
+# blocks interpreter exit; the semaphore caps how many can be in flight,
+# orphans included.
+MAX_BOUNDED_QUERIES = 8
+_query_slots = threading.BoundedSemaphore(MAX_BOUNDED_QUERIES)
+BOUNDED_QUERY_THREAD_NAME = "visivo-bounded-query"
+
+
+def _timed_out(timeout_s):
+    return QueryTimeout(
+        f"Query did not return within {timeout_s}s. Add a LIMIT, filter the "
+        "rows, or aggregate in SQL before previewing."
+    )
+
+
+def _read_sql_within(source, sql, timeout_s):
+    if timeout_s is None:
+        return source.read_sql(sql)
+    deadline = monotonic() + timeout_s
+    slots = _query_slots
+    if not slots.acquire(timeout=timeout_s):
+        raise _timed_out(timeout_s)
+    outcome, done = {}, threading.Event()
+
+    def run():
+        try:
+            outcome["rows"] = source.read_sql(sql)
+        except BaseException as error:
+            outcome["error"] = error
+        finally:
+            slots.release()
+            done.set()
+
+    threading.Thread(target=run, name=BOUNDED_QUERY_THREAD_NAME, daemon=True).start()
+    if not done.wait(max(0.0, deadline - monotonic())):
+        raise _timed_out(timeout_s)
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome["rows"]
 
 
 def write_parquet_from_data(
@@ -75,28 +129,24 @@ def execute_and_get_result(
     output_dir: str = None,
     name: str = None,
     run_id: str = DEFAULT_RUN_ID,
+    *,
+    max_rows: int = None,
+    timeout_s: float = None,
 ) -> dict:
-    """Execute query and return result data directly.
+    """Execute a query and return its rows.
 
-    Used by model_query_job_executor for returning results to the UI.
-    Optionally writes results to parquet when output_dir and name are provided.
+    Used by the model-query-jobs executor and the draft-insight preview for
+    results that go straight back to a client, and optionally writes parquet
+    when ``output_dir`` and ``name`` are given.
 
-    Args:
-        source: The data source to query
-        sql: SQL query to execute
-        output_dir: Base output directory (optional - if provided with name, writes parquet)
-        name: Clean model name used as the parquet filename (optional)
-        run_id: Run ID for organizing output files
+    ``max_rows`` trims what is returned (the parquet, if written, is whole)
+    and sets ``truncated``; ``timeout_s`` raises ``QueryTimeout`` when the
+    driver has not answered in time.
 
-    Returns:
-        Dict with columns, rows, row_count, execution_time_ms
-
-    Raises:
-        Exception if query fails
+    Returns ``{columns, rows, row_count, truncated, execution_time_ms}``.
     """
     start_time = time()
-
-    data = source.read_sql(sql)
+    data = _read_sql_within(source, sql, timeout_s)
     execution_time_ms = int((time() - start_time) * 1000)
 
     columns = list(data[0].keys()) if data else []
@@ -104,9 +154,13 @@ def execute_and_get_result(
     if output_dir and name:
         write_parquet_from_data(data, output_dir, name, run_id)
 
+    truncated = max_rows is not None and len(data) > max_rows
+    rows = data[:max_rows] if truncated else data
+
     return {
         "columns": columns,
-        "rows": data,
-        "row_count": len(data),
+        "rows": rows,
+        "row_count": len(rows),
+        "truncated": truncated,
         "execution_time_ms": execution_time_ms,
     }

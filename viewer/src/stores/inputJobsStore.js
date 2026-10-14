@@ -87,6 +87,22 @@ const computeMultiSelectAccessors = selectedValues => {
 };
 
 /**
+ * Resolve a multi-select default into the array the accessors are computed
+ * from. The documented literals `all` / `none` (MultiSelectDefault) expand
+ * against the input's loaded options so `.values` never becomes `'all'`;
+ * scalars are wrapped; arrays pass through.
+ *
+ * @param {*} rawValue - Raw default value(s)
+ * @param {string[]|undefined} options - Loaded options for the input (if known)
+ * @returns {Array} - Array of selected values
+ */
+export const toMultiSelectArray = (rawValue, options) => {
+  if (rawValue === 'all') return [...(options || [])];
+  if (rawValue === 'none') return [];
+  return Array.isArray(rawValue) ? rawValue : [rawValue];
+};
+
+/**
  * Input Jobs Store Slice
  *
  * Manages input runtime state: accessor values, selected values, options, and data.
@@ -157,14 +173,17 @@ const createInputJobsSlice = set => ({
    */
   setDefaultInputJobValue: (inputName, rawValue, inputType = 'single-select') =>
     set(state => {
-      const accessors =
-        inputType === 'multi-select'
-          ? computeMultiSelectAccessors(Array.isArray(rawValue) ? rawValue : [rawValue])
-          : computeSingleSelectAccessors(rawValue);
+      const isMulti = inputType === 'multi-select';
+      const selected = isMulti
+        ? toMultiSelectArray(rawValue, state.inputJobOptions?.[inputName])
+        : rawValue;
+      const accessors = isMulti
+        ? computeMultiSelectAccessors(selected)
+        : computeSingleSelectAccessors(selected);
 
       return {
         inputJobs: { ...state.inputJobs, [inputName]: accessors },
-        inputSelectedValues: { ...state.inputSelectedValues, [inputName]: rawValue },
+        inputSelectedValues: { ...state.inputSelectedValues, [inputName]: selected },
         inputJobsInitialized: { ...state.inputJobsInitialized, [inputName]: true },
       };
     }),
@@ -186,13 +205,14 @@ const createInputJobsSlice = set => ({
       const newInputJobsInitialized = { ...state.inputJobsInitialized };
 
       inputDefaults.forEach(({ name, value, type = 'single-select' }) => {
-        const accessors =
-          type === 'multi-select'
-            ? computeMultiSelectAccessors(Array.isArray(value) ? value : [value])
-            : computeSingleSelectAccessors(value);
+        const isMulti = type === 'multi-select';
+        const selected = isMulti ? toMultiSelectArray(value, state.inputJobOptions?.[name]) : value;
+        const accessors = isMulti
+          ? computeMultiSelectAccessors(selected)
+          : computeSingleSelectAccessors(selected);
 
         newInputJobs[name] = accessors;
-        newInputSelectedValues[name] = value;
+        newInputSelectedValues[name] = selected;
         newInputJobsInitialized[name] = true;
       });
 

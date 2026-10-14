@@ -4,7 +4,7 @@ import { Navigate } from 'react-router-dom';
 import OnboardingFlow from './OnboardingFlow';
 import useStore from '../../stores/store';
 import Loading from '../common/Loading';
-import { clearOnboardingState, hasCompletedOnboarding } from './onboardingState';
+import { clearOnboardingState, hasCompletedOnboarding, isOnboardingDismissed } from './onboardingState';
 
 const Onboarding = () => {
   const project = useStore(state => state.project);
@@ -18,11 +18,11 @@ const Onboarding = () => {
 
   // If the backend reports a fresh empty project (Home redirects users
   // here when isNewProject is true), wipe any stale completed_at from a
-  // previous session. Without this, Home → /onboarding → /
+  // previous session, unless the user opted out of onboarding. Without this, Home → /onboarding → /
   // → Home → /onboarding becomes an infinite redirect loop the moment
   // a user reuses a browser profile across projects.
   const clearedRef = useRef(false);
-  if (isNewProject === true && hasCompletedOnboarding() && !clearedRef.current) {
+  if (isNewProject === true && hasCompletedOnboarding() && !isOnboardingDismissed() && !clearedRef.current) {
     clearOnboardingState();
     clearedRef.current = true;
   }
@@ -44,9 +44,9 @@ const Onboarding = () => {
 
   // Only short-circuit when we're sure the user landed on /onboarding
   // for a non-fresh project (someone navigated here manually after
-  // already completing it once). When isNewProject is true we always
-  // render the flow — Home wouldn't have sent them here otherwise.
-  if (wasCompletedAtMount.current && isNewProject === false) {
+  // already completing it once). Fresh projects restart completed flows,
+  // but preserve an explicit opt-out instead of showing onboarding again.
+  if (wasCompletedAtMount.current && (isNewProject === false || isOnboardingDismissed())) {
     return <Navigate to="/" replace />;
   }
 

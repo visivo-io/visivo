@@ -104,6 +104,11 @@
           "description": "String in the format ${ x } for input references like ${ref(input).value} or ${input.value}"
         }
       ]
+    },
+    "insight-ref": {
+      "type": "string",
+      "pattern": "^\\$\\{\\s*ref\\(\\s*['\"]?[a-zA-Z0-9_ -]+['\"]?\\s*\\)\\s*\\}$",
+      "description": "A reference to another insight in the form ${ref(insight-name)}. Resolved at compile time to that insight's trace identifier, e.g. the `carpet` id a contourcarpet or scattercarpet trace lies on."
     }
   },
   "type": "object",
@@ -129,6 +134,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "array"
               }
             ]
           }
@@ -226,6 +234,9 @@
                     },
                     {
                       "type": "string"
+                    },
+                    {
+                      "type": "array"
                     }
                   ]
                 }
@@ -264,7 +275,6 @@
             {
               "oneOf": [
                 {
-                  "type": "string",
                   "enum": [
                     "all",
                     "none",
@@ -290,7 +300,6 @@
               {
                 "oneOf": [
                   {
-                    "type": "string",
                     "enum": [
                       "all",
                       "none",
@@ -490,7 +499,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -514,7 +522,6 @@
                       {
                         "oneOf": [
                           {
-                            "type": "string",
                             "enum": [
                               "none"
                             ]
@@ -858,6 +865,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "array"
               }
             ]
           }
@@ -916,7 +926,6 @@
                 {
                   "oneOf": [
                     {
-                      "type": "string",
                       "enum": [
                         "none"
                       ]
@@ -1503,7 +1512,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -1778,6 +1786,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -1806,6 +1817,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -1859,7 +1873,6 @@
                         {
                           "oneOf": [
                             {
-                              "type": "string",
                               "enum": [
                                 "none"
                               ]

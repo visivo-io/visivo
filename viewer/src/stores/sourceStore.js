@@ -1,3 +1,4 @@
+import { invalidateResultsForSource } from './explorationResultCache';
 import * as sourcesApi from '../api/sources';
 
 // Object status constants (matches backend ObjectStatus enum)
@@ -40,6 +41,8 @@ const createSourceSlice = (set, get) => ({
     try {
       const projectId = get().project?.id;
       const result = await sourcesApi.saveSource(name, config, projectId);
+      // Cached exploration results are keyed by source name, not config.
+      invalidateResultsForSource(name);
       // Refresh sources list to get updated status
       await get().fetchSources();
       // Trigger commit status check
@@ -57,6 +60,7 @@ const createSourceSlice = (set, get) => ({
     try {
       const projectId = get().project?.id;
       await sourcesApi.deleteSource(name, projectId);
+      invalidateResultsForSource(name);
       await get().fetchSources();
       // Trigger commit status check
       if (get().checkCommitStatus) {

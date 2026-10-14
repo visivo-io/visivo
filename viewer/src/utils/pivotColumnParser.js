@@ -1,3 +1,5 @@
+import { formatColumnHeader, plainHeader } from './pivotRefResolver';
+
 /**
  * Parse DuckDB PIVOT result column keys into a hierarchical tree structure
  * suitable for TanStack React Table nested column definitions.
@@ -23,7 +25,7 @@ export function parsePivotColumnHierarchy(resultKeys, resolvedRowCols, resolvedP
   const rowColumnDefs = rowKeys.map(key => ({
     id: key,
     accessorKey: key,
-    displayName: reverseMapping[key] || formatSimpleHeader(key),
+    displayName: plainHeader(key, reverseMapping),
     meta: { isPivotRow: true },
   }));
 
@@ -59,14 +61,14 @@ export function parsePivotColumnHierarchy(resultKeys, resolvedRowCols, resolvedP
       ...groupEntries.map(({ segments, items }) => ({
         id: items[0].originalKey,
         accessorKey: items[0].originalKey,
-        displayName: formatSimpleHeader(segments[0]),
+        displayName: formatColumnHeader(segments[0]),
         meta: { isPivotRow: false },
       })),
     ];
   }
 
   // Build nested tree
-  const pivotTree = buildTree(groupEntries, 0, pivotColCount, aggInfo, singleValue);
+  const pivotTree = buildTree(groupEntries, 0, pivotColCount, aggInfo, singleValue, reverseMapping);
 
   return [...rowColumnDefs, ...pivotTree];
 }
@@ -119,7 +121,7 @@ function splitPrefix(prefix, pivotColCount) {
 /**
  * Recursively build nested column groups.
  */
-function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue) {
+function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue, reverseMapping) {
   if (level === pivotColCount) {
     // At leaf level — return individual agg column defs
     if (singleValue) {
@@ -128,7 +130,7 @@ function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue) {
         items.map(item => ({
           id: item.originalKey,
           accessorKey: item.originalKey,
-          displayName: aggInfo[0] ? `${aggInfo[0].aggFunc} of ${aggInfo[0].displayName}` : item.originalKey,
+          displayName: `${aggInfo[0].aggFunc} of ${aggInfo[0].displayName}`,
           meta: { isPivotRow: false },
         }))
       );
@@ -142,7 +144,7 @@ function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue) {
           accessorKey: item.originalKey,
           displayName: aggInfo[item.aggIndex]
             ? `${aggInfo[item.aggIndex].aggFunc} of ${aggInfo[item.aggIndex].displayName}`
-            : item.originalKey,
+            : plainHeader(item.originalKey, reverseMapping),
           meta: { isPivotRow: false },
         }))
     );
@@ -158,16 +160,8 @@ function buildTree(groupEntries, level, pivotColCount, aggInfo, singleValue) {
 
   return [...grouped.entries()].map(([segValue, children]) => ({
     id: `group-${level}-${segValue}`,
-    header: formatSimpleHeader(segValue),
+    header: formatColumnHeader(segValue),
     meta: { isGroupHeader: true },
-    columns: buildTree(children, level + 1, pivotColCount, aggInfo, singleValue),
+    columns: buildTree(children, level + 1, pivotColCount, aggInfo, singleValue, reverseMapping),
   }));
-}
-
-function formatSimpleHeader(key) {
-  if (!key) return '';
-  const cleanKey = key.replace(/_hash_[a-f0-9]+$/i, '');
-  return cleanKey
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, char => char.toUpperCase());
 }

@@ -7,6 +7,7 @@ import { processArrowResult } from '../duckdb/resultProcessing';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
 import { DEFAULT_RUN_ID } from '../constants';
+import { inputRefRegex, matchName } from '../utils/inputNames';
 
 /**
  * Extract input names from a string containing ${inputName.accessor} patterns
@@ -15,11 +16,9 @@ import { DEFAULT_RUN_ID } from '../constants';
  */
 const extractInputNamesFromString = text => {
   if (!text) return new Set();
-  const regex = /\$\{(\w+)\.\w+\}/g;
-  const matches = text.matchAll(regex);
   const inputNames = new Set();
-  for (const match of matches) {
-    inputNames.add(match[1]);
+  for (const match of text.matchAll(inputRefRegex({ global: true }))) {
+    inputNames.add(matchName(match));
   }
   return inputNames;
 };
@@ -141,11 +140,15 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
 
     const { loaded, failed } = await loadInsightParquetFiles(db, files, forceReload);
 
-    const preparedQuery = prepPostQuery({ query }, inputs);
-
-    const result = await runDuckDBQuery(db, preparedQuery, 3, 1000);
-
-    const processedRows = processArrowResult(result);
+    // A static insight (no query bindings) ships no post_query: there is
+    // nothing to run in DuckDB — chartDataFromInsightData renders its trace
+    // from static_props alone.
+    let processedRows = [];
+    if (query) {
+      const preparedQuery = prepPostQuery({ query }, inputs);
+      const result = await runDuckDBQuery(db, preparedQuery, 3, 1000);
+      processedRows = processArrowResult(result);
+    }
 
     return {
       [insightName]: {

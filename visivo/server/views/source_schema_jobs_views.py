@@ -12,47 +12,11 @@ API Design follows the pattern from insight_views.py:
 import threading
 from flask import jsonify, request
 
-from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.managers.preview_run_manager import PreviewRunManager, RunStatus
 from visivo.server.jobs.source_schema_job_executor import execute_source_schema_job
 from visivo.server.views.schema_path_safety import is_safe_path_segment
-
-
-def _load_schema_with_fallback(source_name: str, output_dir: str, run_id: str = None):
-    """
-    Load schema data, with optional explicit run_id or fallback behavior.
-
-    Args:
-        source_name: Name of the source
-        output_dir: Output directory where schemas are stored
-        run_id: Optional explicit run_id. If provided, only that run_id is tried.
-                If None, tries main first, then preview.
-
-    Returns:
-        Tuple of (schema_data, run_id) or (None, None) if not found
-    """
-    if run_id is not None:
-        schema_data = SchemaAggregator.load_source_schema(source_name, output_dir, run_id=run_id)
-        if schema_data is not None:
-            return schema_data, run_id
-        return None, None
-
-    schema_data = SchemaAggregator.load_source_schema(
-        source_name, output_dir, run_id=DEFAULT_RUN_ID
-    )
-    if schema_data is not None:
-        return schema_data, DEFAULT_RUN_ID
-
-    preview_run_id = f"preview-{source_name}"
-    schema_data = SchemaAggregator.load_source_schema(
-        source_name, output_dir, run_id=preview_run_id
-    )
-    if schema_data is not None:
-        return schema_data, preview_run_id
-
-    return None, None
 
 
 def _is_valid_job_id(job_id: str) -> bool:
@@ -83,34 +47,20 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
         try:
             sources = []
 
-            project_sources = flask_app.project.sources or []
-
-            main_schemas = SchemaAggregator.list_stored_schemas(output_dir, run_id=DEFAULT_RUN_ID)
-            main_schema_map = {s["source_name"]: s for s in main_schemas}
-
-            for source in project_sources:
-                cached = main_schema_map.get(source.name)
-                if cached is None:
-                    preview_run_id = f"preview-{source.name}"
-                    preview_schemas = SchemaAggregator.list_stored_schemas(
-                        output_dir, run_id=preview_run_id
-                    )
-                    for s in preview_schemas:
-                        if s["source_name"] == source.name:
-                            cached = s
-                            break
-
+            for source in flask_app.project.sources or []:
+                cached, _ = SchemaAggregator.load_source_schema_with_fallback(
+                    source.name, output_dir
+                )
                 source_info = {
                     "source_name": source.name,
                     "source_type": source.type,
                     "has_cached_schema": cached is not None,
                 }
-
                 if cached is not None:
+                    metadata = cached.get("metadata") or {}
                     source_info["generated_at"] = cached.get("generated_at")
-                    source_info["total_tables"] = cached.get("total_tables", 0)
-                    source_info["total_columns"] = cached.get("total_columns", 0)
-
+                    source_info["total_tables"] = metadata.get("total_tables", 0)
+                    source_info["total_columns"] = metadata.get("total_columns", 0)
                 sources.append(source_info)
 
             return jsonify(sources)
@@ -232,7 +182,9 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             config = run.config or {}
             source_name = config.get("source_name")
             if source_name:
-                schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
+                schema_data, _ = SchemaAggregator.load_source_schema_with_fallback(
+                    source_name, output_dir
+                )
                 if schema_data:
                     response["result"] = {
                         "source_name": source_name,
@@ -252,7 +204,9 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
         ):
             return jsonify({"message": "Invalid source_name or run_id"}), 400
 
-        schema_data, _ = _load_schema_with_fallback(source_name, output_dir, run_id=run_id_param)
+        schema_data, _ = SchemaAggregator.load_source_schema_with_fallback(
+            source_name, output_dir, run_id=run_id_param
+        )
 
         if schema_data is None:
             Logger.instance().info(f"Schema not found for source: {source_name}")

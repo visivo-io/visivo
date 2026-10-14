@@ -7,6 +7,7 @@ import useProjectChangeListener from './views/workspace/useProjectChangeListener
 import { getTypeColors, getTypeIcon } from './views/common/objectTypeConfigs';
 import { subscribe } from '../events/eventSource';
 import { runsFor } from '../events/topics';
+import { diagnosticsFrom } from '../types/diagnostic';
 
 // queued/running are the only non-terminal states — while active a run is still
 // building, so the detail panel tail-polls the log.
@@ -45,6 +46,8 @@ const scopeLabel = run => run.dag_filter || (run.state === 'queued' ? '—' : 'a
  * say they're built.
  */
 function StagedPanel({ heading }) {
+  const projectId = useStore(s => s.project?.id);
+  const queryClient = useQueryClient();
   const staged = useStore(s => s.stagedChanges);
   const runTrigger = useStore(s => s.runTrigger);
   const setRunTrigger = useStore(s => s.setRunTrigger);
@@ -60,14 +63,20 @@ function StagedPanel({ heading }) {
   const startRun = async opts => {
     setError(null);
     setStarting(true);
-    const result = await triggerRun(opts);
-    setStarting(false);
-    if (!result.success) {
-      setError(
-        result.action === 'run_in_progress'
-          ? 'A run is already in progress.'
-          : result.error || 'Could not start the run.'
-      );
+    try {
+      const result = await triggerRun(opts);
+      if (!result.success) {
+        setError(
+          result.action === 'run_in_progress'
+            ? 'A run is already in progress.'
+            : result.error || 'Could not start the run.'
+        );
+      }
+    } catch (err) {
+      setError(err.message || 'Could not start the run.');
+    } finally {
+      setStarting(false);
+      queryClient.invalidateQueries({ queryKey: ['runs', projectId] });
     }
   };
 
@@ -245,6 +254,7 @@ function CancelRunButton({ run }) {
 
 function RunDetail({ run }) {
   const err = run.error_json;
+  const diagnostics = diagnosticsFrom(err);
   const active = isActiveRun(run);
   // The captured build log, tail-polled while the run is active, then the final
   // static log once terminal. RunDetail only mounts while the row is open, so
@@ -283,6 +293,26 @@ function RunDetail({ run }) {
         <div className={`font-medium mb-1 ${err ? 'text-highlight-700' : 'text-gray-500'}`}>
           {err ? `Error${err.phase ? ` — ${err.phase}` : ''}` : 'Logs'}
         </div>
+        {diagnostics.length > 0 && (
+          <ul data-testid="run-detail-diagnostics" className="mb-2 space-y-1.5">
+            {diagnostics.map((diagnostic, index) => (
+              <li
+                key={diagnostic.id || index}
+                className="rounded border border-highlight/30 bg-highlight-50 px-3 py-2"
+              >
+                <p className="font-medium text-highlight-700">
+                  {diagnostic.object?.name
+                    ? `${diagnostic.object.type ? `${diagnostic.object.type} ` : ''}'${diagnostic.object.name}' — `
+                    : ''}
+                  {diagnostic.message}
+                </p>
+                {diagnostic.hint && (
+                  <p className="mt-0.5 text-highlight-600">{diagnostic.hint}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
         <pre className="bg-gray-900 text-gray-100 rounded p-3 overflow-auto max-h-80 whitespace-pre-wrap">
           <AnsiText text={consoleText} />
         </pre>

@@ -15,7 +15,7 @@
  *   3. lineage            — gone from the graph, with its edges
  *   4. sidebar            — both the Library row and the right-rail form
  *   5. un-delete          — restored WITHOUT discarding other pending edits
- *   6. runs after delete  — the auto-run succeeds and never names it
+ *   6. runs after delete  — deleting an unbuilt creation schedules no run
  *
  * State-mutating: every case writes draft state, so this file is registered in
  * the `state-mutating` project and runs serially after the read-only specs.
@@ -129,6 +129,9 @@ test.describe('delete lifecycle', () => {
     // to remove, so there is no change to stage.
     const pending = await pendingChanges(page);
     expect(pending.filter(c => c.name === name && c.status === 'deleted')).toHaveLength(0);
+    const changes = await api(page, '/api/projects/p/changes/');
+    expect(changes.ok()).toBeTruthy();
+    expect((await changes.json()).staged.map(item => item.name)).not.toContain(name);
   });
 
   // ── The two DOM-driven cases below are FIXME, not deleted ────────────────
@@ -252,56 +255,24 @@ test.describe('delete lifecycle', () => {
     expect(res.status()).toBe(409);
   });
 
-  test('6. the run after a delete rebuilds everything and never names it', async ({
-    page,
-  }) => {
-    // The expensive symptom. The run-on-save hook turned the saved names into
-    // `+<name>+`, so deleting asked the DAG for a node that no longer existed
-    // and the run failed complaining about the object the user had just
-    // removed. A delete now forces a full rebuild instead.
+  test('6. deleting an unbuilt creation does not start an automatic run', async ({ page }) => {
     const name = `e2e_run_after_delete_${Date.now()}`;
-    // This case needs the auto-run the rest of the file suppresses.
+    await createDraftModel(page, name);
     await api(page, '/api/me/preferences/', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       data: { run_trigger: 'automatic' },
     });
-    await createDraftModel(page, name);
-
-    // Runs are shared, process-wide state, so remember which one was newest
-    // before the delete — taking `runs[0]` blindly can pick up a run another
-    // case in this file just triggered, which is what made this flaky.
     const runsBefore = await api(page, '/api/projects/p/run/');
-    const before = runsBefore.ok() ? await runsBefore.json().catch(() => []) : [];
-    const previousId = Array.isArray(before) && before[0] ? before[0].id : null;
+    expect(runsBefore.ok()).toBeTruthy();
+    const beforeIds = (await runsBefore.json()).map(run => run.id);
+    const deleted = await deleteObject(page, 'models', name);
+    expect(deleted.ok()).toBeTruthy();
 
-    await deleteObject(page, 'models', name);
-
-    // Two waits, because they have very different costs. The filter is the
-    // regression assertion and is readable the moment the run EXISTS — the
-    // debounce is 0.5s. Whether the run finishes is a separate question: a full
-    // rebuild of the integration project takes minutes, so waiting for it here
-    // would time out on something this case does not care about.
-    let run = null;
-    await expect
-      .poll(
-        async () => {
-          const res = await api(page, '/api/projects/p/run/');
-          if (!res.ok()) return null;
-          const runs = await res.json().catch(() => []);
-          const newest = Array.isArray(runs) ? runs[0] : null;
-          if (!newest || newest.id === previousId) return null;
-          run = newest;
-          return run.id;
-        },
-        { timeout: WAIT, message: 'the delete should trigger a NEW run' }
-      )
-      .not.toBeNull();
-
-    // A delete forces a FULL rebuild — the empty selector — precisely because
-    // the deleted node's consumers have to recompute. This is the assertion
-    // that fails against the old behaviour, where the filter was `+<name>+`.
-    expect(run.dag_filter).toBe('');
-    expect(run.dag_filter).not.toContain(name);
+    // The backend debounce is 500ms; observe past it to catch an unwanted run.
+    await page.waitForTimeout(1000);
+    const runsAfter = await api(page, '/api/projects/p/run/');
+    expect(runsAfter.ok()).toBeTruthy();
+    expect((await runsAfter.json()).map(run => run.id)).toEqual(beforeIds);
   });
 });

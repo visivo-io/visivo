@@ -29,7 +29,8 @@ from flask import g, jsonify, request
 
 from visivo.logger.logger import Logger
 from visivo.server.hash.data_fingerprint import data_fingerprint
-from visivo.server.jobs.save_run_executor import request_run, run_now
+from visivo.server.jobs.save_run_executor import cancel_pending_run, request_run, run_now
+from visivo.server.managers.object_manager import location_free_dump
 from visivo.server.user_config import AUTOMATIC, get_run_trigger
 
 # URL segment -> (manager attr, fingerprint mode, data_producing). Public so the
@@ -84,6 +85,15 @@ def stage_and_maybe_run(flask_app, type_key, name, before, *, deleted=False):
     """
     if type_key not in RESOURCE_META:
         return None
+    manager = getattr(flask_app, RESOURCE_META[type_key][0], None)
+    if (
+        deleted
+        and manager is not None
+        and manager.get_status(name) is None
+        and flask_app.staged_manager.discard_unbuilt(RESOURCE_TYPE_NAMES[type_key], name)
+    ):
+        cancel_pending_run([name])
+        return None
     after = _resource_fingerprint(flask_app, type_key, name, deleted=deleted)
     if after == before:
         return None
@@ -123,11 +133,7 @@ def _resource_fingerprint(flask_app, segment, name, *, deleted=False):
     if manager is None:
         return None
     obj = None if deleted else manager.get(name)
-    config = (
-        obj.model_dump(mode="json", exclude_none=True, exclude={"file_path", "path"})
-        if obj is not None
-        else None
-    )
+    config = location_free_dump(obj, mode="json", exclude_none=True) if obj is not None else None
     return data_fingerprint(mode, config, deleted=deleted, data_producing=data_producing)
 
 

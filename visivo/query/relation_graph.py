@@ -85,7 +85,7 @@ class RelationGraph:
     def __init__(
         self,
         dag: ProjectDag,
-        field_resolver: FieldResolver,
+        field_resolver: Optional[FieldResolver] = None,
         relevant_models: Optional[Set[str]] = None,
     ):
         """
@@ -93,7 +93,9 @@ class RelationGraph:
 
         Args:
             dag: The project DAG containing models and relations
-            field_resolver: FieldResolver for resolving relation conditions
+            field_resolver: FieldResolver for resolving relation conditions. ``None``
+                builds a connectivity-only graph (no model schemas needed), which is
+                what compile-time checks want before anything has run.
             relevant_models: Optional set of model names to include. If provided,
                 only models in this set are added as nodes, and only relations
                 where BOTH models are in this set are resolved. This prevents
@@ -145,9 +147,14 @@ class RelationGraph:
                         # One or both models not in relevant set, skip this relation
                         continue
 
-                # Resolve the condition immediately and cache it
-                resolved_condition = self.field_resolver.resolve(relation.condition, alias=False)
-                self._resolved_conditions[relation.condition] = resolved_condition
+                # Resolve the condition immediately and cache it (connectivity-only
+                # graphs carry the raw condition and no resolved form).
+                resolved_condition = None
+                if self.field_resolver is not None:
+                    resolved_condition = self.field_resolver.resolve(
+                        relation.condition, alias=False
+                    )
+                    self._resolved_conditions[relation.condition] = resolved_condition
 
                 # networkx.Graph keeps a single edge per node pair, so when more
                 # than one relation is declared for the same pair, add_edge would

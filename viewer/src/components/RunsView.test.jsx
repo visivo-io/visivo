@@ -65,6 +65,7 @@ const logQueryOpts = () => useQuery.mock.calls.find(([opts]) => opts.queryKey[0]
 
 beforeEach(() => {
   useQuery.mockReset();
+  mockQueryClient.invalidateQueries.mockClear();
   useStore.setState({ project: { id: 'p1' } });
 });
 
@@ -132,6 +133,58 @@ describe('RunsView is self-contained (6c-T2 dark-on-dark hardening)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /failed/i }));
     expect(screen.getByText(/Error — run/).className).toContain('text-highlight');
+  });
+});
+
+describe('RunsView — RunDetail diagnostics', () => {
+  const diagnosticsErrorJson = {
+    phase: 'run',
+    diagnostics: [
+      {
+        severity: 'error',
+        phase: 'run',
+        code: 'query_execution_failed',
+        message: 'no such table: orders',
+        object: { type: 'model', name: 'orders' },
+        hint: 'Check the model SQL, then run again.',
+        related: [],
+      },
+      {
+        severity: 'error',
+        phase: 'run',
+        code: 'dependency_failed',
+        message: "Skipped insight 'revenue' because its dependency 'orders' failed.",
+        object: { type: 'insight', name: 'revenue' },
+        related: [],
+      },
+    ],
+  };
+
+  test('a diagnostics-carrying failure renders one entry per failed job, with object and hint', () => {
+    mockQueries({
+      runs: [run({ state: 'failed', error_json: diagnosticsErrorJson })],
+      log: { state: 'failed', logs: 'boom', error_json: diagnosticsErrorJson },
+    });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /failed/i }));
+
+    const list = screen.getByTestId('run-detail-diagnostics');
+    expect(list).toHaveTextContent("model 'orders' — no such table: orders");
+    expect(list).toHaveTextContent('Check the model SQL, then run again.');
+    expect(list).toHaveTextContent(
+      "insight 'revenue' — Skipped insight 'revenue' because its dependency 'orders' failed."
+    );
+  });
+
+  test('a legacy payload without diagnostics renders no diagnostics list', () => {
+    mockQueries({
+      runs: [run({ state: 'failed', error_json: { phase: 'run' } })],
+      log: { state: 'failed', logs: 'boom', error_json: { phase: 'run' } },
+    });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: /failed/i }));
+
+    expect(screen.queryByTestId('run-detail-diagnostics')).not.toBeInTheDocument();
   });
 });
 
@@ -332,6 +385,7 @@ describe('RunsView staged panel', () => {
     // listed. An explicit '' would mean "rebuild everything" — that's Run all.
     await waitFor(() => expect(triggerRun).toHaveBeenCalled());
     expect(triggerRun).not.toHaveBeenCalledWith({ dagFilter: '' });
+    expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['runs', 'p1'] });
   });
 
   test('Run all stays available with nothing staged; Run changes goes inert', () => {
@@ -353,6 +407,7 @@ describe('RunsView staged panel', () => {
     render(<RunsView />);
     fireEvent.click(screen.getByRole('button', { name: 'Run all' }));
     await waitFor(() => expect(triggerRun).toHaveBeenCalledWith({ dagFilter: '' }));
+    expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['runs', 'p1'] });
   });
 
   test('both run buttons are disabled while a run is in flight', () => {
@@ -371,6 +426,17 @@ describe('RunsView staged panel', () => {
     render(<RunsView />);
     fireEvent.click(screen.getByRole('button', { name: 'Run 2 changes' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('already in progress');
+    expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['runs', 'p1'] });
+  });
+
+  test('a network failure releases the buttons so the run can be retried', async () => {
+    const { triggerRun } = setup();
+    triggerRun.mockRejectedValue(new Error('Network unavailable'));
+    mockQueries({ runs: [] });
+    render(<RunsView />);
+    fireEvent.click(screen.getByRole('button', { name: 'Run all' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Network unavailable');
+    expect(screen.getByRole('button', { name: 'Run all' })).toBeEnabled();
   });
 
   test('the toggle reflects and changes the trigger mode', () => {

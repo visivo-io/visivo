@@ -45,6 +45,8 @@ export default defineConfig({
         '**/delete-lifecycle.spec.mjs',
         // Saves and discards a draft project theme (see state-mutating).
         '**/theme-edit.spec.mjs',
+        // Drafts a broken model + insight and runs them (see state-mutating).
+        '**/canvas-insight-run-failure.spec.mjs',
         // Phase 2 e2e gate (VIS-1050): explorations live in ONE file-backed
         // repository shared by every worker (`.visivo/explorations/`, no
         // per-worker isolation like localStorage-scoped Phase 0 state) — see
@@ -128,6 +130,8 @@ export default defineConfig({
         // edit, type switch): mints a real exploration + computed columns
         // against the shared `.visivo/explorations/` repository.
         '**/exploration-chart-build-updates.spec.mjs',
+        // Mints real exploration records against the shared repository.
+        '**/exploration-result-continuity.spec.mjs',
         // M28 geometry guard: mints a real exploration to get a live draft
         // chart on screen, then measures pane-vs-plot rects. Same shared
         // `.visivo/explorations/` isolation need as its siblings above; it
@@ -155,6 +159,9 @@ export default defineConfig({
         '**/delete-lifecycle.spec.mjs',
         // Saves a draft project theme, then discards it.
         '**/theme-edit.spec.mjs',
+        // Drafts a model selecting from a missing table plus an insight on it,
+        // runs them to a failure, then deletes both.
+        '**/canvas-insight-run-failure.spec.mjs',
       ],
       dependencies: ['parallel'],
     },
@@ -309,6 +316,7 @@ export default defineConfig({
         // the draft compile/execute endpoints — same shared-repository
         // isolation need as its computed-column siblings above.
         '**/exploration-computed-metric-grouping.spec.mjs',
+        '**/exploration-result-continuity.spec.mjs',
       ],
       fullyParallel: false,
       workers: 1,

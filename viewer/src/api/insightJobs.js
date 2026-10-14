@@ -7,7 +7,7 @@ import { apiFetch } from './utils';
  * @param {Object} insightJob - Insight job object to validate
  * @returns {boolean} True if valid
  */
-const validateInsightJobStructure = insightJob => {
+export const validateInsightJobStructure = insightJob => {
   const insight = insightJob; // alias for clarity in validation messages
   if (!insight.name) {
     console.warn('Insight missing name:', insight);
@@ -20,7 +20,15 @@ const validateInsightJobStructure = insightJob => {
     return false;
   }
 
-  if (!insight.query) {
+  // A STATIC insight (nothing bound to a query — see run_insight_job.static_action)
+  // ships no post_query and no files; its trace is its static_props alone.
+  const isStatic =
+    insight.files.length === 0 &&
+    insight.static_props &&
+    typeof insight.static_props === 'object' &&
+    Object.keys(insight.static_props).length > 0;
+
+  if (!insight.query && !isStatic) {
     console.warn(`Insight '${insight.name}' missing query:`, insight);
     return false;
   }

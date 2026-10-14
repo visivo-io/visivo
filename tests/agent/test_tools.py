@@ -50,6 +50,35 @@ class TestItIsARegistryNotAList:
         assert {"list_widgets", "get_widget", "write_widget", "validate_widget"} <= set(rebuilt)
 
 
+class TestSourceCredentials:
+    def test_writing_back_a_read_source_does_not_stage_the_mask(
+        self, integration_app, output_dir, monkeypatch
+    ):
+        """`get_source` serves the masked password; writing that config back
+        must keep the real credential, not commit `**********`."""
+        monkeypatch.setenv("AGENT_DB_PASSWORD", "unset")
+        monkeypatch.delenv("AGENT_DB_PASSWORD")
+        config = {
+            "name": "agent-db",
+            "type": "postgresql",
+            "host": "localhost",
+            "database": "analytics",
+            "username": "svc",
+            "password": "hunter2",
+        }
+        call(integration_app, "write_source", {"config": config})
+
+        echoed = call(integration_app, "get_source", {"name": "agent-db"})
+        echoed["host"] = "db.internal"
+        call(integration_app, "write_source", {"config": echoed})
+
+        cached = integration_app.source_manager.cached_objects["agent-db"]
+        assert cached.model_dump(mode="json")["password"] == "${env.AGENT_DB_PASSWORD}"
+        assert os.environ["AGENT_DB_PASSWORD"] == "hunter2"
+        with open(os.path.join(output_dir, ".env")) as env_file:
+            assert "AGENT_DB_PASSWORD" in env_file.read()
+
+
 class TestNothingReachesTheFilesystem:
     """Every write lands in the draft tier. `commit` is deliberately absent —
     promotion stays a human action, and turning drafts into files is
@@ -242,3 +271,52 @@ class TestAWriteStagesAndRuns:
         assert requested == []
         assert result["change"] == "staged"
         assert "agent-manual" in self._staged_names(integration_app)
+
+
+class TestEveryFailureIsARefusal:
+    def _with_handler(self, monkeypatch, name, handler):
+        from visivo.agent import tools
+
+        broken = tools.Tool(name=name, description="", input_schema={}, handler=handler)
+        monkeypatch.setitem(tools.TOOLS, name, broken)
+
+    def test_an_unexpected_error_names_the_tool(self, integration_app, monkeypatch):
+        def boom(app, arguments):
+            raise RuntimeError("driver exploded")
+
+        self._with_handler(monkeypatch, "get_theme", boom)
+
+        with pytest.raises(ToolError, match="^get_theme failed: driver exploded$"):
+            call(integration_app, "get_theme", {})
+
+    def test_and_the_source_it_ran_against(self, integration_app, monkeypatch):
+        def boom(app, arguments):
+            raise RuntimeError("no such column")
+
+        self._with_handler(monkeypatch, "query_source", boom)
+
+        with pytest.raises(ToolError, match="^query_source failed on 'wh': no such column$"):
+            call(integration_app, "query_source", {"source": "wh", "sql": "select 1"})
+
+    def test_a_timeout_is_passed_through_as_its_own_message(self, integration_app, monkeypatch):
+        from visivo.jobs.run_model_data_job import QueryTimeout
+
+        def slow(app, arguments):
+            raise QueryTimeout("Query did not return within 20s.")
+
+        self._with_handler(monkeypatch, "query_source", slow)
+
+        with pytest.raises(ToolError, match="^Query did not return within 20s.$"):
+            call(integration_app, "query_source", {"source": "wh", "sql": "select 1"})
+
+    def test_a_refusal_is_raised_unchanged(self, integration_app, monkeypatch):
+        refusal = ToolError("no")
+
+        def refuse(app, arguments):
+            raise refusal
+
+        self._with_handler(monkeypatch, "get_theme", refuse)
+
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, "get_theme", {})
+        assert raised.value is refusal

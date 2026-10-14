@@ -4,49 +4,80 @@ import useStore from '../stores/store';
 import { DEFAULT_RUN_ID } from '../constants';
 import { processModel } from './useModelsData';
 import { fetchModelJobs } from '../api/modelJobs';
+import { getCachedExplorationResult } from '../stores/explorationResultCache';
 
 /**
- * Fill a freshly-opened model tab with the LAST RUN's rows.
+ * Fill a model tab that has no rows: first from this session's cached result
+ * for exactly this query (`explorationResultCache`), then from the last build's
+ * parquet.
  *
- * Opening a model used to show an empty grid until you pressed Run, even though
- * the previous run's parquet was sitting right there. `explorerStore` used to do
- * this itself, and lost the ability when `api/modelData.js` was removed: the
- * rows now come from the parquet via DuckDB, and DuckDB is reachable from a
- * hook, not from a Zustand store.
- *
- * So it lives here rather than in the store. The alternative — exposing a DuckDB
- * singleton for the store to reach into — is smaller but puts a browser resource
- * behind a synchronous state container, where nothing owns its lifecycle.
+ * `explorerStore` used to do the parquet prefill itself and lost the ability
+ * when `api/modelData.js` was removed: the rows now come from the parquet via
+ * DuckDB, and DuckDB is reachable from a hook, not from a Zustand store.
  *
  * Deliberately conservative:
  *
- * - It only fills a tab that has NO result. A query you just ran is never
- *   overwritten by a stale build.
- * - It attempts each model at most once per mount, whether it succeeded or not.
- *   A model that has never been built has no parquet, and a 404 per keystroke
- *   is worse than an empty grid.
- * - A failure is silent. This is a convenience; the Run button is the
- *   authoritative path and reports its own errors.
+ * - It only fills a tab that has no result. A query you just ran is never
+ *   overwritten by either source.
+ * - The build is attempted at most once per model per mount, whether it
+ *   succeeded or not. A model that has never been built has no parquet, and a
+ *   404 per keystroke is worse than an empty grid.
+ * - A failure is silent. The Run button is the authoritative path and reports
+ *   its own errors.
  *
- * Loads the last build through the model-jobs endpoint (fetchModelJobs →
- * signed_data_file_url), the same path the dashboard uses, so it works in the
- * cloud as well as locally. A model that has no built data just leaves the grid
- * empty.
+ * The cache read and the build fetch are separate effects on purpose. The
+ * cache read must re-fire when the scope (source, SQL) changes; the build
+ * fetch must not, because its cleanup cancels the in-flight request while
+ * `attemptedRef` refuses to start another, which would leave the grid empty
+ * for the rest of the mount. `servedFromCacheRef` stops the build effect from
+ * racing a cache hit on the same commit.
  *
  * @param {string|null} modelName - the active model tab, or null
  * @param {boolean} hasResult - whether that tab already has rows
+ * @param {{explorationId?: string|null, sourceName?: string|null, sql?: string}} [cacheScope]
+ *   Identity of the query this tab holds. Without an `explorationId` the
+ *   session cache is off and only the build prefill runs.
  */
-export const useModelTabPrefill = (modelName, hasResult) => {
+export const useModelTabPrefill = (modelName, hasResult, cacheScope = null) => {
   const db = useDuckDB();
   const setModelQueryResult = useStore(state => state.setModelQueryResult);
   const projectId = useStore(state => state.project?.id);
   // Names already attempted this mount — keyed so switching tabs back and forth
   // doesn't re-fetch, and a model with no parquet is asked for exactly once.
   const attemptedRef = useRef(new Set());
+  // Model the cache effect just served, so the build effect skips it this commit.
+  const servedFromCacheRef = useRef(null);
 
+  const explorationId = cacheScope?.explorationId || null;
+  const scopeSourceName = cacheScope?.sourceName || null;
+  const scopeSql = cacheScope?.sql || '';
+
+  // Session cache first: synchronous, no DuckDB handle, no network.
   useEffect(() => {
-    if (!db || !modelName || hasResult) return;
-    if (attemptedRef.current.has(modelName)) return;
+    if (!modelName || hasResult) return;
+
+    const cached = getCachedExplorationResult({
+      explorationId,
+      modelName,
+      sourceName: scopeSourceName,
+      sql: scopeSql,
+    });
+    if (!cached) {
+      servedFromCacheRef.current = null;
+      return;
+    }
+    servedFromCacheRef.current = modelName;
+    // Provenance only; nothing reads `from_cache` yet (same as `from_last_run`).
+    setModelQueryResult(modelName, { ...cached, from_cache: true });
+  }, [modelName, hasResult, setModelQueryResult, explorationId, scopeSourceName, scopeSql]);
+
+  // Last build's parquet. Not scope-dependent (see the docstring).
+  useEffect(() => {
+    if (!modelName || hasResult) return undefined;
+    if (servedFromCacheRef.current === modelName) return undefined;
+
+    if (!db) return undefined;
+    if (attemptedRef.current.has(modelName)) return undefined;
     attemptedRef.current.add(modelName);
 
     let cancelled = false;

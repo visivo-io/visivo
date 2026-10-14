@@ -29,6 +29,8 @@ they have no row to rename.
 
 import re
 
+from pydantic import SecretStr
+
 from visivo.models.dashboards.template_dashboard import TemplateDashboard
 
 TYPE_TO_MANAGER = {
@@ -98,7 +100,13 @@ def _current_objects(manager):
 
 
 def _config_of(obj):
-    return obj.model_dump(mode="json", exclude_none=True)
+    config = obj.model_dump(mode="json", exclude_none=True)
+    # The JSON dump masks secrets; a re-save of the mask under a new name has nothing to keep.
+    for field in getattr(type(obj), "model_fields", {}):
+        value = getattr(obj, field, None)
+        if isinstance(value, SecretStr):
+            config[field] = value.get_secret_value()
+    return config
 
 
 def _all_names(flask_app):

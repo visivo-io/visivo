@@ -42,6 +42,12 @@ export function hasCompletedOnboarding() {
   return !!(s && s.completed_at);
 }
 
+export function isOnboardingDismissed(state = readOnboardingState()) {
+  // Older skips only recorded the path. Honor them without requiring users
+  // to dismiss a second time after updating the viewer.
+  return !!(state && (state.checklist_dismissed || state.path === 'skipped'));
+}
+
 /* Record a user-initiated onboarding action (model saved, insight saved,
  * dashboard saved, deploy succeeded, etc) into the persisted state.
  *

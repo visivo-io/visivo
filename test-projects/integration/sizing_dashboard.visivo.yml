@@ -1,0 +1,51 @@
+# Integration fixture for VIS-1458 — dashboard sizing. Each row isolates one
+# sizing rule so viewer/e2e/stories/dashboard-sizing.spec.mjs can measure it:
+#   row 0  compact row holding a chart (L1: 256px plot, not 1024px)
+#   row 1  small row of four width-3 KPIs (L3: stacks to 160px tiles, not 256px)
+#   row 2  large row split [8, 4] (L3: stacks to 341px + 171px)
+#   row 3  large row whose nested container mixes an integer sub-row height
+#          (512) with a token (small = 256) (L4: 2:1 split, not 8:2)
+dashboards:
+  - name: sizing-dashboard
+    level: 1
+    tags:
+      - "layout"
+      - "sizing"
+    description: |
+      Exercises row/item sizing rules: compact chart rows, stacked item heights
+      below the breakpoint, integer heights on nested sub-rows.
+    rows:
+      - height: compact
+        items:
+          - chart: ${ref(simple-scatter-chart)}
+
+      - height: small
+        items:
+          - width: 3
+            chart: ${ref(indicator_chart)}
+          - width: 3
+            chart: ${ref(indicator_chart)}
+          - width: 3
+            chart: ${ref(indicator_chart)}
+          - width: 3
+            chart: ${ref(indicator_chart)}
+
+      - height: large
+        items:
+          - width: 8
+            chart: ${ref(simple-scatter-chart)}
+          - width: 4
+            chart: ${ref(composite-metric-chart)}
+
+      - height: large
+        items:
+          - width: 1
+            rows:
+              - height: 512
+                items:
+                  - chart: ${ref(indicator_chart)}
+              - height: small
+                items:
+                  - chart: ${ref(indicator_chart)}
+          - width: 2
+            chart: ${ref(toggle-mode-chart)}

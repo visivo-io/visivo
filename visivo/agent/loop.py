@@ -35,11 +35,10 @@ from visivo.agent.tools import TOOLS, ToolError, call
 # built. `visivo serve` is not the place for it.
 os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
 
-# A turn limit the user did not have to think about. The point is that a loop
-# cannot spend a BYO key indefinitely — not that these are the right numbers,
-# which only real use will say.
-MAX_MODEL_REQUESTS = 25
-MAX_TOOL_CALLS = 60
+# Caps what one loop can spend on a BYO key; sized for "explore a source and
+# build a dashboard" (~35 calls).
+MAX_MODEL_REQUESTS = 40
+MAX_TOOL_CALLS = 100
 
 INSTRUCTIONS = """\
 You are Visivo's built-in agent. You edit a Visivo project through the tools \

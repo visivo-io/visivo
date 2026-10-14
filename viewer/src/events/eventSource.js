@@ -16,7 +16,8 @@ import { isAvailable } from '../contexts/URLContext';
  *
  * A topic declares both halves because only the topic knows them: the socket
  * event its payload arrives on, and how to fetch the same thing when there is
- * no socket to arrive on.
+ * no socket to arrive on. `push: false` disables sockets for a topic whose
+ * events the server does not emit yet.
  *
  * One rule decides what a subscriber receives, and it falls out of what the
  * topic declared rather than needing a flag:
@@ -33,8 +34,8 @@ import { isAvailable } from '../contexts/URLContext';
  * have to agree by convention are two shapes that will eventually disagree.
  */
 
-/** No socket to connect to — a dist build is static files (VIS-1326). */
-const canPush = () => isAvailable('socketIo');
+/** Both the environment and the topic must support push. */
+const canPush = topic => topic.push !== false && isAvailable('socketIo');
 
 /**
  * One connection per subscription, deliberately.
@@ -60,7 +61,7 @@ const connect = () =>
  * @param {function} handler called with the payload, however it arrived
  */
 export function subscribe(topic, handler) {
-  if (canPush()) {
+  if (canPush(topic)) {
     const socket = connect();
     // A topic that knows how to fetch its value always fetches it; the event
     // only says when. See the rule in the module docstring.
@@ -108,6 +109,6 @@ export function subscribe(topic, handler) {
 
 /** Whether a subscription to this topic can currently deliver anything. */
 export function canDeliver(topic) {
-  return canPush() || Boolean(topic.poll);
+  return canPush(topic) || Boolean(topic.poll);
 }
 

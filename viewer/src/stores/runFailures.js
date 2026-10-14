@@ -21,9 +21,20 @@
  * select `s.runs` and memoize `findLatestRunFailureFor` instead, as
  * RecordRunStatus does. The factory suits imperative reads
  * (`selectLatestRunFailureFor(name)(useStore.getState())`).
+ *
+ * When `error_json.diagnostics` is present (local serve), the message comes from
+ * the diagnostic about the record; older payloads and cloud fall back to
+ * `extractRunError`.
  */
+import { diagnosticsFrom } from '../types/diagnostic';
 
 const FALLBACK_ERROR = 'Run failed';
+
+/** The diagnostic about `name`, else the first (the upstream failure). */
+export const pickDiagnosticFor = (diagnostics, name) => {
+  if (!Array.isArray(diagnostics) || diagnostics.length === 0) return null;
+  return diagnostics.find(d => d?.object?.name === name) ?? diagnostics[0];
+};
 
 /**
  * "+revenue_insight+,+orders_model+" → ['revenue_insight', 'orders_model'].
@@ -49,6 +60,8 @@ export const extractRunError = errorJson => {
   if (typeof errorJson === 'object') {
     const message = errorJson.message || errorJson.error || errorJson.detail;
     if (typeof message === 'string' && message) return message;
+    // A bare run envelope ({"phase":"run"}) has nothing readable to show.
+    if ('phase' in errorJson || Array.isArray(errorJson.diagnostics)) return FALLBACK_ERROR;
     try {
       return JSON.stringify(errorJson);
     } catch (e) {
@@ -79,7 +92,7 @@ const runTime = run => {
  *
  * @param {Array|undefined} runs the cloud runs list (state.runs)
  * @param {string} name the record name to match against dag_filter
- * @returns {{runId: string, error: string, createdAt: string|null} | null}
+ * @returns {{runId: string, error: string, diagnostic: Object|null, createdAt: string|null} | null}
  */
 export const findLatestRunFailureFor = (runs, name) => {
   if (!Array.isArray(runs) || runs.length === 0 || !name) return null;
@@ -96,9 +109,11 @@ export const findLatestRunFailureFor = (runs, name) => {
   for (const { run } of relevant) {
     if (run.state === 'succeeded') return null; // a newer success clears it
     if (run.state === 'failed') {
+      const diagnostic = pickDiagnosticFor(diagnosticsFrom(run.error_json), name);
       return {
         runId: run.id,
-        error: extractRunError(run.error_json),
+        error: diagnostic ? diagnostic.message : extractRunError(run.error_json),
+        diagnostic,
         createdAt: run.created_at ?? null,
       };
     }

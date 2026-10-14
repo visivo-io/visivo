@@ -21,6 +21,12 @@ import { buildPromoteChecklist } from './promoteChecklist';
 import { setWorkspaceTelemetryListener } from '../components/views/workspace/telemetry';
 import { findReclassifiedSlots } from '../components/views/common/pillFieldSwap';
 import { buildInsightFreshnessSignature } from '../utils/insightFreshnessSignature';
+import {
+  putCachedExplorationResult,
+  getCachedExplorationResult,
+  explorationResultCacheStats,
+  _resetExplorationResultCacheForTests,
+} from './explorationResultCache';
 
 jest.mock('../api/explorations');
 jest.mock('./promoteChecklist', () => ({ buildPromoteChecklist: jest.fn() }));
@@ -94,6 +100,7 @@ const reset = () => {
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
+  _resetExplorationResultCacheForTests();
   reset();
 });
 
@@ -2480,5 +2487,112 @@ describe('flywheel telemetry (VIS-1072)', () => {
       await useStore.getState().discardExploration('exp_1');
     });
     expect(events.find(e => e.eventName === 'exploration_discarded')).toBeUndefined();
+  });
+});
+
+describe('exploration result cache invalidation (M27)', () => {
+  const scopeFor = (id, modelName) => ({
+    explorationId: id,
+    modelName,
+    sourceName: 'warehouse',
+    sql: 'select 1',
+  });
+  const park = (id, modelName) =>
+    putCachedExplorationResult(scopeFor(id, modelName), {
+      columns: ['a'],
+      rows: [{ a: 1 }],
+      row_count: 1,
+    });
+
+  const checklistRow = overrides => ({
+    tier: 'model',
+    type: 'model',
+    name: 'orders_q',
+    parentModel: null,
+    status: 'new',
+    valid: true,
+    error: null,
+    config: { sql: 'select 1' },
+    ...overrides,
+  });
+
+  test('promoting a model retires that chip’s parked rows', async () => {
+    park('exp_1', 'orders_q');
+    buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+    seedRecord();
+    act(() => {
+      useStore.setState({ saveModel: jest.fn().mockResolvedValue({ success: true }) });
+    });
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    await act(async () => {
+      await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'orders_q'))).toBeNull();
+  });
+
+  test('a promote that FAILS to save leaves the parked rows alone', async () => {
+    park('exp_1', 'orders_q');
+    buildPromoteChecklist.mockResolvedValue([checklistRow()]);
+    seedRecord();
+    act(() => {
+      useStore.setState({
+        saveModel: jest.fn().mockResolvedValue({ success: false, error: 'nope' }),
+      });
+    });
+
+    await act(async () => {
+      await useStore.getState().promoteExploration('exp_1', [{ type: 'model', name: 'orders_q' }]);
+    });
+
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'orders_q'))).not.toBeNull();
+  });
+
+  test('promoting an INSIGHT leaves the model chip’s parked rows alone', async () => {
+    park('exp_1', 'orders_q');
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow({ type: 'insight', tier: 'insight', name: 'churn', config: { props: {} } }),
+    ]);
+    seedRecord();
+    act(() => {
+      useStore.setState({ saveInsight: jest.fn().mockResolvedValue({ success: true }) });
+    });
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    await act(async () => {
+      await useStore.getState().promoteExploration('exp_1', [{ type: 'insight', name: 'churn' }]);
+    });
+
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'orders_q'))).not.toBeNull();
+  });
+
+  test('deleting an exploration drops every result parked for it', async () => {
+    park('exp_1', 'orders_q');
+    park('exp_1', 'users_q');
+    park('exp_other', 'orders_q');
+    seedRecord();
+    explorationsApi.deleteExploration.mockResolvedValueOnce(true);
+
+    await act(async () => {
+      await useStore.getState().deleteExploration('exp_1');
+    });
+
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'orders_q'))).toBeNull();
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'users_q'))).toBeNull();
+    expect(getCachedExplorationResult(scopeFor('exp_other', 'orders_q'))).not.toBeNull();
+    expect(explorationResultCacheStats().entries).toBe(1);
+  });
+
+  test('a delete that FAILS keeps the parked rows — the exploration is still there', async () => {
+    park('exp_1', 'orders_q');
+    seedRecord();
+    explorationsApi.deleteExploration.mockRejectedValueOnce(new Error('locked'));
+
+    await act(async () => {
+      await useStore.getState().deleteExploration('exp_1');
+    });
+
+    expect(getCachedExplorationResult(scopeFor('exp_1', 'orders_q'))).not.toBeNull();
   });
 });

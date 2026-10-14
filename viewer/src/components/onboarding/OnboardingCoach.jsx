@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useViewerNavigate } from '../../hooks/useViewerNavigate';
 
 import './onboarding.css';
-import { hasCompletedOnboarding, readOnboardingState, writeOnboardingState } from './onboardingState';
+import { hasCompletedOnboarding, isOnboardingDismissed, readOnboardingState, writeOnboardingState } from './onboardingState';
 import { fireEvent } from './telemetry';
 import useChecklistProgress from './useChecklistProgress';
 
@@ -14,14 +14,17 @@ import useChecklistProgress from './useChecklistProgress';
  * `data-onb-target="<id>"`, and renders a halo + arrow + tooltip on top.
  *
  * Per-item dismiss persists to onboardingState so the same hint never
- * shows twice. The widget repositions on resize / scroll and hides
+ * shows twice. Global skips and checklist dismissal also hide every coach
+ * and chip. The widget repositions on resize / scroll and hides
  * when the target is offscreen.
  */
 export default function OnboardingCoach() {
   const location = useLocation();
   const navigate = useViewerNavigate();
-  const persistedRole = (readOnboardingState() || {}).role || null;
+  const persistedState = readOnboardingState() || {};
+  const persistedRole = persistedState.role || null;
   const { currentItem } = useChecklistProgress(persistedRole);
+  const showOnboarding = hasCompletedOnboarding() && !isOnboardingDismissed(persistedState);
   const [rect, setRect] = useState(null);
   const [dismissedSet, setDismissedSet] = useState(() => readDismissed());
   const tickerRef = useRef(0);
@@ -61,12 +64,12 @@ export default function OnboardingCoach() {
   const tooltipTitle = activeStep ? activeStep.label : currentItem?.label;
   const tooltipBody = activeStep ? activeStep.tip : currentItem?.why;
   const isDismissed = itemId ? dismissedSet.has(itemId) : false;
-  const shouldRender = !!currentItem && !!targetId && onRoute && !isDismissed;
+  const shouldRender = showOnboarding && !!currentItem && !!targetId && onRoute && !isDismissed;
   // Off-route hint: when there's an incomplete item that lives on a
   // different page, render a small floating pill so the user knows
   // there's still something to do and can jump back in one click.
   // Hidden after dismiss (same per-item flag).
-  const showOffRouteChip = !!currentItem && !onRoute && !isDismissed;
+  const showOffRouteChip = showOnboarding && !!currentItem && !onRoute && !isDismissed;
 
   useLayoutEffect(() => {
     if (!shouldRender) {
@@ -183,7 +186,7 @@ export default function OnboardingCoach() {
     return () => el.removeEventListener('click', onClick);
   }, [shouldRender, targetId, itemId]);
 
-  if (!hasCompletedOnboarding()) return null;
+  if (!showOnboarding) return null;
 
   if (showOffRouteChip) {
     // No wrapper — the button itself carries the testid + position so

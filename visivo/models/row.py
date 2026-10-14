@@ -11,8 +11,9 @@ class HeightEnum(str, Enum):
     Named row heights, from `compact` (wraps to content) through `xxlarge` (1024px).
 
     Each value maps to a fixed pixel height: `xsmall` 128, `small` 256, `medium` 396,
-    `large` 512, `xlarge` 768, `xxlarge` 1024. A [Row](../)'s `height` also accepts a
-    positive integer to set an exact pixel height instead.
+    `large` 512, `xlarge` 768, `xxlarge` 1024. A `compact` row wraps markdown and
+    inputs to their content and gives a chart or table a 256px plot area. A [Row](../)'s
+    `height` also accepts a positive integer to set an exact pixel height instead.
     """
 
     compact = "compact"
@@ -37,7 +38,7 @@ class Row(NamedModel, ParentModel):
 
             | Height | Pixels |
             |------------|-------|
-            | compact | wrapped |
+            | compact | wraps to content; charts and tables get a 256px plot |
             | xsmall | 128 |
             | small | 256 |
             | medium | 396 |
@@ -45,6 +46,11 @@ class Row(NamedModel, ParentModel):
             | xlarge | 768 |
             | xxlarge | 1024 |
             | `<int>` | the integer itself, in pixels |
+
+        When the dashboard is narrower than its stacking breakpoint, the items of a
+        row stack vertically and each item receives the row height in proportion to
+        its `width` share (never less than 160px), so a row of four small KPIs stacks
+        to four 160px tiles rather than four 256px ones.
     """
 
     height: Union[HeightEnum, int] = Field(

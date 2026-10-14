@@ -17,6 +17,84 @@ import { prepareTemplate } from './template/templateHtml';
 // item renderer with no row height of their own.
 const TEMPLATE_ROW = {};
 
+// Narrowest a NESTED item may get before its sub-row stacks (VIS-1459 / L2).
+// Nested containers decide stacking from their own slot, not the dashboard-wide
+// breakpoint: a 4/12 slot on a 1200px dashboard is ~370px, so comparing it to
+// the 768/1024 breakpoint stacked every nested multi-item row into a column.
+// 160px keeps a 2x2 KPI cluster in a 1/3 slot of a 1200px dashboard (186px
+// cells) laid out 2x2, while a 1/4 slot (150px cells) still stacks.
+export const MIN_NESTED_ITEM_WIDTH = 160;
+
+/**
+ * Slot-relative stacking rule for nested rows. Returns true when the narrowest
+ * item in `items` would be thinner than MIN_NESTED_ITEM_WIDTH at `slotWidth`.
+ * An unmeasured slot (0 / non-number) never commits a stacking decision.
+ */
+export const shouldStackNested = (slotWidth, items) => {
+  if (!(typeof slotWidth === 'number' && slotWidth > 0)) return false;
+  const list = Array.isArray(items) ? items : [];
+  if (list.length < 2) return false;
+  const totalWidth = list.reduce((sum, item) => sum + (item.width || 1), 0) || 1;
+  const minWeight = Math.min(...list.map(item => item.width || 1));
+  return (slotWidth * minWeight) / totalWidth < MIN_NESTED_ITEM_WIDTH;
+};
+
+// Row.height token -> pixels. `compact` wraps markdown/inputs to content; a
+// chart or table has no intrinsic height, so it gets the smallest useful plot
+// area instead of falling through to the xxlarge default (VIS-1458 L1).
+const HEIGHT_PX = { xsmall: 128, small: 256, medium: 396, large: 512, xlarge: 768, xxlarge: 1024 };
+const COMPACT_PLOT_HEIGHT = 256;
+// Nested sub-row weights (specs/dashboard-building/04-open-questions.md Q9).
+// One weight unit is 128px, so an integer pixel height on a sub-row scales in
+// proportion to its token-sized siblings instead of collapsing to one bucket
+// (VIS-1458 L4).
+const HEIGHT_WEIGHT = { compact: 1, xsmall: 1, small: 2, medium: 3, large: 4, xlarge: 6, xxlarge: 8 };
+const WEIGHT_PX = 128;
+// Smallest height an item gets when its row stacks into a single column
+// (VIS-1458 L3). Chart.jsx's default margins take 120px (t 40 + b 80), so
+// anything lower leaves a Plotly indicator with no plot area at all.
+const STACKED_MIN_ITEM_HEIGHT = 160;
+
+// Item.width is validated `>= 1` by the model; anything else (missing, 0,
+// negative) renders as a single span (VIS-1458 L5).
+const spanOf = item => (typeof item?.width === 'number' && item.width >= 1 ? item.width : 1);
+
+// Floor for a stacked item: a leaf gets STACKED_MIN_ITEM_HEIGHT; a row-container
+// needs that much for every sub-row it holds.
+const minStackedHeight = item =>
+  item?.rows?.length
+    ? item.rows.reduce(
+        (sum, subRow) =>
+          sum + Math.max(STACKED_MIN_ITEM_HEIGHT, ...(subRow.items || []).map(minStackedHeight)),
+        0
+      )
+    : STACKED_MIN_ITEM_HEIGHT;
+
+// Height for one item once its row has stacked vertically: the row height split
+// by the item's width share, floored, so a [3,3,3,3] small KPI row stacks to four
+// 160px tiles rather than four 256px ones, matching how nested containers divide
+// their slot (VIS-1458 L3).
+const stackedItemHeight = (items, item, rowPixelHeight) => {
+  const totalWidth = items.reduce((sum, i) => sum + spanOf(i), 0) || 1;
+  return Math.max(Math.round(rowPixelHeight * (spanOf(item) / totalWidth)), minStackedHeight(item));
+};
+
+// Shared with the slot's accessible name (WCAG 2.5.3, Label in Name).
+export const EMPTY_SLOT_LABEL = 'Empty slot — click to choose';
+
+// `row.0.item.2` -> "row 1, item 3"; '' when the path is absent or unparseable.
+export const describeSlotPath = itemPath => {
+  const tokens = String(itemPath || '').split('.');
+  const parts = [];
+  for (let i = 0; i + 1 < tokens.length; i += 2) {
+    const axis = tokens[i];
+    const index = Number(tokens[i + 1]);
+    if ((axis !== 'row' && axis !== 'item') || !Number.isInteger(index)) return '';
+    parts.push(`${axis} ${index + 1}`);
+  }
+  return parts.join(', ');
+};
+
 /**
  * Normalize a chart/table `insights` array so Chart/Table always receive
  * `[{ name: 'insight-name' }]` objects rather than raw context-string refs
@@ -229,6 +307,8 @@ const Dashboard = ({
   // renderer falls back to the legacy "<Type> not found: <name>" placeholder so
   // static viewing stays at parity.
   renderBrokenRef = null,
+  // Canvas only: makes the empty-slot placeholder a button calling `({ itemPath })`.
+  onEmptySlotClick = null,
 }) => {
   // Dashboard store (fetched by Project container)
   const dashboards = useStore(state => state.dashboards);
@@ -295,9 +375,16 @@ const Dashboard = ({
   // vertically. Falls back to the dashboard width when no explicit slot width is
   // provided (top-level rows). A nested slot that is only a fraction of the
   // dashboard width can stack independently of its (wider) parent.
+  // A zero/absent width is the pre-measurement state (`useDimensions` reports
+  // null, then possibly a 0 entry, until its ResizeObserver has measured), not a
+  // narrow container: committing a
+  // stacked layout from it painted a wide dashboard as a column and let Plotly
+  // size itself against that column before the real width arrived (VIS-1459 /
+  // L6). Treat unmeasured as "not stacked" and let the measured width decide.
   const shouldStack = containerWidth => {
     const effective =
       typeof containerWidth === 'number' && containerWidth > 0 ? containerWidth : width;
+    if (!(effective > 0)) return false;
     return effective < widthBreakpoint;
   };
 
@@ -369,27 +456,17 @@ const Dashboard = ({
   // writes ints directly to the same field). See VIS-A1 / specs §5.6.
   const getHeight = height => {
     if (typeof height === 'number') return height;
-    if (height === 'xsmall') return 128;
-    if (height === 'small') return 256;
-    if (height === 'medium') return 396;
-    if (height === 'large') return 512;
-    if (height === 'xlarge') return 768;
-    return 1024;
+    if (height === 'compact') return COMPACT_PLOT_HEIGHT;
+    return HEIGHT_PX[height] ?? HEIGHT_PX.xxlarge;
   };
 
   // Relative-weight mapping for sub-rows nested inside an Item's `rows` field.
   // When a Row appears at the top level its `height` is interpreted as absolute
-  // pixels via getHeight() above. When nested inside an Item, the same enum
+  // pixels via getHeight() above. When nested inside an Item, the same value
   // becomes a relative weight that divides the parent slot's height.
-  // See specs/dashboard-building/04-open-questions.md Q9.
   const heightToWeight = height => {
-    if (height === 'compact') return 1;
-    if (height === 'xsmall') return 1;
-    if (height === 'small') return 2;
-    if (height === 'medium') return 3;
-    if (height === 'large') return 4;
-    if (height === 'xlarge') return 6;
-    return 8; // xxlarge
+    if (typeof height === 'number' && height > 0) return height / WEIGHT_PX;
+    return HEIGHT_WEIGHT[height] ?? HEIGHT_WEIGHT.medium;
   };
 
   // Compute the pixel width an item should use for chart/table sizing.
@@ -399,17 +476,27 @@ const Dashboard = ({
   // themselves to the dashboard width and overflow their slot, which then
   // collapses sibling grid tracks (CSS grid resolves min-content overflow
   // by stealing track width from siblings).
-  const getWidth = (items, item, containerPixelWidth) => {
+  // `stacked` is the caller's own stacking decision (top-level `isColumn` or a
+  // nested row's slot-relative rule); when omitted, fall back to the breakpoint.
+  // Returns `undefined` while nothing has been measured yet so leaves fall back
+  // to Plotly's own autosize against the live container (and its container
+  // ResizeObserver re-measures once the box settles) instead of being told a
+  // width of 0/null, which Plotly resolves to its PREVIOUS width — the
+  // "chart a third of its card" first paint (VIS-1459 / L6).
+  const getWidth = (items, item, containerPixelWidth, stacked) => {
     const containerWidth =
       typeof containerPixelWidth === 'number' && containerPixelWidth > 0
         ? containerPixelWidth
         : width;
-    if (containerWidth < widthBreakpoint) {
+    if (!(typeof containerWidth === 'number' && containerWidth > 0)) {
+      return undefined;
+    }
+    const isStacked = typeof stacked === 'boolean' ? stacked : containerWidth < widthBreakpoint;
+    if (isStacked) {
       return containerWidth;
     }
-    const totalWidth = items.reduce((sum, i) => sum + (i.width || 1), 0) || 1;
-    const itemWidth = item.width || 1;
-    return containerWidth * (itemWidth / totalWidth);
+    const totalWidth = items.reduce((sum, i) => sum + spanOf(i), 0) || 1;
+    return containerWidth * (spanOf(item) / totalWidth);
   };
 
   // Item visibility logic (no selector support needed)
@@ -496,13 +583,15 @@ const Dashboard = ({
   // the item is a row-container. `keyPrefix` namespaces children when the item
   // is being rendered inside a nested-rows context (so React keys stay unique
   // across multiple flips of the same dashboard).
-  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '', itemPath = '') => {
+  // `parentStacked` is whether the row this item sits in is laid out as a column;
+  // it drives the slot width (a stacked item spans the whole row).
+  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '', itemPath = '', parentStacked) => {
     const key = `${keyPrefix}dashboardRow${rowIndex}Item${itemIndex}`;
 
     // Pixel width this item slot was given by its parent row. Used for chart
     // sizing on leaves AND threaded down into nested rows so nested charts
     // size from the slot, not the dashboard.
-    const effectiveSlotWidth = getWidth(items, item, slotPixelWidth);
+    const effectiveSlotWidth = getWidth(items, item, slotPixelWidth, parentStacked);
 
     // Render the placeholder for a leaf whose reference doesn't resolve. The
     // canvas passes `renderBrokenRef` to mount the interactive <BrokenRefCard>
@@ -585,7 +674,7 @@ const Dashboard = ({
           key={key}
           input={input}
           projectId={projectId}
-          itemWidth={item.width}
+          itemWidth={spanOf(item)}
         />
       );
     }
@@ -609,7 +698,7 @@ const Dashboard = ({
           projectId={projectId}
           height={effectiveSlotHeight - 8}
           width={effectiveSlotWidth}
-          itemWidth={item.width}
+          itemWidth={spanOf(item)}
           shouldLoad={shouldLoad}
         />
       );
@@ -625,7 +714,7 @@ const Dashboard = ({
           key={key}
           table={table}
           projectId={projectId}
-          itemWidth={item.width}
+          itemWidth={spanOf(item)}
           width={effectiveSlotWidth}
           height={effectiveSlotHeight}
           shouldLoad={shouldLoad}
@@ -653,6 +742,23 @@ const Dashboard = ({
     // visible dashed placeholder so the slot is discoverable + a drop target
     // (VIS-901 #3). Backend persistence of a truly-empty item lands with VIS-900.
     if (canvasMode) {
+      if (typeof onEmptySlotClick === 'function') {
+        // The location suffix tells apart the identical slots a row template paints.
+        const slotLocation = describeSlotPath(itemPath);
+        return (
+          <button
+            key={key}
+            type="button"
+            data-testid="canvas-empty-slot"
+            aria-label={slotLocation ? `${EMPTY_SLOT_LABEL} (${slotLocation})` : undefined}
+            onClick={() => onEmptySlotClick({ itemPath })}
+            className="flex h-full w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/40 text-[11px] font-medium text-gray-400 transition-colors hover:border-primary-300 hover:bg-primary-50/40 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            style={{ minHeight: 48 }}
+          >
+            {EMPTY_SLOT_LABEL}
+          </button>
+        );
+      }
       return (
         <div
           key={key}
@@ -675,7 +781,7 @@ const Dashboard = ({
   const renderNestedRow = (subRow, subRowIndex, parentItemIndex, parentRowIndex, shouldLoad, slotPixelHeight, slotPixelWidth, keyPrefix, parentItemPath = '') => {
     if (!subRow || !subRow.items) return null;
     const visibleItems = subRow.items.filter(shouldShowItem);
-    const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0) || 1;
+    const totalWidth = visibleItems.reduce((sum, item) => sum + spanOf(item), 0) || 1;
     // Composite selection path (VIS-768): mirrors OutlineTreePanel's recursive
     // key scheme `row.<ri>.item.<ii>[.row.<ri>.item.<ii>]…` so the canvas overlay
     // and Outline tree share ONE selection key at any nesting depth.
@@ -683,13 +789,26 @@ const Dashboard = ({
       ? `${parentItemPath}.row.${subRowIndex}`
       : `row.${subRowIndex}`;
     // Slot-relative stacking: a nested row only occupies its parent slot's
-    // width, not the full dashboard. Deciding `isColumn` from the dashboard-wide
-    // breakpoint either (a) kept nested multi-item rows side-by-side inside a
-    // narrow slot (overflow — e.g. a 2x2 KPI cluster crammed into a 1/4 slot) or
-    // (b) stacked everything once the dashboard dipped below the breakpoint.
-    // Compare the slot width instead so each nested container stacks on its own
-    // terms. See VIS-829.
-    const nestedIsColumn = shouldStack(slotPixelWidth);
+    // width, not the full dashboard. VIS-829 compared the slot width against the
+    // dashboard-wide breakpoint, which stacked every nested multi-item row whose
+    // slot was under 768/1024px — i.e. any nested 2x2 on a normal screen
+    // (VIS-1459 / L2). Decide from the narrowest item the slot would produce
+    // instead (see shouldStackNested), so each nested container stacks on its
+    // own terms.
+    const nestedIsColumn = shouldStackNested(slotPixelWidth, visibleItems);
+    // Stacked sub-row items split the sub-row's height (minus the 0.5rem gaps)
+    // rather than each claiming the full sub-row height and overflowing.
+    // Each item takes its width share of what is left, floored at
+    // STACKED_MIN_ITEM_HEIGHT so a KPI tile keeps a plot area (VIS-1458 L3).
+    const NESTED_GAP_PX = 8;
+    const stackedSlotHeight =
+      typeof slotPixelHeight === 'number'
+        ? slotPixelHeight - NESTED_GAP_PX * (visibleItems.length - 1)
+        : slotPixelHeight;
+    const itemPixelHeightOf = item =>
+      nestedIsColumn && visibleItems.length > 1 && typeof slotPixelHeight === 'number'
+        ? stackedItemHeight(visibleItems, item, stackedSlotHeight)
+        : slotPixelHeight;
     return (
       <div
         className={`dashboard-nested-row w-full h-full ${nestedIsColumn ? 'flex' : 'grid'}`}
@@ -711,10 +830,13 @@ const Dashboard = ({
             // full path so a click at any depth resolves to the exact leaf the
             // Outline tree would, and an Outline→canvas selection rings it.
             data-canvas-path={`${subRowPath}.item.${itemIdx}`}
+            data-testid="dashboard-nested-item"
             className={nestedIsColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
-              gridColumn: nestedIsColumn ? undefined : `span ${item.width || 1}`,
+              gridColumn: nestedIsColumn ? undefined : `span ${spanOf(item)}`,
               width: nestedIsColumn ? '100%' : 'auto',
+              height: nestedIsColumn && itemPixelHeightOf(item) > 0 ? itemPixelHeightOf(item) : undefined,
+              flex: nestedIsColumn ? '1 1 0' : undefined,
               minWidth: 0,
               minHeight: 0,
             }}
@@ -727,10 +849,11 @@ const Dashboard = ({
                 parentRowIndex,
                 shouldLoad,
                 visibleItems,
-                slotPixelHeight,
+                itemPixelHeightOf(item),
                 slotPixelWidth,
                 keyPrefix,
                 `${subRowPath}.item.${itemIdx}`,
+                nestedIsColumn,
               )}
             </div>
           </div>
@@ -742,8 +865,15 @@ const Dashboard = ({
   // Render a dashboard row
   const renderRow = (row, rowIndex) => {
     const visibleItems = row.items.filter(shouldShowItem);
-    const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
-    const rowStyle = isColumn ? {} : { height: row.height !== 'compact' ? getHeight(row.height) : undefined };
+    const totalWidth = visibleItems.reduce((sum, item) => sum + spanOf(item), 0) || 1;
+    const isCompact = row.height === 'compact';
+    const rowStyle = isColumn || isCompact ? {} : { height: getHeight(row.height) };
+    // Compact rows size to content; otherwise a stacked item gets its share of
+    // the row height and a grid item gets the whole row.
+    const slotHeightFor = item => {
+      if (isCompact) return undefined;
+      return isColumn ? stackedItemHeight(visibleItems, item, getHeight(row.height)) : getHeight(row.height);
+    };
     // VIS-827: eager-load by default. The row-visibility lazy-loader
     // (useVisibleRows) relies on an IntersectionObserver that does not fire
     // inside the Workspace canvas's inner overflow-auto scroll container, so
@@ -793,7 +923,7 @@ const Dashboard = ({
             data-canvas-path={`row.${rowIndex}.item.${itemIndex}`}
             className={isColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
-              gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
+              gridColumn: isColumn ? undefined : `span ${spanOf(item)}`,
               width: isColumn ? '100%' : 'auto',
               // CRITICAL: grid items default to min-width: auto, which equals
               // their content's intrinsic min-content width. If a child (e.g.
@@ -813,10 +943,11 @@ const Dashboard = ({
                 rowIndex,
                 shouldLoad,
                 visibleItems,
-                row.height !== 'compact' ? getHeight(row.height) : undefined,
+                slotHeightFor(item),
                 width, // top-level container width = dashboard width
                 '', // keyPrefix (top level needs none)
                 `row.${rowIndex}.item.${itemIndex}`,
+                isColumn,
               )}
             </div>
           </div>

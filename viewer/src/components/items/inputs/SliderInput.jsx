@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { DropdownLabel } from '../../styled/DropdownButton';
 
 /**
@@ -7,8 +7,8 @@ import { DropdownLabel } from '../../styled/DropdownButton';
  * This is a display-only component - it receives selectedValue from props (store via parent)
  * and only calls setInputJobValue on user interaction.
  *
- * Best for: Single-select inputs with numeric options where users want to
- * slide between discrete values. Shows tick marks for each option.
+ * Best for: Single-select inputs where users want to slide between discrete
+ * values (numbers or text, in list order). Shows tick marks for each option.
  */
 const SliderInput = ({
   label = '',
@@ -17,32 +17,40 @@ const SliderInput = ({
   name,
   setInputJobValue, // Only called on user interaction
 }) => {
-  const [numericOptions, setNumericOptions] = useState([]);
-
-  // Convert options to numbers and sort
-  useEffect(() => {
-    const nums = Array.isArray(rawOptions)
-      ? rawOptions
-          .map(o => (typeof o === 'number' ? o : parseFloat(o)))
-          .filter(n => !isNaN(n))
-          .sort((a, b) => a - b)
+  // The slider is an index over the options in LIST ORDER. Only when every option
+  // is numeric are they sorted (and handed to the store as numbers); otherwise
+  // each scalar option keeps its position and is stored as given.
+  const { options, isNumeric } = useMemo(() => {
+    const scalars = Array.isArray(rawOptions)
+      ? rawOptions.filter(o => o !== null && o !== undefined && typeof o !== 'object')
       : [];
-    setNumericOptions(nums);
+    const asNumber = o => (typeof o === 'number' ? o : o === '' ? NaN : Number(o));
+    const allNumeric = scalars.length > 0 && scalars.every(o => Number.isFinite(asNumber(o)));
+    if (allNumeric) {
+      return { options: scalars.map(asNumber).sort((a, b) => a - b), isNumeric: true };
+    }
+    return { options: scalars, isNumeric: false };
   }, [rawOptions]);
 
   // Derive current value and index from selectedValue prop
   const { currentValue, currentIndex } = useMemo(() => {
-    if (numericOptions.length === 0) {
+    if (options.length === 0) {
       return { currentValue: 0, currentIndex: 0 };
     }
 
     if (selectedValue === null || selectedValue === undefined) {
       // Default to first option
-      return { currentValue: numericOptions[0], currentIndex: 0 };
+      return { currentValue: options[0], currentIndex: 0 };
+    }
+
+    if (!isNumeric) {
+      const idx = options.findIndex(o => String(o) === String(selectedValue));
+      const index = idx === -1 ? 0 : idx;
+      return { currentValue: options[index], currentIndex: index };
     }
 
     const numVal = typeof selectedValue === 'number' ? selectedValue : parseFloat(selectedValue);
-    const index = numericOptions.indexOf(numVal);
+    const index = options.indexOf(numVal);
 
     if (index !== -1) {
       return { currentValue: numVal, currentIndex: index };
@@ -50,44 +58,44 @@ const SliderInput = ({
 
     // Find closest value if exact match not found
     let closestIndex = 0;
-    let minDiff = Math.abs(numericOptions[0] - numVal);
+    let minDiff = Math.abs(options[0] - numVal);
 
-    for (let i = 1; i < numericOptions.length; i++) {
-      const diff = Math.abs(numericOptions[i] - numVal);
+    for (let i = 1; i < options.length; i++) {
+      const diff = Math.abs(options[i] - numVal);
       if (diff < minDiff) {
         minDiff = diff;
         closestIndex = i;
       }
     }
 
-    return { currentValue: numericOptions[closestIndex], currentIndex: closestIndex };
-  }, [selectedValue, numericOptions]);
+    return { currentValue: options[closestIndex], currentIndex: closestIndex };
+  }, [selectedValue, options, isNumeric]);
 
   const handleChange = e => {
     const index = parseInt(e.target.value, 10);
-    const value = numericOptions[index];
+    const value = options[index];
 
     if (setInputJobValue && name) {
       setInputJobValue(name, value);
     }
   };
 
-  if (numericOptions.length < 2) {
+  if (options.length < 2) {
     return (
       <div className="w-full min-w-[200px]">
         {label && <DropdownLabel>{label}</DropdownLabel>}
-        <div className="text-red-500 text-sm">Slider requires at least 2 numeric options</div>
+        <div className="text-red-500 text-sm">Slider requires at least 2 options</div>
       </div>
     );
   }
 
-  const minVal = numericOptions[0];
-  const maxVal = numericOptions[numericOptions.length - 1];
-  const valuePercent = (currentIndex / (numericOptions.length - 1)) * 100;
+  const minVal = options[0];
+  const maxVal = options[options.length - 1];
+  const valuePercent = (currentIndex / (options.length - 1)) * 100;
 
   // Determine which tick labels to show to avoid crowding
-  const showTickLabels = numericOptions.length <= 10;
-  const showOnlyEndLabels = numericOptions.length > 10;
+  const showTickLabels = options.length <= 10;
+  const showOnlyEndLabels = options.length > 10;
 
   return (
     <div className="w-full min-w-[200px]">
@@ -123,8 +131,8 @@ const SliderInput = ({
             />
 
             {/* Tick marks */}
-            {numericOptions.map((opt, idx) => {
-              const tickPercent = (idx / (numericOptions.length - 1)) * 100;
+            {options.map((opt, idx) => {
+              const tickPercent = (idx / (options.length - 1)) * 100;
               return (
                 <div
                   key={idx}
@@ -146,7 +154,7 @@ const SliderInput = ({
             <input
               type="range"
               min={0}
-              max={numericOptions.length - 1}
+              max={options.length - 1}
               value={currentIndex}
               onChange={handleChange}
               className="absolute top-0 w-full h-full opacity-0 cursor-pointer"
@@ -157,8 +165,8 @@ const SliderInput = ({
           {/* Tick labels - only shown for small option sets */}
           {showTickLabels && (
             <div className="relative mt-1 h-4">
-              {numericOptions.map((opt, idx) => {
-                const tickPercent = (idx / (numericOptions.length - 1)) * 100;
+              {options.map((opt, idx) => {
+                const tickPercent = (idx / (options.length - 1)) * 100;
                 const isSelected = idx === currentIndex;
                 return (
                   <span

@@ -6,6 +6,7 @@ from visivo.agent.actions import log as action_log
 from visivo.server.hot_reload_server import HotReloadServer
 from visivo.server.flask_app import FlaskApp
 from visivo.commands.run_phase import run_phase
+from visivo.server.jobs.save_run_executor import record_failed_run
 import json
 import os
 import traceback
@@ -135,21 +136,25 @@ def serve_phase(
                 Logger.instance().info("Running project build...")
             else:
                 Logger.instance().info("Running initial project build...")
-            run_phase(
+            runner = run_phase(
                 output_dir=output_dir,
                 working_dir=working_dir,
                 default_source=default_source,
                 dag_filter=dag_filter,
                 threads=threads,
+                soft_failure=True,
                 skip_compile=skip_compile,
                 project=project,
                 server_url=server_url,
                 no_deprecation_warnings=no_deprecation_warnings,
             )
+            if runner.failed_job_results:
+                record_failed_run(app, runner)
             if one_shot:
                 Logger.instance().info("Closing server...")
             else:
-                Logger.instance().success("Initial Data Refresh Complete.")
+                if not runner.failed_job_results:
+                    Logger.instance().success("Initial Data Refresh Complete.")
                 Logger.instance().info("View your project at: " + server_url)
                 try:
                     if new:

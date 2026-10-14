@@ -2,6 +2,7 @@
 the status:"draft" signal, and the debounced request_run trigger."""
 
 import time
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -9,8 +10,23 @@ import pytest
 from visivo.server import user_config
 from visivo.server.managers.run_manager import Run, RunManager, RunState
 from visivo.server.managers.staged_manager import StagedManager
+from visivo.server.managers.model_manager import ModelManager
+from visivo.server.managers.metric_manager import MetricManager
+from visivo.server.managers.dimension_manager import DimensionManager
+from visivo.server.managers.insight_manager import InsightManager
 from visivo.server.jobs import save_run_executor
-from visivo.server.views.run_views import _RESOURCE_ROUTE_RE, RESOURCE_META
+from visivo.server.views.run_views import (
+    _RESOURCE_ROUTE_RE,
+    RESOURCE_META,
+    resource_fingerprint,
+    stage_and_maybe_run,
+)
+from tests.factories.model_factories import (
+    SqlModelFactory,
+    MetricFactory,
+    DimensionFactory,
+    InsightFactory,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -194,6 +210,114 @@ class TestRunOnSave:
         assert runs[0]["dag_filter"] == "+a+,+b+"
 
 
+class TestRunFailureDiagnostics:
+    def _wait_terminal(self, integration_app):
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            runs = integration_app.run_manager.list()
+            if runs and runs[0]["state"] in ("succeeded", "failed"):
+                return runs[0]
+            time.sleep(0.05)
+        raise AssertionError("run never reached a terminal state")
+
+    def _failed_result(self, diagnostic=None):
+        from tests.factories.model_factories import SqlModelFactory
+        from visivo.jobs.job import JobResult
+
+        return JobResult(
+            item=SqlModelFactory(name="orders"),
+            success=False,
+            message="Failed query \033[31m[FAILURE]\033[0m",
+            diagnostic=diagnostic,
+        )
+
+    def test_error_json_is_the_exact_diagnostics_envelope(self, integration_app):
+        from visivo.models.diagnostic import Diagnostic, DiagnosticObjectRef, DiagnosticPhase
+
+        diagnostic = Diagnostic(
+            phase=DiagnosticPhase.RUN,
+            code="query_execution_failed",
+            message="no such table: orders",
+            object=DiagnosticObjectRef(type="model", name="orders"),
+        )
+        with patch.object(save_run_executor, "FilteredRunner") as MockRunner:
+            inst = MockRunner.return_value
+            inst.failed_job_results = [self._failed_result(diagnostic)]
+            inst.successful_job_results = []
+
+            save_run_executor.request_run(integration_app, ["orders"])
+            run = self._wait_terminal(integration_app)
+
+        assert run["state"] == "failed"
+        assert run["error_json"] == {
+            "phase": "run",
+            "diagnostics": [
+                {
+                    "severity": "error",
+                    "phase": "run",
+                    "code": "query_execution_failed",
+                    "message": "no such table: orders",
+                    "object": {"type": "model", "name": "orders"},
+                    "related": [],
+                }
+            ],
+        }
+
+    def test_a_result_without_a_diagnostic_gets_an_ansi_free_fallback(self, integration_app):
+        import json
+
+        with patch.object(save_run_executor, "FilteredRunner") as MockRunner:
+            inst = MockRunner.return_value
+            inst.failed_job_results = [self._failed_result(diagnostic=None)]
+            inst.successful_job_results = []
+
+            save_run_executor.request_run(integration_app, ["orders"])
+            run = self._wait_terminal(integration_app)
+
+        diagnostics = run["error_json"]["diagnostics"]
+        assert len(diagnostics) == 1
+        assert diagnostics[0]["code"] == "unexpected_error"
+        assert "orders" in diagnostics[0]["message"]
+        assert diagnostics[0]["object"] == {"type": "model", "name": "orders"}
+        assert "\033" not in json.dumps(run["error_json"])
+
+    def test_diagnostics_are_capped_at_fifty(self, integration_app):
+        from visivo.models.diagnostic import Diagnostic, DiagnosticPhase
+
+        results = [
+            self._failed_result(
+                Diagnostic(
+                    phase=DiagnosticPhase.RUN,
+                    code="query_execution_failed",
+                    message=f"failure {i}",
+                )
+            )
+            for i in range(55)
+        ]
+        with patch.object(save_run_executor, "FilteredRunner") as MockRunner:
+            inst = MockRunner.return_value
+            inst.failed_job_results = results
+            inst.successful_job_results = []
+
+            save_run_executor.request_run(integration_app, ["orders"])
+            run = self._wait_terminal(integration_app)
+
+        assert len(run["error_json"]["diagnostics"]) == 50
+
+    def test_the_exception_path_reports_a_diagnostic_too(self, integration_app):
+        with patch.object(save_run_executor, "FilteredRunner") as MockRunner:
+            MockRunner.return_value.run.side_effect = RuntimeError("compile exploded")
+
+            save_run_executor.request_run(integration_app, ["orders"])
+            run = self._wait_terminal(integration_app)
+
+        assert run["state"] == "failed"
+        assert run["error_json"]["phase"] == "run"
+        assert run["error_json"]["error"] == "compile exploded"
+        assert run["error_json"]["diagnostics"][0]["code"] == "unexpected_error"
+        assert run["error_json"]["diagnostics"][0]["message"] == "compile exploded"
+
+
 class TestExplorationRunIsolation:
     """Explorations are workbench drafts, never DAG/YAML config — saving or
     deleting one must never schedule a run (02-architecture.md §2, 07 S3
@@ -342,11 +466,12 @@ class TestDataAffectingGate:
             integration_client.post("/api/models/m/", json={"sql": "select 1 as x"})
             req.assert_not_called()
 
-    def test_deleting_a_data_producing_resource_runs(self, integration_client):
+    def test_deleting_a_built_data_producing_resource_runs(self, integration_client):
         with patch("visivo.server.views.run_views.request_run") as req:
             self._save_insight(
                 integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).a} }"}
             )
+            StagedManager.instance().mark_built()
             req.reset_mock()
             r = integration_client.delete("/api/insights/w/")
             assert r.status_code < 400
@@ -436,16 +561,97 @@ class TestTriggerMode:
             )
         assert StagedManager.instance().list() == []
 
-    def test_a_deleted_resource_stages_as_deleted(self, integration_client, monkeypatch):
+    def test_a_deleted_new_resource_unstages(self, integration_client, monkeypatch):
         self._manual(monkeypatch)
         with patch("visivo.server.views.run_views.request_run"):
             self._save_insight(
                 integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).a} }"}
             )
             integration_client.delete("/api/insights/w/")
-        assert StagedManager.instance().list() == [
-            {"name": "w", "type": "insight", "status": "deleted"}
+        assert StagedManager.instance().list() == []
+
+
+@pytest.mark.parametrize(
+    "type_key,manager_class,factory",
+    [
+        ("models", ModelManager, SqlModelFactory),
+        ("metrics", MetricManager, MetricFactory),
+        ("dimensions", DimensionManager, DimensionFactory),
+        ("insights", InsightManager, InsightFactory),
+    ],
+)
+class TestDiscardedCreations:
+    def _app(self, type_key, manager_class):
+        return SimpleNamespace(
+            staged_manager=StagedManager.instance(),
+            run_manager=RunManager.instance(),
+            **{RESOURCE_META[type_key][0]: manager_class()},
+        )
+
+    @pytest.mark.parametrize("trigger", [user_config.MANUAL, user_config.AUTOMATIC])
+    def test_create_then_delete_cancels_the_staged_change(
+        self, type_key, manager_class, factory, trigger, monkeypatch
+    ):
+        monkeypatch.setattr("visivo.server.views.run_views.get_run_trigger", lambda: trigger)
+        app = self._app(type_key, manager_class)
+        manager = getattr(app, RESOURCE_META[type_key][0])
+        app.staged_manager.record("model", "keep", "keep-hash")
+        before = resource_fingerprint(app, type_key, "new")
+        manager.save("new", factory(name="new"))
+        with patch("visivo.server.views.run_views.request_run") as req:
+            stage_and_maybe_run(app, type_key, "new", before)
+            assert "new" in [item["name"] for item in app.staged_manager.list()]
+            req.reset_mock()
+            before = resource_fingerprint(app, type_key, "new")
+            manager.mark_for_deletion("new")
+            stage_and_maybe_run(app, type_key, "new", before, deleted=True)
+            req.assert_not_called()
+        assert app.staged_manager.list() == [
+            {"type": "model", "name": "keep", "status": "modified"}
         ]
+        assert app.staged_manager.dag_filter() == "+keep+"
+
+    @pytest.mark.parametrize("published", [False, True])
+    def test_deletion_of_a_built_or_published_object_stays_staged(
+        self, type_key, manager_class, factory, published, monkeypatch
+    ):
+        monkeypatch.setattr(
+            "visivo.server.views.run_views.get_run_trigger", lambda: user_config.MANUAL
+        )
+        app = self._app(type_key, manager_class)
+        manager = getattr(app, RESOURCE_META[type_key][0])
+        obj = factory(name="existing")
+        if published:
+            manager.published_objects[obj.name] = obj
+        else:
+            before = resource_fingerprint(app, type_key, obj.name)
+            manager.save(obj.name, obj)
+            stage_and_maybe_run(app, type_key, obj.name, before)
+            app.staged_manager.mark_built()
+        before = resource_fingerprint(app, type_key, obj.name)
+        manager.mark_for_deletion(obj.name)
+        stage_and_maybe_run(app, type_key, obj.name, before, deleted=True)
+        assert app.staged_manager.list() == [
+            {"type": type_key[:-1], "name": obj.name, "status": "deleted"}
+        ]
+        assert app.staged_manager.dag_filter() == ""
+
+    def test_automatic_creation_deleted_before_debounce_never_runs(
+        self, type_key, manager_class, factory
+    ):
+        app = self._app(type_key, manager_class)
+        manager = getattr(app, RESOURCE_META[type_key][0])
+        before = resource_fingerprint(app, type_key, "new")
+        manager.save("new", factory(name="new"))
+        with patch.object(save_run_executor.threading, "Timer") as timer:
+            stage_and_maybe_run(app, type_key, "new", before)
+            before = resource_fingerprint(app, type_key, "new")
+            manager.mark_for_deletion("new")
+            stage_and_maybe_run(app, type_key, "new", before, deleted=True)
+            timer.return_value.cancel.assert_called_once()
+        with patch.object(save_run_executor, "run_now") as run_now:
+            save_run_executor._fire(app)
+            run_now.assert_not_called()
 
 
 class TestStagedSet:
@@ -521,6 +727,18 @@ class TestDebouncedRunScope:
         def __init__(self, staged_manager):
             self.run_manager = object()
             self.staged_manager = staged_manager
+
+    def test_cancelling_a_creation_keeps_other_debounced_changes(self):
+        staged = StagedManager.instance()
+        staged.record("model", "keep", "h1")
+        app = self._App(staged)
+        with patch.object(save_run_executor.threading, "Timer") as timer:
+            save_run_executor.request_run(app, ["keep", "new"])
+            save_run_executor.cancel_pending_run(["new"])
+            timer.return_value.cancel.assert_not_called()
+        with patch.object(save_run_executor, "run_now") as run_now:
+            save_run_executor._fire(app)
+            run_now.assert_called_once_with(app, "+keep+")
 
     def test_a_deleted_resource_makes_it_a_full_rebuild(self):
         staged = StagedManager.instance()

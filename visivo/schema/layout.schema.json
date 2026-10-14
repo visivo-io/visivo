@@ -139,7 +139,6 @@
             {
               "oneOf": [
                 {
-                  
                   "enum": [
                     true,
                     false
@@ -297,6 +296,9 @@
                   },
                   {
                     "type": "string"
+                  },
+                  {
+                    "type": "array"
                   }
                 ]
               }
@@ -730,6 +732,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -1095,7 +1100,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -1681,7 +1685,6 @@
                 {
                   "oneOf": [
                     {
-                      "type": "string",
                       "enum": [
                         "none"
                       ]
@@ -2042,6 +2045,9 @@
                   },
                   {
                     "type": "string"
+                  },
+                  {
+                    "type": "array"
                   }
                 ]
               }
@@ -2070,6 +2076,9 @@
                   },
                   {
                     "type": "string"
+                  },
+                  {
+                    "type": "array"
                   }
                 ]
               }
@@ -2123,7 +2132,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -2344,7 +2352,6 @@
             {
               "oneOf": [
                 {
-                  
                   "enum": [
                     true,
                     false
@@ -2514,6 +2521,9 @@
                   },
                   {
                     "type": "string"
+                  },
+                  {
+                    "type": "array"
                   }
                 ]
               }
@@ -2947,6 +2957,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -3450,7 +3463,6 @@
                 {
                   "oneOf": [
                     {
-                      "type": "string",
                       "enum": [
                         "none"
                       ]
@@ -3811,6 +3823,9 @@
                   },
                   {
                     "type": "string"
+                  },
+                  {
+                    "type": "array"
                   }
                 ]
               }
@@ -3839,6 +3854,9 @@
                   },
                   {
                     "type": "string"
+                  },
+                  {
+                    "type": "array"
                   }
                 ]
               }
@@ -3892,7 +3910,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -4198,7 +4215,6 @@
               {
                 "oneOf": [
                   {
-                    "type": "string",
                     "enum": [
                       "none"
                     ]
@@ -4389,7 +4405,6 @@
                   {
                     "oneOf": [
                       {
-                        "type": "string",
                         "enum": [
                           "none"
                         ]
@@ -4552,7 +4567,6 @@
                       {
                         "oneOf": [
                           {
-                            "type": "string",
                             "enum": [
                               "none"
                             ]
@@ -4985,7 +4999,6 @@
         {
           "oneOf": [
             {
-              "type": "string",
               "enum": [
                 "none"
               ]
@@ -5377,7 +5390,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -5652,6 +5664,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -5680,6 +5695,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -5733,7 +5751,6 @@
                         {
                           "oneOf": [
                             {
-                              "type": "string",
                               "enum": [
                                 "none"
                               ]
@@ -6200,7 +6217,6 @@
             {
               "oneOf": [
                 {
-                  "type": "string",
                   "enum": [
                     "none"
                   ]
@@ -7520,7 +7536,6 @@
                 {
                   "oneOf": [
                     {
-                      "type": "string",
                       "enum": [
                         "none"
                       ]
@@ -7646,7 +7661,6 @@
                 {
                   "oneOf": [
                     {
-                      "type": "string",
                       "enum": [
                         "none"
                       ]
@@ -8074,7 +8088,6 @@
                 {
                   "oneOf": [
                     {
-                      "type": "string",
                       "enum": [
                         "none"
                       ]
@@ -8214,7 +8227,6 @@
                 {
                   "oneOf": [
                     {
-                      "type": "string",
                       "enum": [
                         "none"
                       ]
@@ -8442,7 +8454,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -8587,7 +8598,6 @@
             {
               "oneOf": [
                 {
-                  "type": "string",
                   "enum": [
                     "normal"
                   ]
@@ -8983,6 +8993,9 @@
                             },
                             {
                               "type": "string"
+                            },
+                            {
+                              "type": "array"
                             }
                           ]
                         }
@@ -9553,6 +9566,9 @@
                             },
                             {
                               "type": "string"
+                            },
+                            {
+                              "type": "array"
                             }
                           ]
                         }
@@ -10196,7 +10212,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -10454,7 +10469,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -10729,6 +10743,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -11115,7 +11132,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -11351,6 +11367,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -11379,6 +11398,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -11725,6 +11747,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -12107,7 +12132,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -12343,6 +12367,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -12371,6 +12398,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -12424,7 +12454,6 @@
                         {
                           "oneOf": [
                             {
-                              "type": "string",
                               "enum": [
                                 "none"
                               ]
@@ -12657,7 +12686,6 @@
                   {
                     "oneOf": [
                       {
-                        "type": "string",
                         "enum": [
                           "none"
                         ]
@@ -12804,7 +12832,6 @@
                       {
                         "oneOf": [
                           {
-                            "type": "string",
                             "enum": [
                               "none"
                             ]
@@ -12967,7 +12994,6 @@
                           {
                             "oneOf": [
                               {
-                                "type": "string",
                                 "enum": [
                                   "none"
                                 ]
@@ -13754,6 +13780,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -14190,7 +14219,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -14413,6 +14441,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -14441,6 +14472,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -14494,7 +14528,6 @@
                         {
                           "oneOf": [
                             {
-                              "type": "string",
                               "enum": [
                                 "none"
                               ]
@@ -14793,6 +14826,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -15229,7 +15265,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -15452,6 +15487,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -15480,6 +15518,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -15533,7 +15574,6 @@
                         {
                           "oneOf": [
                             {
-                              "type": "string",
                               "enum": [
                                 "none"
                               ]
@@ -15832,6 +15872,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -16268,7 +16311,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -16491,6 +16533,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -16519,6 +16564,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -16572,7 +16620,6 @@
                         {
                           "oneOf": [
                             {
-                              "type": "string",
                               "enum": [
                                 "none"
                               ]
@@ -16982,7 +17029,6 @@
                       {
                         "oneOf": [
                           {
-                            "type": "string",
                             "enum": [
                               "none"
                             ]
@@ -17240,7 +17286,6 @@
                       {
                         "oneOf": [
                           {
-                            "type": "string",
                             "enum": [
                               "none"
                             ]
@@ -17731,7 +17776,6 @@
                       {
                         "oneOf": [
                           {
-                            "type": "string",
                             "enum": [
                               "none"
                             ]
@@ -17907,7 +17951,6 @@
                   {
                     "oneOf": [
                       {
-                        "type": "string",
                         "enum": [
                           "none"
                         ]
@@ -18676,7 +18719,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -18835,6 +18877,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -19101,7 +19146,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -19260,6 +19304,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   },
@@ -19633,7 +19680,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -19869,6 +19915,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -19897,6 +19946,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -19950,7 +20002,6 @@
                         {
                           "oneOf": [
                             {
-                              "type": "string",
                               "enum": [
                                 "none"
                               ]
@@ -20367,7 +20418,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -20603,6 +20653,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -20631,6 +20684,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -20684,7 +20740,6 @@
                         {
                           "oneOf": [
                             {
-                              "type": "string",
                               "enum": [
                                 "none"
                               ]
@@ -21112,7 +21167,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -21348,6 +21402,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -21376,6 +21433,9 @@
                       },
                       {
                         "type": "string"
+                      },
+                      {
+                        "type": "array"
                       }
                     ]
                   }
@@ -21429,7 +21489,6 @@
                         {
                           "oneOf": [
                             {
-                              "type": "string",
                               "enum": [
                                 "none"
                               ]
@@ -21691,7 +21750,6 @@
                 {
                   "oneOf": [
                     {
-                      "type": "string",
                       "enum": [
                         "none"
                       ]
@@ -21873,7 +21931,6 @@
                     {
                       "oneOf": [
                         {
-                          "type": "string",
                           "enum": [
                             "none"
                           ]
@@ -22385,7 +22442,6 @@
                   {
                     "oneOf": [
                       {
-                        "type": "string",
                         "enum": [
                           "none"
                         ]
@@ -22862,6 +22918,9 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "array"
               }
             ]
           }

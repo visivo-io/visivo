@@ -7,18 +7,18 @@ import { getTypeIcon, getTypeColors, getTypeByValue } from '../../common/objectT
 /**
  * ReferencePicker — VIS-792 / Track L L-2.
  *
- * Modal that lets a user pick a replacement reference for a broken canvas slot
- * (a slot whose chart/table/markdown/input ref no longer resolves). Triggered by
- * the <BrokenRefCard> "Fix..." button.
+ * Modal for picking an object reference for a canvas slot. Single `type` mode
+ * serves <BrokenRefCard>'s "Fix…"; multi `types` mode (typed sections) serves
+ * empty-slot click-to-pick. `onSelect(name, type)`.
  *
  * Per the L-2 brief (`specs/.../06-phase-5-polish.md`):
  *   - Centered modal (~480×640, responsive).
- *   - Header "Pick a chart" (matching the broken field type) + close (X).
- *   - Search input filters the list of available objects of the expected type.
+ *   - Header "Pick a chart" (matching the field type(s)) + close (X).
+ *   - Search input filters the list of available objects.
  *   - Scrollable object list — each row: type icon (objectTypeConfigs), name,
  *     small description (e.g. a chart's underlying insight), click-to-select.
  *   - "Create new…" link → the existing <CreateButton> flow (via `onCreateNew`).
- *   - Empty state — no objects of the type exist → prominent create CTA.
+ *   - Empty state — no objects of the type(s) exist → prominent create CTA.
  *
  * Click-to-select is the single selection affordance (no separate "Use this"
  * button), per the acceptance checklist's "pick one and stick with it".
@@ -27,14 +27,24 @@ import { getTypeIcon, getTypeColors, getTypeByValue } from '../../common/objectT
  * icons + colours come from the shared objectTypeConfigs palette.
  */
 
-// Map a leaf field (chart/table/markdown/input) to the store list + getter that
-// supply that type's available objects. The picker is leaf-type-scoped.
+// Store list per pickable type. Consumers wrap an `insight` pick in a chart.
 const TYPE_SLICES = {
   chart: { listKey: 'charts', singular: 'chart' },
   table: { listKey: 'tables', singular: 'table' },
   markdown: { listKey: 'markdowns', singular: 'markdown' },
   input: { listKey: 'inputs', singular: 'input' },
+  insight: { listKey: 'insights', singular: 'insight' },
 };
+
+// No visibility filter: jsdom reports every element as unrendered.
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
 
 // A short, type-appropriate description line for an object row.
 const describeObject = (type, obj) => {
@@ -60,7 +70,8 @@ const ObjectRow = ({ type, obj, onSelect }) => {
     <button
       type="button"
       data-testid={`reference-picker-row-${obj.name}`}
-      onClick={() => onSelect(obj.name)}
+      data-picker-type={type}
+      onClick={() => onSelect(obj.name, type)}
       className="flex w-full items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors hover:border-primary-200 hover:bg-primary-50 focus:border-primary-300 focus:bg-primary-50 focus:outline-none"
     >
       <span
@@ -82,6 +93,23 @@ const ObjectRow = ({ type, obj, onSelect }) => {
   );
 };
 
+const SectionHeader = ({ type }) => {
+  const Icon = getTypeIcon(type);
+  const colors = getTypeColors(type);
+  const meta = getTypeByValue(type);
+  return (
+    <div
+      className="flex items-center gap-1.5 px-3 pb-1 pt-2"
+      data-testid={`reference-picker-section-${type}`}
+    >
+      <Icon style={{ fontSize: 14 }} className={colors.text} aria-hidden="true" />
+      <span className={`text-[11px] font-semibold uppercase tracking-wide ${colors.text}`}>
+        {meta?.label || type}
+      </span>
+    </div>
+  );
+};
+
 const ListSkeleton = () => (
   <div className="space-y-2" data-testid="reference-picker-skeleton" aria-hidden="true">
     {[0, 1, 2, 3, 4].map(i => (
@@ -96,39 +124,104 @@ const ListSkeleton = () => (
   </div>
 );
 
-const ReferencePicker = ({ type, onSelect, onClose, onCreateNew, loading = false }) => {
-  const slice = TYPE_SLICES[type] || TYPE_SLICES.chart;
-  const rawObjects = useStore(s => s[slice.listKey]);
-  const objects = useMemo(() => rawObjects || [], [rawObjects]);
-  const typeMeta = getTypeByValue(type);
-  const singularLabel = typeMeta?.singularLabel || slice.singular;
+const ReferencePicker = ({ type, types, onSelect, onClose, onCreateNew, loading = false }) => {
+  const typeList = useMemo(() => {
+    const requested = Array.isArray(types) && types.length > 0 ? types : [type || 'chart'];
+    const valid = requested.filter(t => TYPE_SLICES[t]);
+    return valid.length > 0 ? valid : ['chart'];
+  }, [type, types]);
+  const isMulti = typeList.length > 1;
+
+  const charts = useStore(s => s.charts);
+  const tables = useStore(s => s.tables);
+  const markdowns = useStore(s => s.markdowns);
+  const inputs = useStore(s => s.inputs);
+  const insights = useStore(s => s.insights);
+  const listsByType = useMemo(
+    () => ({
+      chart: charts || [],
+      table: tables || [],
+      markdown: markdowns || [],
+      input: inputs || [],
+      insight: insights || [],
+    }),
+    [charts, tables, markdowns, inputs, insights]
+  );
+
+  const singularLabels = typeList.map(
+    t => getTypeByValue(t)?.singularLabel?.toLowerCase() || TYPE_SLICES[t].singular
+  );
+  const listKeys = typeList.map(t => TYPE_SLICES[t].listKey);
+  const titleLabel = singularLabels.join(' or ');
+  const listLabel = listKeys.join(isMulti ? ' and ' : '');
+  // Create-new targets the first type.
+  const createType = typeList[0];
+  const createLabel =
+    getTypeByValue(createType)?.singularLabel?.toLowerCase() || TYPE_SLICES[createType].singular;
 
   const [query, setQuery] = useState('');
   const dialogRef = useRef(null);
   const searchRef = useRef(null);
+  const returnFocusRef = useRef(null);
 
   useEffect(() => {
-    // Focus the search box on open so keyboard users can filter immediately.
+    // Restore focus to the opener on close, unless a pick unmounted it.
+    returnFocusRef.current = typeof document !== 'undefined' ? document.activeElement : null;
     if (searchRef.current) searchRef.current.focus();
+    return () => {
+      const opener = returnFocusRef.current;
+      if (opener && opener.isConnected && typeof opener.focus === 'function') {
+        opener.focus();
+      }
+    };
   }, []);
 
   useEffect(() => {
     const onKey = e => {
-      if (e.key === 'Escape') onClose && onClose();
+      if (e.key === 'Escape') {
+        onClose && onClose();
+        return;
+      }
+      // Focus trap, as `aria-modal` promises.
+      if (e.key !== 'Tab') return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll(FOCUSABLE_SELECTOR));
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (!dialog.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const filtered = useMemo(() => {
+  const sections = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = objects.filter(o => o && o.name);
-    if (!q) return list;
-    return list.filter(o => o.name.toLowerCase().includes(q));
-  }, [objects, query]);
+    return typeList.map(t => {
+      const list = (listsByType[t] || []).filter(o => o && o.name);
+      const filtered = q ? list.filter(o => o.name.toLowerCase().includes(q)) : list;
+      return { type: t, total: list.length, objects: filtered };
+    });
+  }, [typeList, listsByType, query]);
 
-  const isEmpty = !loading && objects.length === 0;
-  const noMatches = !loading && objects.length > 0 && filtered.length === 0;
+  const totalCount = sections.reduce((sum, s) => sum + s.total, 0);
+  const filteredCount = sections.reduce((sum, s) => sum + s.objects.length, 0);
+  const isEmpty = !loading && totalCount === 0;
+  const noMatches = !loading && totalCount > 0 && filteredCount === 0;
 
   return createPortal(
     <div
@@ -143,7 +236,7 @@ const ReferencePicker = ({ type, onSelect, onClose, onCreateNew, loading = false
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={`Pick a ${singularLabel.toLowerCase()}`}
+        aria-label={`Pick a ${titleLabel}`}
         data-testid="reference-picker"
         className="flex max-h-[640px] w-full max-w-[480px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-gray-200"
         style={{ height: 'min(640px, 90vh)' }}
@@ -154,7 +247,7 @@ const ReferencePicker = ({ type, onSelect, onClose, onCreateNew, loading = false
             data-testid="reference-picker-title"
             className="flex-1 text-base font-semibold text-gray-900"
           >
-            Pick a {singularLabel.toLowerCase()}
+            Pick a {titleLabel}
           </h2>
           <button
             type="button"
@@ -176,9 +269,9 @@ const ReferencePicker = ({ type, onSelect, onClose, onCreateNew, loading = false
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder={`Search ${slice.listKey}…`}
+              placeholder={`Search ${listLabel}…`}
               spellCheck={false}
-              aria-label={`Search available ${slice.listKey}`}
+              aria-label={`Search available ${listLabel}`}
               data-testid="reference-picker-search"
               className="min-w-0 flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none"
             />
@@ -200,30 +293,30 @@ const ReferencePicker = ({ type, onSelect, onClose, onCreateNew, loading = false
               <span
                 className={[
                   'mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full border',
-                  getTypeColors(type).node,
-                  getTypeColors(type).text,
+                  getTypeColors(createType).node,
+                  getTypeColors(createType).text,
                 ].join(' ')}
               >
                 {(() => {
-                  const Icon = getTypeIcon(type);
+                  const Icon = getTypeIcon(createType);
                   return <Icon style={{ fontSize: 24 }} />;
                 })()}
               </span>
               <p className="text-sm font-medium text-gray-900">
-                No {slice.listKey} available
+                No {listLabel} available
               </p>
               <p className="mt-1 max-w-xs text-xs text-gray-500">
-                Create a {singularLabel.toLowerCase()} to fix this slot.
+                Create a {createLabel} to fill this slot.
               </p>
               {onCreateNew && (
                 <button
                   type="button"
-                  onClick={() => onCreateNew(type)}
+                  onClick={() => onCreateNew(createType)}
                   data-testid="reference-picker-empty-create"
                   className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-600"
                 >
                   <PiPlus className="h-4 w-4" />
-                  Create new {singularLabel.toLowerCase()}
+                  Create new {createLabel}
                 </button>
               )}
             </div>
@@ -232,13 +325,25 @@ const ReferencePicker = ({ type, onSelect, onClose, onCreateNew, loading = false
               className="px-3 py-8 text-center text-sm text-gray-500"
               data-testid="reference-picker-no-matches"
             >
-              No {slice.listKey} match “{query}”.
+              No {listLabel} match “{query}”.
             </p>
           ) : (
             <div className="space-y-1">
-              {filtered.map(obj => (
-                <ObjectRow key={obj.name} type={type} obj={obj} onSelect={onSelect} />
-              ))}
+              {sections.map(section =>
+                section.objects.length === 0 ? null : (
+                  <React.Fragment key={section.type}>
+                    {isMulti && <SectionHeader type={section.type} />}
+                    {section.objects.map(obj => (
+                      <ObjectRow
+                        key={`${section.type}-${obj.name}`}
+                        type={section.type}
+                        obj={obj}
+                        onSelect={onSelect}
+                      />
+                    ))}
+                  </React.Fragment>
+                )
+              )}
             </div>
           )}
         </div>
@@ -248,12 +353,12 @@ const ReferencePicker = ({ type, onSelect, onClose, onCreateNew, loading = false
           <footer className="shrink-0 border-t border-gray-100 px-4 py-3">
             <button
               type="button"
-              onClick={() => onCreateNew(type)}
+              onClick={() => onCreateNew(createType)}
               data-testid="reference-picker-create"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 transition-colors hover:text-primary-700"
             >
               <PiPlus className="h-4 w-4" />
-              Create new {singularLabel.toLowerCase()}…
+              Create new {createLabel}…
             </button>
           </footer>
         )}
