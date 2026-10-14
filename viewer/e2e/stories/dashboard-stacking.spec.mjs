@@ -296,3 +296,76 @@ test.describe('Nested 2x2 lays out 2x2 from its slot width (VIS-1459 L2)', () =>
   });
 });
 
+
+/**
+ * A nested sub-row that stacks must give each stacked item a box at least as
+ * tall as the chart drawn in it. The canvas at 1600px (both panels open) stacks
+ * Section 2's KPI pairs; the row grows so each keeps the 160px stacked floor.
+ */
+test.describe('Stacked nested items fit the box they are given', () => {
+  const measureNestedItems = page =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('[data-testid="dashboard-nested-item"]')].flatMap(item => {
+        const svg = item.querySelector('.main-svg');
+        if (!svg) return [];
+        const box = item.getBoundingClientRect();
+        const chart = svg.getBoundingClientRect();
+        return [
+          {
+            path: item.dataset.canvasPath,
+            stacked: getComputedStyle(item.parentElement).display === 'flex',
+            height: box.height,
+            overflowTop: box.top - chart.top,
+            overflowBottom: chart.bottom - box.bottom,
+          },
+        ];
+      })
+    );
+
+  const expectChartsInsideItems = items => {
+    for (const item of items) {
+      expect(item.overflowTop, `${item.path} chart starts above its box`).toBeLessThanOrEqual(1);
+      expect(item.overflowBottom, `${item.path} chart runs past its box`).toBeLessThanOrEqual(1);
+    }
+  };
+
+  const section2Charts = page => page.locator('[data-canvas-path="row.3.item.0"] .js-plotly-plot');
+
+  test('Workspace canvas at 1600px: stacked KPI pairs keep the floor and draw inside their boxes', async ({
+    page,
+  }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/workspace/dashboard/nested-layouts-dashboard');
+    await page.waitForLoadState('networkidle');
+    const canvasOption = page.getByTestId('workspace-lens-picker-option-preview');
+    await expect(canvasOption).toBeVisible({ timeout: 15000 });
+    await canvasOption.click();
+    await expect(page.getByTestId('dashboard_nested-layouts-dashboard')).toBeVisible({ timeout: 15000 });
+    await expect(section2Charts(page)).toHaveCount(4, { timeout: 20000 });
+
+    const section2 = page.locator('[data-canvas-path="row.3"]');
+    await section2.scrollIntoViewIfNeeded();
+    await section2.screenshot({ path: `${SCREENS}/stacked-nested-fit-canvas-1600.png` });
+
+    const items = await measureNestedItems(page);
+    const stackedKpis = items.filter(i => i.path.startsWith('row.3.item.0.') && i.stacked);
+    expect(stackedKpis, 'Section 2 KPI pairs stack on the canvas at 1600px').toHaveLength(4);
+    expectChartsInsideItems(items);
+    for (const kpi of stackedKpis) expect(kpi.height).toBeGreaterThanOrEqual(159);
+  });
+
+  test('Project View-mode at 1600px: the 2x2 keeps its declared row height and fits', async ({
+    page,
+  }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/project/nested-layouts-dashboard');
+    await page.waitForLoadState('networkidle');
+    await expect(section2Charts(page)).toHaveCount(4, { timeout: 20000 });
+
+    const section2 = page.getByTestId('dashboard-row-3');
+    expect(Math.round((await section2.boundingBox()).height)).toBe(396);
+    const items = await measureNestedItems(page);
+    expect(items.filter(i => i.stacked)).toHaveLength(0);
+    expectChartsInsideItems(items);
+  });
+});

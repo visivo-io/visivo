@@ -56,6 +56,7 @@ const WEIGHT_PX = 128;
 // (VIS-1458 L3). Chart.jsx's default margins take 120px (t 40 + b 80), so
 // anything lower leaves a Plotly indicator with no plot area at all.
 const STACKED_MIN_ITEM_HEIGHT = 160;
+const NESTED_GAP_PX = 8;
 
 // Item.width is validated `>= 1` by the model; anything else (missing, 0,
 // negative) renders as a single span (VIS-1458 L5).
@@ -504,6 +505,29 @@ const Dashboard = ({
   // Item visibility logic (no selector support needed)
   const shouldShowItem = useCallback(() => true, []);
 
+  // Least height a row-container needs at `slotWidth` so every sub-row that
+  // stacks still gives each of its items the stacked floor; 0 for a leaf.
+  const minContainerHeight = (item, slotWidth) => {
+    if (!item?.rows?.length) return 0;
+    const totalWeight = item.rows.reduce((sum, r) => sum + heightToWeight(r.height), 0);
+    const subRowNeeds = item.rows.map(
+      subRow => (minSubRowHeight(subRow, slotWidth) * totalWeight) / heightToWeight(subRow.height)
+    );
+    return Math.ceil(NESTED_GAP_PX * (item.rows.length - 1) + Math.max(...subRowNeeds));
+  };
+
+  const minSubRowHeight = (subRow, slotWidth) => {
+    const items = (subRow.items || []).filter(shouldShowItem);
+    const stacked = shouldStackNested(slotWidth, items);
+    const nestedNeeds = items.map(i => minContainerHeight(i, getWidth(items, i, slotWidth, stacked)));
+    if (!stacked) return Math.max(0, ...nestedNeeds);
+    const totalSpan = items.reduce((sum, i) => sum + spanOf(i), 0);
+    const itemNeeds = items.map(
+      (i, idx) => (Math.max(minStackedHeight(i), nestedNeeds[idx]) * totalSpan) / spanOf(i)
+    );
+    return NESTED_GAP_PX * (items.length - 1) + Math.max(...itemNeeds);
+  };
+
   // Centralized input prefetching - fetch for ALL rows (optimize later)
   const visibleInputNames = useMemo(() => {
     if (!layoutRows) return [];
@@ -641,9 +665,12 @@ const Dashboard = ({
       const totalWeight = subRows.reduce(
         (sum, r) => sum + heightToWeight(r.height), 0
       ) || 1;
-      const parentPixelHeight = typeof slotPixelHeight === 'number' && slotPixelHeight > 0
-        ? slotPixelHeight
-        : getHeight(row.height);
+      const parentPixelHeight = Math.max(
+        typeof slotPixelHeight === 'number' && slotPixelHeight > 0
+          ? slotPixelHeight
+          : getHeight(row.height),
+        minContainerHeight(item, effectiveSlotWidth)
+      );
       return (
         <div
           key={key}
@@ -820,7 +847,6 @@ const Dashboard = ({
     // rather than each claiming the full sub-row height and overflowing.
     // Each item takes its width share of what is left, floored at
     // STACKED_MIN_ITEM_HEIGHT so a KPI tile keeps a plot area (VIS-1458 L3).
-    const NESTED_GAP_PX = 8;
     const stackedSlotHeight =
       typeof slotPixelHeight === 'number'
         ? slotPixelHeight - NESTED_GAP_PX * (visibleItems.length - 1)
@@ -887,12 +913,16 @@ const Dashboard = ({
     const visibleItems = row.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + spanOf(item), 0) || 1;
     const isCompact = row.height === 'compact';
-    const rowStyle = isColumn || isCompact ? {} : { height: getHeight(row.height) };
+    const gridRowHeight = Math.max(
+      getHeight(row.height),
+      ...visibleItems.map(item => minContainerHeight(item, getWidth(visibleItems, item, width, false)))
+    );
+    const rowStyle = isColumn || isCompact ? {} : { height: gridRowHeight };
     // Compact rows size to content; otherwise a stacked item gets its share of
     // the row height and a grid item gets the whole row.
     const slotHeightFor = item => {
       if (isCompact) return undefined;
-      return isColumn ? stackedItemHeight(visibleItems, item, getHeight(row.height)) : getHeight(row.height);
+      return isColumn ? stackedItemHeight(visibleItems, item, getHeight(row.height)) : gridRowHeight;
     };
     // VIS-827: eager-load by default. The row-visibility lazy-loader
     // (useVisibleRows) relies on an IntersectionObserver that does not fire
