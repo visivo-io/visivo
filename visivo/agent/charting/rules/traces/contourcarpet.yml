@@ -49,6 +49,6 @@ gotchas:
   - "Use a literal `carpet: <id>` on both; `${ref(carpet-insight)}` reaches Plotly as text and only works through the first-carpet fallback."
   - "Never `split`; one contourcarpet per carpet. Set a theme-neutral `colorscale` (Viridis), and `zmid` only for a diverging measure."
   - "`z` must be one value per (a, b) node from a GROUP BY over both levers; duplicates collapse to the last row."
-pairings: [scattercarpet_overlay, detail_table_below]
+pairings: [carpet_overlay(scattercarpet), detail_table_below]
 layout: {height: large, width_share: 1.0, row_role: relationship}
 mobile: Hide the colorbar title and keep `ncontours` at 8 or fewer; the warp plus labels is unreadable at half width.

@@ -1,87 +1,185 @@
-# The chart families the recommender ranks. Phase 2a lifts most of this from
-# the per-trace entries; these five are the obvious rules the golden-3 cases
-# pin so the engine has a shape before the research lands (VIS-1407).
-#
-# A hard gate means the chart would be wrong, not merely worse. Anything
-# that is a matter of degree (too many periods for columns, an intent the
-# family suits) is a score adjustment, so a family is never silently
-# unreachable when the agent omits an intent.
+# What a family adds to the entries it claims (preferred first): structural
+# gates, score adjustments with their reasons, and the skill to read. Counts,
+# ranges, repairs, pairings and layout are read from the entries.
+
+penalties:
+  out_of_range: 0.3   # per range still out of bounds after repairs
+  repair: 0.1         # per repair applied
+  niche: 0.5
+
+# Plotly draws these region kinds from `locationmode`; anything else needs a GeoJSON.
+builtin_boundaries: [iso3, country_name, us_state]
+
 families:
   - name: kpi
     trace_types: [indicator]
-    hard_gates:
-      metrics: {min: 1, max: 1}
-      dimensions: {min: 0, max: 1}
-      axis_roles: [time]
     score:
       - {when: "intent == kpi", delta: 0.5, reason: "a single number is what was asked for"}
       - {when: "dimensions == 0", delta: 0.2, reason: "nothing to break down"}
-    encodings: {time_dimension: "delta against the previous period, or a sparkline"}
-    layout: {height: xsmall, width_share: 0.25, row_role: kpi}
     skill: charts/kpi
 
   - name: line
-    trace_types: [scatter]
-    hard_gates:
-      ordered_axis_required: true
-      metrics: {min: 1}
-      dimensions: {min: 1, max: 2}
-      axis_points: {min: 3}
-    limits:
-      series_ideal: 8
-      series_max: 12
-      repair: [top_n_other, input_filter, small_multiples]
+    trace_types: [scatter, scattergl]
+    hard_gates: {ordered_axis_required: true}
     score:
-      - {when: "intent == trend", delta: 0.4, reason: "a trend reads best as a line"}
+      - {when: "intent in (trend, change)", delta: 0.4, reason: "a trend reads best as a line"}
       - {when: "series <= ideal", delta: 0.2, reason: "few enough series to follow"}
       - {when: "axis is time", delta: 0.1, reason: "a time axis is a line's home"}
-      - {when: "axis_points > 24", delta: 0.2, reason: "many points read as a line, not columns"}
-    pairings: [indicator_total_overlay]
-    layout: {height: medium, width_share: 1.0, row_role: hero}
+    props: {mode: lines}
     skill: charts/line
+
+  - name: area
+    trace_types: [scatter]
+    hard_gates: {ordered_axis_required: true}
+    score:
+      - {when: "part_of_whole", delta: 0.3, reason: "stacked areas show how the parts of a whole move"}
+      - {when: "cumulative", delta: 0.3, reason: "a running total fills to the axis"}
+      - {when: "intent == composition", delta: 0.2, reason: "composition over an ordered axis"}
+      - {when: "not additive metrics", delta: -0.5, reason: "stacking a rate or an average sums it, which means nothing"}
+    props: {mode: lines, stackgroup: one}
+    skill: charts/area
+
+  - name: xy
+    trace_types: [scatter, scattergl]
+    hard_gates: {axis_roles: [numeric_continuous, numeric_discrete]}
+    score:
+      - {when: "intent == relationship", delta: 0.5, reason: "two measures per point show how they move together"}
+      - {when: "axis is numeric_continuous", delta: 0.3, reason: "a continuous x reads as points, not a sequence"}
+    props: {mode: markers}
+    skill: charts/xy
 
   - name: bar
     trace_types: [bar]
-    hard_gates:
-      metrics: {min: 1, max: 10}
-      dimensions: {min: 1, max: 2}
-      axis_roles: [categorical, boolean, geo_region, numeric_discrete, time]
-      dimension_roles: [categorical, boolean, geo_region, numeric_discrete]
-    limits:
-      series_ideal: 8
-      series_max: 10
-      repair: [top_n_other, input_filter]
     score:
       - {when: "intent in (compare, rank)", delta: 0.4, reason: "bars compare categories directly"}
+      - {when: "intent == composition", delta: 0.2, reason: "a stacked bar compares composition across groups"}
       - {when: "two few dimensions", delta: 0.2, reason: "a stacked or grouped bar carries a second small dimension"}
-      - {when: "axis_points > 24", delta: -0.3, reason: "too many periods for columns; a line reads better"}
-      - {when: "lookup dimension", delta: -0.5, reason: "an identifier or a long list is for looking up, not for bars"}
-    encodings: {second_dimension: "stacked when part_of_whole, grouped otherwise"}
-    layout: {height: medium, width_share: 0.5, row_role: breakdown}
+      - {when: "identifier or high cardinality", delta: -0.5, reason: "an identifier or a long list is for looking up, not for bars"}
     skill: charts/bar
 
-  - name: histogram
-    trace_types: [histogram]
-    hard_gates:
-      metrics: {min: 0, max: 0}
-      dimensions: {min: 1, max: 2}
-      axis_roles: [numeric_continuous, numeric_discrete]
-      dimension_roles: [categorical, boolean]
-    limits:
-      series_ideal: 2
-      series_max: 3
-      repair: [top_n_other, input_filter]
+  - name: heatmap
+    trace_types: [heatmap]
     score:
-      - {when: "intent == distribution", delta: 0.5, reason: "the shape of one numeric column"}
+      - {when: "dimensions == 2 and not two few dimensions", delta: 0.2, reason: "two dimensions too long to stack or group read as a grid"}
+      - {when: "intent in (compare, distribution)", delta: 0.2, reason: "a grid compares every pair of values at once"}
+    skill: charts/heatmap
+
+  - name: distribution
+    trace_types: [histogram, box, violin]
+    score:
+      - {when: "intent == distribution", delta: 0.5, reason: "the shape of a numeric column"}
       - {when: "dimensions == 1", delta: 0.1, reason: "one column, binned"}
-    warnings: ["Pre-bucket in SQL above ~1M rows; the browser bins every row otherwise."]
-    layout: {height: medium, width_share: 0.5, row_role: relationship}
-    skill: charts/histogram
+    skill: charts/distribution
+
+  - name: density2d
+    trace_types: [histogram2d, histogram2dcontour, contour]
+    score:
+      - {when: "intent == relationship", delta: 0.3, reason: "two dense numeric columns read as a density"}
+      - {when: "intent == distribution and dimensions == 2", delta: 0.2, reason: "a joint distribution of two numbers"}
+    skill: charts/density2d
+
+  - name: part_of_whole
+    trace_types: [pie, funnelarea]
+    score:
+      - {when: "part_of_whole", delta: 0.2, reason: "a few slices of one whole"}
+      - {when: "intent == composition", delta: 0.2, reason: "the share is the message"}
+      - {when: "not part_of_whole", delta: -0.3, reason: "slices need parts that make a whole"}
+      - {when: "not additive metrics", delta: -0.5, reason: "an average or a rate is not a share of anything"}
+    skill: charts/part_of_whole
+
+  - name: hierarchy
+    trace_types: [treemap, sunburst, icicle]
+    score:
+      - {when: "hierarchy", delta: 0.5, reason: "nested categories read as nested areas"}
+      - {when: "intent == composition", delta: 0.2, reason: "how a whole divides, level by level"}
+      - {when: "not hierarchy", delta: -0.2, reason: "without nesting a treemap is a harder bar"}
+    skill: charts/hierarchy
+
+  - name: flow
+    trace_types: [sankey, parcats]
+    score:
+      - {when: "intent == flow", delta: 0.5, reason: "movement between stages reads as links"}
+      - {when: "intent != flow", delta: -0.2, reason: "links imply a movement the question did not ask about"}
+    skill: charts/flow
+
+  - name: funnel
+    trace_types: [funnel]
+    hard_gates: {requires: [ordered_stages]}
+    score:
+      - {when: "ordered_stages", delta: 0.6, reason: "stages a reader drops out of, in order"}
+    skill: charts/funnel
+
+  - name: waterfall
+    trace_types: [waterfall]
+    hard_gates: {requires: [signed_contributions]}
+    score:
+      - {when: "signed_contributions", delta: 0.6, reason: "signed steps from a start to an end"}
+      - {when: "intent == change", delta: 0.2, reason: "what moved the total"}
+    skill: charts/waterfall
+
+  - name: geo_region
+    trace_types: [choropleth, choroplethmap, choroplethmapbox]
+    hard_gates: {requires: [region boundaries]}
+    score:
+      - {when: "intent == geo", delta: 0.6, reason: "the geography carries the meaning"}
+    skill: charts/geo_region
+
+  - name: geo_point
+    trace_types: [scattermap, scattergeo, scattermapbox]
+    hard_gates: {requires: [has geo_point]}
+    score:
+      - {when: "intent == geo", delta: 0.5, reason: "points on a map show where"}
+      - {when: "has geo_point", delta: 0.3, reason: "coordinates are meant for a map"}
+    skill: charts/geo_point
+
+  - name: geo_density
+    trace_types: [densitymap, densitymapbox]
+    hard_gates: {requires: [has geo_point]}
+    score:
+      - {when: "intent == geo", delta: 0.3, reason: "density shows where points concentrate"}
+    skill: charts/geo_density
+
+  - name: financial
+    trace_types: [candlestick, ohlc]
+    hard_gates: {ordered_axis_required: true}
+    score:
+      - {when: "ohlc metrics", delta: 0.6, reason: "open, high, low and close per period are a candle"}
+      - {when: "not ohlc metrics", delta: -0.6, reason: "four metrics that merely share a time axis are lines"}
+      - {when: "intent in (trend, change)", delta: 0.2, reason: "price movement over time"}
+    skill: charts/financial
+
+  - name: multivariate
+    trace_types: [parcoords, splom]
+    score:
+      - {when: "intent == relationship", delta: 0.2, reason: "many measures per entity at once"}
+    skill: charts/multivariate
+
+  - name: polar
+    trace_types: [barpolar, scatterpolar, scatterpolargl]
+    score:
+      - {when: "intent == compare and metrics >= 3", delta: 0.3, reason: "a radar compares a few profiles across several measures"}
+    skill: charts/polar
+
+  - name: ternary_smith
+    trace_types: [scatterternary, scattersmith]
+    score:
+      - {when: "metrics == 3 and part_of_whole", delta: 0.3, reason: "three shares of one whole place a point in a triangle"}
+    skill: charts/ternary_smith
+
+  - name: three_d
+    trace_types: [scatter3d, surface, mesh3d, cone, streamtube, volume, isosurface]
+    skill: charts/three_d
+
+  - name: carpet
+    trace_types: [carpet, contourcarpet, scattercarpet]
+    skill: charts/carpet
+
+  - name: image
+    trace_types: [image]
+    skill: charts/image
 
   - name: table
-    hard_gates:
-      metrics: {min: 0}
-      dimensions: {min: 1}
+    skeleton: table
     score:
       - {when: "identifier or high cardinality", delta: 0.6, reason: "identifier-level detail is for looking up, not charting"}
       - {when: "intent == detail", delta: 0.3, reason: "exact values were asked for"}
@@ -90,26 +188,20 @@ families:
       - {when: "mixed units per row", delta: 0.3, reason: "rows mix units no single axis can hold"}
       - {when: "metrics <= 3 and dimensions small and intent != detail", delta: -0.3, reason: "a chart shows a few measures across few categories faster"}
       - {when: "cross cells > 400", delta: 0.4, reason: "too many cells for a heatmap; a paged table with an input filter reads them"}
-    limits:
-      repair: [input_filter]
-    layout: {height: large, width_share: 1.0, row_role: detail}
     skill: charts/table
 
   - name: table_pivot
-    hard_gates:
-      metrics: {min: 1, max: 3}
+    skeleton: pivot
+    data_shape:
+      metrics: {min: 1}
       dimensions: {min: 2, max: 3}
       dimension_roles: [categorical, boolean, geo_region, time, numeric_discrete]
     score:
       - {when: "cross cells in (400, 2000]", delta: 0.5, reason: "too many cells for a heatmap, few enough to scan as a cross-tab"}
       - {when: "time columns <= 12 and intent in (detail, compare)", delta: 0.4, reason: "exact figures per period read across a row"}
-      - {when: "part_of_whole and totals_required", delta: 0.4, reason: "a composition with totals is a cross-tab (totals built in SQL)"}
+      - {when: "part_of_whole and totals_required", delta: 0.5, reason: "a composition with totals is a cross-tab (totals built in SQL)"}
       - {when: "exact_values", delta: 0.3, reason: "the figures must be read exactly"}
       - {when: "intent == trend", delta: -0.4, reason: "a trend reads best as a line"}
-    encodings:
-      rows: "the higher-cardinality dimension"
-      columns: "the lower-cardinality dimension (periods when time)"
-      format_cells: "column to compare within a period, row across periods, table only with one unit"
     warnings: ["Pivot rows are unordered and totals are not rendered; name categories to sort and build totals in SQL."]
     layout: {height: large, width_share: 1.0, row_role: detail}
     skill: charts/table

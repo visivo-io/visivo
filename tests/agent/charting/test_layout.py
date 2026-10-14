@@ -76,7 +76,7 @@ class TestTheRuleFile:
         assert doc.kpi_cluster.sub_row_height == "xsmall"
         kpi = next(f for f in rules.load_families() if f.name == "kpi")
         indicator = next(t for t in rules.load_traces() if t.type == "indicator")
-        assert kpi.layout.height == indicator.layout.height == "xsmall"
+        assert kpi.layout_hint().height == indicator.layout.height == "xsmall"
         assert doc.gauge_height == "medium"
 
 

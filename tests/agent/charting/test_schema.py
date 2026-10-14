@@ -10,6 +10,7 @@ from visivo.agent.charting.schema import (
     KNOWN_TYPES,
     FamilyRule,
     LayoutRule,
+    Limits,
     MinMax,
     Recommendation,
     RecommendRequest,
@@ -159,7 +160,8 @@ class TestFamilyRule:
     def test_a_minimal_rule_validates(self):
         rule = FamilyRule(name="bar", trace_types=["bar"])
 
-        assert rule.layout.row_role == "breakdown" and rule.limits.repair == []
+        assert rule.layout_hint().row_role == "breakdown" and rule.hard_gates.requires == []
+        assert rule.skeleton == "chart" and rule.members == []
 
     def test_trace_types_must_be_real(self):
         with pytest.raises(ValidationError, match="unknown trace types"):
@@ -171,7 +173,14 @@ class TestFamilyRule:
 
     def test_series_limits_are_ordered(self):
         with pytest.raises(ValidationError, match="series_max"):
-            FamilyRule(name="line", limits={"series_ideal": 5, "series_max": 3})
+            Limits(series_ideal=5, series_max=3)
+
+    def test_a_family_states_no_counts_of_its_own(self):
+        """Counts live in the entries; a gate here is structural only."""
+        with pytest.raises(ValidationError, match="metrics"):
+            FamilyRule(name="bar", hard_gates={"metrics": {"min": 1, "max": 10}})
+        with pytest.raises(ValidationError, match="limits"):
+            FamilyRule(name="bar", limits={"series_max": 10})
 
     def test_every_score_adjustment_carries_a_reason(self):
         with pytest.raises(ValidationError):

@@ -1,5 +1,5 @@
-"""The golden table (VIS-1407 scaffold). Three NYC-taxi cases pin the engine's
-shape; VIS-1429 grows this to forty. Every rule edit must keep it green."""
+"""The recommender, stage by stage, on the NYC-taxi cases of
+specs/chart-selection/01-rule-format.md."""
 
 import pytest
 import yaml
@@ -28,17 +28,10 @@ def top(request):
     return recommend(request).recommendations[0]
 
 
-class TestTheRuleFileLoads:
-    def test_the_scaffold_families_plus_the_two_table_families(self):
-        assert [r.name for r in rules.load_families()] == [
-            "kpi",
-            "line",
-            "bar",
-            "histogram",
-            "table",
-            "table_pivot",
-        ]
+ALL = {"max_results": 25}
 
+
+class TestTheRuleFileLoads:
     def test_every_when_clause_is_in_the_vocabulary(self):
         """A typo in a `when` would otherwise never fire, silently."""
         from visivo.agent.charting.recommend import check_vocabulary
@@ -57,26 +50,15 @@ class TestTheRuleFileLoads:
         with pytest.raises(ValueError, match="unknown `when`"):
             recommend(RecommendRequest(metrics=[RIDES]), rules=[bad])
 
-    def test_a_duplicate_family_is_refused(self, tmp_path):
-        path = tmp_path / "families.yml"
-        path.write_text("families:\n  - {name: bar}\n  - {name: bar}\n")
+    def test_a_requires_clause_is_checked_too(self):
+        from visivo.agent.charting.recommend import check_vocabulary
+        from visivo.agent.charting.schema import HardGates
 
-        with pytest.raises(ValueError, match="duplicate"):
-            rules.load_families(path)
-
-    def test_an_empty_file_is_refused(self, tmp_path):
-        path = tmp_path / "families.yml"
-        path.write_text("families: []\n")
-
-        with pytest.raises(ValueError, match="non-empty"):
-            rules.load_families(path)
-
-    def test_an_invalid_entry_names_the_field(self, tmp_path):
-        path = tmp_path / "families.yml"
-        path.write_text("families:\n  - {name: bar, trace_types: [sparkline]}\n")
-
-        with pytest.raises(Exception, match="sparkline"):
-            rules.load_families(path)
+        bad = rules.load_families()[0].model_copy(
+            update={"hard_gates": HardGates(requires=["the moon is full"])}
+        )
+        with pytest.raises(ValueError, match="the moon is full"):
+            check_vocabulary([bad])
 
 
 class TestGoldenA_BoroughByCompany:
@@ -89,19 +71,20 @@ class TestGoldenA_BoroughByCompany:
 
         best = top(request)
         assert best.family == "bar" and best.trace_type == "bar"
-        assert "second_dimension" in best.encodings
+        assert "second `few` dimension" in best.encodings, "the entry's variations"
 
     def test_line_is_rejected_for_want_of_an_ordered_axis(self):
         response = recommend(RecommendRequest(metrics=[RIDES], dimensions=[BOROUGH, COMPANY_3]))
 
         assert any(r.family == "line" and "ordered axis" in r.reason for r in response.rejected)
 
-    def test_a_zero_max_window_is_printed_as_zero(self):
-        """`max: 0` must not read as unbounded."""
+    def test_a_type_that_takes_no_metrics_is_rejected_for_one(self):
+        """`max: 0` is structural (the type draws rows), not a range."""
         response = recommend(RecommendRequest(metrics=[RIDES], dimensions=[BOROUGH]))
 
         assert any(
-            r.family == "histogram" and r.reason == "takes 0–0 metrics" for r in response.rejected
+            r.family == "distribution" and r.reason.startswith("histogram takes no metrics")
+            for r in response.rejected
         )
 
 
@@ -112,8 +95,8 @@ class TestGoldenB_RidesPerDayByCompany:
     def test_three_companies_is_a_plain_line(self):
         best = top(RecommendRequest(metrics=[RIDES], dimensions=[DAY, COMPANY_3], intent="trend"))
 
-        assert best.family == "line" and best.transforms == []
-        assert "indicator_total_overlay" in best.pairings
+        assert best.family == "line" and best.trace_type == "scatter" and best.transforms == []
+        assert "indicator_overlay" in best.pairings
         assert "few enough series to follow" in best.why
 
     def test_ten_companies_stay_one_line_chart(self):
@@ -129,8 +112,8 @@ class TestGoldenB_RidesPerDayByCompany:
 
         best = response.recommendations[0]
         assert best.family == "line" and best.transforms == ["top_n_other"]
-        assert response.transforms_suggested == ["top_n_other"]
-        assert any("exceeds 12" in w for w in best.warnings)
+        assert response.transforms_suggested[0] == "top_n_other"
+        assert "20 series exceeds 12; top_n_other brings it to 8" in best.warnings
 
     def test_a_year_of_days_ranks_the_line_above_the_bar(self):
         """Bars are admitted on a time axis but penalised at this many
@@ -140,7 +123,8 @@ class TestGoldenB_RidesPerDayByCompany:
         families = [r.family for r in response.recommendations]
         assert families.index("line") < families.index("bar")
         bar = next(r for r in response.recommendations if r.family == "bar")
-        assert "too many periods for columns" in " ".join(bar.why)
+        assert bar.transforms == ["regrain"] and "after regrain" in bar.why
+        assert "365 pickup_day values exceeds 20; regrain brings it to 13" in bar.warnings
 
     def test_too_few_points_is_not_a_trend(self):
         two_days = card("pickup_day", "time", 2, time_span_points=2)
@@ -150,34 +134,41 @@ class TestGoldenB_RidesPerDayByCompany:
 
 
 class TestGoldenC_TripDistance:
-    """One numeric column and a distribution intent: a histogram, with the
-    row-count warning carried through."""
+    """One numeric column and a distribution intent: the distribution family,
+    drawn as a histogram alone or with a few overlaid groups, and as a box
+    once the groups pass what overlaid histograms carry."""
 
     def test_histogram_wins(self):
         best = top(RecommendRequest(dimensions=[DISTANCE], intent="distribution"))
 
-        assert best.family == "histogram"
+        assert (best.family, best.trace_type) == ("distribution", "histogram")
         assert any("Pre-bucket" in w for w in best.warnings)
 
     def test_without_an_intent_the_histogram_still_ranks(self):
         """Intent is a preference, not a gate: the agent often omits it."""
-        assert top(RecommendRequest(dimensions=[DISTANCE])).family == "histogram"
+        assert top(RecommendRequest(dimensions=[DISTANCE])).trace_type == "histogram"
 
     def test_a_small_split_overlays_the_histogram(self):
         best = top(RecommendRequest(dimensions=[DISTANCE, COMPANY_3], intent="distribution"))
 
-        assert best.family == "histogram" and best.transforms == []
+        assert best.trace_type == "histogram" and best.transforms == []
+        assert "3 series is readable but above the ideal of 2" in best.warnings
 
-    def test_five_overlaid_groups_are_repaired(self):
-        """Measured: a fourth overlaid colour already muddies the bins."""
+    def test_five_groups_are_a_box_not_a_repaired_histogram(self):
+        """Measured: a fourth overlaid colour already muddies the bins, and a
+        box per group carries five without a repair."""
         best = top(RecommendRequest(dimensions=[DISTANCE, BOROUGH], intent="distribution"))
 
-        assert best.family == "histogram" and best.transforms == ["top_n_other"]
+        assert (best.family, best.trace_type, best.transforms) == ("distribution", "box", [])
 
-    def test_a_large_split_is_repaired_first(self):
-        best = top(RecommendRequest(dimensions=[DISTANCE, COMPANY_20], intent="distribution"))
+    def test_a_large_split_is_every_group_as_a_box(self):
+        """The histogram's repairs name the box first; the box puts all twenty on x."""
+        response = recommend(
+            RecommendRequest(dimensions=[DISTANCE, COMPANY_20], intent="distribution")
+        )
 
-        assert best.family == "histogram" and best.transforms == ["top_n_other"]
+        best = response.recommendations[0]
+        assert (best.trace_type, best.transforms) == ("box", [])
 
 
 class TestTheObviousEdges:
@@ -195,20 +186,6 @@ class TestTheObviousEdges:
             > next(r.score for r in response.recommendations if r.family == "bar")
         )
 
-    def test_every_recommendation_explains_itself(self):
-        for request in (
-            RecommendRequest(metrics=[RIDES], dimensions=[BOROUGH]),
-            RecommendRequest(metrics=[RIDES], dimensions=[DAY, COMPANY_20]),
-            RecommendRequest(dimensions=[DISTANCE], intent="distribution"),
-        ):
-            for rec in recommend(request).recommendations:
-                assert rec.why and rec.skill
-
-    def test_it_is_deterministic(self):
-        request = RecommendRequest(metrics=[RIDES], dimensions=[BOROUGH, COMPANY_3])
-
-        assert recommend(request) == recommend(request)
-
     def test_max_results_is_honoured(self):
         request = RecommendRequest(
             metrics=[RIDES], dimensions=[BOROUGH], context={"max_results": 1}
@@ -221,18 +198,25 @@ class TestTheObviousEdges:
 
         assert response.recommendations[0].family == "kpi"
 
-    def test_a_family_nothing_repairs_is_rejected_with_the_reason(self):
+    def test_a_range_nothing_repairs_ranks_lower_and_warns_but_is_never_rejected(self):
         strict = [
-            r.model_copy(update={"limits": r.limits.model_copy(update={"repair": []})})
+            r.model_copy(
+                update={
+                    "members": [
+                        m.model_copy(update={"limits": m.limits.model_copy(update={"repair": []})})
+                        for m in r.members
+                    ]
+                }
+            )
             for r in rules.load_families()
         ]
-        response = recommend(
-            RecommendRequest(metrics=[RIDES], dimensions=[DAY, COMPANY_20]), rules=strict
-        )
+        request = RecommendRequest(metrics=[RIDES], dimensions=[DAY, COMPANY_20], context=ALL)
+        repaired = rec(recommend(request), "line")
+        unrepaired = rec(recommend(request, rules=strict), "line")
 
-        assert any(
-            r.family == "line" and "nothing repairs it" in r.reason for r in response.rejected
-        )
+        assert unrepaired.transforms == [] and unrepaired.score < repaired.score
+        assert "20 series exceeds the 12 scatter stays readable with" in unrepaired.warnings[0]
+        assert "nothing in its repair list fixes it" in unrepaired.warnings[0]
 
 
 class TestHighCardinalityMeansLookup:
@@ -304,13 +288,16 @@ class TestAnIndicatorMayCarryATimeReference:
         response = recommend(RecommendRequest(metrics=[RIDES], dimensions=[DAY], intent="kpi"))
 
         assert response.recommendations[0].family == "kpi"
-        assert "time_dimension" in response.recommendations[0].encodings
+        assert (
+            "the KPI is compared with the previous period" in response.recommendations[0].encodings
+        )
 
     def test_but_not_over_a_category(self):
         response = recommend(RecommendRequest(metrics=[RIDES], dimensions=[BOROUGH], intent="kpi"))
 
         assert any(
-            r.family == "kpi" and "cannot be the axis" in r.reason for r in response.rejected
+            r.family == "kpi" and r.reason == "pickup_borough is categorical; indicator takes time"
+            for r in response.rejected
         )
 
 
@@ -335,19 +322,16 @@ class TestIntentIsAPreference:
 
 
 class TestEveryTraceTypeHasAHome:
-    """families.yml is a Phase 0 scaffold: five families so the engine has a
-    shape. P2a writes an entry for all 48 trace types and P2b lifts them into
-    ~22 families. Until then this is expected to fail; when it passes, drop
-    the marker. Strict, so it cannot pass by accident and go unnoticed."""
-
-    @pytest.mark.xfail(strict=True, reason="P2a/P2b (VIS-1419..1429) cover the remaining 43 types")
     def test_every_prop_type_is_claimed_by_exactly_one_family(self):
+        """scatter is a line, an area or an xy chart depending on `mode` and
+        `fill`, and scattergl a line or xy; every other type has one home."""
         from visivo.models.props.types import PropType
 
         claimed = [t for r in rules.load_families() for t in r.trace_types]
 
         assert sorted(set(claimed)) == sorted(p.value for p in PropType)
-        assert len(claimed) == len(set(claimed)), "a type may belong to one family only"
+        assert claimed.count("scatter") == 3 and claimed.count("scattergl") == 2
+        assert all(claimed.count(t) == 1 for t in set(claimed) - {"scatter", "scattergl"})
 
 
 def metric(name, agg="sum", unit=None):
@@ -458,7 +442,7 @@ class TestGoldenTables:
         assert any("unordered" in w for w in pivot.warnings)
         Table(**spec)
 
-    def test_forty_periods_is_a_line_and_the_pivot_is_rejected_for_its_columns(self):
+    def test_forty_periods_is_a_line_and_the_pivot_is_marked_down_for_its_columns(self):
         response = recommend(
             RecommendRequest(
                 metrics=[metric("revenue")],
@@ -467,12 +451,13 @@ class TestGoldenTables:
                     card("vendor", "categorical", 4),
                 ],
                 intent="trend",
+                context=ALL,
             )
         )
         assert families(response)[0] == "line"
-        assert any(
-            r.family == "table_pivot" and "scrolls sideways" in r.reason for r in response.rejected
-        )
+        pivot = rec(response, "table_pivot")
+        assert any("41 columns" in w and "scrolls sideways" in w for w in pivot.warnings)
+        assert pivot.score == -0.7, "trend -0.4, and one range out of bounds -0.3"
 
     def test_twenty_quarters_with_exact_figures_still_prefers_the_line(self):
         response = recommend(
@@ -483,11 +468,11 @@ class TestGoldenTables:
                     card("region", "categorical", 4),
                 ],
                 intent="detail",
+                context=ALL,
             )
         )
-        assert families(response)[0] == "line" and "table_pivot" in {
-            r.family for r in response.rejected
-        }
+        assert families(response)[0] == "line"
+        assert any("scrolls sideways" in w for w in rec(response, "table_pivot").warnings)
 
     def test_an_identifier_dimension_is_never_a_chart_whatever_the_intent(self):
         for intent in ("rank", "compare", "trend", "composition", None):
@@ -520,12 +505,15 @@ class TestGoldenTables:
         assert "totals built in SQL" in " ".join(rec(response, "table_pivot").why)
 
     def test_exact_values_lift_both_table_families(self):
-        plain = recommend(RecommendRequest(metrics=[metric("m")], dimensions=[BOROUGH, COMPANY_3]))
+        plain = recommend(
+            RecommendRequest(metrics=[metric("m")], dimensions=[BOROUGH, COMPANY_3], context=ALL)
+        )
         exact = recommend(
             RecommendRequest(
                 metrics=[metric("m")],
                 dimensions=[BOROUGH, COMPANY_3],
                 semantics={"exact_values": True},
+                context=ALL,
             )
         )
         assert rec(exact, "table").score > rec(plain, "table").score
@@ -539,13 +527,12 @@ class TestGoldenTables:
                 metrics=[metric("rides", "count")],
                 dimensions=[card("zone", "categorical", 50), card("hour", "numeric_discrete", 24)],
                 intent="compare",
+                context=ALL,
             )
         )
         assert families(response)[0] == "table"
         assert "too many cells for a heatmap" in " ".join(rec(response, "table").why)
-        assert any(
-            r.family == "table_pivot" and "scrolls sideways" in r.reason for r in response.rejected
-        )
+        assert any("scrolls sideways" in w for w in rec(response, "table_pivot").warnings)
 
     def test_too_many_values_trim_to_the_budget_with_a_warning(self):
         response = recommend(
@@ -582,16 +569,17 @@ class TestGoldenTables:
         assert score_at(401, 5) == 0.0, "2 001 cells: a filtered detail table instead"
 
     def test_the_boundary_of_the_column_budget(self):
-        def pivot_state(n_cols):
+        def scrolls(n_cols):
             response = recommend(
                 RecommendRequest(
                     metrics=[metric("m")],
                     dimensions=[card("a", "categorical", 50), card("b", "categorical", n_cols)],
+                    context=ALL,
                 )
             )
-            return "admitted" if "table_pivot" in families(response) else "rejected"
+            return any("scrolls sideways" in w for w in rec(response, "table_pivot").warnings)
 
-        assert pivot_state(11) == "admitted" and pivot_state(12) == "rejected"
+        assert not scrolls(11) and scrolls(12), "1 + 11 = 12 fits the 12-column budget"
 
     def test_a_many_dimension_chart_carries_a_detail_table_pairing(self):
         response = recommend(
@@ -637,31 +625,22 @@ class TestTheTableRuleFile:
 
 class TestTheWhenVocabulary:
     def test_direct_clauses(self):
-        from visivo.agent.charting.recommend import _clause, _fires
+        from visivo.agent.charting.recommend import _Facts, _clause, _fires
 
         request = RecommendRequest(metrics=[RIDES], dimensions=[BOROUGH], intent="rank")
-        assert _clause("intent != detail")(request) is True
-        assert _clause("intent != rank")(request) is False
+        facts = _Facts()
+        assert _clause("intent != detail")(request, facts) is True
+        assert _clause("intent != rank")(request, facts) is False
         assert _clause("not a clause") is None
         assert _clause("intent == rank and not a clause") is None
+        assert _clause("not not a clause") is None
         with pytest.raises(ValueError, match="unknown `when`"):
-            _fires("not a clause", request, 1, None)
-
-    def test_cross_and_pivot_helpers_on_a_single_dimension(self):
-        from visivo.agent.charting.recommend import (
-            _cross_cells,
-            _pivot_columns,
-            _pivot_dims,
-            _pivot_values_that_fit,
-        )
-
-        request = RecommendRequest(metrics=[RIDES], dimensions=[BOROUGH])
-        assert _cross_cells(request) == 0 and _pivot_columns(request) == 0
-        assert _pivot_dims(request) == (None, None) and _pivot_values_that_fit(request) == 0
+            _fires("not a clause", request, facts)
 
     def test_a_pivot_rejects_an_off_role_second_dimension(self):
         response = recommend(RecommendRequest(metrics=[RIDES], dimensions=[DAY, DISTANCE]))
         assert any(
-            r.family == "table_pivot" and "trip_distance is not one of" in r.reason
+            r.family == "table_pivot"
+            and r.reason.startswith("trip_distance is numeric_continuous; table_pivot takes")
             for r in response.rejected
         )

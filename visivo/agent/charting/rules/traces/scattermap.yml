@@ -60,6 +60,6 @@ gotchas:
   - "Set `layout.map.center` and `layout.map.zoom` from the data's bounding box; the default shows the world."
   - "Use `scattermap`, not `scattermapbox` (deprecated, needs a token); the theme styles `layout.map`."
   - "`marker.size` is in pixels: scale into roughly 6–40 (`6 + 34 * sqrt(n / max_n)`) or the biggest dot covers the city."
-pairings: [bar_beside, detail_table_below, kpi_strip_above]
+pairings: [chart_beside(bar), detail_table_below, kpi_strip_above]
 layout: {height: large, width_share: 0.67, row_role: hero}
 mobile: Full width, `large`; hide the legend and rely on `hovertemplate`.

@@ -50,6 +50,7 @@ gotchas:
   - "`radius` is in screen pixels, so the look changes with zoom; pick it for the `layout.map.zoom` you set."
   - "Use `densitymap`, not `densitymapbox` (deprecated, token required)."
   - "Hide the colorbar (`showscale: false`): its units are kernel density, which nobody can read."
-pairings: [kpi_strip_above, scattermap_toggle]
+pairings: [kpi_strip_above]
+alternatives: [scattermap]
 layout: {height: large, width_share: 1.0, row_role: hero}
 mobile: Full width; lower `radius` as the map shrinks.

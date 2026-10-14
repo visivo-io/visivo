@@ -51,6 +51,6 @@ gotchas:
   - "A line does not close itself: use `fill: toself`, or repeat the first spoke as the last row."
   - "Sort on an explicit spoke-order column so every split series walks the spokes in the same order; otherwise category order follows the first series seen."
   - "Numeric `theta` is degrees, but a radar wants category labels. Do not set a constant `line.color`; `split` colors each series from the theme."
-pairings: [detail_table_below, bar_beside]
+pairings: [detail_table_below, chart_beside(bar)]
 layout: {height: medium, width_share: 0.5, row_role: breakdown}
 mobile: Survives at half width as a square; keep few entities and short spoke labels or they clip at the edge.
