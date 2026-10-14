@@ -454,18 +454,19 @@ def unaliased_projections(sql: str, sqlglot_dialect: str) -> list:
     A schema built from the first is unusable against the second: every
     ``${ref(model).column}`` resolves against names no engine will ever return.
     An aliased projection, a bare column and a star all carry a name the
-    database agrees with; nothing else does.
+    database agrees with; nothing else does. A set operation takes its names
+    from its first branch, so only that branch is checked.
 
     Positions are 1-based, because the message they end up in is read against
     the SELECT list.
     """
     expr = sqlglot.parse_one(sql, read=sqlglot_dialect)
-    select = expr.find(exp.Select)
-    if select is None:
+    query = expr.find(exp.Query)
+    if query is None:
         return []
     return [
         (position, projection.sql(dialect=sqlglot_dialect))
-        for position, projection in enumerate(select.expressions, start=1)
+        for position, projection in enumerate(query.selects, start=1)
         if not isinstance(projection, (exp.Alias, exp.Column, exp.Star))
     ]
 
