@@ -753,6 +753,28 @@ class TestSchemaFromSqlWithComments:
         assert "order_total" in result["model"]
 
 
+class TestSchemaFromSqlSetOperations:
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            "select a as x from t union all select count(*) from t union all select b from t",
+            "(select a as x from t union all select b as y from t) union all select b as z from t",
+            "select a as x, b from t intersect select a, b from t except select b, a as y from t",
+        ],
+    )
+    def test_columns_are_named_by_the_first_branch_like_duckdb(self, sql):
+        import duckdb
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        connection = duckdb.connect()
+        connection.execute("create table t (a int, b int)")
+        duckdb_columns = [column[0] for column in connection.execute(sql).description]
+
+        result = schema_from_sql("duckdb", sql, {"t": {"a": "INT", "b": "INT"}}, "model")
+
+        assert list(result["model"]) == duckdb_columns
+
+
 class TestNormalizeIdentifierForDialect:
     """Tests for dialect-aware identifier case normalization.
 
