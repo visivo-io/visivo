@@ -3,6 +3,9 @@ import {
   DateDay,
   DateMillisecond,
   Decimal,
+  Field,
+  Int64,
+  List,
   TimestampMicrosecond,
   TimestampMillisecond,
   TimestampNanosecond,
@@ -10,7 +13,7 @@ import {
   Table,
   vectorFromArray,
 } from 'apache-arrow';
-import { getTimestampColumns, processArrowResult } from './resultProcessing';
+import { getTimestampColumns, processArrowResult, toPlainValue } from './resultProcessing';
 import { mapQueryResultsToProps } from '../models/Insight';
 
 function decimalWords(integer) {
@@ -77,16 +80,41 @@ describe('processArrowResult timestamp handling (B7)', () => {
     expect(rows[1].ts).toBeNull();
   });
 
-  test('non-timestamp bigints stringify; other values pass through untouched', () => {
+  test('safe bigints become numbers, unsafe ones stay strings, other values pass through', () => {
     const table = tableOf({
+      count: vectorFromArray([42n]),
       big: vectorFromArray([9007199254740993n]),
       label: vectorFromArray(['north']),
       amount: vectorFromArray([1.5]),
     });
     const [row] = processArrowResult(table);
+    expect(row.count).toBe(42);
     expect(row.big).toBe('9007199254740993');
     expect(row.label).toBe('north');
     expect(row.amount).toBe(1.5);
+  });
+
+  test('nested LIST cells become plain arrays of numbers', () => {
+    const listOf = child => new List(new Field('item', child, true));
+    const table = tableOf({
+      pixels: vectorFromArray(
+        [
+          [
+            [210n, 89n, 70n],
+            [113n, 59n, 87n],
+          ],
+          null,
+        ],
+        listOf(listOf(new Int64()))
+      ),
+    });
+    const rows = processArrowResult(table);
+    expect(rows[0].pixels).toEqual([
+      [210, 89, 70],
+      [113, 59, 87],
+    ]);
+    expect(Array.isArray(rows[0].pixels[0])).toBe(true);
+    expect(rows[1].pixels).toBeNull();
   });
 });
 
@@ -165,8 +193,26 @@ describe('processArrowResult decimal handling', () => {
     });
     expect(props).toEqual({ lat: [-123.45, null], z: [63, 0], text: ['00123', '00456'] });
     expect(rows).toEqual([
-      { price: '-123.45', count: '63', label: '00123' },
-      { price: null, count: '0', label: '00456' },
+      { price: '-123.45', count: 63, label: '00123' },
+      { price: null, count: 0, label: '00456' },
     ]);
+  });
+});
+
+describe('toPlainValue', () => {
+  test.each([
+    [9007199254740991n, Number.MAX_SAFE_INTEGER],
+    [-9007199254740991n, Number.MIN_SAFE_INTEGER],
+    [9007199254740992n, '9007199254740992'],
+    [-9007199254740992n, '-9007199254740992'],
+  ])('%p becomes %p', (input, expected) => {
+    expect(toPlainValue(input)).toBe(expected);
+  });
+
+  test('leaves non-bigint, non-vector values untouched', () => {
+    const obj = { a: 1 };
+    expect(toPlainValue(obj)).toBe(obj);
+    expect(toPlainValue('7')).toBe('7');
+    expect(toPlainValue(null)).toBeNull();
   });
 });
