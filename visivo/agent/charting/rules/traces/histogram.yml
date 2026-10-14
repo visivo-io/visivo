@@ -20,7 +20,6 @@ data_shape:
   metrics: {min: 0, max: 0}
   dimensions: {min: 1, max: 2}
   dimension_roles: [numeric_continuous, numeric_discrete, categorical, boolean]
-  rows: {max: 1000000}
 required_props: [x]
 example: |
   insights:

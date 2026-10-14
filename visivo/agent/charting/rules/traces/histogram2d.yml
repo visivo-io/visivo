@@ -15,7 +15,7 @@ data_shape:
   metrics: {min: 0, max: 1}
   dimensions: {min: 2, max: 2}
   dimension_roles: [numeric_continuous, numeric_discrete, time]
-  rows: {min: 1000, max: 1000000}
+  rows: {min: 1000}
 required_props: [x, y]
 example: |
   insights:
@@ -42,7 +42,7 @@ limits:
   repair: [clip_p99, sample, input_filter, small_multiples]
 transforms: [clip_p99, sample, bucket]
 gotchas:
-  - "Raw rows, binned in the browser: x/y take columns with no GROUP BY. Past the cardinality max, pre-bin in SQL (`floor(x/step)*step`, `count(*)`) and draw a `heatmap` instead."
+  - "Raw rows, binned in the browser: x/y take columns with no GROUP BY. On large tables, pre-bin in SQL (`floor(x/step)*step`, `count(*)`) and draw a `heatmap` instead."
   - "Clip both axes in SQL (`least(x, p99)`); `xaxis.range` hides bins but still bins the outliers into the range."
   - "Set `xbins.size`/`ybins.size` when the step means something (0.5 mi, $2); `nbinsx` is only a hint."
   - "`split` overlays one grid per value on the same axes and only the last is visible; use small multiples."

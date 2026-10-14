@@ -293,7 +293,10 @@ class DataShape(_Strict):
     distinct values of the main dimension, ``axis_points`` the points along
     an ordered axis, ``rows`` the rows the trace draws, ``rows_per_group``
     the rows each category needs, and ``cells`` the marks a grid or grouped
-    chart draws (rows × columns, or categories × metrics)."""
+    chart draws (rows × columns, or categories × metrics).
+
+    These are where the chart stays readable, used to rank and to warn. They
+    never stop the agent building a chart the user asked for by name."""
 
     metrics: MinMax = Field(default_factory=MinMax)
     dimensions: MinMax = Field(default_factory=MinMax)

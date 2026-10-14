@@ -21,7 +21,6 @@ data_shape:
   dimensions: {min: 1, max: 2}
   dimension_roles: [numeric_continuous, numeric_discrete, categorical, boolean, time]
   cardinality: {min: 1, max: 20}
-  rows: {max: 500000}
   rows_per_group: {min: 20}
   cells: {max: 32}
 required_props: [y]

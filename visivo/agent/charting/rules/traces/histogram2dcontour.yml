@@ -15,7 +15,7 @@ data_shape:
   metrics: {min: 0, max: 1}
   dimensions: {min: 2, max: 2}
   dimension_roles: [numeric_continuous, numeric_discrete]
-  rows: {min: 1000, max: 1000000}
+  rows: {min: 1000}
 required_props: [x, y]
 example: |
   insights:
@@ -44,7 +44,7 @@ limits:
   repair: [histogram2d, clip_p99, sample, input_filter]
 transforms: [clip_p99, sample]
 gotchas:
-  - "Raw rows with no GROUP BY, binned then contoured in the browser; past the cardinality max, sample in SQL."
+  - "Raw rows with no GROUP BY, binned then contoured in the browser; on large tables, sample in SQL."
   - "Contour levels depend on `nbinsx`/`nbinsy`; too fine a grid gives ragged islands, too coarse a blob. Start at 30–40 bins a side."
   - "`contours.coloring: heatmap` is a histogram2d with extra artifacts; prefer histogram2d for filled views."
   - "`split` stacks filled contour sets on top of each other and the last hides the rest; use two filtered insights with `contours.coloring: none`."

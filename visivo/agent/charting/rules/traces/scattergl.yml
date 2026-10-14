@@ -15,7 +15,7 @@ data_shape:
   metrics: {min: 1, max: 2}
   dimensions: {min: 1, max: 2}
   dimension_roles: [time, numeric_continuous, numeric_discrete, categorical]
-  rows: {min: 10000, max: 200000}
+  rows: {min: 10000}
 required_props: [x, y]
 example: |
   insights:
@@ -39,7 +39,7 @@ limits:
   repair: [top_n_other, input_filter, histogram2d]
 transforms: [sample, clip_p99]
 gotchas:
-  - "Still ship a bounded result: the browser receives every row, so sample or clip in SQL past the cardinality max."
+  - "Still ship a bounded result: the browser receives every row, so sample or clip in SQL on large tables."
   - "Set `marker.opacity` well below 1 (0.2–0.4) or a dense cloud is a solid blob."
   - "Hover is coarser than scatter; put the exact figures in a table beside it when they matter."
   - "With `mode: lines`, add `- sort: ?{ <x expression> ASC }`; without it the line connects points in storage order and zig-zags."

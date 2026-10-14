@@ -19,7 +19,6 @@ data_shape:
   dimensions: {min: 1, max: 2}
   dimension_roles: [numeric_continuous, categorical, boolean]
   cardinality: {min: 1, max: 8}
-  rows: {max: 200000}
   rows_per_group: {min: 100}
 required_props: [y]
 example: |

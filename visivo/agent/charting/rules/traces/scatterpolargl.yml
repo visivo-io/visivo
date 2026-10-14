@@ -13,7 +13,7 @@ data_shape:
   metrics: {min: 1, max: 2}
   dimensions: {min: 1, max: 2}
   dimension_roles: [numeric_continuous, categorical]
-  rows: {min: 10000, max: 200000}
+  rows: {min: 10000}
 required_props: [r, theta]
 example: |
   insights:
@@ -29,7 +29,7 @@ example: |
 variations:
   - when: "readings come from several stations"
     then: "`split` when there are a few stations; an input_filter when there are more"
-  - when: "more points than the cardinality ceiling"
+  - when: "too many points to ship to the browser"
     then: "sample in SQL, or aggregate to a barpolar rose (direction bucket × speed bucket)"
 limits:
   series_ideal: 3
@@ -38,7 +38,7 @@ limits:
 transforms: [sample, bucket, clip_p99]
 gotchas:
   - "`theta` must be degrees (or set `thetaunit: radians`); a categorical theta defeats the point of a dense cloud."
-  - "The browser still receives every row; sample or clip in SQL past the cardinality ceiling."
+  - "The browser still receives every row; sample or clip in SQL on large tables."
   - "Set `marker.opacity` to 0.2–0.4 or the cloud is a solid disc."
   - "Same theme rule as scatter: no constant `marker.color`; color only from a CASE that encodes data."
 pairings: [detail_table_below, histogram_beside]
