@@ -49,7 +49,7 @@ gotchas:
   - "A delta needs two rows in a known order: group by period and `sort` DESC so `[0]` is current and `[1]` previous."
   - "Units go in `number.prefix`/`number.suffix`; keep the value a plain aggregate so `number.valueformat` can format it."
   - "A `split` draws one indicator per value in the same `domain`, stacked on top of each other; a split KPI is a bar chart."
-  - "A `small` row (256 px) is the floor: the viewer's default margins take 120 px, so an `xsmall` KPI has no plot area unless `layout.margin` top+bottom ≤ 40."
+  - "A gauge (`mode` containing `gauge`) keeps a chart's full margins and is unreadable in an `xsmall` KPI row; tell `recommend_layout` with `hints.gauge: true` and it gets a taller row."
 pairings: [indicator_total_overlay, kpi_strip_above, kpi_cluster_beside]
-layout: {height: small, width_share: 0.25, row_role: kpi}
+layout: {height: xsmall, width_share: 0.25, row_role: kpi}
 mobile: KPIs stack one per line; order them by importance and keep only the strongest.
