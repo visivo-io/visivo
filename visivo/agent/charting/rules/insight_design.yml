@@ -25,6 +25,9 @@ metric_by_role:
 
 heavy_tail: {skew_over: 1, p99_over_median: 5}
 
+primary_metric:
+  words: [amount, revenue, sales, fare, total, price, cost, quantity, units]
+
 pairing_limits:
   categoricals_with_time: 1
   chart_max_cells: 480

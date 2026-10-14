@@ -11,9 +11,11 @@ of the same metric is the failure this prevents.
 
 1. Profile first (`profile_columns`/`profile_model`), then call
    `score_candidates` with the cards, each with its `model`. It answers with
-   the GROUP BY queries worth running (`stats_wanted`); run them with
+   the GROUP BY queries worth running (`stats_wanted`, each `expression` and
+   `by_expression` already in the source's SQL); run them with
    `query_source` and call again with `stats` (`groups: [{model, by, metric,
-   grain?, rows}]`, `correlations: [{model, columns: [a, b], r}]`).
+   grain?, rows}]`, `by` two columns for a cross-tab; `correlations:
+   [{model, columns: [a, b], r, method}]`, or `pairs` where it asks for them).
 2. Write `semantic_layer` before any insight: its metrics and dimensions go
    under their model (`write_model`), relations with `write_relation`.
    Insights then read `${ref(model).name}`, so a number means one thing on
@@ -33,7 +35,7 @@ of the same metric is the failure this prevents.
 | time | `avg` of the time between two of them | time is the axis; two time columns give an elapsed-time metric |
 | categorical, text, geo_region, geo_point | — | a label is grouped by or counted, never aggregated |
 
-Every model also gets `count(*)`. A heavy tail is skew above 1 or p99 above 5× the median.
+Every model also gets `count(*)`. A heavy tail is skew above 1 or p99 above 5× the median. The lead total (cross-tabs, maps, the first queries) has the strongest measured signal; before stats it is the first whose column names money or volume (amount, revenue, sales, fare, total, price, cost, quantity, units); with no total, the row count.
 - **Pairing:** time with ≤1 categorical; two categoricals up to 480 cells chart, up to 10000 pivot when the smaller has at most 11 values, past that the larger becomes an input; an identifier is never a dimension, only the detail table's key.
 - **Split vs input:** below `some` split; at `some`, `top_n_other` when the top 5 hold ≥80 % of rows, else an input; above, an input or the table. Time never splits.
 - **Reductions** (each is a proposed dimension, written once):

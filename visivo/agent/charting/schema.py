@@ -992,6 +992,23 @@ class HeavyTail(_Strict):
         )
 
 
+class PrimaryMetric(_Strict):
+    """Before stats rank the totals, the first whose column holds one of
+    ``words`` leads."""
+
+    words: List[str] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _plain(self):
+        if any(w != w.lower() or not w.isalpha() for w in self.words):
+            raise ValueError("primary_metric words are lower-case single words")
+        return self
+
+    def matches(self, column):
+        tokens = "".join(c if c.isalnum() else " " for c in str(column).lower()).split()
+        return [w for w in self.words if w in tokens]
+
+
 class PairingLimits(_Strict):
     categoricals_with_time: int = Field(ge=0)
     chart_max_cells: int = Field(ge=1)
@@ -1106,6 +1123,7 @@ class InsightDesignDoc(_Strict):
 
     metric_by_role: List[MetricRule] = Field(min_length=1)
     heavy_tail: HeavyTail
+    primary_metric: PrimaryMetric
     pairing_limits: PairingLimits
     split_vs_input: SplitVsInput
     reductions: Reductions

@@ -55,6 +55,16 @@ class TestTheRuleFile:
         with pytest.raises(ValueError, match="mapping"):
             rules.load_insight_design(path)
 
+    def test_primary_metric_words_are_lower_case_words_matched_whole(self):
+        words = rules.load_insight_design().primary_metric
+        assert words.matches("Fare-Amount total") == ["amount", "fare", "total"]
+        assert words.matches("fares_amounted") == []
+        for bad in (["Amount"], ["unit price"]):
+            data = raw()
+            data["primary_metric"]["words"] = bad
+            with pytest.raises(ValueError, match="lower-case single words"):
+                InsightDesignDoc(**data)
+
     def test_the_metric_rules_are_keyed_by_role_and_additivity(self):
         doc = rules.load_insight_design()
         assert doc.metric_rule(card("identifier")).aggs == ["count_distinct"]

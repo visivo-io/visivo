@@ -300,7 +300,10 @@ def insight_design_markdown(doc=None, interactivity=None):
             *[_metric_row(rule) for rule in doc.metric_by_role],
             "",
             "Every model also gets `count(*)`. A heavy tail is skew above "
-            f"{tail.skew_over:g} or p99 above {tail.p99_over_median:g}× the median.",
+            f"{tail.skew_over:g} or p99 above {tail.p99_over_median:g}× the median. "
+            "The lead total (cross-tabs, maps, the first queries) has the strongest "
+            "measured signal; before stats it is the first whose column names money or "
+            f"volume ({', '.join(doc.primary_metric.words)}); with no total, the row count.",
             f"- **Pairing:** time with ≤{pairing.categoricals_with_time} categorical; two "
             f"categoricals up to {pairing.chart_max_cells} cells chart, up to "
             f"{pairing.pivot_max_cells} pivot when the smaller has at most "
