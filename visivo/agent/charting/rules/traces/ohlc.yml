@@ -9,7 +9,7 @@ avoid_when:
   - "No explicit ask; candlestick is the family default and reads faster for general audiences."
   - "Four metrics that are not open/high/low/close prices; the shape alone cannot tell, so use scatter lines."
   - "Too many periods even for ticks; regrain to weeks or months first."
-  - Overlaying several securities on one price axis; use an input filter or small multiples.
+  - "Several securities on one chart with the default colours (identical ticks), at very different price levels on one axis, or more than the series limit; ticks at the same date overlap and peers that move together hide each other."
 data_shape:
   metrics: {min: 4, max: 4}
   dimensions: {min: 1, max: 1}
@@ -29,18 +29,20 @@ example: |
         tickwidth: 0.3
 variations:
   - when: "trading volume should be shown with the price"
-    then: "a `bar` insight on `yaxis: y2` in its own `yaxis2.domain` band below the price, as for candlestick"
-  - when: "a second security is wanted"
-    then: "an input filter on the ticker, or one filtered insight per ticker on separate charts"
+    then: "a `bar` insight on `yaxis: y2` in its own `yaxis2.domain` band below the price, with `xaxis.anchor: y2`, as for candlestick"
+  - when: "two or three securities should be compared on one price axis"
+    then: "`split` on the ticker with `increasing.line.color` and `decreasing.line.color` both `\"?{ CASE ${ref(prices).ticker} WHEN 'AAPL' THEN '#0a9396' WHEN 'MSFT' THEN '#5b4bab' ELSE '#9e9e9e' END }[0]\"`; the tick sides still show direction; avoid red and green; normalise to % of the first open in SQL when price levels differ"
+  - when: "two or three securities should each keep their own price scale"
+    then: "one insight per ticker, named after the ticker, each on its own axis (`yaxis: y2`, `y3`); on the chart layout give `yaxis.domain`, `yaxis2.domain`, … equal bands with a small gap, `yaxis<N>.title.text` set to the ticker, `xaxis.anchor` set to the bottom band's axis so the dates sit under it, and `showlegend: false`"
 limits:
   series_ideal: 1
-  series_max: 1
-  repair: [regrain, input_filter, small_multiples]
+  series_max: 3
+  repair: [input_filter, small_multiples, regrain]
 transforms: [regrain]
 gotchas:
   - "Same range slider default as candlestick: set `layout.xaxis.rangeslider.visible: false` on dashboards."
   - "Same weekend gaps: `xaxis.rangebreaks: [{bounds: [sat, mon]}]` on a real date axis."
-  - "Constant `increasing.line.color`/`decreasing.line.color` opt out of the theme; leave them unset unless the brand requires it."
+  - "Every ohlc trace takes the theme's up/down colours, so several tickers draw identically; bind `increasing.line.color`/`decreasing.line.color` per ticker with a CASE and `[0]`. With one ticker, leave them unset unless the brand requires it."
   - "Regrain with first/last (`arg_min(open, date)`, `arg_max(close, date)`), never avg of opens."
 pairings: [volume_bar_subplot, kpi_strip_above]
 layout: {height: large, width_share: 1.0, row_role: hero}
