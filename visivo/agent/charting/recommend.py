@@ -10,11 +10,13 @@ import math
 import operator
 import re
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import List, Optional, get_args
 
 import yaml
 
 from visivo.agent.charting.rules import load_family_doc, load_tables, load_transforms
+from visivo.agent.charting.skeleton import Repaired, chart_skeleton
 from visivo.agent.charting.schema import (
     TRACE_TYPES,
     Limits,
@@ -101,8 +103,10 @@ def _mixed_units(request):
 
 
 def _additive(metric):
-    if metric.card is not None and metric.card.additive is not None:
-        return metric.card.additive
+    """A count always adds up; a sum does unless the column says it does not
+    (a balance); any other aggregate (an average of fares) never does."""
+    if metric.agg == "sum" and metric.card is not None and metric.card.additive is False:
+        return False
     return metric.agg in _ADDITIVE_AGGS
 
 
@@ -249,18 +253,20 @@ def _main_dimension(request):
 
 def _member_gate(name, shape, request):
     """The minimums in a member's ``data_shape`` (and ``max: 0``, a type that
-    takes none), and the roles of its dimensions."""
+    takes none). A dimension past the maximum may be off-role, since a repair
+    folds it away."""
     n_metrics, n_dims = len(request.metrics), len(request.dimensions)
     if shape.metrics.max == 0 and n_metrics:
         return f"{name} takes no metrics; it draws the rows themselves"
     if n_metrics < shape.metrics.min:
         return f"{name} needs at least {_count(shape.metrics.min, 'metric')}, has {n_metrics}"
-    if shape.dimensions.max == 0 and n_dims:
-        return f"{name} takes no dimensions"
     if n_dims < shape.dimensions.min:
         return f"{name} needs at least {_count(shape.dimensions.min, 'dimension')}, has {n_dims}"
-    for d in request.dimensions:
-        if shape.dimension_roles and d.role not in shape.dimension_roles:
+    if shape.dimension_roles:
+        off_role = [d for d in request.dimensions if d.role not in shape.dimension_roles]
+        drawn = n_dims if shape.dimensions.max is None else min(n_dims, shape.dimensions.max)
+        if off_role and n_dims - len(off_role) < drawn:
+            d = off_role[0]
             return f"{d.column} is {d.role}; {name} takes {', '.join(shape.dimension_roles)}"
     axis, main = _axis(request), _main_dimension(request)
     if shape.axis_points and axis and axis.axis_points() < shape.axis_points.min:
@@ -334,7 +340,11 @@ def _measures(view, shape, limits):
         out["metrics"] = (len(request.metrics), shape.metrics.max, None)
     if shape.dimensions.max is not None:
         extra = [d for d in dims if d is not _axis(request)]
-        out["dimensions"] = (len(dims), shape.dimensions.max, extra[-1] if extra else None)
+        off_role = [
+            d for d in dims if shape.dimension_roles and d.role not in shape.dimension_roles
+        ]
+        fold = (off_role or extra or [None])[-1]
+        out["dimensions"] = (len(dims), shape.dimensions.max, fold)
     categories = [d for d in dims if d.role not in _POSITIONAL]
     main = max(categories, key=view.n, default=None)
     if shape.cardinality and shape.cardinality.max is not None and main:
@@ -410,11 +420,24 @@ class _Outcome:
     score: float = 0.0
     why: List[str] = field(default_factory=list)
     unfixed: int = 0
+    cuts: List[str] = field(default_factory=list)
+    repaired: Repaired = Repaired()
+
+
+def _crowded(dim, kept):
+    """``(Other's share, the largest share)`` when keeping ``kept - 1`` values
+    would leave Other the largest, from the card's top values; else ``None``."""
+    shares = sorted((t.share for t in dim.top_n), reverse=True)
+    if len(shares) < kept:
+        return None
+    other = 1 - sum(shares[: kept - 1])
+    return (other, shares[0]) if other > shares[0] else None
 
 
 def _repair(outcome, name, shape, limits, request, transforms):
-    """Try the entry's repairs, in order, on every range it overflows.
-    Returns the series drawn after."""
+    """Try the entry's repairs, in order, on every range it overflows; every
+    application is a step, and a chart named before the first repair that
+    fixes a range is drawn instead. Returns the series drawn after."""
     view = _View.of(request)
     charts = [r for r in limits.repair if transforms.get(r) is None]
     for measure in get_args(Measure):
@@ -429,28 +452,50 @@ def _repair(outcome, name, shape, limits, request, transforms):
                     f"{value} series is readable but above the ideal of {limits.series_ideal}"
                 )
             continue
-        fix = next(
-            (t for t in map(transforms.get, limits.repair) if _fixes(t, measure, dim, view)),
-            None,
-        )
-        if fix is None:
+        target = (limits.series_ideal or limit) if measure == "series" else limit
+        fix, switch, crowded = None, None, None
+        for item in limits.repair:
+            transform = transforms.get(item)
+            if transform is None:
+                switch = switch or item
+            elif _fixes(transform, measure, dim, view):
+                crowded = limits.other_not_largest and transform.other and _crowded(dim, target)
+                if not crowded:
+                    fix = transform
+                    break
+        if fix is None or switch:
             outcome.unfixed += 1
             outcome.alternatives += [c for c in charts if c not in outcome.alternatives]
-            others = f"; consider {', '.join(charts)}" if charts else ""
-            outcome.warnings.append(
-                f"{value} {label} exceeds the {limit} {name} stays readable with, and nothing "
-                f"in its repair list fixes it{others}"
-            )
+            why = f"{value} {label} exceeds the {limit} {name} stays readable with"
+            if crowded:
+                other, largest = crowded
+                why += (
+                    f"; top_n_other would leave Other {other:.0%} of the rows, more than the "
+                    f"largest {dim.column} ({largest:.0%})"
+                )
+            if fix is not None:
+                why += f"; draw a {switch} instead"
+            else:
+                others = f"; consider {', '.join(charts)}" if charts else ""
+                why += f", and nothing in its repair list fixes it{others}"
+            outcome.warnings.append(why)
             continue
-        target = (limits.series_ideal or limit) if measure == "series" else limit
         _apply(fix, measure, value, target, dim, view, transforms.regrain_steps)
         after = _measures(view, shape, limits).get(measure, (target,))[0]
         shown = view.n(dim) if dim is not None and measure != "dimensions" else after
         if fix.name not in outcome.transforms:
             outcome.transforms.append(fix.name)
+        if fix.other and dim is not None and dim.column not in outcome.cuts:
+            outcome.cuts.append(dim.column)
         outcome.warnings.append(f"{value} {label} exceeds {limit}; {fix.name} brings it to {shown}")
         if after > limit:
             outcome.unfixed += 1
+    series = _series_dimension(view, shape, limits)
+    outcome.repaired = Repaired(
+        dropped=tuple(d.column for d in request.dimensions if d.column in view.dropped),
+        counts=dict(view.counts),
+        series=series.column if series else None,
+    )
     return _measures(view, shape, limits).get("series", (1,))[0]
 
 
@@ -504,15 +549,30 @@ def _evaluate(rule, member, request, doc):
 
 
 def _best(rule, request, doc):
-    """The admitted member with the fewest ranges out of bounds, then the
-    fewest repairs, then the highest score, then the first listed; else the
-    first member's rejection. Deprecated members never draw."""
+    """The requested member if it is admitted, else the admitted member with
+    the fewest ranges out of bounds, then the fewest repairs, then the highest
+    score, then the first listed; else the requested or first member's
+    rejection. Deprecated members never draw."""
     members = [m for m in rule.members if m.status != "deprecated"] or [None]
     outcomes = [_evaluate(rule, m, request, doc) for m in members]
+    asked = next((o for o in outcomes if o.member and o.member.type == request.requested), None)
     admitted = [o for o in outcomes if o.reason is None]
     if not admitted:
-        return outcomes[0]
-    return min(admitted, key=lambda o: (o.unfixed, len(o.transforms), -o.score))
+        return asked or outcomes[0]
+    if asked and asked.reason is None:
+        return asked
+    best = min(admitted, key=lambda o: (o.unfixed, len(o.transforms), -o.score))
+    if asked:
+        best.warnings.append(
+            f"{asked.member.type} was asked for, but {asked.reason}; drawn as {best.member.type}"
+        )
+    return best
+
+
+def _asked_for(rule, request):
+    return request.requested is not None and (
+        request.requested == rule.name or request.requested in rule.trace_types
+    )
 
 
 # --- skeletons ---------------------------------------------------------------
@@ -599,6 +659,7 @@ class _Doc:
     tables: object
 
 
+@lru_cache(maxsize=1)
 def _doc():
     families = load_family_doc()
     return _Doc(
@@ -610,13 +671,39 @@ def _doc():
     )
 
 
+def _kind(rule, member, doc):
+    """What a chart's name ends in: its trace type, or the family where
+    several families draw that type (a scatter is a line, an area or xy)."""
+    drawn_by = [f for f in doc.families if member.type in f.trace_types]
+    return member.type if len(drawn_by) == 1 else rule.name
+
+
 def _recommendation(rule, outcome, request, doc):
     member = outcome.member
     pairings = list(member.pairings) if member else []
-    table_yaml = None
+    warnings = list(outcome.warnings)
+    skeleton = example = table_yaml = None
     if rule.skeleton == "chart":
         if _wants_detail_table(request) and "detail_table_below" not in pairings:
             pairings.append("detail_table_below")
+        other = doc.transforms.get("top_n_other").other
+        built = chart_skeleton(
+            member,
+            request,
+            rule.props,
+            outcome.cuts,
+            other,
+            kind=_kind(rule, member, doc),
+            repaired=outcome.repaired,
+        )
+        if built.adapted:
+            skeleton = built.yaml
+        else:
+            example = built.yaml
+            warnings.append(
+                f"no runnable skeleton: {built.reason}; example_yaml is the {member.type} "
+                "example as written, a pattern to map your columns onto, not a chart to paste"
+            )
     elif rule.skeleton == "pivot":
         table_yaml = pivot_skeleton(request, doc.tables)
     else:
@@ -628,7 +715,9 @@ def _recommendation(rule, outcome, request, doc):
         why=outcome.why,
         encodings=_encodings(rule, member, doc.tables),
         transforms=outcome.transforms,
-        warnings=outcome.warnings,
+        warnings=warnings,
+        yaml_skeleton=skeleton,
+        example_yaml=example,
         table_yaml=table_yaml,
         pairings=pairings,
         alternatives=outcome.alternatives,
@@ -644,20 +733,28 @@ def recommend(request, rules=None):
     doc = _doc()
     rules = rules if rules is not None else doc.families
     check_vocabulary(rules)
-    admitted, rejected = [], []
+    admitted, rejected, refused = [], [], []
     facts = _Facts(builtin_boundaries=doc.builtin_boundaries)
     for rule in rules:
+        asked = _asked_for(rule, request)
         reason = _family_gate(rule, request, facts)
         outcome = None if reason else _best(rule, request, doc)
         reason = reason or outcome.reason
         if reason:
             rejected.append(Rejection(family=rule.name, reason=reason))
-        else:
-            admitted.append((rule, outcome))
-    admitted.sort(key=lambda pair: -pair[1].score)
+            refused += [rejected[-1]] if asked else []
+            continue
+        if asked:
+            outcome.why.append("asked for by name, so it ranks first; its warnings are the cost")
+        admitted.append((asked, rule, outcome))
+    admitted.sort(key=lambda entry: (not entry[0], -entry[2].score))
     top = [
         _recommendation(rule, outcome, request, doc)
-        for rule, outcome in admitted[: request.context.max_results]
+        for _, rule, outcome in admitted[: request.context.max_results]
     ]
+    if top and refused and not (admitted and admitted[0][0]):
+        top[0].warnings.append(
+            f"{request.requested} was asked for, but {refused[0].family}: {refused[0].reason}"
+        )
     suggested = list(dict.fromkeys(t for rec in top for t in rec.transforms))
     return RecommendResponse(recommendations=top, rejected=rejected, transforms_suggested=suggested)

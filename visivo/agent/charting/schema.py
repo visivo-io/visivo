@@ -14,7 +14,7 @@ Nothing here is a project object: these models are not under
 
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from visivo.models.props.types import PropType
 
@@ -107,6 +107,8 @@ FAMILIES = (
     "image",
     "table",
 )
+
+REQUESTABLE = frozenset(FAMILIES) | KNOWN_TYPES
 
 
 class _Strict(BaseModel):
@@ -201,6 +203,8 @@ class RequestContext(_Strict):
     max_results: int = Field(default=5, ge=1)
     # The model the columns come from, for the ${ref()}s in a skeleton.
     model: str = "model"
+    # The first theme colorway colour (the built-in light theme's unless the tool reads another).
+    theme_color: str = "#0a9396"
 
 
 class RecommendRequest(_Strict):
@@ -212,6 +216,16 @@ class RecommendRequest(_Strict):
     intent: Optional[Intent] = None
     semantics: Semantics = Field(default_factory=Semantics)
     context: RequestContext = Field(default_factory=RequestContext)
+    # The family or trace type the user named: it ranks first with its penalties
+    # and warnings intact; only a hard gate still rejects it.
+    requested: Optional[str] = None
+
+    @field_validator("requested")
+    @classmethod
+    def _known_request(cls, requested):
+        if requested is not None and requested not in REQUESTABLE:
+            raise ValueError(f"'{requested}' is neither a family nor a trace type")
+        return requested
 
 
 # --- what the rules say ------------------------------------------------------
@@ -685,6 +699,7 @@ class Recommendation(_Strict):
     transforms: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     yaml_skeleton: Optional[str] = None
+    example_yaml: Optional[str] = None
     table_yaml: Optional[str] = None
     pairings: List[str] = Field(default_factory=list)
     alternatives: List[str] = Field(default_factory=list)
