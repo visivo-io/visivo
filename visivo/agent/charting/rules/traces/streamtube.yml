@@ -1,0 +1,47 @@
+type: streamtube
+family: three_d
+status: niche
+one_liner: Tubes that trace flow through a gridded 3D vector field; a fluid-dynamics plot, never business data.
+use_when:
+  - Only on an explicit request, for a full u/v/w vector field sampled on a regular x/y/z grid.
+avoid_when:
+  - "Scattered (non-gridded) sample points; streamlines cannot be integrated, use `cone`."
+  - Small fields where each vector matters; cones show every sample, tubes interpolate them away.
+  - Anything aggregated from business rows; there is no flow to trace.
+data_shape:
+  metrics: {min: 3, max: 3}
+  dimensions: {min: 3, max: 3}
+  dimension_roles: [numeric_continuous, numeric_discrete]
+  cardinality: {min: 3, max: 50}
+required_props: [x, y, z, u, v, w]
+example: |
+  insights:
+    - name: airflow
+      props:
+        type: streamtube
+        x: ?{ ${ref(flow).x} }
+        y: ?{ ${ref(flow).y} }
+        z: ?{ ${ref(flow).z} }
+        u: ?{ ${ref(flow).u} }
+        v: ?{ ${ref(flow).v} }
+        w: ?{ ${ref(flow).w} }
+        sizeref: 0.5
+      interactions:
+        - sort: ?{ ${ref(flow).idx} ASC }
+variations:
+  - when: "the tubes should start from chosen points"
+    then: "`starts: {x: [...], y: [...], z: [...]}`; without them Plotly seeds from one face of the grid"
+  - when: "the scene is cluttered with tubes"
+    then: "`maxdisplayed` caps how many are drawn"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [regrain]
+transforms: [regrain]
+gotchas:
+  - "x/y/z must be a complete regular grid; one missing row and nothing draws. Sort on a grid index column so row order is stable."
+  - "Any aggregate in a prop adds a GROUP BY that can reorder the grid; precompute the field in the model and project it."
+  - "Rows grow as the cube of the points per axis, and every one ships to the browser; regrain to a coarser grid first."
+pairings: []
+layout: {height: large, width_share: 0.5, row_role: relationship}
+mobile: Not usable on touch; omit from mobile-first dashboards.

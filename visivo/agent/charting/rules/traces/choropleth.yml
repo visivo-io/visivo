@@ -1,0 +1,60 @@
+type: choropleth
+family: geo_region
+status: preferred
+one_liner: Color countries or US states by a metric using built-in boundaries; no GeoJSON needed.
+use_when:
+  - "A `geo_region` column whose `geo_kind` is iso3, country_name or us_state; Plotly ships these boundaries. Map iso2 codes to ISO-3 first."
+  - "One metric per region, with `intent: geo` or enough regions that a bar would run long and the geography carries meaning."
+  - A rate or density; absolute totals on a map mostly show which regions are big.
+other_uses:
+  - use: Change map that splits regions into growth and decline around zero, e.g. sales versus last year by state.
+    how: "`z: ?{ <current> - <prior> }`, a diverging `colorscale` such as `RdBu`, and `zmid: 0`."
+  - use: Custom regions (US counties, sales territories) on a plain outline map with no street tiles.
+    how: "`geojson: <public url>`, `featureidkey: properties.<id>`, `locationmode: geojson-id`, and chart `layout.geo.fitbounds: locations`."
+avoid_when:
+  - "Regions without built-in boundaries (boroughs, zones, counties, postcodes) and `boundaries_available` is false; use a bar or heatmap by region, or `scattermap` on lat/lon."
+  - Only a handful of regions; a bar says it in less space.
+  - Precise comparison between regions; color steps are coarse, so pair with a sorted bar or a table.
+  - Time series per region; one map per period is not a trend. Use a line split by region, or an input to pick the period.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [geo_region]
+  cardinality: {min: 3}
+required_props: [locations, z]
+example: |
+  insights:
+    - name: rides-by-state
+      props:
+        type: choropleth
+        locationmode: USA-states
+        locations: ?{ ${ref(trips).pickup_state} }
+        z: ?{ count(*) }
+        colorscale: Blues
+        reversescale: true
+        colorbar: {title: {text: rides}}
+  charts:
+    - name: rides-by-state-map
+      insights: ["${ref(rides-by-state)}"]
+      layout: {geo: {scope: usa}}
+variations:
+  - when: "the data covers one country or continent"
+    then: "chart `layout.geo.scope` (usa, europe, …) and `layout.geo.projection.type`; otherwise the world is drawn around a few states"
+  - when: "a second metric matters"
+    then: "size is impossible; color one metric and put the other in `text` or `hovertemplate`"
+  - when: "the reader picks a period"
+    then: "a `filter` on the insight driven by an input; the map re-colors client-side"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [input_filter]
+transforms: [rate_per_capita, regrain]
+gotchas:
+  - "`locationmode` must match the column: `ISO-3` (USA, FRA), `USA-states` (NY, NJ), `country names` (United States). Mismatched codes draw an empty map with no error."
+  - "`z` must be aggregated per region (one row per location); duplicate locations are drawn on top of each other and only the last shows."
+  - "Set chart `layout.geo.scope` (`usa` for states) or `layout.geo.fitbounds: locations`; the default is the world and US states are a smudge."
+  - "Totals follow population; prefer a rate (per resident, per trip) or say in the title that it is a count."
+  - "The theme colors `layout.geo` land, ocean and borders for light and dark mode; do not override `landcolor` or `bgcolor` per chart."
+pairings: [bar_beside, detail_table_below]
+layout: {height: large, width_share: 0.67, row_role: hero}
+mobile: Full width and `large`; a half-width world map is unreadable.

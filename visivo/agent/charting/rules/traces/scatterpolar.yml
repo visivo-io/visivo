@@ -1,0 +1,56 @@
+type: scatterpolar
+family: polar
+status: niche
+one_liner: "Radar or spider chart: normalized metrics as spokes, one closed shape per entity."
+use_when:
+  - "A profile comparison: several metrics of the same polarity (higher is better) for a handful of entities, such as a company scorecard or a borough profile."
+  - "An explicit request for a radar or spider chart, and the metrics have been normalized to one scale (0–1 or % of max) in SQL."
+other_uses:
+  - use: A seasonality loop, a metric by month or hour of day as a closed line with one shape per year.
+    how: "`mode: lines`, `fill: toself`, `theta` the zero-padded month or hour label sorted ascending, `r` the metric, `split` by year."
+  - use: Direction against magnitude for a modest number of raw readings (wind, vehicle headings).
+    how: "`mode: markers`, numeric `theta` in degrees (`thetaunit: degrees`), `r` the magnitude; use `scatterpolargl` for dense clouds."
+avoid_when:
+  - "Metrics in different units left raw; the shared radial axis lets the largest unit flatten the rest. Normalize, or use grouped bars."
+  - "Too many entities or spokes; overlapping fills are unreadable. Use a heatmap (entity × metric) or small multiples."
+  - Reading magnitudes or ranking; shape area depends on spoke order, which is arbitrary, so a grouped bar or a table is honest.
+  - "A non-cyclic theta (dates in sequence, ranks); the closing segment invents a link from the last value back to the first."
+data_shape:
+  metrics: {min: 3, max: 8}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [categorical, identifier]
+  cardinality: {min: 1, max: 4}
+required_props: [r, theta]
+example: |
+  insights:
+    - name: company-profile
+      props:
+        type: scatterpolar
+        mode: lines+markers
+        fill: toself
+        theta: ?{ ${ref(company_scorecard).metric} }
+        r: ?{ ${ref(company_scorecard).pct_of_max} }
+      interactions:
+        - split: ?{ ${ref(company_scorecard).company} }
+        - sort: ?{ ${ref(company_scorecard).metric_order} ASC }
+variations:
+  - when: "comparing entities"
+    then: "`split`, one closed shape each; past the series limit, a heatmap (entity × metric)"
+  - when: "more entities than overlapping fills can show"
+    then: "an input_filter to pick the ones to compare, rather than more fills"
+  - when: "each entity also has a size or volume"
+    then: "leave `marker.size` constant since the radius is already the measure; show volume in a table beside"
+limits:
+  series_ideal: 2
+  series_max: 4
+  repair: [input_filter, heatmap, small_multiples, bar]
+transforms: [normalize_0_1, top_n_other]
+gotchas:
+  - "Metrics are columns but a radar wants rows: UNPIVOT (`unpivot ... on fare, distance, tip_rate`) to (entity, metric, value) first, with a spoke-order column; one insight per metric is wrong."
+  - "Normalize per metric in SQL (`value / max(value) over (partition by metric)`); raw fare in dollars next to trip counts in thousands collapses every other spoke."
+  - "A line does not close itself: use `fill: toself`, or repeat the first spoke as the last row."
+  - "Sort on an explicit spoke-order column so every split series walks the spokes in the same order; otherwise category order follows the first series seen."
+  - "Numeric `theta` is degrees, but a radar wants category labels. Do not set a constant `line.color`; `split` colors each series from the theme."
+pairings: [detail_table_below, bar_beside]
+layout: {height: medium, width_share: 0.5, row_role: breakdown}
+mobile: Survives at half width as a square; keep few entities and short spoke labels or they clip at the edge.

@@ -1,0 +1,45 @@
+sources:
+  - name: pickup-density-source
+    type: duckdb
+    database: target/seeds/pickup_density.duckdb
+    seeds:
+      - table_name: model
+        args:
+          - echo
+          - |
+            lat,lon,rides
+            40.754,-73.984,920
+            40.758,-73.979,880
+            40.749,-73.991,700
+            40.641,-73.778,610
+            40.776,-73.874,540
+            40.787,-73.975,450
+            40.708,-73.957,310
+            40.692,-73.990,260
+            40.772,-73.930,180
+            40.811,-73.946,140
+models:
+  - name: pickup-density
+    source: ${ref(pickup-density-source)}
+    sql: select * from model
+charts:
+  - name: densitymap-pickups
+    layout:
+      title:
+        text: "Pickup Density<br><sub>densitymap: a heat layer from many lat/lon points</sub>"
+      map:
+        center: {lat: 40.73, lon: -73.93}
+        zoom: 9.5
+      margin: {t: 60, r: 0, b: 0, l: 0}
+    insights:
+      - ${ref(densitymap-pickups-trace)}
+insights:
+  - name: densitymap-pickups-trace
+    props:
+      type: densitymap
+      lat: ?{${ref(pickup-density).lat}}
+      lon: ?{${ref(pickup-density).lon}}
+      z: ?{${ref(pickup-density).rides}}
+      radius: 30
+      colorscale: Hot
+      showscale: false

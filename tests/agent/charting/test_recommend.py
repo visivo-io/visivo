@@ -14,6 +14,7 @@ def card(column, role, cardinality, **extra):
 
 BOROUGH = card("pickup_borough", "categorical", 5)
 COMPANY_3 = card("company", "categorical", 3)
+COMPANY_10 = card("company", "categorical", 10)
 COMPANY_20 = card("company", "categorical", 20)
 DAY = card("pickup_day", "time", 365, time_grain="day", time_span_points=365)
 DISTANCE = card("trip_distance", "numeric_continuous", 48_000)
@@ -94,6 +95,12 @@ class TestGoldenB_RidesPerDayByCompany:
         assert "indicator_total_overlay" in best.pairings
         assert "few enough series to follow" in best.why
 
+    def test_ten_companies_stay_one_line_chart(self):
+        """Measured: lines stay traceable to 12 series once the colorway has enough colours."""
+        best = top(RecommendRequest(metrics=[RIDES], dimensions=[DAY, COMPANY_10], intent="trend"))
+
+        assert best.family == "line" and best.transforms == []
+
     def test_twenty_companies_is_repaired_first(self):
         response = recommend(
             RecommendRequest(metrics=[RIDES], dimensions=[DAY, COMPANY_20], intent="trend")
@@ -136,9 +143,15 @@ class TestGoldenC_TripDistance:
         assert top(RecommendRequest(dimensions=[DISTANCE])).family == "histogram"
 
     def test_a_small_split_overlays_the_histogram(self):
-        best = top(RecommendRequest(dimensions=[DISTANCE, BOROUGH], intent="distribution"))
+        best = top(RecommendRequest(dimensions=[DISTANCE, COMPANY_3], intent="distribution"))
 
         assert best.family == "histogram" and best.transforms == []
+
+    def test_five_overlaid_groups_are_repaired(self):
+        """Measured: a fourth overlaid colour already muddies the bins."""
+        best = top(RecommendRequest(dimensions=[DISTANCE, BOROUGH], intent="distribution"))
+
+        assert best.family == "histogram" and best.transforms == ["top_n_other"]
 
     def test_a_large_split_is_repaired_first(self):
         best = top(RecommendRequest(dimensions=[DISTANCE, COMPANY_20], intent="distribution"))

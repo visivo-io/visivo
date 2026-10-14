@@ -2,6 +2,9 @@ includes:
   - path: "indicators-and-trends.visivo.yml"
   - path: "duel-axis.visivo.yml"
   - path: "single-trace.visivo.yml"
+  - path: "choroplethmap.visivo.yml"
+  - path: "scattermap.visivo.yml"
+  - path: "densitymap.visivo.yml"
 
 dashboards:
   - name: chart-layout-examples
@@ -20,3 +23,8 @@ dashboards:
           - chart: ${ref(big-number-over-line-chart)}
           - chart: ${ref(single-trace-chart)}
           - chart: ${ref(duel-axis)}
+      - height: large
+        items:
+          - chart: ${ref(choroplethmap-rides-by-state)}
+          - chart: ${ref(scattermap-pickups)}
+          - chart: ${ref(densitymap-pickups)}

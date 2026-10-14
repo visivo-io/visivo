@@ -1,0 +1,55 @@
+type: waterfall
+family: waterfall
+status: preferred
+one_liner: Signed contributions that bridge a start total to an end total; the chart for 'what changed and why'.
+use_when:
+  - "`semantics.signed_contributions`: positive and negative parts that sum from one total to another (revenue bridge, budget variance, month-over-month change by driver)."
+  - A handful of contributions with an explicit start and/or end total.
+  - "`intent: change` where the parts explain the delta rather than the level."
+other_uses:
+  - use: Running balance by period (cash flow, net new customers), each period's net change stepping from an opening to a closing balance.
+    how: "One row per period with `measure` `relative`, an opening row with `measure` `absolute` and a closing row with `measure` `total`; `sort` by period."
+avoid_when:
+  - All contributions have the same sign; a stacked bar or a sorted bar says the same thing more simply.
+  - The parts do not sum to the totals (averages, rates); the bridge will not close.
+  - A time series of levels; that is a line, and a waterfall of monthly totals is not a bridge.
+  - Too many steps to label; collapse the small ones into Other.
+data_shape:
+  metrics: {min: 1, max: 1}
+  dimensions: {min: 1, max: 2}
+  dimension_roles: [categorical, time, boolean]
+  cardinality: {min: 3, max: 20}
+required_props: [x, y]
+example: |
+  insights:
+    - name: revenue-bridge
+      props:
+        type: waterfall
+        x: ?{ ${ref(bridge).step} }
+        y: ?{ ${ref(bridge).amount} }
+        measure: ?{ ${ref(bridge).measure} }
+        connector: {line: {width: 1}}
+      interactions:
+        - sort: ?{ ${ref(bridge).step_order} ASC }
+variations:
+  - when: "steps are grouped under a parent level (quarters within halves)"
+    then: "`x` as a list of two queries, parent first: `x: [?{ <half> }, ?{ <quarter> }]`"
+  - when: "subtotals should appear mid-bridge"
+    then: "rows with `measure = 'total'` placed where the running sum should be shown"
+  - when: "the amounts should be printed on the bars"
+    then: "`texttemplate: '%{delta:$,.0f}'`, `textposition: outside`"
+  - when: "the step labels are long"
+    then: "`orientation: h` with the steps on `y` and the amounts on `x`"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [collapse_rare]
+transforms: [collapse_rare, stage_order]
+gotchas:
+  - "`measure` is a column of `relative` | `total` | `absolute` per row; omit it and every bar is relative, so the end total floats instead of dropping to the axis."
+  - "Order is everything: sort by an explicit step_order column; alphabetical steps scramble the bridge."
+  - "A `total` row ignores its `y` and draws the running sum; an `absolute` row resets the level to its `y`. Put the opening balance in an `absolute` or first `relative` row, never a level in a `relative` row."
+  - "Colors come from `increasing.marker.color`, `decreasing.marker.color` and `totals.marker.color`, which Plotly defaults sensibly; set them only to match the theme's accent."
+pairings: [kpi_strip_above, detail_table_below]
+layout: {height: medium, width_share: 1.0, row_role: breakdown}
+mobile: Full width, with fewer steps than on desktop or the labels rotate and overlap.

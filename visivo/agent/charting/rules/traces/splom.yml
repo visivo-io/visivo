@@ -1,0 +1,55 @@
+type: splom
+family: multivariate
+status: niche
+one_liner: Scatter-plot matrix of several numeric columns; every pairwise relationship at once, for exploration.
+use_when:
+  - "`intent: relationship` over several numeric columns with no single x/y pair singled out (fare, distance, minutes, tip)."
+  - "Few enough rows to plot every point (sampled if needed) and an analyst audience screening for correlations before choosing one scatter."
+  - "A `few` categorical to compare clusters across every pair: `split`."
+avoid_when:
+  - A single pair of numeric columns; that is one scatter, larger and with real axes.
+  - "Too many columns; the panel count grows with the square and each panel shrinks to a few pixels, so pick the ones that matter or use parcoords."
+  - "Too many rows unsampled; every point is drawn once per panel, so sample in SQL or move to histogram2d on the one pair that matters."
+  - Executive or summary dashboards; a splom is an exploration tool, not a finding, so promote the interesting pair to a scatter.
+data_shape:
+  metrics: {min: 0, max: 0}
+  dimensions: {min: 3, max: 9}
+  dimension_roles: [numeric_continuous, numeric_discrete, categorical, boolean]
+  rows: {min: 50, max: 5000}
+required_props: [dimensions]
+example: |
+  insights:
+    - name: trip-measures-matrix
+      props:
+        type: splom
+        dimensions:
+          - {label: Distance, values: "?{ ${ref(trips_sample).trip_distance} }"}
+          - {label: Fare, values: "?{ ${ref(trips_sample).fare_amount} }"}
+          - {label: Minutes, values: "?{ ${ref(trips_sample).trip_minutes} }"}
+          - {label: Tip, values: "?{ ${ref(trips_sample).tip_amount} }"}
+        diagonal: {visible: false}
+        showupperhalf: false
+        marker: {size: 3, opacity: 0.4}
+      interactions:
+        - split: ?{ ${ref(trips_sample).payment_type} }
+variations:
+  - when: "a `few` categorical should color the clusters"
+    then: "`split` (one colored series per value, shared panels)"
+  - when: "the mirrored upper half and the diagonal add nothing"
+    then: "`showupperhalf: false` and `diagonal.visible: false` cut the panel count in half"
+  - when: "the source has more rows than the row ceiling"
+    then: "a sample model (`using sample <n>`) rather than the full table"
+limits:
+  series_ideal: 3
+  series_max: 5
+  repair: [sample, top_n_other, scattergl]
+transforms: [sample, clip_p99]
+gotchas:
+  - "Each `dimensions[].values` is a raw column (no GROUP BY) and every dimension must come from the same model so rows line up."
+  - "Sample in a dedicated model (`select * from trips using sample 5000`); an input filter does not cap the rows a split splom ships."
+  - "Clip each column's tail in SQL; one outlier squashes its whole row and column of panels."
+  - "Splom panels are WebGL; they count toward the browser's ~8–16 WebGL context cap like scattergl."
+  - "Color clusters with `split` rather than a hard-coded CASE on `marker.color`, so the theme colorway (and its colorblind-safe order) applies."
+pairings: [scatter_drilldown, detail_table_below]
+layout: {height: large, width_share: 1.0, row_role: relationship}
+mobile: Poor on narrow screens; keep only a few dimensions with the upper half hidden, or replace it with the single most interesting scatter.

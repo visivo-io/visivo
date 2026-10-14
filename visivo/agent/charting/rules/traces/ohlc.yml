@@ -1,0 +1,47 @@
+type: ohlc
+family: financial
+status: niche
+one_liner: Open/high/low/close as tick bars; a thinner candlestick for finance readers who expect bar charts.
+use_when:
+  - "The same OHLC shape as candlestick and the audience explicitly asks for tick bars (traders, print or monochrome)."
+  - Denser series where filled candle bodies would merge but ticks still separate.
+avoid_when:
+  - "No explicit ask; candlestick is the family default and reads faster for general audiences."
+  - "Four metrics that are not open/high/low/close prices; the shape alone cannot tell, so use scatter lines."
+  - "Too many periods even for ticks; regrain to weeks or months first."
+  - Overlaying several securities on one price axis; use an input filter or small multiples.
+data_shape:
+  metrics: {min: 4, max: 4}
+  dimensions: {min: 1, max: 1}
+  dimension_roles: [time]
+  axis_points: {min: 10, max: 800}
+required_props: [x, open, high, low, close]
+example: |
+  insights:
+    - name: aapl-daily-ohlc
+      props:
+        type: ohlc
+        x: ?{ ${ref(aapl).date} }
+        open: ?{ ${ref(aapl).open} }
+        high: ?{ ${ref(aapl).high} }
+        low: ?{ ${ref(aapl).low} }
+        close: ?{ ${ref(aapl).close} }
+        tickwidth: 0.3
+variations:
+  - when: "trading volume should be shown with the price"
+    then: "a `bar` insight on `yaxis: y2` in its own `yaxis2.domain` band below the price, as for candlestick"
+  - when: "a second security is wanted"
+    then: "an input filter on the ticker, or one filtered insight per ticker on separate charts"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [regrain, input_filter, small_multiples]
+transforms: [regrain]
+gotchas:
+  - "Same range slider default as candlestick: set `layout.xaxis.rangeslider.visible: false` on dashboards."
+  - "Same weekend gaps: `xaxis.rangebreaks: [{bounds: [sat, mon]}]` on a real date axis."
+  - "Constant `increasing.line.color`/`decreasing.line.color` opt out of the theme; leave them unset unless the brand requires it."
+  - "Regrain with first/last (`arg_min(open, date)`, `arg_max(close, date)`), never avg of opens."
+pairings: [volume_bar_subplot, kpi_strip_above]
+layout: {height: large, width_share: 1.0, row_role: hero}
+mobile: Ticks vanish below ~2 px per period; show only a recent window on phones.

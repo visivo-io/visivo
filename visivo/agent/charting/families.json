@@ -1,0 +1,484 @@
+{
+  "families": [
+    {
+      "name": "kpi",
+      "trace_types": [
+        "indicator"
+      ],
+      "types": [
+        {
+          "type": "indicator",
+          "one_liner": "One number, optionally with a delta against a reference or a gauge against a target.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "line",
+      "trace_types": [
+        "scatter",
+        "scattergl"
+      ],
+      "types": [
+        {
+          "type": "scatter",
+          "one_liner": "One trace type, three idioms — a line over an ordered axis, a filled area, or x/y markers.",
+          "status": "preferred"
+        },
+        {
+          "type": "scattergl",
+          "one_liner": "WebGL scatter; the repair target when a scatter has too many points for SVG.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "area",
+      "trace_types": [
+        "scatter"
+      ],
+      "types": [
+        {
+          "type": "scatter",
+          "one_liner": "One trace type, three idioms — a line over an ordered axis, a filled area, or x/y markers.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "xy",
+      "trace_types": [
+        "scatter",
+        "scattergl"
+      ],
+      "types": [
+        {
+          "type": "scatter",
+          "one_liner": "One trace type, three idioms — a line over an ordered axis, a filled area, or x/y markers.",
+          "status": "preferred"
+        },
+        {
+          "type": "scattergl",
+          "one_liner": "WebGL scatter; the repair target when a scatter has too many points for SVG.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "bar",
+      "trace_types": [
+        "bar"
+      ],
+      "types": [
+        {
+          "type": "bar",
+          "one_liner": "Compare a metric across categories; stacked or grouped for a second small dimension.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "heatmap",
+      "trace_types": [
+        "heatmap"
+      ],
+      "types": [
+        {
+          "type": "heatmap",
+          "one_liner": "A metric over two dimensions as a colored grid; the repair for a line with too many series.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "distribution",
+      "trace_types": [
+        "box",
+        "histogram",
+        "violin"
+      ],
+      "types": [
+        {
+          "type": "box",
+          "one_liner": "Compare the distribution of a numeric column across groups with medians, quartiles and outliers.",
+          "status": "preferred"
+        },
+        {
+          "type": "histogram",
+          "one_liner": "The shape of one numeric column, binned; compare a few groups by overlaying or stacking.",
+          "status": "preferred"
+        },
+        {
+          "type": "violin",
+          "one_liner": "A box plot that also draws the density; pick it when the shape beyond quartiles matters and groups are large.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "density2d",
+      "trace_types": [
+        "contour",
+        "histogram2d",
+        "histogram2dcontour"
+      ],
+      "types": [
+        {
+          "type": "contour",
+          "one_liner": "Iso-lines of a z surface over a regular numeric x/y grid; a smoothed heatmap for continuous axes.",
+          "status": "niche"
+        },
+        {
+          "type": "histogram2d",
+          "one_liner": "Two numeric columns binned into a colored grid; the repair for a scatter too dense to read.",
+          "status": "preferred"
+        },
+        {
+          "type": "histogram2dcontour",
+          "one_liner": "Smoothed density contours of two numeric columns; a histogram2d drawn as iso-lines for overlays.",
+          "status": "niche"
+        }
+      ]
+    },
+    {
+      "name": "part_of_whole",
+      "trace_types": [
+        "funnelarea",
+        "pie"
+      ],
+      "types": [
+        {
+          "type": "funnelarea",
+          "one_liner": "A pie drawn as a funnel shape; slice height is share of the total. Presentation-only; use funnel for drop-off.",
+          "status": "niche"
+        },
+        {
+          "type": "pie",
+          "one_liner": "Share of one whole across a few slices; a bar is better whenever slices must be compared.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "hierarchy",
+      "trace_types": [
+        "icicle",
+        "sunburst",
+        "treemap"
+      ],
+      "types": [
+        {
+          "type": "icicle",
+          "one_liner": "Hierarchy as aligned columns, one per level left to right; reads deep trees and long labels better than treemap.",
+          "status": "preferred"
+        },
+        {
+          "type": "sunburst",
+          "one_liner": "Concentric rings, one per level; beats a treemap when the shape of the hierarchy matters more than leaf areas.",
+          "status": "preferred"
+        },
+        {
+          "type": "treemap",
+          "one_liner": "Nested rectangles sized by an additive metric; the default for a shallow hierarchy.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "flow",
+      "trace_types": [
+        "parcats",
+        "sankey"
+      ],
+      "types": [
+        {
+          "type": "parcats",
+          "one_liner": "Parallel sets; ribbons show how rows split across several categorical attributes in turn. Sankey without node indices.",
+          "status": "niche"
+        },
+        {
+          "type": "sankey",
+          "one_liner": "Flow of an additive quantity from one set of categories to another, as weighted links between nodes.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "funnel",
+      "trace_types": [
+        "funnel"
+      ],
+      "types": [
+        {
+          "type": "funnel",
+          "one_liner": "Ordered stages shrinking from first to last; shows drop-off, not a distribution.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "waterfall",
+      "trace_types": [
+        "waterfall"
+      ],
+      "types": [
+        {
+          "type": "waterfall",
+          "one_liner": "Signed contributions that bridge a start total to an end total; the chart for 'what changed and why'.",
+          "status": "preferred"
+        }
+      ]
+    },
+    {
+      "name": "geo_region",
+      "trace_types": [
+        "choropleth",
+        "choroplethmap",
+        "choroplethmapbox"
+      ],
+      "types": [
+        {
+          "type": "choropleth",
+          "one_liner": "Color countries or US states by a metric using built-in boundaries; no GeoJSON needed.",
+          "status": "preferred"
+        },
+        {
+          "type": "choroplethmap",
+          "one_liner": "Color arbitrary regions from a GeoJSON on a tiled street map; the choropleth for custom boundaries.",
+          "status": "preferred"
+        },
+        {
+          "type": "choroplethmapbox",
+          "one_liner": "Deprecated Mapbox GL twin of choroplethmap; never pick it for a new chart, migrate it to choroplethmap.",
+          "status": "deprecated"
+        }
+      ]
+    },
+    {
+      "name": "geo_point",
+      "trace_types": [
+        "scattergeo",
+        "scattermap",
+        "scattermapbox"
+      ],
+      "types": [
+        {
+          "type": "scattergeo",
+          "one_liner": "Points on an outline map (no tiles) from lat/lon or country/state codes; for world and continent scope.",
+          "status": "preferred"
+        },
+        {
+          "type": "scattermap",
+          "one_liner": "Points on a tiled street map from lat/lon, sized or colored by a metric.",
+          "status": "preferred"
+        },
+        {
+          "type": "scattermapbox",
+          "one_liner": "Deprecated Mapbox GL twin of scattermap; never pick it for a new chart, migrate it to scattermap.",
+          "status": "deprecated"
+        }
+      ]
+    },
+    {
+      "name": "geo_density",
+      "trace_types": [
+        "densitymap",
+        "densitymapbox"
+      ],
+      "types": [
+        {
+          "type": "densitymap",
+          "one_liner": "A heat layer over a street map from many lat/lon points; where things concentrate, not how many.",
+          "status": "preferred"
+        },
+        {
+          "type": "densitymapbox",
+          "one_liner": "Deprecated Mapbox GL twin of densitymap; never pick it for a new chart, migrate it to densitymap.",
+          "status": "deprecated"
+        }
+      ]
+    },
+    {
+      "name": "financial",
+      "trace_types": [
+        "candlestick",
+        "ohlc"
+      ],
+      "types": [
+        {
+          "type": "candlestick",
+          "one_liner": "Daily price bars (open/high/low/close) over time; the default for a single security's price history.",
+          "status": "preferred"
+        },
+        {
+          "type": "ohlc",
+          "one_liner": "Open/high/low/close as tick bars; a thinner candlestick for finance readers who expect bar charts.",
+          "status": "niche"
+        }
+      ]
+    },
+    {
+      "name": "multivariate",
+      "trace_types": [
+        "parcoords",
+        "splom"
+      ],
+      "types": [
+        {
+          "type": "parcoords",
+          "one_liner": "Parallel coordinates; each row is a line across several numeric axes, brushable to filter profiles.",
+          "status": "niche"
+        },
+        {
+          "type": "splom",
+          "one_liner": "Scatter-plot matrix of several numeric columns; every pairwise relationship at once, for exploration.",
+          "status": "niche"
+        }
+      ]
+    },
+    {
+      "name": "polar",
+      "trace_types": [
+        "barpolar",
+        "scatterpolar",
+        "scatterpolargl"
+      ],
+      "types": [
+        {
+          "type": "barpolar",
+          "one_liner": "Bars around a circle; only for a cyclic axis (hour of day, weekday, month, compass) where the wrap-around matters.",
+          "status": "niche"
+        },
+        {
+          "type": "scatterpolar",
+          "one_liner": "Radar or spider chart: normalized metrics as spokes, one closed shape per entity.",
+          "status": "niche"
+        },
+        {
+          "type": "scatterpolargl",
+          "one_liner": "WebGL scatterpolar; only for dense clouds of raw direction × magnitude points (wind readings, vehicle headings).",
+          "status": "niche"
+        }
+      ]
+    },
+    {
+      "name": "ternary_smith",
+      "trace_types": [
+        "scattersmith",
+        "scatterternary"
+      ],
+      "types": [
+        {
+          "type": "scattersmith",
+          "one_liner": "Smith chart of normalized complex impedance for RF engineering; essentially never right for BI data.",
+          "status": "niche"
+        },
+        {
+          "type": "scatterternary",
+          "one_liner": "Points in a triangle for three parts that sum to a whole, one point per entity; needs explicit intent.",
+          "status": "niche"
+        }
+      ]
+    },
+    {
+      "name": "three_d",
+      "trace_types": [
+        "cone",
+        "isosurface",
+        "mesh3d",
+        "scatter3d",
+        "streamtube",
+        "surface",
+        "volume"
+      ],
+      "types": [
+        {
+          "type": "cone",
+          "one_liner": "Cones at x/y/z points pointing along u/v/w vectors; for 3D vector fields (wind, flow), never business data.",
+          "status": "niche"
+        },
+        {
+          "type": "isosurface",
+          "one_liner": "The shells where a gridded 3D scalar crosses chosen values; niche scientific type, never business data.",
+          "status": "niche"
+        },
+        {
+          "type": "mesh3d",
+          "one_liner": "A triangulated 3D mesh from vertices and i/j/k faces; scientific or CAD data only, never a business metric.",
+          "status": "niche"
+        },
+        {
+          "type": "scatter3d",
+          "one_liner": "Points in a rotatable 3D box; niche, since a 2D scatter with color or size almost always reads better.",
+          "status": "niche"
+        },
+        {
+          "type": "streamtube",
+          "one_liner": "Tubes that trace flow through a gridded 3D vector field; a fluid-dynamics plot, never business data.",
+          "status": "niche"
+        },
+        {
+          "type": "surface",
+          "one_liner": "A z-height surface over a regular x/y grid; niche, since it needs a 2D z array and a heatmap usually wins.",
+          "status": "niche"
+        },
+        {
+          "type": "volume",
+          "one_liner": "Semi-transparent rendering of a scalar on a regular 3D grid (scan, simulation); niche scientific type.",
+          "status": "niche"
+        }
+      ]
+    },
+    {
+      "name": "carpet",
+      "trace_types": [
+        "carpet",
+        "contourcarpet",
+        "scattercarpet"
+      ],
+      "types": [
+        {
+          "type": "carpet",
+          "one_liner": "The a/b parameter grid that contourcarpet and scattercarpet draw on; alone it is only a warped mesh.",
+          "status": "niche"
+        },
+        {
+          "type": "contourcarpet",
+          "one_liner": "Contours of a third metric drawn on a carpet's warped a/b grid; needs a carpet insight in the same chart.",
+          "status": "niche"
+        },
+        {
+          "type": "scattercarpet",
+          "one_liner": "Points or lines placed by (a, b) on a carpet's warped grid; needs a carpet insight in the same chart.",
+          "status": "niche"
+        }
+      ]
+    },
+    {
+      "name": "image",
+      "trace_types": [
+        "image"
+      ],
+      "types": [
+        {
+          "type": "image",
+          "one_liner": "Draws a raster (a grid of colored pixels or a base64 image) on x/y axes; almost never the answer for SQL data.",
+          "status": "niche"
+        }
+      ]
+    },
+    {
+      "name": "table",
+      "trace_types": [
+        "table"
+      ],
+      "types": [
+        {
+          "type": "table",
+          "one_liner": "Exact values in rows: the detail view a dashboard ends with, or a pivot grid you can read numbers off.",
+          "status": "preferred"
+        }
+      ]
+    }
+  ]
+}

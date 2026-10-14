@@ -1,0 +1,55 @@
+type: densitymap
+family: geo_density
+status: preferred
+one_liner: A heat layer over a street map from many lat/lon points; where things concentrate, not how many.
+use_when:
+  - "Many `geo_point` rows where individual dots would overplot (pickups, clicks, incidents)."
+  - The question is concentration ('where is it busiest'), not a per-place figure.
+  - Points cluster at many distinct locations with no natural region to aggregate to.
+avoid_when:
+  - Too few points for a heat layer; a `scattermap` with sized markers shows the same thing honestly.
+  - A per-region number is wanted; use a choropleth or a bar, since a heat layer has no legend you can read a value off.
+  - Comparing two groups; two density layers overlap into brown, so use an input to switch, or two charts.
+  - Points weighted by a non-additive metric; `z` is summed under the kernel, so averages are meaningless here.
+data_shape:
+  metrics: {min: 0, max: 1}
+  dimensions: {min: 2, max: 2}
+  dimension_roles: [geo_point]
+  rows: {min: 200}
+required_props: [lat, lon]
+example: |
+  insights:
+    - name: pickup-density
+      props:
+        type: densitymap
+        lat: ?{ round(${ref(trips).pickup_lat}, 2) }
+        lon: ?{ round(${ref(trips).pickup_lon}, 2) }
+        z: ?{ count(*)::double }
+        radius: 20
+        colorscale: Hot
+        showscale: false
+  charts:
+    - name: pickup-density-map
+      insights: ["${ref(pickup-density)}"]
+      layout: {map: {center: {lat: 40.73, lon: -73.94}, zoom: 9.5}}
+variations:
+  - when: "the table has far more rows than the browser should receive"
+    then: "round lat/lon to 2 decimals (~1 km) and use `count(*)::double` as `z`; finer cells saturate to blobs and the kernel does the rest"
+  - when: "the reader compares periods or groups"
+    then: "an input `filter`, never two layers"
+  - when: "the chart's zoom level is set"
+    then: "`radius` in pixels to match it: 10–15 for city zoom, 30+ for a region"
+limits:
+  series_ideal: 1
+  series_max: 1
+  repair: [input_filter]
+transforms: [grid_bucket, regrain]
+gotchas:
+  - "Without `z` every point weighs 1; with `z` the weight is summed, so pass a count, not an average, cast to a number (`count(*)::double`): a BIGINT reaches the map as a string and is ignored."
+  - "Round and group in SQL on large tables; the trace works on raw rows but the browser payload grows with every row."
+  - "`radius` is in screen pixels, so the look changes with zoom; pick it for the `layout.map.zoom` you set."
+  - "Use `densitymap`, not `densitymapbox` (deprecated, token required)."
+  - "Hide the colorbar (`showscale: false`): its units are kernel density, which nobody can read."
+pairings: [kpi_strip_above, scattermap_toggle]
+layout: {height: large, width_share: 1.0, row_role: hero}
+mobile: Full width; lower `radius` as the map shrinks.
