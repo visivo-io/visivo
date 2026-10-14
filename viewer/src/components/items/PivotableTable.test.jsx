@@ -319,6 +319,35 @@ describe('PivotableTable', () => {
       expect(screen.getByText('3 total rows')).toBeInTheDocument();
     });
 
+    it('matches the displayed text of a formatted cell, and still its raw value', () => {
+      render(
+        <PivotableTable
+          table={{ name: 'dates', rows_per_page: 50 }}
+          sourceData={{
+            data: [
+              { event_at: '2021-01-01T08:30:15.000Z', amount: 1234567 },
+              { event_at: '2021-01-02T09:45:00.000Z', amount: 42 },
+            ],
+            files: [],
+          }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+      const search = value =>
+        fireEvent.change(screen.getByPlaceholderText('Search...'), { target: { value } });
+
+      search('2021-01-01 08:30');
+      expect(screen.getByText('2021-01-01 08:30:15.000')).toBeInTheDocument();
+      expect(screen.getByText('1 total rows')).toBeInTheDocument();
+
+      search('1,234,567');
+      expect(screen.getByText('1 total rows')).toBeInTheDocument();
+
+      search('1234567');
+      expect(screen.getByText('1 total rows')).toBeInTheDocument();
+    });
   });
 
   describe('sorting', () => {
