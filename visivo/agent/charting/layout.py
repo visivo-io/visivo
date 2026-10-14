@@ -13,7 +13,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 from visivo.agent.charting.rules import load_layout
-from visivo.agent.charting.schema import HEIGHT_TOKENS, RowRole, height_px
+from visivo.agent.charting.schema import HEIGHT_PX, RowRole, height_px
 
 Kind = Literal["chart", "table", "markdown", "input"]
 
@@ -46,6 +46,7 @@ class Hints(BaseModel):
     related_kpis: List[str] = Field(default_factory=list)
     header: Optional[str] = None
     chart: Optional[str] = None  # an input that drives one chart only
+    gauge: bool = False  # a KPI drawn with `mode: ...gauge...`
 
 
 class LayoutItem(BaseModel):
@@ -80,10 +81,30 @@ def _item_height(item, role, rules):
         return base
     if item.family == "heatmap" and item.hints.n_y_categories is not None:
         return _heavier(base, rules.heatmap_height.pick(item.hints.n_y_categories))
+    if item.hints.gauge:
+        base = _heavier(base, rules.gauge_height)
     family_height = rules.height_by_family.get(item.family or "")
     if family_height is not None and role not in ("hero", "kpi"):
         return _heavier(base, family_height)
     return base
+
+
+def _height_for_px(px):
+    """The smallest row token at least ``px`` tall; ``px`` itself past the
+    largest token."""
+    return next((token for token, value in HEIGHT_PX.items() if value >= px), px)
+
+
+def _cluster_sub_rows(kpis, per_row):
+    """KPIs grouped into the cluster's sub-rows. Up to ``per_row`` KPIs get a
+    sub-row each (a wide cell reads better than a tall narrow one); more fill
+    sub-rows of ``per_row``, and a remainder goes first so the leading KPI
+    gets the wider cell."""
+    if len(kpis) <= per_row:
+        return [[k] for k in kpis]
+    lead = len(kpis) % per_row
+    groups = [kpis[:lead]] if lead else []
+    return groups + [kpis[i : i + per_row] for i in range(lead, len(kpis), per_row)]
 
 
 def _row(height, items, why):
@@ -200,7 +221,10 @@ class _Planner:
                 )
             why = f"{role}: {len(chunk)} item(s) as {widths} at {height}"
             if len(chunk) > 1:
-                why += ", most important first (it stacks to the top below 1024 px)"
+                why += (
+                    ", most important first (it stacks to the top below "
+                    f"{self.rules.grid.stack_breakpoint_px} px)"
+                )
             rows.append(_row(height, [_leaf(i, w) for i, w in zip(chunk, widths)], why))
         return rows
 
@@ -213,6 +237,13 @@ class _Planner:
                 for n in hero.hints.related_kpis
                 if n in self.by_name and self.by_name[n].row_role == "kpi"
             ]
+            gauges = [k for k in kpis if k.hints.gauge]
+            if gauges:
+                self.warnings.append(
+                    f"{', '.join(k.name for k in gauges)}: a gauge needs a "
+                    f"{self.rules.gauge_height} row, so it stays in the KPI strip"
+                )
+                kpis = [k for k in kpis if not k.hints.gauge]
             if len(kpis) > cluster.max_kpis:
                 self.warnings.append(
                     f"{hero.name} names {len(kpis)} related KPIs; a cluster holds "
@@ -223,7 +254,11 @@ class _Planner:
                 rows.extend(self._plain_rows("hero", [hero]))
                 continue
             self.clustered.update(k.name for k in kpis)
-            height = "xlarge" if len(kpis) == 3 else self.rules.rule("hero").height
+            groups = _cluster_sub_rows(kpis, cluster.max_per_sub_row)
+            height = _heavier(
+                self.rules.rule("hero").height,
+                _height_for_px(len(groups) * height_px(cluster.sub_row_height)),
+            )
             rows.append(
                 _row(
                     height,
@@ -232,13 +267,17 @@ class _Planner:
                         {
                             "width": cluster.widths[1],
                             "rows": [
-                                {"height": cluster.sub_row_height, "items": [_leaf(k, 12)]}
-                                for k in kpis
+                                {
+                                    "height": cluster.sub_row_height,
+                                    "items": [_leaf(k, 12 // len(group)) for k in group],
+                                }
+                                for group in groups
                             ],
                         },
                     ],
-                    f"kpi_cluster: {hero.name} with {', '.join(k.name for k in kpis)} stacked "
-                    "beside it (one KPI per sub-row; a nested 2x2 always stacks)",
+                    f"kpi_cluster: {hero.name} with "
+                    + "; ".join(", ".join(k.name for k in group) for group in groups)
+                    + f" beside it, at most {cluster.max_per_sub_row} per sub-row",
                 )
             )
         return rows

@@ -368,8 +368,8 @@ class TraceEntry(_Strict):
 
 HEIGHT_TOKENS = ("compact", "xsmall", "small", "medium", "large", "xlarge", "xxlarge")
 
-# What each token resolves to at the top level (viewer Dashboard.jsx:370-378).
-# `compact` wraps to content and is only safe for markdown and inputs.
+# What each token resolves to at the top level of a dashboard. `compact` wraps
+# markdown and inputs to their content; a chart or table there gets `small`.
 HEIGHT_PX = {
     "xsmall": 128,
     "small": 256,
@@ -472,19 +472,21 @@ class GridLimits(_Strict):
 
 
 class KpiCluster(_Strict):
-    """A hero chart with its KPIs stacked beside it. Never a nested 2×2: a
-    nested row stacks against its own slot width, so a 4-wide slot always
-    renders its sub-rows one above the other."""
+    """A hero chart with its KPIs beside it in sub-rows of at most
+    ``max_per_sub_row``."""
 
     widths: List[int] = Field(default_factory=lambda: [8, 4])
-    max_kpis: int = Field(default=3, ge=1)
-    sub_row_height: str = "small"
+    max_kpis: int = Field(default=8, ge=1)
+    max_per_sub_row: int = Field(default=2, ge=1)
+    sub_row_height: str = "xsmall"
 
     @model_validator(mode="after")
     def _valid(self):
         _check_height(self.sub_row_height)
         if sum(self.widths) != 12 or len(self.widths) != 2:
             raise ValueError("kpi_cluster widths must be two ints summing to 12")
+        if 12 % self.max_per_sub_row:
+            raise ValueError("kpi_cluster max_per_sub_row must divide 12")
         return self
 
 
@@ -499,7 +501,7 @@ class LayoutDoc(_Strict):
     templates: List[LayoutTemplate] = Field(default_factory=list)
     height_by_family: Dict[str, Union[str, int]] = Field(default_factory=dict)
     heatmap_height: HeatmapHeight = Field(default_factory=HeatmapHeight)
-    compact_allowed_kinds: List[str] = Field(default_factory=lambda: ["markdown", "input"])
+    gauge_height: Union[str, int] = "medium"
     kpi_cluster: KpiCluster = Field(default_factory=KpiCluster)
     detail_height_by_rows: Dict[int, str] = Field(default_factory=dict)
 
@@ -517,6 +519,7 @@ class LayoutDoc(_Strict):
             _check_height(height)
         for rows, height in self.detail_height_by_rows.items():
             _check_height(height)
+        _check_height(self.gauge_height)
         return self
 
     def rule(self, role):

@@ -24,7 +24,10 @@ def _heights_line(doc):
         by_height.setdefault(str(height), []).append(family)
     parts = [f"{', '.join(fams)} → {height}" for height, fams in by_height.items()]
     parts.append("heatmap → grows with its rows")
-    parts.append("markdown, inputs → compact (never a chart in a compact row)")
+    parts.append(
+        "markdown, inputs → compact (wraps to content; a chart in a compact row gets "
+        "`small`'s height, so name the height a chart needs)"
+    )
     return "; ".join(parts)
 
 
@@ -45,13 +48,17 @@ def layout_rules_markdown(doc=None):
             f"≤{grid.max_inputs} global inputs in one compact top row; nesting ≤{grid.max_depth}.",
             f"- **Widths** sum to {grid.width_total}: peers split evenly ({widths}); a chart with a side "
             f"panel or its own input is {cluster.widths}.",
-            f"- **Heights:** {_heights_line(doc)}. KPI rows are `{doc.rule('kpi').height}` "
-            f"(an xsmall row has no plot area); the hero row is `{doc.rule('hero').height}`; "
-            f"tables `{doc.rule('detail').height}` unless they have ≤7 rows.",
-            f"- **KPI cluster:** up to {cluster.max_kpis} KPIs stack beside the hero chart one per "
-            f"sub-row at `{cluster.sub_row_height}`; a nested 2×2 always stacks, never emit one.",
-            f"- **Mobile:** below {grid.stack_breakpoint_px} px every item stacks full width at its row "
-            "height, so lead each row with its most important item, keep ≤3 inputs, and put tables last.",
+            f"- **Heights:** {_heights_line(doc)}. A gauge KPI (`mode` with `gauge`) needs "
+            f"`{doc.gauge_height}`, so pass `hints.gauge`; "
+            f"the hero row is `{doc.rule('hero').height}`; tables `{doc.rule('detail').height}` "
+            "unless they have ≤7 rows.",
+            f"- **KPI cluster:** up to {cluster.max_kpis} of the hero's KPIs beside it at "
+            f"{cluster.widths}, at most {cluster.max_per_sub_row} per `{cluster.sub_row_height}` "
+            "sub-row; one or two KPIs get a sub-row each, and with an odd count the first gets a "
+            "sub-row alone. Never three across: that slot stacks them inside their sub-row.",
+            f"- **Mobile:** below {grid.stack_breakpoint_px} px every item stacks full width and "
+            "shares its row's height, so lead each row with its most important item, keep ≤3 inputs, "
+            "and put tables last.",
         ]
     )
 

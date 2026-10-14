@@ -18,6 +18,12 @@ class TestTheRenderedBlock:
         text = render.layout_rules_markdown()
         assert "inputs → header → kpi → hero → breakdown → relationship → detail" in text
         assert "≤12 charts/tables" in text and "[8, 4]" in text and "`small`" in text
+        assert (
+            "up to 8 of the hero's KPIs beside it at [8, 4], at most 2 per `xsmall` sub-row" in text
+        )
+        assert "kpi → xsmall" in text and "gauge KPI (`mode` with `gauge`) needs `medium`" in text
+        assert "a chart in a compact row gets `small`'s height" in text
+        assert "never a chart in a compact row" not in text and "2×2 always stacks" not in text
 
     def test_a_skill_without_a_block_is_refused(self, tmp_path, monkeypatch):
         path = tmp_path / "design-a-dashboard.md"

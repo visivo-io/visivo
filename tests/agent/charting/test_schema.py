@@ -293,6 +293,8 @@ class TestLayoutDoc:
 
     def test_family_and_detail_heights_are_checked(self):
         with pytest.raises(ValidationError, match="not one of"):
+            self._doc(gauge_height="tall")
+        with pytest.raises(ValidationError, match="not one of"):
             self._doc(height_by_family={"bar": "tall"})
         with pytest.raises(ValidationError, match="not one of"):
             self._doc(detail_height_by_rows={3: "tiny"})
@@ -307,6 +309,8 @@ class TestLayoutDoc:
             schema.KpiCluster(widths=[4, 4, 4])
         with pytest.raises(ValidationError, match="not one of"):
             schema.KpiCluster(sub_row_height="tiny")
+        with pytest.raises(ValidationError, match="divide 12"):
+            schema.KpiCluster(max_per_sub_row=5)
 
     def test_heatmap_height_snaps_up_then_grows(self):
         h = schema.HeatmapHeight()

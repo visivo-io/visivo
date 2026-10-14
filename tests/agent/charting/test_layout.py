@@ -67,11 +67,17 @@ class TestTheRuleFile:
         with pytest.raises(ValueError, match="mapping"):
             rules.load_layout(path)
 
-    def test_kpis_never_default_to_xsmall(self):
-        """An xsmall row leaves no plot area under Plotly's default margins."""
+    def test_kpis_are_xsmall_everywhere_the_rules_size_them(self):
+        """A number KPI reads in an xsmall row (45 px numbers at 1440 px);
+        the strip, the family default, the cluster and the trace agree."""
         doc = rules.load_layout()
-        assert doc.rule("kpi").height == "small"
-        assert doc.height_by_family["kpi"] == "small"
+        assert doc.rule("kpi").height == "xsmall"
+        assert doc.height_by_family["kpi"] == "xsmall"
+        assert doc.kpi_cluster.sub_row_height == "xsmall"
+        kpi = next(f for f in rules.load_families() if f.name == "kpi")
+        indicator = next(t for t in rules.load_traces() if t.type == "indicator")
+        assert kpi.layout.height == indicator.layout.height == "xsmall"
+        assert doc.gauge_height == "medium"
 
 
 class TestTheGoldenSkeleton:
@@ -99,9 +105,9 @@ class TestTheGoldenSkeleton:
         )
         assert flat[-1] == "${ref(zones)}", "tables last"
 
-    def test_kpi_strip_is_small_and_ordered_by_importance(self, result):
+    def test_kpi_strip_is_xsmall_and_ordered_by_importance(self, result):
         strip = next(r for r in rows_of(result) if "${ref(total)}" in leaf_names(r))
-        assert strip["height"] == "small"
+        assert strip["height"] == "xsmall"
         assert leaf_names(strip) == ["${ref(total)}", "${ref(avg)}", "${ref(tip)}"]
         assert [i["width"] for i in strip["items"]] == [4, 4, 4]
 
@@ -158,22 +164,117 @@ class TestTheKpiCluster:
         hero = next(r for r in rows_of(result) if "${ref(trend)}" in leaf_names(r))
         assert [i["width"] for i in hero["items"]] == [8, 4]
         container = hero["items"][1]["rows"]
-        assert [r["height"] for r in container] == ["small", "small"]
+        assert [r["height"] for r in container] == ["xsmall", "xsmall"]
         assert [leaf_names(r) for r in container] == [["${ref(total)}"], ["${ref(avg)}"]]
         strip = [r for r in rows_of(result) if "${ref(tip)}" in leaf_names(r)]
         assert len(strip) == 1 and "${ref(total)}" not in leaf_names(strip[0])
         assert depth(rows_of(result)) == 1
 
-    def test_three_kpis_make_the_row_xlarge_and_a_fourth_stays_in_the_strip(self):
-        kpis = KPIS + [chart("fourth", "kpi")]
+    @staticmethod
+    def _cluster(n, **kwargs):
+        kpis = [chart(f"k{i}", "kpi") for i in range(n)]
+        names = [k["name"] for k in kpis]
         result = recommend_layout(
-            items=kpis + [chart("trend", "line", related_kpis=["total", "avg", "tip", "fourth"])],
+            items=kpis + [chart("trend", "line", related_kpis=names)], intent="trend", **kwargs
+        )
+        hero = next(r for r in rows_of(result) if "${ref(trend)}" in leaf_names(r))
+        return result, hero
+
+    def test_four_kpis_make_a_two_by_two_beside_the_hero(self):
+        """Two KPIs share a sub-row once the 4-wide slot has more than two."""
+        result, hero = self._cluster(4)
+        assert hero == {
+            "height": "large",
+            "items": [
+                {"width": 8, "chart": "${ref(trend)}"},
+                {
+                    "width": 4,
+                    "rows": [
+                        {
+                            "height": "xsmall",
+                            "items": [
+                                {"width": 6, "chart": "${ref(k0)}"},
+                                {"width": 6, "chart": "${ref(k1)}"},
+                            ],
+                        },
+                        {
+                            "height": "xsmall",
+                            "items": [
+                                {"width": 6, "chart": "${ref(k2)}"},
+                                {"width": 6, "chart": "${ref(k3)}"},
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+        assert result["warnings"] == []
+        Dashboard(**result["dashboards"][0])
+
+    def test_an_odd_count_gives_the_first_kpi_a_sub_row_alone(self):
+        result, hero = self._cluster(3)
+        assert hero["height"] == "large"
+        assert [leaf_names(r) for r in hero["items"][1]["rows"]] == [
+            ["${ref(k0)}"],
+            ["${ref(k1)}", "${ref(k2)}"],
+        ]
+        result, hero = self._cluster(5)
+        assert [len(r["items"]) for r in hero["items"][1]["rows"]] == [1, 2, 2]
+
+    def test_eight_kpis_fill_the_hero_row(self):
+        """Four xsmall sub-rows of two fit the hero's large row."""
+        result, hero = self._cluster(8)
+        assert hero["height"] == "large"
+        assert [len(r["items"]) for r in hero["items"][1]["rows"]] == [2, 2, 2, 2]
+
+    def test_a_ninth_kpi_stays_in_the_strip(self):
+        result, hero = self._cluster(9)
+        assert len(hero["items"][1]["rows"]) == 4
+        assert any("${ref(k8)}" in leaf_names(r) for r in rows_of(result) if r is not hero)
+        assert any("names 9 related KPIs; a cluster holds 8" in w for w in result["warnings"])
+
+    def test_more_sub_rows_than_the_hero_row_holds_raise_the_row(self):
+        """The row is as tall as its sub-rows, never shorter than the hero."""
+        doc = rules.load_layout()
+        doc = doc.model_copy(
+            update={"kpi_cluster": doc.kpi_cluster.model_copy(update={"max_kpis": 12})}
+        )
+        result, hero = self._cluster(12, rules=doc)
+        assert hero["height"] == "xlarge"
+        Dashboard(**result["dashboards"][0])
+
+    def test_no_sub_row_holds_more_than_the_rule_allows(self):
+        cluster = rules.load_layout().kpi_cluster
+        for n in range(1, cluster.max_kpis + 1):
+            result, hero = self._cluster(n)
+            for sub_row in hero["items"][1]["rows"]:
+                assert len(sub_row["items"]) <= cluster.max_per_sub_row, n
+                assert sum(i["width"] for i in sub_row["items"]) == 12, n
+            Dashboard(**result["dashboards"][0])
+
+    def test_a_cluster_taller_than_the_largest_token_gets_pixels(self):
+        doc = rules.load_layout()
+        doc = doc.model_copy(
+            update={"kpi_cluster": doc.kpi_cluster.model_copy(update={"max_kpis": 20})}
+        )
+        result, hero = self._cluster(20, rules=doc)
+        assert hero["height"] == 10 * 128
+        Dashboard(**result["dashboards"][0])
+
+    def test_a_gauge_stays_in_the_strip_at_gauge_height(self):
+        result = recommend_layout(
+            items=[
+                chart("total", "kpi"),
+                chart("target", "kpi", gauge=True),
+                chart("trend", "line", related_kpis=["total", "target"]),
+            ],
             intent="trend",
         )
         hero = next(r for r in rows_of(result) if "${ref(trend)}" in leaf_names(r))
-        assert hero["height"] == "xlarge" and len(hero["items"][1]["rows"]) == 3
-        assert any("${ref(fourth)}" in leaf_names(r) for r in rows_of(result) if r is not hero)
-        assert any("cluster holds 3" in w for w in result["warnings"])
+        assert [leaf_names(r) for r in hero["items"][1]["rows"]] == [["${ref(total)}"]]
+        strip = next(r for r in rows_of(result) if "${ref(target)}" in leaf_names(r))
+        assert strip["height"] == "medium"
+        assert any("target: a gauge needs a medium row" in w for w in result["warnings"])
 
     def test_nesting_never_exceeds_one_level(self):
         result = recommend_layout(
@@ -237,7 +338,8 @@ class TestHeights:
         row = next(r for r in rows_of(result) if "${ref(t)}" in leaf_names(r))
         assert row["height"] == "large"
 
-    def test_charts_never_land_in_a_compact_row(self):
+    def test_chart_rows_name_their_height(self):
+        """A compact row gives a chart small's height; the engine says so."""
         result = recommend_layout(
             items=KPIS + [TREND] + BARS + [TABLE], inputs=[{"name": "x"}], title="t"
         )

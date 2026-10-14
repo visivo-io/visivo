@@ -366,7 +366,7 @@ _HAND_WRITTEN = {
                             },
                             "hints": {
                                 "type": "object",
-                                "description": "importance (number, higher first), rows (table row count), n_y_categories (heatmap), related_kpis (KPI names to stack beside a hero chart), header (one sentence on what to look for).",
+                                "description": "importance (number, higher first), rows (table row count), n_y_categories (heatmap), related_kpis (KPI names to place beside a hero chart), gauge (true for a KPI drawn as a gauge), header (one sentence on what to look for).",
                             },
                         },
                         "required": ["name", "kind"],
