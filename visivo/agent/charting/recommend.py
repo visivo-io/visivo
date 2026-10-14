@@ -14,6 +14,7 @@ import yaml
 
 from visivo.agent.charting.rules import load_families, load_tables
 from visivo.agent.charting.schema import (
+    TABLE_TYPES,
     Recommendation,
     RecommendRequest,
     RecommendResponse,
@@ -84,7 +85,7 @@ def _gate(rule, request):
         return f"needs {_window(gates.axis_points)} axis points, has {axis.axis_points()}"
     if gates.intents and request.intent is not None and request.intent not in gates.intents:
         return f"only for intents {', '.join(gates.intents)}"
-    if "table_pivot" in rule.trace_types and _pivot_columns(request, values=1) > MAX_PIVOT_COLUMNS:
+    if rule.name == "table_pivot" and _pivot_columns(request, values=1) > MAX_PIVOT_COLUMNS:
         return (
             f"a pivot would have {_pivot_columns(request, values=1)} columns with one value, "
             f"more than {MAX_PIVOT_COLUMNS}; it scrolls sideways at 1024 px"
@@ -324,9 +325,9 @@ def pivot_skeleton(request, tables=None):
 
 
 def _skeleton_for(rule, request):
-    if "table_pivot" in rule.trace_types:
+    if rule.name == "table_pivot":
         return pivot_skeleton(request)
-    if "table" in rule.trace_types:
+    if rule.name == "table":
         return table_skeleton(request)
     return None
 
@@ -364,10 +365,8 @@ def recommend(request, rules=None):
             why.append(f"after {transforms[0]}")
             suggested.extend(t for t in transforms if t not in suggested)
         pairings = list(rule.pairings)
-        is_table = any(t in ("table", "table_pivot") for t in rule.trace_types)
-        if "table_pivot" in rule.trace_types and _pivot_values_that_fit(request) < len(
-            request.metrics
-        ):
+        is_table = rule.name in TABLE_TYPES
+        if rule.name == "table_pivot" and _pivot_values_that_fit(request) < len(request.metrics):
             warnings.append(
                 f"only {_pivot_values_that_fit(request)} of {len(request.metrics)} values fit the "
                 f"{MAX_PIVOT_COLUMNS}-column budget; the skeleton keeps the first, or swap the dimensions"

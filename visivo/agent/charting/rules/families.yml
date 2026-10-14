@@ -79,7 +79,6 @@ families:
     skill: charts/histogram
 
   - name: table
-    trace_types: [table]
     hard_gates:
       metrics: {min: 0}
       dimensions: {min: 1}
@@ -97,7 +96,6 @@ families:
     skill: charts/table
 
   - name: table_pivot
-    trace_types: [table_pivot]
     hard_gates:
       metrics: {min: 1, max: 3}
       dimensions: {min: 2, max: 3}

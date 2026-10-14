@@ -76,7 +76,8 @@ RowRole = Literal["inputs", "header", "kpi", "hero", "breakdown", "relationship"
 # Visivo tables are not Plotly traces but they compete with charts for the same
 # slot, so the rule files treat them as families with types of their own.
 TABLE_TYPES = ("table", "table_pivot")
-KNOWN_TYPES = frozenset(p.value for p in PropType) | frozenset(TABLE_TYPES)
+TRACE_TYPES = frozenset(p.value for p in PropType)
+KNOWN_TYPES = TRACE_TYPES | frozenset(TABLE_TYPES)
 
 # The chart idioms the recommender ranks (P2a research, 00-method.md). A trace
 # entry names its primary family here; `scatter` also serves `area` and `xy`.
@@ -289,7 +290,7 @@ class FamilyRule(_Strict):
 
     @model_validator(mode="after")
     def _known_types(self):
-        unknown = [t for t in self.trace_types if t not in KNOWN_TYPES]
+        unknown = [t for t in self.trace_types if t not in TRACE_TYPES]
         if unknown:
             raise ValueError(f"unknown trace types {unknown}")
         return self

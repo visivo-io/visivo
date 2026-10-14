@@ -342,12 +342,11 @@ class TestEveryTraceTypeHasAHome:
 
     @pytest.mark.xfail(strict=True, reason="P2a/P2b (VIS-1419..1429) cover the remaining 43 types")
     def test_every_prop_type_is_claimed_by_exactly_one_family(self):
-        from visivo.agent.charting.schema import TABLE_TYPES
         from visivo.models.props.types import PropType
 
         claimed = [t for r in rules.load_families() for t in r.trace_types]
 
-        assert sorted(set(claimed)) == sorted({p.value for p in PropType} | set(TABLE_TYPES))
+        assert sorted(set(claimed)) == sorted(p.value for p in PropType)
         assert len(claimed) == len(set(claimed)), "a type may belong to one family only"
 
 
@@ -378,6 +377,7 @@ class TestGoldenTables:
         assert families(response)[0] == "table"
         bar = rec(response, "bar")
         assert bar.score < 0 and "looking up" in " ".join(bar.why)
+        assert rec(response, "table").trace_type is None, "a Visivo table is not a trace"
         assert "detail_table_below" in bar.pairings
 
     def test_a_table_skeleton_aliases_every_column_and_pages_for_its_rows(self):
