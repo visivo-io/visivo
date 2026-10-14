@@ -202,6 +202,48 @@ describe('PivotableTable', () => {
     expect(screen.getByText('1,234,567')).toBeInTheDocument();
   });
 
+  describe('date and timestamp columns', () => {
+    const renderDates = data =>
+      render(
+        <PivotableTable
+          table={{ name: 'dates', rows_per_page: 50 }}
+          sourceData={{ data, files: [] }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+    it('shows only the date when every value in a column is midnight', () => {
+      renderDates([
+        { day: '2021-01-01T00:00:00.000Z' },
+        { day: '2021-01-02T00:00:00.000Z' },
+      ]);
+      expect(screen.getByText('2021-01-01')).toBeInTheDocument();
+      expect(screen.getByText('2021-01-02')).toBeInTheDocument();
+    });
+
+    it('shows date and time when any value in a column has a time part', () => {
+      renderDates([
+        { event_at: '2021-01-01T00:00:00.000Z' },
+        { event_at: '2021-01-01T08:30:15.000Z' },
+      ]);
+      expect(screen.getByText('2021-01-01 00:00:00.000')).toBeInTheDocument();
+      expect(screen.getByText('2021-01-01 08:30:15.000')).toBeInTheDocument();
+    });
+
+    it('sorts a date column by its underlying value', () => {
+      renderDates([
+        { day: '2021-01-10T00:00:00.000Z' },
+        { day: '2020-12-31T00:00:00.000Z' },
+        { day: '2021-01-02T00:00:00.000Z' },
+      ]);
+      const dayOrder = () => screen.getAllByText(/^\d{4}-\d{2}-\d{2}$/).map(el => el.textContent);
+      fireEvent.click(screen.getByText('Day'));
+      expect(dayOrder()).toEqual(['2020-12-31', '2021-01-02', '2021-01-10']);
+    });
+  });
+
   // VIS-1011: the toolbar controls (search field + CSV download) must inherit
   // the brand-aligned MUI theme so they no longer render in default MUI blue.
   // We assert the toolbar's search field is themed with the primary palette by
