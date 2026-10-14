@@ -13,10 +13,13 @@ from pathlib import Path
 
 from visivo.agent.charting.rules import (
     load_families,
+    load_family_doc,
     load_interactivity,
     load_layout,
     load_tables,
+    load_transforms,
 )
+from visivo.agent.charting.schema import CARDINALITY_BUCKETS, Intent, Semantics
 
 SKILLS_DIR = Path(__file__).parent.parent / "skills"
 START, END = "<!-- rules:start -->", "<!-- rules:end -->"
@@ -157,6 +160,75 @@ def table_rules_markdown(doc=None, families=None):
     return "\n".join(lines)
 
 
+def _lifts(rule):
+    """``({intent: delta}, [flag])`` a family's positive score clauses name."""
+    intents, flags = {}, []
+    for adjustment in rule.score:
+        if adjustment.delta <= 0:
+            continue
+        for part in adjustment.when.split(" and "):
+            named = []
+            if part.startswith("intent == "):
+                named = [part[len("intent == ") :]]
+            elif part.startswith("intent in ("):
+                named = part[len("intent in (") : -1].split(", ")
+            elif part in Semantics.model_fields:
+                flags.append(part)
+            for intent in named:
+                intents[intent] = max(intents.get(intent, 0), adjustment.delta)
+    return intents, flags
+
+
+def _bucket_line():
+    parts, low = [], 0
+    for name, upper in CARDINALITY_BUCKETS:
+        parts.append(f"{name} {upper}" if upper == low + 1 else f"{name} {low + 1}–{upper}")
+        low = upper
+    return " · ".join(parts + [f"high {low + 1}+"])
+
+
+def choose_rules_markdown(doc=None, interactivity=None):
+    """The decision tree the choose-a-chart skill states: intent and
+    semantics to family, the boundaries a map needs, cardinality buckets,
+    and the repair vocabulary."""
+    doc = doc or load_family_doc()
+    interactivity = interactivity or load_interactivity()
+    by_intent, by_flag = {}, {}
+    for rule in doc.families:
+        intents, flags = _lifts(rule)
+        for intent, delta in intents.items():
+            by_intent.setdefault(intent, []).append((-delta, rule.name))
+        required = [f for f in rule.hard_gates.requires if f in Semantics.model_fields]
+        for flag in dict.fromkeys(flags + required):
+            name = f"{rule.name} (required)" if flag in required else rule.name
+            by_flag.setdefault(flag, []).append(name)
+    intents = "; ".join(
+        f"{intent} → {', '.join(name for _, name in sorted(by_intent[intent]))}"
+        for intent in Intent.__args__
+        if intent in by_intent
+    )
+    flags = "; ".join(
+        f"`{flag}` → {', '.join(by_flag[flag])}"
+        for flag in Semantics.model_fields
+        if flag in by_flag
+    )
+    mapped = [rule.name for rule in doc.families if "region boundaries" in rule.hard_gates.requires]
+    repairs = ", ".join(f"`{t.name}`" for t in load_transforms().transforms if t.fixes)
+    split_bucket = interactivity.design_rules.input_over_split_min_bucket
+    return "\n".join(
+        [
+            f"- **Intent → family**, strongest first: {intents}.",
+            f"- **Semantics → family:** {flags}.",
+            f"- **Maps:** {', '.join(mapped)} {'needs' if len(mapped) == 1 else 'need'} a region Plotly knows "
+            f"({', '.join(doc.builtin_boundaries)}) or `boundaries_available`.",
+            f"- **Cardinality:** {_bucket_line()}. Split a `few` dimension; from `{split_bucket}` "
+            "up, an input. An identifier, or a lookup list at `high`, is a table; a chart over a "
+            "`many`/`high` list pairs with `detail_table_below`.",
+            f"- **Repairs**, each entry trying its own in order: {repairs}.",
+        ]
+    )
+
+
 def pattern_markdown(pattern):
     """One on-demand skill per interaction pattern."""
     lines = [
@@ -198,6 +270,7 @@ def pattern_markdown(pattern):
 INTERACTIONS_DIR = SKILLS_DIR / "interactions"
 
 RENDERERS = {
+    "choose-a-chart.md": choose_rules_markdown,
     "design-a-dashboard.md": layout_rules_markdown,
     "make-it-interactive.md": interactivity_rules_markdown,
     "charts/table.md": table_rules_markdown,
