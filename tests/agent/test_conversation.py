@@ -453,3 +453,115 @@ class TestTheSpendLimitReachesTheUser:
         _settle(sessions, session.id)
 
         assert sessions.get(session.id).to_dict()["action"] is None
+
+
+class TestAFailedTurnIsNotALostTurn:
+    """A turn is 40 model requests. A transient refusal on request 30 used to
+    discard the 29 before it, because `remember` was only reached on success —
+    so the user was offered "try again" and got a restart.
+    """
+
+    def _overloaded(self):
+        from pydantic_ai.exceptions import ModelHTTPError
+
+        return ModelHTTPError(status_code=529, model_name="m", body={"error": "overloaded"})
+
+    def _dies_after_working(self, failures):
+        """Reads a source, then refuses `failures` times in a row."""
+        seen = {"n": 0}
+
+        def respond(messages, info: AgentInfo):
+            seen["n"] += 1
+            if seen["n"] == 1:
+                return ModelResponse(parts=[ToolCallPart("list_sources", {})])
+            if seen["n"] <= failures + 1:
+                raise self._overloaded()
+            return ModelResponse(parts=[TextPart("got there in the end")])
+
+        model = FunctionModel(respond)
+        model.seen = seen
+        return model
+
+    def test_a_brief_outage_is_ridden_out(self, integration_app, sessions, monkeypatch):
+        monkeypatch.setattr("visivo.agent.resilience.BACKOFF_SECONDS", (0, 0, 0))
+        session = start(
+            integration_app,
+            "what sources exist?",
+            self._dies_after_working(1),
+            session_manager=sessions,
+        )
+
+        finished = _settle(sessions, session.id)
+
+        assert finished.state == SessionState.SUCCEEDED
+        assert finished.output == "got there in the end"
+
+    def test_a_turn_that_cannot_be_saved_keeps_what_it_learned(
+        self, integration_app, sessions, monkeypatch
+    ):
+        monkeypatch.setattr("visivo.agent.resilience.BACKOFF_SECONDS", (0, 0, 0))
+        session = start(
+            integration_app,
+            "what sources exist?",
+            self._dies_after_working(99),
+            session_manager=sessions,
+        )
+
+        finished = _settle(sessions, session.id)
+
+        assert finished.state == SessionState.FAILED
+        # The history is what makes the next message a continuation. Empty
+        # here was the bug: the tool result was collected and then thrown away.
+        assert finished.history, "the failed turn discarded its conversation"
+        kinds = [type(part).__name__ for m in finished.history for part in m.parts]
+        assert "ToolReturnPart" in kinds, kinds
+
+    def test_the_next_message_continues_from_there(self, integration_app, sessions, monkeypatch):
+        monkeypatch.setattr("visivo.agent.resilience.BACKOFF_SECONDS", (0, 0, 0))
+        session = start(
+            integration_app,
+            "what sources exist?",
+            self._dies_after_working(99),
+            session_manager=sessions,
+        )
+        _settle(sessions, session.id)
+
+        follow_up = _answers("picking up where we left off")
+        start(
+            integration_app,
+            "keep going",
+            follow_up,
+            session_manager=sessions,
+            session_id=session.id,
+        )
+        _settle(sessions, session.id)
+
+        given = str(follow_up.seen[0])
+        assert "what sources exist?" in given
+        assert "list_sources" in given
+
+    def test_a_spend_limit_is_not_waited_out(self, integration_app, sessions):
+        """The one failure where retrying is pointless: it will not clear, and
+        each attempt is another minute in front of a spinner."""
+        from pydantic_ai.exceptions import ModelHTTPError
+
+        seen = {"n": 0}
+
+        def respond(messages, info: AgentInfo):
+            seen["n"] += 1
+            raise ModelHTTPError(
+                status_code=429,
+                model_name="google/gemini-2.5-pro",
+                body={
+                    "error": "This account has used its $30 of free credit.",
+                    "action": "inference_limit_reached",
+                },
+            )
+
+        session = start(integration_app, "go", FunctionModel(respond), session_manager=sessions)
+        finished = _settle(sessions, session.id)
+
+        assert seen["n"] == 1
+        assert finished.state == SessionState.FAILED
+        assert finished.error == "This account has used its $30 of free credit."
+        assert finished.action == "inference_limit_reached"

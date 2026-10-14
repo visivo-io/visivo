@@ -176,3 +176,104 @@ class TestTheBudgetFitsAnExploration:
         assert (MAX_MODEL_REQUESTS, MAX_TOOL_CALLS) == (40, 100)
         limits = usage_limits()
         assert (limits.request_limit, limits.tool_calls_limit) == (40, 100)
+
+
+class TestARefusalIsAConversation:
+    """A tool error is handed back as a result, so the model can act on it. The
+    failure this guards is the other end of that: a model that reads the same
+    refusal and makes the same call again, until the request budget is gone.
+
+    Observed with a `write_*` call whose `config` was a string — 50 identical
+    calls, 50 identical refusals, one exhausted turn and nothing to show.
+    """
+
+    def _calls_repeatedly(self, name, arguments, times):
+        seen = {"n": 0}
+
+        def respond(messages, info: AgentInfo):
+            seen["n"] += 1
+            if seen["n"] <= times:
+                return ModelResponse(parts=[ToolCallPart(name, arguments)])
+            return ModelResponse(parts=[TextPart("giving up")])
+
+        model = FunctionModel(respond)
+        model.seen = seen
+        return model
+
+    def _returns_from(self, messages):
+        return [
+            part.content
+            for message in messages
+            for part in message.parts
+            if type(part).__name__ == "ToolReturnPart"
+        ]
+
+    def test_a_refusal_reaches_the_model_as_a_result(self, integration_app):
+        agent = build_agent(
+            integration_app,
+            self._calls_repeatedly("get_source", {"name": "nope"}, 1),
+        )
+
+        result = agent.run_sync("find the source", usage_limits=usage_limits())
+
+        assert "No source named 'nope'." in str(self._returns_from(result.all_messages()))
+
+    def test_the_second_identical_refusal_is_still_just_the_refusal(self, integration_app):
+        """Two is a model trying again, which is fair. The escalation must not
+        fire that early or it reads as nagging."""
+        agent = build_agent(
+            integration_app,
+            self._calls_repeatedly("get_source", {"name": "nope"}, 2),
+        )
+
+        result = agent.run_sync("find the source", usage_limits=usage_limits())
+
+        assert all("repeated" not in str(r) for r in self._returns_from(result.all_messages()))
+
+    def test_the_third_says_so(self, integration_app):
+        agent = build_agent(
+            integration_app,
+            self._calls_repeatedly("get_source", {"name": "nope"}, 3),
+        )
+
+        result = agent.run_sync("find the source", usage_limits=usage_limits())
+
+        returns = self._returns_from(result.all_messages())
+        assert any("3 times with these exact arguments" in str(r) for r in returns), returns
+
+    def test_different_arguments_are_a_different_call(self, integration_app):
+        """A model working through candidates is making progress, not looping."""
+        names = iter(["a", "b", "c", "d"])
+
+        def respond(messages, info: AgentInfo):
+            try:
+                return ModelResponse(parts=[ToolCallPart("get_source", {"name": next(names)})])
+            except StopIteration:
+                return ModelResponse(parts=[TextPart("none of them exist")])
+
+        result = build_agent(integration_app, FunctionModel(respond)).run_sync(
+            "try a few", usage_limits=usage_limits()
+        )
+
+        returns = self._returns_from(result.all_messages())
+        assert all("repeated" not in str(r) for r in returns), returns
+
+    def test_the_count_is_per_turn(self, integration_app):
+        """Each turn builds its own agent. A count that outlived one would
+        scold a model for a predecessor's mistake."""
+        first = build_agent(integration_app, self._calls_repeatedly("get_source", {"name": "x"}, 2))
+        first.run_sync("try", usage_limits=usage_limits())
+
+        second = build_agent(
+            integration_app, self._calls_repeatedly("get_source", {"name": "x"}, 1)
+        )
+        result = second.run_sync("try again", usage_limits=usage_limits())
+
+        assert all("repeated" not in str(r) for r in self._returns_from(result.all_messages()))
+
+    def test_the_instructions_say_what_to_do_with_an_error(self):
+        """The guard above is a backstop. What should normally happen is the
+        model reading the message and trying something else, which it only
+        does if it has been told to."""
+        assert "Never repeat a call that" in INSTRUCTIONS
+        assert "get_schema" in INSTRUCTIONS
