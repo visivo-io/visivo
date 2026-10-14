@@ -44,6 +44,7 @@ tmp
 mkdocs_build/
 test-projects/*/dist
 test-projects/test
+Test-projects/nyc-resturant-dashboard
 visivo/dist
 node_modules
 htmlcov/
