@@ -78,11 +78,12 @@ describe('Chart', () => {
       });
     });
 
-    test('applies default margin when margin is unset', async () => {
+    test('takes its default margin from the theme template when margin is unset', async () => {
       chart.layout = {};
       render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
       await waitFor(() => expect(capturedLayout).not.toBeNull());
-      expect(capturedLayout.margin).toEqual({ t: 40, r: 20, b: 80, l: 60 });
+      expect(capturedLayout.margin).toBeUndefined();
+      expect(capturedLayout.template.layout.margin).toEqual({ t: 40, r: 20, b: 80, l: 60 });
     });
 
     test('preserves user-supplied margin', async () => {
@@ -90,6 +91,20 @@ describe('Chart', () => {
       render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
       await waitFor(() => expect(capturedLayout).not.toBeNull());
       expect(capturedLayout.margin).toEqual({ t: 100, r: 100, b: 10, l: 10 });
+    });
+
+    test('an indicator-only chart gets the KPI template margins', async () => {
+      chart.insights = [{ name: 'kpi' }];
+      useStore.setState({
+        insightJobs: {
+          kpi: { data: [{ v: 9 }], props_mapping: { 'props.value': 'v' }, type: 'indicator' },
+        },
+      });
+      render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+      await waitFor(() => expect(capturedLayout).not.toBeNull());
+      expect(capturedData[0].type).toBe('indicator');
+      expect(capturedLayout.margin).toBeUndefined();
+      expect(capturedLayout.template.layout.margin).toEqual({ t: 32, r: 8, b: 8, l: 8 });
     });
 
     test('applies the built-in light theme template when the chart sets none', async () => {

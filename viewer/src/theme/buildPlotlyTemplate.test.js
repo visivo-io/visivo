@@ -86,6 +86,28 @@ describe('buildPlotlyTemplate', () => {
     expect(layout.xaxis.showgrid).toBe(false);
     expect(layout.xaxis.gridcolor).toBe(BUILTIN_THEMES.light.grid);
   });
+
+  it('leaves room for axes and a legend by default', () => {
+    expect(buildPlotlyTemplate(BUILTIN_THEMES.light).layout.margin).toEqual({
+      t: 40,
+      r: 20,
+      b: 80,
+      l: 60,
+    });
+  });
+
+  it('gives a KPI chart the slim margins of an axis-less indicator', () => {
+    const { layout } = buildPlotlyTemplate(BUILTIN_THEMES.light, [], { kpi: true });
+    expect(layout.margin).toEqual({ t: 32, r: 8, b: 8, l: 8 });
+    expect(layout.paper_bgcolor).toBe(BUILTIN_THEMES.light.surface);
+  });
+
+  it('lets extra layouts override the KPI margins too', () => {
+    const { layout } = buildPlotlyTemplate(BUILTIN_THEMES.light, [{ margin: { t: 4 } }], {
+      kpi: true,
+    });
+    expect(layout.margin).toEqual({ t: 4, r: 8, b: 8, l: 8 });
+  });
 });
 
 describe.each(THEME_MODES)('built-in %s theme contrast', mode => {

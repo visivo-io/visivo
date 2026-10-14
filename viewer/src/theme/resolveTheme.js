@@ -1,5 +1,5 @@
 import { BUILTIN_THEMES, THEME_TOKEN_KEYS } from './builtinThemes';
-import { buildPlotlyTemplate } from './buildPlotlyTemplate';
+import { buildPlotlyTemplate, isKpiChart } from './buildPlotlyTemplate';
 import { mix } from './colorUtils';
 import PALETTES from './palettes.json';
 
@@ -64,11 +64,17 @@ export const resolveTheme = (projectTheme, mode) => {
 
   const resolvedMode = mode === 'dark' ? 'dark' : 'light';
   const tokens = resolveTokens(projectTheme, resolvedMode);
-  const plotlyTemplate = buildPlotlyTemplate(tokens, [
-    projectTheme?.plotly_layout,
-    projectTheme?.[resolvedMode]?.plotly_layout,
-  ]);
-  const theme = { mode: resolvedMode, tokens, plotlyTemplate, cssVars: tokensToCssVars(tokens) };
+  const themeLayouts = [projectTheme?.plotly_layout, projectTheme?.[resolvedMode]?.plotly_layout];
+  const plotlyTemplate = buildPlotlyTemplate(tokens, themeLayouts);
+  const kpiPlotlyTemplate = buildPlotlyTemplate(tokens, themeLayouts, { kpi: true });
+  const plotlyTemplateFor = traces => (isKpiChart(traces) ? kpiPlotlyTemplate : plotlyTemplate);
+  const theme = {
+    mode: resolvedMode,
+    tokens,
+    plotlyTemplate,
+    plotlyTemplateFor,
+    cssVars: tokensToCssVars(tokens),
+  };
 
   if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value);
   cache.set(key, theme);

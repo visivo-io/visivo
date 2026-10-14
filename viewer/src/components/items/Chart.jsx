@@ -102,13 +102,13 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     return data;
   }, [insightsData, chart.insights, hasInsights, inputs, insightTypeOverrides]);
 
-  const { plotlyTemplate } = useDashboardTheme();
+  const { plotlyTemplateFor } = useDashboardTheme();
 
   const layoutRef = useMemo(() => {
     const l = structuredClone(chart.layout ? chart.layout : {});
 
     if (!l.template) {
-      l.template = plotlyTemplate;
+      l.template = plotlyTemplateFor(selectedPlotData);
     }
 
     if (!l.colorway) {
@@ -120,10 +120,6 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
       l.legend = { orientation: 'h', y: -0.2, x: 0 };
     }
 
-    if (!l.margin) {
-      l.margin = { t: 40, r: 20, b: 80, l: 60 };
-    }
-
     if (!l.uirevision) {
       l.uirevision = chart.name;
     }
@@ -133,7 +129,7 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     }
 
     return l;
-  }, [chart.layout, chart.name, hideToolbar, plotlyTemplate, selectedPlotData, seriesOrder]);
+  }, [chart.layout, chart.name, hideToolbar, plotlyTemplateFor, selectedPlotData, seriesOrder]);
 
   const plotLayout = useMemo(() => {
     const layout = { ...layoutRef };

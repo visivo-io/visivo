@@ -64,6 +64,7 @@ const baseLayout = t => ({
   paper_bgcolor: t.surface,
   plot_bgcolor: t.surface,
   colorway: t.colorway,
+  margin: { t: 40, r: 20, b: 80, l: 60 },
   hovermode: 'closest',
   hoverlabel: {
     bgcolor: t.surface,
@@ -258,10 +259,16 @@ const traceDefaults = t => {
 
 export const TEMPLATED_TRACE_TYPES = Object.freeze(Object.keys(traceDefaults(BUILTIN_THEMES.light)));
 
-export const buildPlotlyTemplate = (tokens, extraLayout = []) => {
-  const layout = [baseLayout(tokens), ...extraLayout.filter(Boolean)].reduce(
-    (acc, next) => deepMerge(acc, next),
-    {}
-  );
+// A gaugeless indicator draws no axes, so a KPI chart keeps only the top room its title sits in.
+const KPI_LAYOUT = { margin: { t: 32, r: 8, b: 8, l: 8 } };
+
+export const isKpiChart = traces =>
+  traces.length > 0 &&
+  traces.every(trace => trace.type === 'indicator' && !trace.mode?.includes('gauge'));
+
+export const buildPlotlyTemplate = (tokens, extraLayout = [], { kpi = false } = {}) => {
+  const layout = [baseLayout(tokens), kpi && KPI_LAYOUT, ...extraLayout]
+    .filter(Boolean)
+    .reduce((acc, next) => deepMerge(acc, next), {});
   return { layout, data: traceDefaults(tokens) };
 };
