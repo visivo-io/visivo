@@ -1,6 +1,8 @@
+/* global BigInt */
 import {
   DateDay,
   DateMillisecond,
+  Decimal,
   TimestampMicrosecond,
   TimestampMillisecond,
   TimestampNanosecond,
@@ -9,6 +11,21 @@ import {
   vectorFromArray,
 } from 'apache-arrow';
 import { getTimestampColumns, processArrowResult } from './resultProcessing';
+import { mapQueryResultsToProps } from '../models/Insight';
+
+function decimalWords(integer) {
+  const bits = BigInt.asUintN(128, BigInt(integer));
+  return Uint32Array.from({ length: 4 }, (_, i) => Number((bits >> BigInt(32 * i)) & 0xffffffffn));
+}
+
+function decimalTable(integers, scale = 0) {
+  return tableOf({
+    weight: vectorFromArray(
+      integers.map(value => (value === null ? null : decimalWords(value))),
+      new Decimal(scale, 38)
+    ),
+  });
+}
 
 // 2026-06-01T00:00:00Z — the exact value from the B7 field-test repro
 // (1,780,272,000 epoch seconds, which the old `/ 1000` rendered as
@@ -86,5 +103,70 @@ describe('getTimestampColumns', () => {
   test('tolerates a missing schema', () => {
     expect(getTimestampColumns(undefined)).toEqual(new Set());
     expect(getTimestampColumns({})).toEqual(new Set());
+  });
+});
+
+describe('processArrowResult decimal handling', () => {
+  test('uncast integer sums reach heatmap weights as numeric values', () => {
+    const table = decimalTable(['1', '2', '60']);
+    expect(table.getChild('weight').get(0).constructor.name).toBe('DecimalBigNum');
+    const props = mapQueryResultsToProps(processArrowResult(table), {
+      'props.z': 'weight',
+    });
+    expect(props.z).toEqual([1, 2, 60]);
+    expect(props.z.every(Number.isFinite)).toBe(true);
+  });
+
+  test.each([
+    ['12345', 2, '123.45'],
+    ['-12345', 2, '-123.45'],
+    ['1', 3, '0.001'],
+    ['-1', 3, '-0.001'],
+    ['0', 2, '0.00'],
+    ['12300', 2, '123.00'],
+    ['12', -2, '1200'],
+    ['-12', -2, '-1200'],
+    ['0', -2, '0'],
+  ])('coefficient %s with scale %s renders as %s', (integer, scale, expected) => {
+    expect(processArrowResult(decimalTable([integer], scale))).toEqual([{ weight: expected }]);
+  });
+
+  test('preserves full decimal128 precision and nulls', () => {
+    const large = '99999999999999999999999999999999999999';
+    const table = decimalTable([large, `-${large}`, null], 2);
+    const positive = `${large.slice(0, -2)}.${large.slice(-2)}`;
+    expect(processArrowResult(table)).toEqual([
+      { weight: positive },
+      { weight: `-${positive}` },
+      { weight: null },
+    ]);
+  });
+
+  test('columns with different scales use their own metadata', () => {
+    const table = tableOf({
+      count: vectorFromArray([decimalWords('123')], new Decimal(0, 38)),
+      price: vectorFromArray([decimalWords('123')], new Decimal(2, 38)),
+      label: vectorFromArray(['00123']),
+    });
+    expect(processArrowResult(table)).toEqual([{ count: '123', price: '1.23', label: '00123' }]);
+  });
+
+  test('map bindings become numeric while source data, text and nulls stay intact', () => {
+    const table = tableOf({
+      price: vectorFromArray([decimalWords('-12345'), null], new Decimal(2, 38)),
+      count: vectorFromArray([63n, 0n]),
+      label: vectorFromArray(['00123', '00456']),
+    });
+    const rows = processArrowResult(table);
+    const props = mapQueryResultsToProps(rows, {
+      'props.lat': 'price',
+      'props.z': 'count',
+      'props.text': 'label',
+    });
+    expect(props).toEqual({ lat: [-123.45, null], z: [63, 0], text: ['00123', '00456'] });
+    expect(rows).toEqual([
+      { price: '-123.45', count: '63', label: '00123' },
+      { price: null, count: '0', label: '00456' },
+    ]);
   });
 });
