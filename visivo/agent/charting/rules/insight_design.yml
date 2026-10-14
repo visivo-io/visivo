@@ -55,14 +55,18 @@ scoring:
   derived_r: 0.95
   scatter_min_r: 0.5
   banded_min_r: 0.3
-  anomaly_z: 2.5
-  seasonality_lags: {day: 7, month: 12}
+  anomaly_z: 3
+  material_change: 0.2
+  dependent_lambda: 0.8
+  top_share_of: 3
+  seasonality_lags: {hour: 24, day: 7, month: 12}
   unmeasured: 0.2
   penalties:
     high_nulls: 0.5
     constant_metric: 0
     cardinality_one: 0
     derived_correlation: 0.2
+    dependent_pair: 0
 
 portfolio:
   max_candidates: 7

@@ -1048,6 +1048,7 @@ class Penalties(_Strict):
     constant_metric: float = Field(ge=0, le=1)
     cardinality_one: float = Field(ge=0, le=1)
     derived_correlation: float = Field(ge=0, le=1)
+    dependent_pair: float = Field(ge=0, le=1)
 
 
 class Scoring(_Strict):
@@ -1056,6 +1057,9 @@ class Scoring(_Strict):
     scatter_min_r: float = Field(ge=0, le=1)
     banded_min_r: float = Field(ge=0, le=1)
     anomaly_z: float = Field(gt=0)
+    material_change: float = Field(gt=0)
+    dependent_lambda: float = Field(gt=0, le=1)
+    top_share_of: int = Field(ge=1)
     seasonality_lags: Dict[TimeGrain, int] = Field(min_length=1)
     unmeasured: float = Field(ge=0, le=1)
     penalties: Penalties

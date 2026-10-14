@@ -320,11 +320,15 @@ def insight_design_markdown(doc=None, interactivity=None):
             f"  - `collapse_rare` (under {_pct(red.collapse_rare.min_share)} → Other): "
             f"{red.collapse_rare.when};",
             f"  - `clip_p99`: {red.clip_p99.when}.",
-            f"- **Signals:** variance (CoV), trend (|slope| × R²), concentration (Gini), "
-            f"correlation (|r|; a scatter from {sc.scatter_min_r:g}, a comparison across "
-            f"bands from {sc.banded_min_r:g}, ×"
-            f"{sc.penalties.derived_correlation:g} from {sc.derived_r:g} as one column is likely "
-            f"computed from the other), seasonality ({lags}), anomalies (|z| > {sc.anomaly_z:g}). "
+            "- **Signals:** variance (CoV); trend, the better of a line (|slope| × R²) and a "
+            "level change (a V, U or step: moving-average strength × swing, full at "
+            f"{_pct(sc.material_change)} of the mean); concentration (Gini, "
+            f"top-{sc.top_share_of} share); correlation (|r| on values clipped at p99, or "
+            f"Spearman on pairs; a scatter from {sc.scatter_min_r:g}, a comparison across "
+            f"bands from {sc.banded_min_r:g}, ×{sc.penalties.derived_correlation:g} from "
+            f"{sc.derived_r:g} as one column is likely computed from the other); cross-tabs "
+            f"(Cramér's V, ×{sc.penalties.dependent_pair:g} when one column predicts the other, "
+            f"λ ≥ {sc.dependent_lambda:g}); seasonality ({lags}); anomalies (|z| > {sc.anomaly_z:g}). "
             f"Nulls over {_pct(sc.high_nulls)} ×{sc.penalties.high_nulls:g}; a constant metric "
             f"×{sc.penalties.constant_metric:g}.",
             f"- **Portfolio:** ≤{pf.max_candidates} with the detail table, each scoring at least "
