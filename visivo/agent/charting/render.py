@@ -14,6 +14,7 @@ from pathlib import Path
 from visivo.agent.charting.rules import (
     load_families,
     load_family_doc,
+    load_insight_design,
     load_interactivity,
     load_layout,
     load_tables,
@@ -267,6 +268,73 @@ def pattern_markdown(pattern):
     return "\n".join(lines) + "\n"
 
 
+def _pct(share):
+    return f"{share * 100:g} %"
+
+
+def _metric_row(rule):
+    additivity = ""
+    if rule.additive:
+        additivity = " (additive)" if rule.additive == [True] else " (not additive, or unknown)"
+    aggs = [f"`{agg}`" for agg in rule.aggs]
+    if rule.heavy_tail_agg:
+        aggs.append(f"`{rule.heavy_tail_agg}` for `avg` on a heavy tail")
+    if rule.duration_agg:
+        aggs.append(f"`{rule.duration_agg}` of the time between two of them")
+    return f"| {', '.join(rule.roles)}{additivity} | {'; '.join(aggs) or '—'} | {rule.why} |"
+
+
+def insight_design_markdown(doc=None, interactivity=None):
+    """The insight-design rules as the design-insights skill states them."""
+    doc = doc or load_insight_design()
+    interactivity = interactivity or load_interactivity()
+    d = interactivity.design_rules
+    pairing, red, sc, pf = doc.pairing_limits, doc.reductions, doc.scoring, doc.portfolio
+    tail = doc.heavy_tail
+    slots = ", ".join(f"≤{s.max} {s.name} ({'/'.join(s.intents)})" for s in pf.slots)
+    lags = ", ".join(f"lag {lag} at {grain}" for grain, lag in sc.seasonality_lags.items())
+    return "\n".join(
+        [
+            "| column | metrics | why |",
+            "|---|---|---|",
+            *[_metric_row(rule) for rule in doc.metric_by_role],
+            "",
+            "Every model also gets `count(*)`. A heavy tail is skew above "
+            f"{tail.skew_over:g} or p99 above {tail.p99_over_median:g}× the median.",
+            f"- **Pairing:** time with ≤{pairing.categoricals_with_time} categorical; two "
+            f"categoricals up to {pairing.chart_max_cells} cells chart, up to "
+            f"{pairing.pivot_max_cells} pivot when the smaller has at most "
+            f"{load_tables().column_budget.full_width - 1} values, past that the larger "
+            "becomes an input; an "
+            "identifier is never a dimension, only the detail table's key.",
+            f"- **Split vs input:** below `{d.input_over_split_min_bucket}` split; at "
+            f"`{d.input_over_split_min_bucket}`, `top_n_other` when the top {red.top_n_other.n} "
+            f"hold ≥{_pct(doc.split_vs_input.top_n_min_share)} of rows, else an input; above, an "
+            "input or the table. Time never splits.",
+            "- **Reductions** (each is a proposed dimension, written once):",
+            f"  - `top_n_other` (top {red.top_n_other.n}, at most {red.top_n_other.n_max}, "
+            f"+ Other): {red.top_n_other.when};",
+            f"  - `bucket` ({red.bucket.bins} bins): {red.bucket.when};",
+            f"  - `regrain` ({d.time_default_min_points}–{red.regrain.points_max} points): "
+            f"{red.regrain.when};",
+            f"  - `collapse_rare` (under {_pct(red.collapse_rare.min_share)} → Other): "
+            f"{red.collapse_rare.when};",
+            f"  - `clip_p99`: {red.clip_p99.when}.",
+            f"- **Signals:** variance (CoV), trend (|slope| × R²), concentration (Gini), "
+            f"correlation (|r|; a scatter from {sc.scatter_min_r:g}, a comparison across "
+            f"bands from {sc.banded_min_r:g}, ×"
+            f"{sc.penalties.derived_correlation:g} from {sc.derived_r:g} as one column is likely "
+            f"computed from the other), seasonality ({lags}), anomalies (|z| > {sc.anomaly_z:g}). "
+            f"Nulls over {_pct(sc.high_nulls)} ×{sc.penalties.high_nulls:g}; a constant metric "
+            f"×{sc.penalties.constant_metric:g}.",
+            f"- **Portfolio:** ≤{pf.max_candidates} with the detail table, each scoring at least "
+            f"{pf.min_score:g}: {slots}; the KPI set "
+            f"holds {pf.kpi_metrics.min}–{pf.kpi_metrics.max} metrics. A family already chosen "
+            f"scores ×{pf.repeat_family:g}, a dimension already used ×{pf.repeat_dimension:g}.",
+        ]
+    )
+
+
 INTERACTIONS_DIR = SKILLS_DIR / "interactions"
 
 RENDERERS = {
@@ -274,6 +342,7 @@ RENDERERS = {
     "design-a-dashboard.md": layout_rules_markdown,
     "make-it-interactive.md": interactivity_rules_markdown,
     "charts/table.md": table_rules_markdown,
+    "design-insights.md": insight_design_markdown,
 }
 
 
