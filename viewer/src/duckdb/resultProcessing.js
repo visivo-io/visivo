@@ -2,7 +2,7 @@
  * Shared utilities for processing DuckDB Arrow query results into JS objects.
  */
 
-import { DataType, util } from 'apache-arrow';
+import { DataType, Vector, util } from 'apache-arrow';
 
 function decimalToString(value, scale) {
   const integer = util.bigNumToString(value);
@@ -30,6 +30,18 @@ export const getTimestampColumns = schema => {
   return timestampColumns;
 };
 
+/** Safe-range bigints become numbers (others exact strings); LIST cells become arrays. */
+export const toPlainValue = value => {
+  if (typeof value === 'bigint') {
+    const isSafe = value >= Number.MIN_SAFE_INTEGER && value <= Number.MAX_SAFE_INTEGER;
+    return isSafe ? Number(value) : value.toString();
+  }
+  if (value instanceof Vector) {
+    return Array.from(value, toPlainValue);
+  }
+  return value;
+};
+
 /**
  * Convert an Arrow date/timestamp value to an ISO string.
  * apache-arrow's getters already normalise every date/timestamp unit to epoch milliseconds.
@@ -39,7 +51,8 @@ export const arrowDateToIso = value =>
 
 /**
  * Process an Arrow query result into an array of plain JS objects.
- * Timestamps become ISO strings; bigints and decimals become exact numeric strings.
+ * Timestamps become ISO strings; decimals become exact numeric strings; every other
+ * cell goes through toPlainValue.
  *
  * @param {Object} arrowResult - Arrow Table result from runDuckDBQuery
  * @returns {Array<Object>} Array of row objects with properly typed values
@@ -62,10 +75,7 @@ export const processArrowResult = arrowResult => {
         if (timestampColumns.has(key) && value != null) {
           return [key, arrowDateToIso(value)];
         }
-        if (typeof value === 'bigint') {
-          return [key, value.toString()];
-        }
-        return [key, value];
+        return [key, toPlainValue(value)];
       })
     );
   });

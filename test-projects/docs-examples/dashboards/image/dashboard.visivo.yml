@@ -2,6 +2,7 @@ includes:
   - path: "simple.visivo.yml"
   - path: "custom-colorscale.visivo.yml"
   - path: "annotated.visivo.yml"
+  - path: "from-query.visivo.yml"
 
 dashboards:
   - name: image
@@ -23,5 +24,4 @@ dashboards:
       - height: medium
         items:
           - chart: ${ref(image-plot-with-axis-annotations)}
-          - markdown:
-              content: ""
+          - chart: ${ref(image-plot-from-query)}

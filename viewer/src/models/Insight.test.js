@@ -1,3 +1,4 @@
+import { vectorFromArray } from 'apache-arrow';
 import {
   chartDataFromInsightData,
   processInputRefsInProps,
@@ -942,11 +943,18 @@ describe('mapQueryResultsToProps', () => {
     expect(mapQueryResultsToProps([{ x: 1 }], null)).toEqual({});
   });
 
-  it('converts BigInt values to strings', () => {
-    const results = [{ n: 9007199254740993n }];
-    expect(mapQueryResultsToProps(results, { 'props.y': 'n' })).toEqual({
-      y: ['9007199254740993'],
+  it('maps safe BigInts to numbers and keeps unsafe ones as strings', () => {
+    const results = [{ n: 3n }, { n: 9007199254740993n }];
+    expect(mapQueryResultsToProps(results, { 'props.counts': 'n' })).toEqual({
+      counts: [3, '9007199254740993'],
     });
+  });
+
+  it('maps Arrow vector cells to plain arrays', () => {
+    const results = [{ pixels: vectorFromArray([1n, 2n, 3n]) }];
+    const props = mapQueryResultsToProps(results, { 'props.z': 'pixels' });
+    expect(props.z).toEqual([[1, 2, 3]]);
+    expect(Array.isArray(props.z[0])).toBe(true);
   });
 
   it('skips mapping entries whose column is absent from the results', () => {
