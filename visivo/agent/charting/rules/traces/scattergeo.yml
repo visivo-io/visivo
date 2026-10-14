@@ -54,7 +54,7 @@ gotchas:
   - "`layout.geo` lives on the chart, not the insight: without `scope` or `fitbounds: locations` a US-only dataset is drawn as a smudge on a world map."
   - "`locationmode` must match the column (`ISO-3` is the default); mismatched codes drop the points silently, as in choropleth."
   - "The theme colors `layout.geo` land, ocean and borders; do not override `landcolor` or `bgcolor` per chart or dark mode breaks."
-  - "`marker.color` as hex strings from a CASE pins each series' colour across charts; a numeric column needs `marker.colorscale` instead."
+  - "`marker.color` as hex strings from a CASE gives each series a fixed colour; a numeric column needs `marker.colorscale` instead."
   - "`mode: lines` connects points in row order: add `- sort:` on the sequence column and one `split` per route, or every point is joined into one zig-zag."
 pairings: [bar_beside, detail_table_below, kpi_strip_above]
 layout: {height: large, width_share: 0.67, row_role: hero}

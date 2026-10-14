@@ -59,7 +59,7 @@ transforms: [regrain, top_n_other, clip_p99, scattergl]
 gotchas:
   - "Always add `- sort: ?{ <x expression> ASC }`; without it the line connects points in storage order and zig-zags."
   - "`x` and `y` must be aggregated at the same grain: `date_trunc('day', ts)` with `count(*)`, never raw rows for a line."
-  - "To keep a series' colour the same on every chart, pin it with a CASE on the split column: `marker.color: ?{ CASE ... END }` for markers, `line.color: \"?{ CASE ... END }[0]\"` for lines. Without the `[0]` the line colour is silently ignored."
+  - "To give a series a fixed colour (a brand colour, or the same one on every dashboard), pin it with a CASE on the split column: `marker.color: ?{ CASE ... END }` for markers, `line.color: \"?{ CASE ... END }[0]\"` for lines. Without the `[0]` the line colour is silently ignored."
   - "A `split` adds a series per distinct value: check the column's cardinality bucket first (`few` is fine, `some` needs top-N)."
   - "`fill: tonexty` fills to the previous insight in the chart, so insight order in `charts.insights` is the stacking order; prefer `stackgroup` for stacked areas."
 pairings: [indicator_total_overlay, bar_line_dual_axis, detail_table_below]
