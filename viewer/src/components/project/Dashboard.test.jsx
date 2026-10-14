@@ -1885,6 +1885,76 @@ describe('Dashboard', () => {
       expect(chartHeights()).toEqual([504, 244, 244]);
     });
 
+    // jsdom has no layout, so compare the pixel heights Dashboard assigns: a
+    // stacked sub-row must be at least as tall as its items plus the 8px gaps.
+    const expectStackedItemsFitTheirSubRows = () => {
+      const px = el => parseFloat(el.style.height || el.style.minHeight);
+      for (const subRow of screen.getAllByTestId('dashboard-nested-subrow')) {
+        // eslint-disable-next-line testing-library/no-node-access
+        const items = [...subRow.querySelectorAll('[data-testid="dashboard-nested-item"]')];
+        const needed = items.reduce((sum, item) => sum + px(item), 0) + 8 * (items.length - 1);
+        expect(px(subRow)).toBeGreaterThanOrEqual(needed);
+      }
+    };
+
+    it('a nested sub-row that stacks grows its row so every stacked item keeps the 160px floor', () => {
+      mockDimensionWidth = 1600;
+      mountDashboard(
+        {
+          name: 'nested-stack-grows',
+          rows: [
+            {
+              height: 'medium',
+              items: [
+                { chart: 'c', width: 5 },
+                {
+                  // ~267px slot -> ~133px items -> both sub-rows stack.
+                  width: 1,
+                  rows: [
+                    { height: 'small', items: [{ chart: 'c' }, { chart: 'c' }] },
+                    { height: 'small', items: [{ chart: 'c' }, { chart: 'c' }] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      expectStackedItemsFitTheirSubRows();
+      const [hero, ...kpis] = chartHeights();
+      for (const kpi of kpis) expect(kpi).toBeGreaterThanOrEqual(160 - 8);
+      // Two sub-rows of 2 x 160 + 8, plus the 8px gap between them.
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.height).toBe('664px');
+      expect(screen.getByTestId('dashboard-nested-rows').style.minHeight).toBe('664px');
+      expect(hero).toBe(664 - 8);
+    });
+
+    it('a nested sub-row that stacks inside a stacked row grows its container', () => {
+      mockDimensionWidth = 900;
+      mountDashboard(
+        {
+          name: 'stacked-parent-nested-stack',
+          rows: [
+            {
+              height: 'small',
+              items: [
+                {
+                  // Six items across 900px are 150px each -> the sub-row stacks.
+                  rows: [{ height: 'small', items: Array.from({ length: 6 }, () => ({ chart: 'c' })) }],
+                },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      expect(screen.getByTestId('dashboard-nested-row').style.flexDirection).toBe('column');
+      expectStackedItemsFitTheirSubRows();
+      expect(screen.getByTestId('dashboard-nested-rows').style.minHeight).toBe(`${6 * 160 + 5 * 8}px`);
+    });
+
     it('L4: an integer sub-row height scales proportionally (128px = one weight unit)', () => {
       mountDashboard(
         {
