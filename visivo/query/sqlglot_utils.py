@@ -558,10 +558,9 @@ def schema_from_sql(
         Logger.instance().debug(f"Type annotation failed for SQL, skipping: {e}")
         # Continue without annotation - types will be None
 
-    # 5. Get output columns and types from the select list
+    # 5. Output columns and types; a set operation takes its names from its first branch
     column_schema = {}
-    select = expr.find(exp.Select)
-    for proj in select.expressions:
+    for proj in expr.find(exp.Query).selects:
         alias = proj.alias_or_name
         dtype = proj.type  # sqlglot.exp.DataType
         column_schema[alias] = dtype.this.value if dtype else None
