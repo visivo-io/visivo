@@ -189,7 +189,7 @@ describe('OnboardingChecklist', () => {
       );
       renderChecklist();
       fireEvent.click(screen.getByTestId('onb-checklist-connect_source'));
-      expect(mockNavigate).toHaveBeenCalledWith('/editor');
+      expect(mockNavigate).toHaveBeenCalledWith('/workspace');
       expect(createExploration).not.toHaveBeenCalled();
     });
   });

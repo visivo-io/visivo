@@ -38,7 +38,18 @@ async function gotoCompletedOnboardingState(page, overrides = {}) {
 test.describe('Onboarding checklist — auto-complete predicates', () => {
   test.describe.configure({ timeout: 60_000 });
 
-  test('build_model row flips only when all three sub-actions fire', async ({ page }) => {
+  test('build_model row is done once the project has a model', async ({ page }) => {
+    await gotoCompletedOnboardingState(page);
+    await expect(page.getByTestId('onb-checklist-build_model')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+  });
+
+  test('without a model, build_model flips only when all three sub-actions fire', async ({
+    page,
+  }) => {
+    await page.route('**/api/models/?*', route => route.fulfill({ json: { models: [] } }));
     await gotoCompletedOnboardingState(page);
     const row = page.getByTestId('onb-checklist-build_model');
     // Macro item: requires model_tab_created + sql_written + query_run.
@@ -157,16 +168,16 @@ test.describe('Onboarding checklist — auto-complete predicates', () => {
     // correctly). Clicking the empty circle adds the id to
     // persisted.checklist_checked and re-renders without a reload.
     await gotoCompletedOnboardingState(page);
-    const row = page.getByTestId('onb-checklist-build_model');
+    const row = page.getByTestId('onb-checklist-deploy');
     await expect(row).not.toHaveAttribute('aria-disabled', 'true');
-    await page.getByTestId('onb-row-check-build_model').click();
+    await page.getByTestId('onb-row-check-deploy').click();
     // No reload — useChecklistProgress listens for the same-tab
     // onboarding-state-changed CustomEvent and re-seeds stickySatisfied.
     await expect(row).toHaveAttribute('aria-disabled', 'true');
     const persisted = await page.evaluate(() =>
       JSON.parse(window.localStorage.getItem('visivo.onboarding.v1') || '{}')
     );
-    expect(persisted.checklist_checked).toContain('build_model');
+    expect(persisted.checklist_checked).toContain('deploy');
   });
 
   test('deploy row flips when deployed_at is set', async ({ page }) => {

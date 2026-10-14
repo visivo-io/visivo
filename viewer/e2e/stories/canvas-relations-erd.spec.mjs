@@ -68,15 +68,16 @@ test.describe('Relations ERD builder (VIS-1006)', () => {
     const errors = collectErrors(page);
 
     // Watch model API traffic: useModelColumns must hit the run-phase SCHEMA
-    // artifact (/api/models/<name>/schema/), not the heavier /data/ endpoint.
+    // artifact (/api/model-schemas/<name>/), not the heavier /data/ endpoint.
     const schemaCalls = [];
     const dataCalls = [];
-    const modelApi = /\/api\/models\/([^/]+)\/(schema|data)\//;
+    const schemaApi = /\/api\/model-schemas\/([^/?]+)\//;
+    const dataApi = /\/api\/models\/([^/]+)\/data\//;
     page.on('request', req => {
-      const m = modelApi.exec(req.url());
-      if (!m) return;
-      if (m[2] === 'schema') schemaCalls.push(m[1]);
-      else dataCalls.push(m[1]);
+      const schema = schemaApi.exec(req.url());
+      if (schema) schemaCalls.push(schema[1]);
+      const data = dataApi.exec(req.url());
+      if (data) dataCalls.push(data[1]);
     });
 
     await openWorkspace(page);

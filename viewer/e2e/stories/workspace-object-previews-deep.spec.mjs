@@ -5,13 +5,9 @@
  * table / insight + one source fallback). This spec hardens Track N by covering:
  *
  *   - EVERY preview type: chart, table, insight, input (control + value), model
- *     (read-only SQL editor + Run → result table). Markdown has NO standalone
- *     object in the integration project (markdowns are inline-in-dashboard), so
- *     its Library subsection is empty — asserted here, with the renderer itself
- *     covered by MarkdownPreview.test.jsx at the unit layer.
- *   - The Preview⇄Lineage lens toggle for each previewable type.
- *   - Preview-less types (source / dimension / metric / relation) muting the
- *     Preview lens option and defaulting to (and locking onto) Lineage.
+ *     (Run → result table), markdown (the named `welcome-note`).
+ *   - The Preview⇄Lineage lens toggle for every object type, including the
+ *     model-scoped dimension / metric listed under their model's Library row.
  *   - The "not found" empty state for a previewable type.
  *   - Cross-component interaction: selecting an object in the Library updates BOTH
  *     the middle-pane preview AND the right-rail Edit form (selection chip), and
@@ -28,10 +24,12 @@
  *   input   = show_markers   (single-select toggle)
  *   model   = local_test_table
  *   source  = local-sqlite
- *   metric  = total_value · dimension = x_rounded · relation = local_to_local
+ *   metric  = total_value (in daily_metrics) · dimension = x_rounded (in local_test_table)
+ *   relation = local_to_local · markdown = welcome-note
  */
 
 import { test, expect } from '@playwright/test';
+import { toggleLibraryRow } from '../helpers/workspace.mjs';
 
 // PLAYWRIGHT_BASE_URL must come before the :3001 fallback: :3001 is the SHARED
 // sandbox, so without it an unset VISIVO_BASE_URL silently routes this spec
@@ -42,12 +40,15 @@ const BASE_URL =
 /** Expand a Library per-type subsection (collapsed by default, VIS-828) and
  *  click the named row, returning the row locator. Idempotent: the header
  *  toggles, so only click it when the subsection is currently collapsed — this
- *  lets the helper be called repeatedly for the same type without re-collapsing. */
-async function openObject(page, type, name) {
-  const subsection = page.getByTestId(`library-subsection-${type}`);
+ *  lets the helper be called repeatedly for the same type without re-collapsing.
+ *  A model-scoped metric/dimension lives under its `model`'s row instead. */
+async function openObject(page, type, name, { model } = {}) {
+  const sectionType = model ? 'model' : type;
+  const subsection = page.getByTestId(`library-subsection-${sectionType}`);
   if ((await subsection.getAttribute('data-collapsed')) === 'true') {
-    await page.getByTestId(`library-subsection-${type}-header`).click();
+    await page.getByTestId(`library-subsection-${sectionType}-header`).click();
   }
+  if (model) await toggleLibraryRow(page, 'model', model);
   const row = page.getByTestId(`library-row-${type}-${name}`);
   await expect(row).toBeVisible({ timeout: 10000 });
   await row.click();
@@ -131,7 +132,7 @@ test.describe('Track N deep — every preview type renders', () => {
     ).toBeVisible({ timeout: 15000 });
   });
 
-  test('model preview shows a read-only SQL editor + Run gating, then a result table', async ({
+  test('model preview names its source + Run gating, then a result table', async ({
     page,
   }) => {
     await gotoWorkspace(page);
@@ -143,10 +144,8 @@ test.describe('Track N deep — every preview type renders', () => {
     });
     await expect(page.getByTestId('model-preview')).toBeVisible();
 
-    // The Monaco SQL editor mounts (read-only). Wait for the editor surface.
-    await expect(page.locator('[data-testid="model-preview"] .monaco-editor').first()).toBeVisible({
-      timeout: 20000,
-    });
+    // The SQL is edited in the right rail; the preview names the source it runs on.
+    await expect(page.getByTestId('model-preview')).toContainText('Source: local-duckdb');
 
     // Before Run, the results pane shows the "Run the query to preview results." prompt.
     const results = page.getByTestId('model-preview-results');
@@ -191,32 +190,34 @@ test.describe('Track N deep — every preview type renders', () => {
     await expect(page.getByTestId('model-preview')).not.toContainText('local-clickhouse');
   });
 
-  test('markdown has no standalone Library object in this project (subsection empty)', async ({
-    page,
-  }) => {
+  test('markdown preview renders the named markdown object', async ({ page }) => {
     await gotoWorkspace(page);
-    await page.getByTestId('library-subsection-markdown-header').click();
-    // The subsection renders its empty-state, not any row.
-    await expect(page.getByTestId('library-subsection-markdown-empty')).toBeVisible({
-      timeout: 10000,
+    await openObject(page, 'markdown', 'welcome-note');
+    await expect(page.getByTestId('workspace-middle-markdown-preview')).toBeVisible({
+      timeout: 15000,
     });
     await expect(
-      page.locator('[data-testid^="library-row-markdown-"]')
-    ).toHaveCount(0);
+      page.getByTestId('workspace-middle-markdown-preview').getByRole('heading', { name: 'Welcome' })
+    ).toBeVisible();
   });
 });
 
 test.describe('Track N deep — Preview⇄Lineage lens toggle per type', () => {
-  for (const { type, name } of [
+  for (const { type, name, model } of [
     { type: 'chart', name: 'simple-scatter-chart' },
     { type: 'table', name: 'new_table' },
     { type: 'insight', name: 'simple-scatter-insight' },
     { type: 'input', name: 'show_markers' },
     { type: 'model', name: 'local_test_table' },
+    { type: 'markdown', name: 'welcome-note' },
+    { type: 'source', name: 'local-sqlite' },
+    { type: 'dimension', name: 'x_rounded', model: 'local_test_table' },
+    { type: 'metric', name: 'total_value', model: 'daily_metrics' },
+    { type: 'relation', name: 'local_to_local' },
   ]) {
     test(`${type}: flips Preview → Lineage → Preview`, async ({ page }) => {
       await gotoWorkspace(page);
-      await openObject(page, type, name);
+      await openObject(page, type, name, { model });
 
       // Defaults to Preview for a previewable type.
       await expect(page.getByTestId(`workspace-middle-${type}-preview`)).toBeVisible({
@@ -231,33 +232,6 @@ test.describe('Track N deep — Preview⇄Lineage lens toggle per type', () => {
       // Flip back to Preview.
       await page.getByTestId('workspace-lens-picker-option-preview').click();
       await expect(page.getByTestId(`workspace-middle-${type}-preview`)).toBeVisible();
-    });
-  }
-});
-
-test.describe('Track N deep — preview-less types mute Preview + lock onto Lineage', () => {
-  for (const { type, name } of [
-    { type: 'source', name: 'local-sqlite' },
-    { type: 'dimension', name: 'x_rounded' },
-    { type: 'metric', name: 'total_value' },
-    { type: 'relation', name: 'local_to_local' },
-  ]) {
-    test(`${type}: defaults to Lineage, Preview option is disabled`, async ({ page }) => {
-      await gotoWorkspace(page);
-      await openObject(page, type, name);
-
-      // Parks on Lineage — no preview surface exists.
-      await expect(page.getByTestId(`workspace-middle-${type}-lineage`)).toBeVisible({
-        timeout: 15000,
-      });
-      await expect(page.getByTestId(`workspace-middle-${type}-preview`)).toHaveCount(0);
-
-      // The Preview lens option is muted (disabled) — clicking it cannot switch.
-      const previewOpt = page.getByTestId('workspace-lens-picker-option-preview');
-      await expect(previewOpt).toBeDisabled();
-      await previewOpt.click({ force: true }).catch(() => {});
-      await expect(page.getByTestId(`workspace-middle-${type}-lineage`)).toBeVisible();
-      await expect(page.getByTestId(`workspace-middle-${type}-preview`)).toHaveCount(0);
     });
   }
 });
@@ -306,24 +280,20 @@ test.describe('Track N deep — cross-component interaction (middle preview ⇄ 
     );
     await expect(page.getByTestId('right-rail-selection-chip')).toContainText('new_table');
 
-    // 3) Switch to a preview-less source — middle pane swaps to Lineage, the
-    //    Preview lens mutes, and the chip re-keys to the source. No stale table
-    //    preview or chart preview is left mounted.
+    // 3) Switch to a source — its preview mounts and the chip re-keys to the
+    //    source. No stale table preview or chart preview is left mounted.
     await openObject(page, 'source', 'local-sqlite');
-    await expect(page.getByTestId('workspace-middle-source-lineage')).toBeVisible({
+    await expect(page.getByTestId('workspace-middle-source-preview')).toBeVisible({
       timeout: 15000,
     });
     await expect(page.getByTestId('workspace-middle-table-preview')).toHaveCount(0);
     await expect(page.getByTestId('workspace-middle-chart-preview')).toHaveCount(0);
-    await expect(page.getByTestId('workspace-lens-picker-option-preview')).toBeDisabled();
     await expect(page.getByTestId('right-rail-selection-chip')).toHaveAttribute(
       'data-object-type',
       'source'
     );
 
-    // 4) Back to an insight — Preview lens un-mutes and the insight chart mounts,
-    //    proving the lens un-locks when moving from a preview-less type to a
-    //    previewable one (no stale "locked on lineage" state).
+    // 4) Back to an insight — the insight chart mounts and the chip re-keys.
     await openObject(page, 'insight', 'simple-scatter-insight');
     await expect(page.getByTestId('workspace-middle-insight-preview')).toBeVisible({
       timeout: 15000,

@@ -113,11 +113,16 @@ test.describe('View-mode flip detailed (VIS-788 / I-1)', () => {
     await expect(page.getByTestId('view-item-menu-row.0.item.0')).toBeVisible();
   });
 
-  test('kebab menu appears on hover for a MARKDOWN slot', async () => {
+  test('an inline MARKDOWN slot has no lineage subject, so no kebab', async () => {
     await openView(page);
-    // simple-dashboard row.2.item.0 is a markdown leaf.
-    await revealMenu(page, 'row.2.item.0');
-    await expect(page.getByTestId('view-item-menu-row.2.item.0')).toBeVisible();
+    // simple-dashboard row.2.item.0 is an inline, unnamed markdown: nothing to
+    // flip to or link to. Its chart neighbour in the same row still gets one.
+    const slot = page.locator('[data-canvas-path="row.2.item.0"]').first();
+    await slot.scrollIntoViewIfNeeded();
+    await slot.hover({ position: { x: 40, y: 20 } });
+    await expect(page.getByTestId('view-item-menu-row.2.item.0')).toHaveCount(0);
+    await revealMenu(page, 'row.2.item.1');
+    await expect(page.getByTestId('view-item-menu-row.2.item.1')).toBeVisible();
   });
 
   test('the kebab carries Copy link + Flip and the built-in share button is gone', async () => {

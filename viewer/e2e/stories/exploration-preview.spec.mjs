@@ -35,6 +35,7 @@
 import { test, expect } from '@playwright/test';
 import { typeSql, runQuery } from '../helpers/explorer.mjs';
 import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
+import { toggleLibraryRow } from '../helpers/workspace.mjs';
 
 test.use({ viewport: { width: 1280, height: 1600 } });
 
@@ -105,7 +106,7 @@ async function expandSourceTable(page) {
   if (!(await sourceBody.isVisible().catch(() => false))) await sourceHeader.click();
   await expect(sourceBody).toBeVisible({ timeout: 5000 });
 
-  await page.getByTestId(`library-row-source-${SOURCE}-toggle`).click();
+  await toggleLibraryRow(page, 'source', SOURCE);
   const tableRow = page.getByTestId(`library-source-table-${SOURCE}-${TABLE}`);
   await expect(tableRow).toBeVisible({ timeout: 15000 });
   return tableRow;
@@ -407,6 +408,10 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
     await page.getByTestId('exploration-promote-submit').click();
     await expect(page.getByTestId('exploration-promote-success')).toBeVisible({ timeout: 20000 });
     createdObjects.push({ segment: 'models', name: queryName }, { segment: 'insights', name: insightName });
+    createdObjects.push({
+      segment: 'charts',
+      name: await page.evaluate(() => window.useStore.getState().explorerChartName),
+    });
 
     // The run-on-save pipeline eventually populates the REAL (un-namespaced)
     // insightJobs entry. Root-caused via a live trace (integration-gate fix
@@ -457,6 +462,10 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
       { segment: 'models', name: queryNameA },
       { segment: 'insights', name: insightNameA }
     );
+    createdObjects.push({
+      segment: 'charts',
+      name: await page.evaluate(() => window.useStore.getState().explorerChartName),
+    });
 
     // Exploration B: a FRESH, UNRELATED exploration, bound to its OWN
     // model/column — genuinely independent content from A's. Pre-T3,
@@ -541,6 +550,10 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
       { segment: 'models', name: queryName },
       { segment: 'insights', name: insightName }
     );
+    createdObjects.push({
+      segment: 'charts',
+      name: await page.evaluate(() => window.useStore.getState().explorerChartName),
+    });
     await page.getByTestId('exploration-promote-cancel').click();
 
     // Wait for the promoted insight's REAL data (the poll bridge) so the
@@ -631,6 +644,10 @@ test.describe('Exploration live draft preview (Explore 2.0 Phase 4 — S2)', () 
       { segment: 'models', name: queryName },
       { segment: 'insights', name: insightName }
     );
+    createdObjects.push({
+      segment: 'charts',
+      name: await page.evaluate(() => window.useStore.getState().explorerChartName),
+    });
     await page.getByTestId('exploration-promote-cancel').click();
 
     // ~30s (15 x 2s) polling budget, plus margin.

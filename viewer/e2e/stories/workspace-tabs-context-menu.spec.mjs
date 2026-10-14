@@ -2,10 +2,10 @@
  * Story: Right-click "Open in new tab" across workspace surfaces (VIS-811 / Track O O-2).
  *
  * Real-cursor right-clicks (`click({ button: 'right' })`) on each surface:
- *   1. Library rows        — existing kebab/context menu, now wired to the store.
- *   2. Project Editor tile — shared OpenObjectContextMenu.
- *   3. Canvas item (chart leaf, scoped dashboard) — extended CanvasContextMenu.
- *   4. Lineage node        — shared OpenObjectContextMenu via React Flow.
+ *   1. Project Editor tile — shared OpenObjectContextMenu.
+ *   2. Canvas item (chart leaf, scoped dashboard) — extended CanvasContextMenu.
+ *   3. Lineage node        — shared OpenObjectContextMenu via React Flow.
+ * Library rows no longer offer it: clicking the row opens the object.
  *
  * Background-open convention: "Open in new tab" adds the tab WITHOUT stealing
  * focus from the current tab (per the Track O spec — clicking the new tab is
@@ -30,44 +30,8 @@ async function gotoWorkspace(page, path = '/workspace') {
   await expect(page.getByTestId('workspace-tab-strip')).toBeVisible({ timeout: 15000 });
 }
 
-async function expandSubsection(page, type) {
-  const header = page.getByTestId(`library-subsection-${type}-header`);
-  await expect(header).toBeVisible({ timeout: 10000 });
-  await header.hover();
-  await header.click();
-}
-
 test.describe('Right-click "Open in new tab" (VIS-811)', () => {
-  test('Library row → Open in new tab adds a background tab, focus unchanged', async ({
-    page,
-  }) => {
-    await gotoWorkspace(page);
-    await expandSubsection(page, 'chart');
-    const row = page.getByTestId('library-row-chart-simple-scatter-chart');
-    await expect(row).toBeVisible({ timeout: 10000 });
-
-    await row.hover();
-    await row.click({ button: 'right' });
-    const menu = page.getByTestId('library-row-chart-simple-scatter-chart-context-menu');
-    await expect(menu).toBeVisible();
-
-    const item = menu.getByText('Open in new tab');
-    await item.hover();
-    await item.click();
-
-    // The chart tab joins the strip in the background — no tab was active
-    // before (Project's Home owned the center), and none is active now.
-    const chartTab = page.getByTestId('workspace-tab-chart:simple-scatter-chart');
-    await expect(chartTab).toBeVisible();
-    await expect(chartTab).toHaveAttribute('data-active', 'false');
-    await expect(page.getByTestId('workspace-middle-project')).toBeVisible();
-
-    // Clicking the new tab is what switches the context.
-    const select = page.getByTestId('workspace-tab-select-chart:simple-scatter-chart');
-    await select.hover();
-    await select.click();
-    await expect(chartTab).toHaveAttribute('data-active', 'true');
-  });
+  test.use({ viewport: { width: 1600, height: 1000 } });
 
   test('Project Editor tile → Open / Open in new tab', async ({ page }) => {
     await gotoWorkspace(page);
@@ -136,8 +100,8 @@ test.describe('Right-click "Open in new tab" (VIS-811)', () => {
     await lineageSeg.click();
     await expect(page.getByTestId('lineage-canvas')).toBeVisible({ timeout: WAIT });
 
-    // Wait for React Flow to draw nodes, then right-click the first one.
-    const node = page.locator('.react-flow__node').first();
+    // The lens centres on the dashboard; right-click one of its charts beside it.
+    const node = page.getByTestId('rf__node-chart-fibonacci');
     await expect(node).toBeVisible({ timeout: WAIT });
     await node.hover();
     await node.click({ button: 'right' });
@@ -149,12 +113,10 @@ test.describe('Right-click "Open in new tab" (VIS-811)', () => {
     await openNew.click();
     await expect(menu).not.toBeVisible();
 
-    // A new background tab joined the strip; the dashboard tab keeps focus.
-    const tabCount = await page
-      .getByTestId('workspace-tab-strip')
-      .locator('[role="tab"]')
-      .count();
-    expect(tabCount).toBeGreaterThanOrEqual(2); // dashboard + the node's tab (project left the tab model)
+    // The chart joined the strip as a background tab; the dashboard tab keeps focus.
+    const chartTab = page.getByTestId('workspace-tab-chart:fibonacci');
+    await expect(chartTab).toBeVisible();
+    await expect(chartTab).toHaveAttribute('data-active', 'false');
     await expect(
       page.getByTestId(`workspace-tab-dashboard:${DASHBOARD}`)
     ).toHaveAttribute('data-active', 'true');

@@ -21,7 +21,7 @@ test.describe('Dashboard Viewing', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Should show navigation links (Explorer, Lineage, Editor, Project)
+    // Should show navigation links (Explorer, Workspace, Dashboards)
     await expect(page.getByText('Explorer').first()).toBeVisible({ timeout: 10000 });
 
     // Lock down nav hrefs (clean paths, not -new). TopNav and Home cards
@@ -30,8 +30,8 @@ test.describe('Dashboard Viewing', () => {
     // the Workspace shell's own route (`/explorer` still redirects there for
     // old links, but the live nav never sends anyone through the hop).
     await expect(page.locator('a[href="/workspace/exploration"]').first()).toBeVisible();
-    await expect(page.locator('a[href="/lineage"]').first()).toBeVisible();
-    await expect(page.locator('a[href="/editor"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/workspace"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/project"]').first()).toBeVisible();
 
     const realErrors = consoleErrors.filter(
       e => !e.includes('favicon') && !e.includes('DevTools') && !e.includes('react-cool')

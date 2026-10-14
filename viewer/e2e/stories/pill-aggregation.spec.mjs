@@ -30,6 +30,7 @@
 import { test, expect } from '@playwright/test';
 import { typeSql, runQuery } from '../helpers/explorer.mjs';
 import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
+import { toggleLibraryRow } from '../helpers/workspace.mjs';
 
 test.use({ viewport: { width: 1280, height: 1600 } });
 
@@ -79,7 +80,7 @@ async function expandSourceTable(page) {
   if (!(await sourceBody.isVisible().catch(() => false))) await sourceHeader.click();
   await expect(sourceBody).toBeVisible({ timeout: 5000 });
 
-  await page.getByTestId(`library-row-source-${SOURCE}-toggle`).click();
+  await toggleLibraryRow(page, 'source', SOURCE);
   const tableRow = page.getByTestId(`library-source-table-${SOURCE}-${TABLE}`);
   await expect(tableRow).toBeVisible({ timeout: 15000 });
   return tableRow;
@@ -161,6 +162,7 @@ test.describe('Pill aggregation grammar (Explore 2.0 Phase 3b — D10)', () => {
     await xSlot.getByTestId('pill-menu-trigger').click();
     await expect(page.getByTestId('pill-menu')).toBeVisible({ timeout: 5000 });
     await page.getByTestId('pill-menu-preset-avg').click();
+    await page.getByTestId('pill-menu-apply').click();
 
     await expect(xSlot).toContainText('AVG');
     await expect(xSlot).not.toContainText('SUM');
@@ -174,6 +176,7 @@ test.describe('Pill aggregation grammar (Explore 2.0 Phase 3b — D10)', () => {
     // Toggle back to a plain Dimension — the aggregate wrapper disappears.
     await xSlot.getByTestId('pill-menu-trigger').click();
     await page.getByTestId('pill-menu-preset-dimension').click();
+    await page.getByTestId('pill-menu-apply').click();
     await waitForBackendDraft(page, id, draft =>
       (draft.insights || []).some(insight =>
         Object.values(insight.props || {}).includes(`?{\${ref(${queryName}).${columnName}}}`)

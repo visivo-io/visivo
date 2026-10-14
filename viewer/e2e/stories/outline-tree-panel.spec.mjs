@@ -25,7 +25,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://localhost:3004';
+const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3004';
 // VIS-825 nested-layout coverage runs against the vis825 sandbox (:3009).
 // Override with OUTLINE_NESTED_BASE if a different port is in use.
 const NESTED_BASE = process.env.OUTLINE_NESTED_BASE || 'http://localhost:3009';
@@ -196,18 +196,15 @@ test.describe('Outline Tree Panel (VIS-793)', () => {
     await page.screenshot({ path: `${SCREENS}/vis793-step5-telemetry.png` });
   });
 
-  test('Criterion 6: empty state when no dashboard is scoped', async ({ page }) => {
-    // Unscoped workspace — no dashboard in the URL.
+  test('Criterion 6: no Outline tab when no dashboard is scoped', async ({ page }) => {
+    // Unscoped workspace — the Project destination owns the center, and the
+    // rail offers no tabs to a destination (only a dashboard gets an Outline).
     await page.goto(`${BASE}/workspace`);
     await page.waitForLoadState('networkidle');
-    await page.getByTestId('workspace-right-rail-tab-outline').click({
+    await expect(page.getByTestId('workspace-middle-project')).toBeVisible({
       timeout: WAIT_FOR_PAGE,
     });
-
-    // The "open a dashboard" no-dashboard messaging is shown.
-    await expect(
-      page.getByTestId('outline-tree-no-dashboard')
-    ).toBeVisible({ timeout: WAIT_FOR_PAGE });
+    await expect(page.locator('[data-testid^="workspace-right-rail-tab-"]')).toHaveCount(0);
 
     await page.screenshot({ path: `${SCREENS}/vis793-step6-empty-state.png` });
   });

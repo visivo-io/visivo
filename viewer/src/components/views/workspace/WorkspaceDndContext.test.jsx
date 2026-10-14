@@ -910,9 +910,9 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
     );
     expect(result).toBe('canvas_fill_slot');
     const [, nextConfig] = commitCanvasConfig.mock.calls[0];
-    // The empty slot is now chart c; the source row is left empty (valid as-is).
+    // The empty slot is now chart c; the emptied source row keeps one empty slot.
     expect(nextConfig.rows[0].items.map(it => it.chart)).toEqual(['ref(a)', 'ref(c)']);
-    expect(nextConfig.rows[1].items).toEqual([]);
+    expect(nextConfig.rows[1].items).toEqual([{ width: 1 }]);
     expect(emit).toHaveBeenCalledWith(
       'canvas_action',
       expect.objectContaining({ kind: 'fill_slot', toRowPath: 'row.0', toIndex: 1 })

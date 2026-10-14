@@ -6,8 +6,8 @@
  *
  *   1. <LineageCanvas> mounts in the middle pane lineage lens (no "coming
  *      soon" placeholder).
- *   2. Selector is `*` unscoped, `+<dashboard>` for a dashboard scope, and
- *      `+<item>` for an item scope.
+ *   2. Selector is `*` unscoped, `+<dashboard>+` for a dashboard scope, and
+ *      `+<item>+` for an item scope (the object's whole neighbourhood).
  *   3. "Show full project" widens the scope back to `*` WITHOUT changing the
  *      route, and the selector input clears.
  *   4. Selection sync round-trips: clicking a node in the DAG updates the
@@ -70,19 +70,9 @@ test.describe('Lineage Context Scope (VIS-779)', () => {
     await installTelemetryCapture(page);
 
     // Discover a dashboard name from the project so the story is data-driven.
-    await page.goto(`${BASE}/api/project/`);
-    const projectText = await page.locator('body').innerText();
-    let project;
-    try {
-      project = JSON.parse(projectText);
-    } catch {
-      project = null;
-    }
-    const dashboards =
-      project?.project_json?.dashboards || project?.dashboards || [];
-    dashboardName = dashboards[0]?.name;
-
-    test.skip(!dashboardName, 'No dashboards in the sandbox project');
+    const res = await page.request.get(`${BASE}/api/dashboards/`);
+    dashboardName = ((await res.json()).dashboards || [])[0]?.name;
+    expect(dashboardName, 'the sandbox project has a dashboard').toBeTruthy();
 
     await page.goto(`${BASE}/workspace/dashboard/${encodeURIComponent(dashboardName)}`);
     await page.waitForLoadState('networkidle');
@@ -108,14 +98,10 @@ test.describe('Lineage Context Scope (VIS-779)', () => {
     await screenshot(page, '01-lineage-lens-mounted');
   });
 
-  test('Step 2: scope is `+<dashboard>` for the dashboard scope', async () => {
-    await expect(page.getByTestId('lineage-canvas-scope-bar')).toBeVisible();
-    await expect(page.getByTestId('lineage-canvas-scope-pill')).toContainText(
-      dashboardName
-    );
-    await expect(page.getByTestId('lineage-canvas-reset-scope')).toBeVisible();
+  test('Step 2: scope is `+<dashboard>+` for the dashboard scope', async () => {
+    await expect(page.getByTestId('lineage-show-full-project')).toBeEnabled();
     const selectorInput = page.locator('input[placeholder*="source_name"]');
-    await expect(selectorInput).toHaveValue(`+${dashboardName}`);
+    await expect(selectorInput).toHaveValue(`+${dashboardName}+`);
     await screenshot(page, '02-dashboard-scope');
   });
 
@@ -129,18 +115,15 @@ test.describe('Lineage Context Scope (VIS-779)', () => {
       pane: 'lineage',
       scope: 'dashboard',
       dashboardName,
-      selector: `+${dashboardName}`,
+      selector: `+${dashboardName}+`,
     });
   });
 
   test('Step 3: "Show full project" widens scope to `*` without changing route', async () => {
-    await page.getByTestId('lineage-canvas-reset-scope').click();
+    await page.getByTestId('lineage-show-full-project').click();
 
-    // The reset affordance vanishes (we are now at the full-project scope)…
-    await expect(page.getByTestId('lineage-canvas-reset-scope')).toHaveCount(0);
-    await expect(page.getByTestId('lineage-canvas-scope-pill')).toContainText(
-      /full project/i
-    );
+    // The affordance disables (we are now at the full-project scope)…
+    await expect(page.getByTestId('lineage-show-full-project')).toBeDisabled();
     // …the selector input clears (`*` normalises to the empty "show all" state)…
     const selectorInput = page.locator('input[placeholder*="source_name"]');
     await expect(selectorInput).toHaveValue('');
@@ -160,12 +143,8 @@ test.describe('Lineage Context Scope (VIS-779)', () => {
     await page.locator('.react-flow__node').first().waitFor({ timeout: WAIT_FOR_PAGE });
     await screenshot(page, '05-manual-selector-override');
     // Clear so it doesn't pollute the next step.
-    const clearBtn = page.getByRole('button', { name: /^clear$/i }).first();
-    if (await clearBtn.isVisible().catch(() => false)) {
-      await clearBtn.click();
-    } else {
-      await selectorInput.fill('');
-    }
+    await page.getByTestId('lineage-show-full-project').click();
+    await expect(selectorInput).toHaveValue('');
   });
 
   test('Step 4: clicking a node round-trips selection into the workspace', async () => {
@@ -191,11 +170,8 @@ test.describe('Lineage Context Scope (VIS-779)', () => {
       timeout: WAIT_FOR_PAGE,
     });
     await expect(page.getByTestId('lineage-canvas')).toBeVisible();
-    await expect(page.getByTestId('lineage-canvas-scope-pill')).toContainText(
-      SUBJECT_CHART
-    );
     await expect(page.locator('input[placeholder*="source_name"]')).toHaveValue(
-      `+${SUBJECT_CHART}`
+      `+${SUBJECT_CHART}+`
     );
     await expect(
       page.getByText(/Per-object preview coming soon \(Track N\)/i)
@@ -204,17 +180,16 @@ test.describe('Lineage Context Scope (VIS-779)', () => {
   });
 
   test('Step 8: flip-popover "Expand" opens the object in the universal Lineage lens', async () => {
-    // Start from a clean dashboard route so the Library is visible and the
-    // dashboard URL param is still present (the route must NOT change when
-    // Expand re-scopes to the object).
+    // Start from a clean dashboard route so the Library is visible.
     await page.goto(`${BASE}/workspace/dashboard/${encodeURIComponent(dashboardName)}`);
     await page.waitForLoadState('networkidle');
 
-    // Library per-type subsections are collapsed by default (VIS-828); the chart
-    // rows aren't rendered until the Charts subsection is expanded.
-    await page.getByTestId('library-subsection-chart-header').click();
-
+    // Library per-type subsections are collapsed by default (VIS-828), but the
+    // Library reveals the active object, so Step 4's chart may have expanded it.
     const row = page.getByTestId(`library-row-chart-${SUBJECT_CHART}`);
+    if (!(await row.isVisible().catch(() => false))) {
+      await page.getByTestId('library-subsection-chart-header').click();
+    }
     await row.waitFor({ timeout: WAIT_FOR_PAGE });
     // Center the row in the viewport BEFORE opening the flip-popover. The popover
     // renders in a floating portal anchored below the row; if the row sits near
@@ -234,23 +209,18 @@ test.describe('Lineage Context Scope (VIS-779)', () => {
     await expandBtn.click();
 
     // The chart opens in the universal Lineage lens, scoped to ITS OWN DAG —
-    // not the dashboard's — and the route is unchanged (E-1 requires it).
+    // not the dashboard's — as its own URL-addressable tab.
     await expect(page.getByTestId('workspace-middle-chart-lineage')).toBeVisible({
       timeout: WAIT_FOR_PAGE,
     });
     await expect(page.getByTestId('lineage-canvas')).toBeVisible();
-    await expect(page.getByTestId('lineage-canvas-scope-pill')).toContainText(
-      SUBJECT_CHART
-    );
     await expect(page.locator('input[placeholder*="source_name"]')).toHaveValue(
-      `+${SUBJECT_CHART}`
+      `+${SUBJECT_CHART}+`
     );
     await expect(
       page.getByText(/Per-object preview coming soon \(Track N\)/i)
     ).toHaveCount(0);
-    await expect(page).toHaveURL(
-      new RegExp(`/workspace/dashboard/${dashboardName}`)
-    );
+    await expect(page).toHaveURL(new RegExp(`/workspace\\?edit=chart%3A${SUBJECT_CHART}$`));
     await screenshot(page, '08b-universal-lineage-expanded');
   });
 

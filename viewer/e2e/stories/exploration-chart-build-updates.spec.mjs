@@ -67,6 +67,10 @@ async function drag(page, srcSel, dstSel) {
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 4 });
   await page.waitForTimeout(150);
   await page.mouse.up();
+  // Let the drop land and the preview catch up before the next gesture, as a
+  // user does: a drag started in the instant after a drop is dropped itself.
+  await expect(dst.getByTestId('pill-menu-trigger')).toBeVisible({ timeout: 15000 });
+  await expectLiveChart(page, `after dropping on ${dstSel}`);
 }
 
 /** The preview must be a rendered chart — never the failure panel, and never
@@ -206,6 +210,7 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
     // says so in its tooltip), so apply a preset first — which is itself an
     // edit the chart has to survive.
     await page.getByTestId('pill-menu-preset-sum').click();
+    await page.getByTestId('pill-menu-apply').click();
     await expectLiveChart(page, 'after applying the SUM preset to y');
     await expect(ySlot).toContainText('SUM');
 
@@ -417,6 +422,7 @@ test.describe('Chart-building keeps the preview in sync with every edit', () => 
     await ySlot.getByTestId('pill-menu-trigger').click();
     await expect(page.getByTestId('pill-menu')).toBeVisible({ timeout: 10000 });
     await page.getByTestId('pill-menu-preset-sum').click();
+    await page.getByTestId('pill-menu-apply').click();
 
     await expect
       .poll(() => executeCalls.length, {

@@ -29,6 +29,7 @@
 
 import { test, expect } from '@playwright/test';
 import { BASE_URL, apiBase } from '../helpers/sandbox.mjs';
+import { toggleLibraryRow } from '../helpers/workspace.mjs';
 
 test.use({ viewport: { width: 1280, height: 1600 } });
 
@@ -87,7 +88,7 @@ async function expandSourceTable(page) {
   // sandbox (integration-gate fix cycle). Mirrors the `sourceBody` check
   // just above.
   if (!(await tableRow.isVisible().catch(() => false))) {
-    await page.getByTestId(`library-row-source-${SOURCE}-toggle`).click();
+    await toggleLibraryRow(page, 'source', SOURCE);
   }
   await expect(tableRow).toBeVisible({ timeout: 15000 });
   return tableRow;
@@ -227,9 +228,12 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     const collisionName = `e2e_saveasmetric_collision_${Date.now()}`;
     // Pre-create a metric under that name directly via the API so the
     // collision is deterministic, independent of the suggested-name logic.
-    await page.request.post(`${apiBase}/api/metrics/${encodeURIComponent(collisionName)}/`, {
-      data: { expression: 'COUNT(*)' },
-    });
+    const created = await page.request.post(
+      `${apiBase}/api/metrics/${encodeURIComponent(collisionName)}/`,
+      // A project-level metric must reference a model to be saved at all.
+      { data: { expression: 'COUNT(${ref(local_test_table).x})' } }
+    );
+    expect(created.ok()).toBe(true);
     createdMetrics.push(collisionName);
     // The collision check (`saveAsMetricFlow.js`) reads the frontend's OWN
     // cached `state.metrics`, which a raw `page.request.post` never
@@ -400,6 +404,7 @@ test.describe('Save as metric (Explore 2.0 Phase 4 — 06 §4/§8)', () => {
     // Toggle to plain Dimension (no aggregation).
     await xSlot.getByTestId('pill-menu-trigger').click();
     await page.getByTestId('pill-menu-preset-dimension').click();
+    await page.getByTestId('pill-menu-apply').click();
 
     await xSlot.getByTestId('pill-menu-trigger').click();
     await expect(page.getByTestId('pill-menu-save-as-metric')).toBeDisabled();

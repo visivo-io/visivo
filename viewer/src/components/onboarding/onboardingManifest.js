@@ -38,14 +38,9 @@ export const CHECKLIST_ITEMS = [
     id: 'connect_source',
     label: 'Connect a data source',
     why: 'A Source is the connection to where your data already lives.',
-    route: '/editor',                       // /editor redirects into the
-                                            // Workspace (`/workspace`), where
-                                            // the Library's "New" button is
-                                            // this target's live anchor
-                                            // (B14 part 1, Explore 2.0 Phase 2
-                                            // — `library-new-object-button`
-                                            // in Library.jsx carries
-                                            // `data-onb-target="source-create-button"`).
+    // Not `/editor`: the coach matches the pathname it lands on, and /editor
+    // redirects here. The anchor is the Library's "New" button (Library.jsx).
+    route: '/workspace',
     target: 'source-create-button',
     weight: 10,
     predicate: ({ project, sources, persisted }) =>
@@ -157,7 +152,7 @@ export const CHECKLIST_ITEMS = [
     id: 'build_dashboard',
     label: 'Build a Dashboard',
     why: 'Arrange Insights and Inputs into a single page.',
-    route: '/editor',
+    route: '/workspace',
     target: 'source-create-button',
     weight: 40,
     // Multi-step flow: Step 1 anchors on the always-mounted FAB so the
@@ -202,7 +197,7 @@ export const CHECKLIST_ITEMS = [
     id: 'connect_cloud',
     label: 'Connect Visivo Cloud',
     why: 'Sign in to push your dashboard out so a teammate can open it.',
-    route: '/editor',
+    route: '/workspace',
     // Live anchor: TopNav's Commit/Deploy buttons both carry
     // `data-onb-target="top-nav-deploy"` (B14 part 1, Explore 2.0 Phase 2) —
     // they're mutually exclusive by dirty state so either covers this.
@@ -217,7 +212,7 @@ export const CHECKLIST_ITEMS = [
     id: 'deploy',
     label: 'Deploy to share',
     why: 'Run visivo deploy to push to cloud.',
-    route: '/editor',
+    route: '/workspace',
     target: 'top-nav-deploy',
     weight: 60,
     // BranchSelection.jsx writes persisted.deployed_at on a successful

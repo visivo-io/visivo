@@ -198,7 +198,7 @@ test.describe('Commit-broadcast reload symmetry across /workspace, /project, /ru
     // exactly the scenario D7 describes (User A commits from /workspace;
     // User B, or the same user's second tab, sits on /project or /runs).
     const dirtyRes = await pageWorkspace.request.post(`${apiBase}/api/models/${MODEL_NAME}/`, {
-      data: { sql: 'select 1' },
+      data: { sql: 'select 1 as one' },
     });
     expect(dirtyRes.ok()).toBe(true);
     const commitRes = await pageWorkspace.request.post(`${apiBase}/api/commit/`);
