@@ -106,6 +106,58 @@ class CoreClient:
             raise RemoteProjectError(_why(f"read {type_key}", url, response))
         return (response.json() or {}).get(type_key) or []
 
+    def render_permit(self, dashboard):
+        """``(token, path)`` for screenshotting ``dashboard`` (VIS-1485).
+
+        The token is short-lived, read-only and account-locked. Not a user
+        JWT: a JWT carries no account, so core's
+        ``get_account_from_request`` would resolve whatever account the page's
+        own fetches asked for. This carries the operation, which locks it the
+        same way the agent's other calls are locked.
+
+        The PATH comes back from core too. Core knows the account slug, the
+        stage and the project name; assembling them here would be three more
+        strings a prompt-injected agent could influence, to build the one URL
+        a credentialed browser then loads. A dashboard core does not have is a
+        404, before any browser starts.
+        """
+        url = f"{self.base_url}/api/projects/{self.project_id}/agent/render-token/"
+        response = self.session.post(
+            url, json={"dashboard": dashboard}, timeout=SAVE_TIMEOUT_SECONDS
+        )
+        if response.status_code not in (200, 201):
+            raise RemoteProjectError(_why(f"get a render token for '{dashboard}'", url, response))
+        body = response.json() or {}
+        return body.get("token"), body.get("path")
+
+    def capture_upload(self, filename):
+        """``{id, name, upload_url}`` for one screenshot.
+
+        Core picks the object path and signs it, so the runner can neither
+        choose where the bytes land nor reach another account's prefix.
+        """
+        url = f"{self.base_url}/api/projects/{self.project_id}/agent/captures/"
+        response = self.session.post(
+            url, json=[{"filename": filename}], timeout=SAVE_TIMEOUT_SECONDS
+        )
+        if response.status_code not in (200, 201):
+            raise RemoteProjectError(_why("get an upload URL for a screenshot", url, response))
+        slots = response.json() or []
+        if not slots:
+            raise RemoteProjectError("Core signed no upload URL for the screenshot.")
+        return slots[0]
+
+    def put(self, upload_url, body, content_type):
+        """Bytes straight to storage, not through core."""
+        response = self.session.put(
+            upload_url,
+            data=body,
+            headers={"Content-Type": content_type},
+            timeout=SAVE_TIMEOUT_SECONDS,
+        )
+        if response.status_code not in (200, 201, 204):
+            raise RemoteProjectError(_why("upload the screenshot", upload_url, response))
+
     def save(self, type_key, name, config):
         url = self._url(f"/api/{type_key}/{name}/")
         response = self.session.post(url, json=config, timeout=SAVE_TIMEOUT_SECONDS)
@@ -166,6 +218,10 @@ class RemoteProject:
 
     def __init__(self, client, working_dir=None):
         self._client = client
+        # Read by the screenshot tool, which needs core itself rather than a
+        # manager. Named so `getattr(app, "core_client", None)` is how a tool
+        # asks "am I in cloud?" without importing this module.
+        self.core_client = client
         self._working_dir = working_dir
         self.run_manager = RemoteRunManager(client)
         self._managers = {}
