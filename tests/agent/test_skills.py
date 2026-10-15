@@ -572,3 +572,60 @@ class TestExploreASource:
             "write_chart",
         ]
         assert [body.index(step) for step in steps] == sorted(body.index(step) for step in steps)
+
+
+class TestLookAtWhatYouBuilt:
+    """VIS-1488: a tool the agent never reaches for is a tool that does not
+    exist. The capture is only worth building if looking at the result becomes
+    part of how the agent works."""
+
+    def test_it_is_on_demand_and_attached_to_both_ends_of_the_loop(self):
+        """`write_dashboard` so it arrives when there is something to look at,
+        `screenshot_dashboard` so a model that found the tool on its own still
+        learns how to read the result."""
+        skill = next(
+            s for s in skills.packaged() if s["name"] == "view-and-analyze-dashboard-screenshot"
+        )
+
+        assert skill["always"] is False
+        assert set(skill["tools"]) == {"write_dashboard", "screenshot_dashboard"}
+
+    def test_it_rides_along_with_the_first_dashboard_write(self, integration_app):
+        from visivo.agent import tools
+        from visivo.agent.actions import attributed_to
+
+        tools.reset_attachments()
+        try:
+            with attributed_to("agent", "look-1"):
+                wrapped = tools.call(
+                    integration_app,
+                    "write_dashboard",
+                    {"config": {"name": "fresh_eyes", "rows": []}},
+                )
+        finally:
+            tools.reset_attachments()
+
+        assert "view-and-analyze-dashboard-screenshot" in [
+            s["name"] for s in wrapped["skills_attached"]
+        ]
+
+    def test_it_says_what_to_actually_look_for(self):
+        """Generic encouragement to "check your work" changes nothing. The
+        value is in naming the failures that are invisible in YAML."""
+        body = skills.body("view-and-analyze-dashboard-screenshot")
+
+        for symptom in ("empty", "overlap", "wrapped", "spinner"):
+            assert symptom in body.lower(), symptom
+
+    def test_it_explains_the_escape_hatch_for_a_tall_dashboard(self):
+        """A scaled-down capture is the one case where the image itself is
+        misleading, so the skill has to name the way out."""
+        body = skills.body("view-and-analyze-dashboard-screenshot")
+
+        assert "full_page: false" in body
+        assert "scale" in body
+
+    def test_it_says_to_fix_and_re_check_rather_than_report(self):
+        body = skills.body("view-and-analyze-dashboard-screenshot")
+
+        assert "screenshot it again" in body
