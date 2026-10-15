@@ -62,8 +62,22 @@ redshift-connector = "^2.1.8"
 clickhouse-sqlalchemy = ">=0.3.0"
 orjson = ">=3.10.0"
 pydantic-ai-slim = {extras = ["anthropic", "google", "openai"], version = "^2.51.0"}
+# Dashboard screenshots for the agent (VIS-1484). Optional because the browser
+# behind playwright is a 260MB download and most people never ask for one;
+# `pip install 'visivo[screenshot]'` opts in, and the tool says so when it is
+# missing. Pillow is only for the one downscale in agent/screenshot.py.
+playwright = {version = ">=1.56.0", optional = true}
+pillow = {version = ">=10.0.0", optional = true}
+
+[tool.poetry.extras]
+screenshot = ["playwright", "pillow"]
 
 [tool.poetry.group.dev.dependencies]
+# Also in the `screenshot` extra. Here as well because tests/agent/test_screenshot.py
+# exercises the downscale and the missing-package refusal, so CI needs them even
+# though a user installing visivo does not.
+playwright = ">=1.56.0"
+pillow = ">=10.0.0"
 black = ">=25.1.0"
 codespell = ">=2.2.4"
 factory-boy = ">=3.2.1"
