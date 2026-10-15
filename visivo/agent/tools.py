@@ -611,6 +611,17 @@ def _object_of(name, arguments):
     return {"type": singular, "name": target} if isinstance(target, str) else None
 
 
+def _image_url_of(result):
+    """Where a tool's picture can be seen, if it made one.
+
+    Read off the result here rather than passed in by the handler: recording
+    lives in this function, and a handler that had to remember to log its own
+    image is a handler that eventually forgets.
+    """
+    value = result.return_value if images.is_image_result(result) else result
+    return value.get("image_url") if isinstance(value, dict) else None
+
+
 def _as_refusal(name, arguments, error):
     """Every handler failure reaches the agent as a ``ToolError``: a timeout
     as its own message, anything unexpected prefixed with the tool and the
@@ -655,7 +666,7 @@ def call(app, name, arguments=None):
     if isinstance(result, dict) and result.get("valid") is False:
         action_log().record(name, obj=obj, outcome="error", error=result.get("error"))
     else:
-        action_log().record(name, obj=obj)
+        action_log().record(name, obj=obj, image_url=_image_url_of(result))
     return _with_attached_skills(name, result)
 
 
