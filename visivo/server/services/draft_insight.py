@@ -162,15 +162,50 @@ def sql_literal(value):
 
 
 def render_input_value(value, accessor):
-    """A selection as it appears in SQL: every value for ``.values``, else
-    the one element the accessor names."""
+    """A selection as it appears in SQL, the way the viewer substitutes it:
+    ``.value`` and ``.values`` quoted, ``.min``/``.max``/``.first``/``.last``
+    raw. A date range is written ``'${ref(dates).min}'::date`` for that reason,
+    and a preview has to fail where the dashboard would."""
     if not isinstance(value, (list, tuple)):
         return sql_literal(value)
     if accessor == "values":
         return ", ".join(sql_literal(v) for v in value)
     if not value:
         return "NULL"
-    return sql_literal(get_accessor_sample_value(accessor, list(value), list(value)))
+    element = get_accessor_sample_value(accessor, list(value), list(value))
+    if accessor in ("min", "max", "first", "last"):
+        return element
+    return sql_literal(element)
+
+
+def default_selection(input_obj):
+    """What the viewer selects on first load, when the input states it as
+    literals: a single-select's ``value``, a multi-select's ``values``, or a
+    range's ``[start, end]``. ``None`` when the default is a query or absent.
+
+    The parse-time sampler is not a stand-in for this: it exists to make SQL
+    parse, so it returns the default ``start`` for both ``.min`` and ``.max`` of
+    a date range, and a preview filtered on it returned the wrong window.
+    """
+
+    def literal(value):
+        return isinstance(value, (str, int, float, bool)) and not (
+            isinstance(value, str) and value.lstrip().startswith("?{")
+        )
+
+    default = getattr(getattr(input_obj, "display", None), "default", None)
+    if default is None:
+        return None
+    value = getattr(default, "value", None)
+    if literal(value):
+        return value
+    values = getattr(default, "values", None)
+    if isinstance(values, list) and all(literal(v) for v in values):
+        return values
+    start, end = getattr(default, "start", None), getattr(default, "end", None)
+    if literal(start) and literal(end):
+        return [start, end]
+    return None
 
 
 def substitute_inputs(flask_app, node, input_values, substituted):
@@ -188,6 +223,8 @@ def substitute_inputs(flask_app, node, input_values, substituted):
                 rendered_for[key] = None
             elif name in input_values:
                 rendered_for[key] = render_input_value(input_values[name], accessor)
+            elif default_selection(input_obj) is not None:
+                rendered_for[key] = render_input_value(default_selection(input_obj), accessor)
             else:
                 rendered_for[key] = str(
                     get_sample_value_for_input(input_obj, flask_app.output_dir, accessor)
