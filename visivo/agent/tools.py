@@ -135,6 +135,11 @@ def _write_handler(type_key):
         result = {"name": name, "status": "draft"}
         if outcome:
             result["change"] = outcome
+        from visivo.agent.charting import lint
+
+        found = lint.warnings(app, type_key, config)
+        if found:
+            result["warnings"] = found
         return result
 
     return handler
