@@ -62,6 +62,7 @@ families:
     score:
       - {when: "dimensions == 2 and not two few dimensions", delta: 0.2, reason: "two dimensions too long to stack or group read as a grid"}
       - {when: "intent in (compare, distribution)", delta: 0.2, reason: "a grid compares every pair of values at once"}
+    warnings: ["Plotly's named Blues, Greens, Greys, YlGnBu and YlOrRd scales run dark to light, so the highest values come out palest; add `reversescale: true`, or use Reds or Viridis."]
     skill: charts/heatmap
 
   - name: distribution
@@ -76,6 +77,7 @@ families:
     score:
       - {when: "intent == relationship", delta: 0.3, reason: "two dense numeric columns read as a density"}
       - {when: "intent == distribution and dimensions == 2", delta: 0.2, reason: "a joint distribution of two numbers"}
+    warnings: ["Plotly's named Blues, Greens, Greys, YlGnBu and YlOrRd scales run dark to light, so the highest values come out palest; add `reversescale: true`, or use Reds or Viridis."]
     skill: charts/density2d
 
   - name: part_of_whole
@@ -122,6 +124,7 @@ families:
     hard_gates: {requires: [region boundaries]}
     score:
       - {when: "intent == geo", delta: 0.6, reason: "the geography carries the meaning"}
+    warnings: ["Plotly's named Blues, Greens, Greys, YlGnBu and YlOrRd scales run dark to light, so the highest values come out palest; add `reversescale: true`, or use Reds or Viridis."]
     skill: charts/geo_region
 
   - name: geo_point
@@ -137,6 +140,7 @@ families:
     hard_gates: {requires: [has geo_point]}
     score:
       - {when: "intent == geo", delta: 0.3, reason: "density shows where points concentrate"}
+    warnings: ["Plotly's named Blues, Greens, Greys, YlGnBu and YlOrRd scales run dark to light, so the highest values come out palest; add `reversescale: true`, or use Reds or Viridis."]
     skill: charts/geo_density
 
   - name: financial
