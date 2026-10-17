@@ -385,6 +385,58 @@ def _check_input_wiring_handler(app, arguments):
     return {"complete": not gaps, "gaps": gaps}
 
 
+def _model_dialects(app, cards, named):
+    """``({model: dialect}, [models no source resolved for])``: each model's
+    own source (draft first), else ``named``, else the project's default."""
+    from visivo.server.source_resolution import find_model, find_source, source_for_model
+
+    defaults = getattr(getattr(app, "project", None), "defaults", None)
+    default = find_source(app, getattr(defaults, "source_name", None))
+    dialects, unresolved = {}, []
+    models = {c.get("model") for c in cards or [] if isinstance(c, dict) and c.get("model")}
+    for name in sorted(models):
+        model = find_model(app, name)
+        source = source_for_model(app, model, app.output_dir) if model is not None else None
+        source = source or named or default
+        if source is None:
+            unresolved.append(name)
+        else:
+            dialects[name] = source.get_sqlglot_dialect()
+    return dialects, unresolved
+
+
+def _score_candidates_handler(app, arguments):
+    from pydantic import ValidationError
+
+    from visivo.agent.charting.candidates import CandidatesError, score_candidates
+    from visivo.agent.data_tools import MAX_QUERY_ROWS, _source_argument
+
+    named = _source_argument(app, arguments) if arguments.get("source") else None
+    cards = arguments.get("cards")
+    dialects, unresolved = _model_dialects(app, cards if isinstance(cards, list) else [], named)
+    try:
+        result = score_candidates(
+            cards,
+            stats=arguments.get("stats"),
+            intent=arguments.get("intent"),
+            dialect=dialects,
+            max_rows=MAX_QUERY_ROWS,
+        )
+    except CandidatesError as error:
+        raise ToolError(str(error))
+    except ValidationError as error:
+        problems = [
+            f"{'.'.join(str(p) for p in e['loc']) or 'input'}: {e['msg']}" for e in error.errors()
+        ]
+        raise ToolError("score_candidates: " + "; ".join(problems[:3]))
+    if unresolved:
+        result["warnings"].append(
+            f"no source resolved for {', '.join(unresolved)} and the project has no default "
+            "source, so its expressions are DuckDB SQL; pass 'source'"
+        )
+    return result
+
+
 _HAND_WRITTEN = {
     "recommend_charts": Tool(
         name="recommend_charts",
@@ -487,6 +539,52 @@ _HAND_WRITTEN = {
             "required": ["inputs", "insights"],
         },
         handler=_check_input_wiring_handler,
+    ),
+    "score_candidates": Tool(
+        name="score_candidates",
+        description=(
+            "Decide what is worth showing before choosing charts. Pass the shape "
+            "cards from profile_columns/profile_model (each with its model) and, "
+            "once you have them, GROUP BY stats from query_source; get back the "
+            "Metrics, Dimensions and Relations to write first (semantic_layer), a "
+            "varied portfolio of candidates (a KPI set, a trend, breakdowns, a "
+            "distribution or relationship) each with a `request` for "
+            "recommend_charts, the detail_table when an identifier exists, and "
+            "stats_wanted: the queries that would sharpen the scores."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "cards": {
+                    "type": "array",
+                    "description": "Shape cards with a 'model' field.",
+                    "items": {"type": "object"},
+                },
+                "stats": {
+                    "type": "object",
+                    "description": (
+                        "groups: [{model, by (a column, or [a, b] for a cross-tab), metric "
+                        "(a semantic_layer metric name), grain?, rows: [[key, value], ...], "
+                        "[[a, b, value], ...] or query_source rows}]; correlations: [{model, "
+                        "columns: [a, b], r, method}] as stats_wanted asked, or {model, "
+                        "columns, pairs: [[a, b], ...]}."
+                    ),
+                },
+                "intent": {
+                    "type": "string",
+                    "description": "What the user asked for, to lead with: trend, compare, rank, composition, geo, distribution, relationship, kpi.",
+                },
+                "source": {
+                    "type": "string",
+                    "description": (
+                        "The source of models not written yet. A written model's "
+                        "expressions use its own source's dialect, else the default source's."
+                    ),
+                },
+            },
+            "required": ["cards"],
+        },
+        handler=_score_candidates_handler,
     ),
     "recommend_layout": Tool(
         name="recommend_layout",

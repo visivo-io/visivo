@@ -1,0 +1,85 @@
+metric_by_role:
+  - roles: [identifier]
+    aggs: [count_distinct]
+    why: an id is counted, never summed or averaged
+  - roles: [numeric_continuous, numeric_discrete]
+    additive: [true]
+    aggs: [sum, avg]
+    heavy_tail_agg: median
+    why: the total is the business number; the average is the sanity check
+  - roles: [numeric_continuous, numeric_discrete]
+    additive: [false, null]
+    aggs: [avg]
+    heavy_tail_agg: median
+    why: a sum of rates, prices or scores is meaningless
+  - roles: [boolean]
+    aggs: [rate]
+    why: a boolean is a rate
+  - roles: [time]
+    aggs: []
+    duration_agg: avg
+    why: time is the axis; two time columns give an elapsed-time metric
+  - roles: [categorical, text, geo_region, geo_point]
+    aggs: []
+    why: a label is grouped by or counted, never aggregated
+
+heavy_tail: {skew_over: 1, p99_over_median: 5}
+
+primary_metric:
+  words: [amount, revenue, sales, fare, total, price, cost, quantity, units]
+
+pairing_limits:
+  categoricals_with_time: 1
+  chart_max_cells: 480
+  pivot_max_cells: 10000
+
+split_vs_input:
+  top_n_min_share: 0.8
+
+reductions:
+  top_n_other:
+    n: 5
+    n_max: 7
+    when: a categorical at the input bucket whose top values hold most rows, kept as a split
+  bucket:
+    bins: 10
+    when: a continuous column used as a dimension
+  regrain:
+    points_min: 12
+    points_max: 600
+    when: a time axis with too many points at its natural grain
+  collapse_rare:
+    min_share: 0.02
+    when: a part-of-whole chart (pie, funnel, flow), so every slice or node keeps a visible mark
+  clip_p99:
+    when: a distribution with a heavy tail
+
+scoring:
+  high_nulls: 0.3
+  derived_r: 0.95
+  scatter_min_r: 0.5
+  banded_min_r: 0.3
+  anomaly_z: 3
+  material_change: 0.2
+  dependent_lambda: 0.8
+  top_share_of: 3
+  seasonality_lags: {hour: 24, day: 7, month: 12}
+  unmeasured: 0.2
+  penalties:
+    high_nulls: 0.5
+    constant_metric: 0
+    cardinality_one: 0
+    derived_correlation: 0.2
+    dependent_pair: 0
+
+portfolio:
+  max_candidates: 7
+  min_score: 0.2
+  kpi_metrics: {min: 2, max: 4}
+  slots:
+    - {name: kpi, intents: [kpi], max: 1}
+    - {name: trend, intents: [trend], max: 1}
+    - {name: breakdown, intents: [compare, rank, composition, geo], max: 2}
+    - {name: spread, intents: [distribution, relationship], max: 1}
+  repeat_family: 0.6
+  repeat_dimension: 0.7

@@ -14,6 +14,7 @@ from visivo.agent.charting.schema import (
     KNOWN_TYPES,
     TABLE_TYPES,
     FamiliesDoc,
+    InsightDesignDoc,
     InteractivityDoc,
     LayoutDoc,
     PairingsDoc,
@@ -212,5 +213,17 @@ def load_tables(path=None):
         raise ValueError(f"{path}: expected a mapping")
     try:
         return TablesDoc(**loaded)
+    except Exception as error:
+        raise ValueError(f"{path}: {error}") from error
+
+
+def load_insight_design(path=None):
+    """The ``InsightDesignDoc`` from ``insight_design.yml``."""
+    path = Path(path) if path else RULES_DIR / "insight_design.yml"
+    loaded = yaml.safe_load(path.read_text()) or {}
+    if not isinstance(loaded, dict):
+        raise ValueError(f"{path}: expected a mapping")
+    try:
+        return InsightDesignDoc(**loaded)
     except Exception as error:
         raise ValueError(f"{path}: {error}") from error

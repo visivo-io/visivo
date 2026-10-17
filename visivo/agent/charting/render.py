@@ -14,6 +14,7 @@ from pathlib import Path
 from visivo.agent.charting.rules import (
     load_families,
     load_family_doc,
+    load_insight_design,
     load_interactivity,
     load_layout,
     load_tables,
@@ -86,9 +87,10 @@ def _card_row(rule):
     )
 
 
-def interactivity_rules_markdown(doc=None):
+def interactivity_rules_markdown(doc=None, insight_design=None):
     """The interactivity rules as the make-it-interactive skill states them."""
     doc = doc or load_interactivity()
+    min_points = (insight_design or load_insight_design()).reductions.regrain.points_min
     d = doc.design_rules
     lines = [
         "| column | cardinality | input → interaction | why |",
@@ -101,7 +103,7 @@ def interactivity_rules_markdown(doc=None):
         f"- **Input vs split:** split a `few` column; from `{d.input_over_split_min_bucket}` up, an input.",
         f"- **Defaults:** every input has one, so the first render is complete. Multi-select defaults are an "
         f"explicit list (never `all` or a query); numeric ranges default to the full span; a time default "
-        f"leaves ≥{d.time_default_min_points} points at the column's grain.",
+        f"leaves ≥{min_points} points at the column's grain.",
         f"- **Quoting:** string operands as `{d.string_operand_quoting}`, numbers bare. Input names are "
         f"{d.input_name_style} (the viewer substitutes `\\w+` names only).",
         f"- **Order:** write inputs before the insights that reference them. A global filter goes on "
@@ -267,6 +269,80 @@ def pattern_markdown(pattern):
     return "\n".join(lines) + "\n"
 
 
+def _pct(share):
+    return f"{share * 100:g} %"
+
+
+def _metric_row(rule):
+    additivity = ""
+    if rule.additive:
+        additivity = " (additive)" if rule.additive == [True] else " (not additive, or unknown)"
+    aggs = [f"`{agg}`" for agg in rule.aggs]
+    if rule.heavy_tail_agg:
+        aggs.append(f"`{rule.heavy_tail_agg}` for `avg` on a heavy tail")
+    if rule.duration_agg:
+        aggs.append(f"`{rule.duration_agg}` of the time between two of them")
+    return f"| {', '.join(rule.roles)}{additivity} | {'; '.join(aggs) or '—'} | {rule.why} |"
+
+
+def insight_design_markdown(doc=None, interactivity=None):
+    """The insight-design rules as the design-insights skill states them."""
+    doc = doc or load_insight_design()
+    interactivity = interactivity or load_interactivity()
+    d = interactivity.design_rules
+    pairing, red, sc, pf = doc.pairing_limits, doc.reductions, doc.scoring, doc.portfolio
+    tail = doc.heavy_tail
+    slots = ", ".join(f"≤{s.max} {s.name} ({'/'.join(s.intents)})" for s in pf.slots)
+    lags = ", ".join(f"lag {lag} at {grain}" for grain, lag in sc.seasonality_lags.items())
+    return "\n".join(
+        [
+            "| column | metrics | why |",
+            "|---|---|---|",
+            *[_metric_row(rule) for rule in doc.metric_by_role],
+            "",
+            "Every model also gets `count(*)`. A heavy tail is skew above "
+            f"{tail.skew_over:g} or p99 above {tail.p99_over_median:g}× the median. "
+            "The lead total (cross-tabs, maps, the first queries) has the strongest "
+            "measured signal; before stats it is the first whose column names money or "
+            f"volume ({', '.join(doc.primary_metric.words)}); with no total, the row count.",
+            f"- **Pairing:** time with ≤{pairing.categoricals_with_time} categorical; two "
+            f"categoricals up to {pairing.chart_max_cells} cells chart, up to "
+            f"{pairing.pivot_max_cells} pivot when the smaller has at most "
+            f"{load_tables().column_budget.full_width - 1} values, past that the larger "
+            "becomes an input; an "
+            "identifier is never a dimension, only the detail table's key.",
+            f"- **Split vs input:** below `{d.input_over_split_min_bucket}` split; at "
+            f"`{d.input_over_split_min_bucket}`, `top_n_other` when the top {red.top_n_other.n} "
+            f"hold ≥{_pct(doc.split_vs_input.top_n_min_share)} of rows, else an input; above, an "
+            "input or the table. Time never splits.",
+            "- **Reductions** (each is a proposed dimension, written once):",
+            f"  - `top_n_other` (top {red.top_n_other.n}, at most {red.top_n_other.n_max}, "
+            f"+ Other): {red.top_n_other.when};",
+            f"  - `bucket` ({red.bucket.bins} bins): {red.bucket.when};",
+            f"  - `regrain` ({red.regrain.points_min}–{red.regrain.points_max} points): "
+            f"{red.regrain.when};",
+            f"  - `collapse_rare` (under {_pct(red.collapse_rare.min_share)} → Other): "
+            f"{red.collapse_rare.when};",
+            f"  - `clip_p99`: {red.clip_p99.when}.",
+            "- **Signals:** variance (CoV); trend, the better of a line (|slope| × R²) and a "
+            "level change (a V, U or step: moving-average strength × swing, full at "
+            f"{_pct(sc.material_change)} of the mean); concentration (Gini, "
+            f"top-{sc.top_share_of} share); correlation (|r| on values clipped at p99, or "
+            f"Spearman on pairs; a scatter from {sc.scatter_min_r:g}, a comparison across "
+            f"bands from {sc.banded_min_r:g}, ×{sc.penalties.derived_correlation:g} from "
+            f"{sc.derived_r:g} as one column is likely computed from the other); cross-tabs "
+            f"(Cramér's V, ×{sc.penalties.dependent_pair:g} when one column predicts the other, "
+            f"λ ≥ {sc.dependent_lambda:g}); seasonality ({lags}); anomalies (|z| > {sc.anomaly_z:g}). "
+            f"Nulls over {_pct(sc.high_nulls)} ×{sc.penalties.high_nulls:g}; a constant metric "
+            f"×{sc.penalties.constant_metric:g}.",
+            f"- **Portfolio:** ≤{pf.max_candidates} with the detail table, each scoring at least "
+            f"{pf.min_score:g}: {slots}; the KPI set "
+            f"holds {pf.kpi_metrics.min}–{pf.kpi_metrics.max} metrics. A family already chosen "
+            f"scores ×{pf.repeat_family:g}, a dimension already used ×{pf.repeat_dimension:g}.",
+        ]
+    )
+
+
 INTERACTIONS_DIR = SKILLS_DIR / "interactions"
 
 RENDERERS = {
@@ -274,6 +350,7 @@ RENDERERS = {
     "design-a-dashboard.md": layout_rules_markdown,
     "make-it-interactive.md": interactivity_rules_markdown,
     "charts/table.md": table_rules_markdown,
+    "design-insights.md": insight_design_markdown,
 }
 
 

@@ -125,7 +125,6 @@ design_rules:
   require_default: true
   multi_select_default: explicit_static_list
   numeric_range_default: full_span
-  time_default_min_points: 12
   string_operand_quoting: "'${ref(I).value}'"
   input_name_style: snake_case
   write_order: inputs_before_insights
