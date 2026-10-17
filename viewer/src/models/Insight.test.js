@@ -666,6 +666,37 @@ describe('chartDataFromInsightData with props_slices', () => {
     expect(Array.isArray(traces[0].value)).toBe(false);
   });
 
+  it('unwraps a one-row aggregate on an indicator authored without [0]', () => {
+    const insights = {
+      trips: {
+        type: 'indicator',
+        data: [{ v: 147800, r: 140000 }],
+        props_mapping: { 'props.value': 'v', 'props.delta.reference': 'r' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].value).toBe(147800);
+    expect(traces[0].delta.reference).toBe(140000);
+  });
+
+  it('leaves multi-row indicator columns and other trace types as arrays', () => {
+    const insights = {
+      many: {
+        type: 'indicator',
+        data: [{ v: 1 }, { v: 2 }],
+        props_mapping: { 'props.value': 'v' },
+      },
+      bar: {
+        type: 'bar',
+        data: [{ y: 5 }],
+        props_mapping: { 'props.y': 'y' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].value).toEqual([1, 2]);
+    expect(traces[1].y).toEqual([5]);
+  });
+
   it('applies a slice to a sub-array on a bar.x prop', () => {
     const insights = {
       first_three: {
