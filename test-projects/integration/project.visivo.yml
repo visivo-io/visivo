@@ -8,6 +8,7 @@ includes:
   - path: template_dashboard.visivo.yml
   - path: series_colors_dashboard.visivo.yml
   - path: kpi_dashboard.visivo.yml
+  - path: dashboards/agent-regenerated.visivo.yml
 
 defaults:
   source_name: local-duckdb
