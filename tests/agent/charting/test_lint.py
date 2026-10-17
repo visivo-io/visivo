@@ -36,7 +36,8 @@ class TestColorScales:
 
 class TestIndicators:
     def test_an_unformatted_kpi_is_flagged(self):
-        found = lint.warnings(APP, "insights", _insight({"type": "indicator", "value": "?{ 1 }"}))
+        props = {"type": "indicator", "value": "?{ sum(${ref(m).x}) }[0]"}
+        found = lint.warnings(APP, "insights", _insight(props))
         assert len(found) == 1 and "number.valueformat" in found[0]
 
     def test_a_formatted_kpi_passes(self):
@@ -79,6 +80,21 @@ class TestDateRangeAccessors:
         )
 
 
+class TestModelReferences:
+    def test_an_insight_naming_no_model_is_flagged(self):
+        found = lint.warnings(APP, "insights", _insight({"type": "bar", "y": "?{ count(*) }"}))
+        assert any("references no model" in f for f in found)
+
+    def test_a_ref_in_props_or_interactions_is_enough(self):
+        in_props = _insight({"type": "bar", "y": "?{ count(${ref(m).id}) }"})
+        in_filter = _insight({"type": "bar", "y": "?{ 1 }"}, [{"filter": "?{ ${ref(m).x} > 1 }"}])
+        static = _insight({"type": "image", "z": [[1, 2], [3, 4]]})
+        for config in (in_props, in_filter, static):
+            assert not any(
+                "references no model" in f for f in lint.warnings(APP, "insights", config)
+            )
+
+
 class TestTables:
     def test_an_unaliased_column_is_flagged(self):
         config = {"name": "t", "columns": ["${ref(m).trips}", '${ref(m).zone} as "Zone"']}
@@ -100,7 +116,8 @@ class TestTheWriteCarriesThem:
             "props": {"type": "heatmap", "x": "?{ 1 }", "colorscale": "Greens"},
         }
         result = call(integration_app, "write_insight", {"config": config})
-        assert result["status"] == "draft" and "reversescale" in result["warnings"][0]
+        assert result["status"] == "draft"
+        assert any("reversescale" in w for w in result["warnings"])
 
     def test_a_clean_write_has_no_warnings_key(self, integration_app):
         result = call(
