@@ -445,3 +445,134 @@ class TestTheCaptureReachesTheAgentTab:
 
         entry = [a for a in log().since(0) if a["tool"] == "screenshot_dashboard"][-1]
         assert entry["image_url"] is None
+
+
+class TestTheCloudPath:
+    """Local and cloud differ in the URL and whether a cookie is set, and in
+    nothing else (VIS-1486). A fork in the capture would be a cloud agent that
+    disagreed with the local one about what it was looking at.
+    """
+
+    def _cloud_project(self, dashboard="revenue", permit=("rtok", "/acme/main/proj/revenue")):
+        """A RemoteProject whose core answers the screenshot calls."""
+        from tests.agent.test_remote import FakeCore, FakeResponse, _envelope
+        from visivo.agent.remote import CoreClient, RemoteProject
+
+        class ScreenshotCore(FakeCore):
+            def __init__(self):
+                super().__init__({"dashboards": [_envelope(dashboard, {"name": dashboard})]})
+                self.minted = []
+                self.uploaded = []
+                self.put_bodies = []
+
+            def post(self, url, json=None, timeout=None):
+                if url.endswith("/agent/render-token/"):
+                    self.minted.append(json)
+                    return FakeResponse({"token": permit[0], "path": permit[1]}, 201)
+                if url.endswith("/agent/captures/"):
+                    self.uploaded.append(json)
+                    return FakeResponse(
+                        [{"id": "f1", "upload_url": "https://storage/obj.png?X-Goog-Sig=abc"}], 201
+                    )
+                return super().post(url, json=json, timeout=timeout)
+
+            def put(self, url, data=None, headers=None, timeout=None):
+                self.put_bodies.append((url, data, headers))
+                return FakeResponse({}, 200)
+
+        core = ScreenshotCore()
+        project = RemoteProject(
+            CoreClient("https://core.svc.cluster.local", "tok", "p1", session=core)
+        )
+        return project, core
+
+    def test_it_asks_core_where_the_dashboard_is(self, browser, page):
+        """Rather than assembling account/stage/project into a path here. Three
+        strings a prompt-injected agent could influence, for the one URL a
+        credentialed browser then loads."""
+        project, core = self._cloud_project()
+
+        call(project, "screenshot_dashboard", {"name": "revenue"})
+
+        assert core.minted == [{"dashboard": "revenue"}]
+        assert page.goto.call_args[0][0] == (
+            "https://core.svc.cluster.local/acme/main/proj/revenue"
+        )
+
+    def test_the_page_carries_the_render_token(self, browser, page):
+        project, _core = self._cloud_project()
+
+        call(project, "screenshot_dashboard", {"name": "revenue"})
+
+        cookie = page.context.add_cookies.call_args[0][0][0]
+        assert cookie["name"] == "__visivo_session"
+        assert cookie["value"] == "rtok"
+
+    def test_the_capture_goes_straight_to_storage(self, browser):
+        """Not through core. Core signs the PUT, so the runner can neither
+        choose where the bytes land nor reach another account's prefix."""
+        project, core = self._cloud_project()
+
+        call(project, "screenshot_dashboard", {"name": "revenue"})
+
+        url, body, headers = core.put_bodies[0]
+        assert url.startswith("https://storage/")
+        assert body == ONE_PIXEL_PNG
+        assert headers["Content-Type"] == "image/png"
+
+    def test_the_stored_url_drops_the_signature(self, browser):
+        """The query string is the signature, which is not ours to hand on to
+        the Agent tab."""
+        project, _core = self._cloud_project()
+
+        result = call(project, "screenshot_dashboard", {"name": "revenue"})
+
+        assert result.return_value["image_url"] == "https://storage/obj.png"
+
+    def test_an_unknown_dashboard_never_reaches_core(self, browser, page):
+        """The name is checked against the hydrated project first, so a bad
+        name costs nothing and leaks nothing."""
+        project, core = self._cloud_project()
+
+        with pytest.raises(ToolError, match="No dashboard named"):
+            call(project, "screenshot_dashboard", {"name": "nope"})
+
+        assert core.minted == []
+        assert not page.goto.called
+
+    def test_core_refusing_to_place_the_dashboard_is_an_error_not_a_guess(self, browser, page):
+        project, _core = self._cloud_project(permit=(None, None))
+
+        with pytest.raises(ToolError, match="would not say where"):
+            call(project, "screenshot_dashboard", {"name": "revenue"})
+
+        assert not page.goto.called
+
+    def test_a_storage_failure_still_hands_the_model_the_image(self, browser):
+        project, core = self._cloud_project()
+        core.put = mock.Mock(side_effect=Exception("signed URL expired"))
+
+        result = call(project, "screenshot_dashboard", {"name": "revenue"})
+
+        assert "image_url" not in result.return_value
+        assert result.content
+
+    def test_the_model_sees_the_same_thing_it_sees_locally(self, integration_app, browser):
+        """The acceptance criterion for the cloud path: parity, not features."""
+        from pydantic_ai.messages import BinaryContent
+
+        project, _core = self._cloud_project()
+        local_name = [
+            d.name
+            for d in integration_app.dashboard_manager.get_all_objects_list()
+            if getattr(d, "name", None)
+        ][0]
+
+        cloud = call(project, "screenshot_dashboard", {"name": "revenue"})
+        local = call(integration_app, "screenshot_dashboard", {"name": local_name})
+
+        def image_of(result):
+            return next(item.data for item in result.content if isinstance(item, BinaryContent))
+
+        assert image_of(cloud) == image_of(local)
+        assert set(cloud.return_value) - {"image_url"} == set(local.return_value) - {"image_url"}
