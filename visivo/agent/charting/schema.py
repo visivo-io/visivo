@@ -207,12 +207,20 @@ class RequestContext(_Strict):
     theme_color: str = "#0a9396"
 
 
+class DimensionCard(ShapeCard):
+    """A shape card as score_candidates and recommend_inputs take it: the
+    ``model`` the column comes from may ride along, so one list of cards
+    serves every tool."""
+
+    model: Optional[str] = None
+
+
 class RecommendRequest(_Strict):
     """No cap on dimensions: some families exist to plot four or five of them.
     Each family gates its own count."""
 
     metrics: List[MetricSpec] = Field(default_factory=list)
-    dimensions: List[ShapeCard] = Field(default_factory=list)
+    dimensions: List[DimensionCard] = Field(default_factory=list)
     intent: Optional[Intent] = None
     semantics: Semantics = Field(default_factory=Semantics)
     context: RequestContext = Field(default_factory=RequestContext)
@@ -226,6 +234,20 @@ class RecommendRequest(_Strict):
         if requested is not None and requested not in REQUESTABLE:
             raise ValueError(f"'{requested}' is neither a family nor a trace type")
         return requested
+
+    @field_validator("dimensions", mode="before")
+    @classmethod
+    def _plain_cards_too(cls, dimensions):
+        """Callers in this package pass ShapeCards; widen them."""
+        return [d.model_dump() if isinstance(d, ShapeCard) else d for d in dimensions or []]
+
+    @model_validator(mode="after")
+    def _model_from_the_cards(self):
+        """The skeleton refs the cards' model when the context names none."""
+        models = {d.model for d in self.dimensions if d.model}
+        if "model" not in self.context.model_fields_set and len(models) == 1:
+            self.context.model = models.pop()
+        return self
 
 
 # --- what the rules say ------------------------------------------------------
