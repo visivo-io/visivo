@@ -49,6 +49,19 @@ class TestTheHandshake:
         assert "draft" in instructions
         assert "get_schema" in instructions
 
+    def test_it_carries_the_skills_the_built_in_loop_gets(self, integration_client):
+        """An MCP client never reads a resource unprompted, so the always-on
+        skills and the on-demand index have to arrive with the handshake."""
+        from visivo.agent import skills
+
+        instructions = _result(_rpc(integration_client, "initialize"))["instructions"]
+
+        assert skills.always_on()
+        for skill in skills.always_on():
+            assert skill["text"].strip() in instructions
+        for skill in skills.on_demand():
+            assert f"`{skill['name']}`" in instructions
+
     def test_a_notification_gets_no_body(self, integration_client):
         response = integration_client.post(
             "/api/mcp/",
