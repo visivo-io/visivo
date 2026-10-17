@@ -463,6 +463,7 @@ export function chartDataFromInsightData(insightsData, inputs = {}, typeOverride
         // mapQueryResultsToProps because the slice operates on the
         // full bound column for this split group.
         applyPropsSlices(traceProps, props_slices);
+        unwrapScalarProps(traceProps, effectiveType);
 
         // Merge static props (non-query props like marker.color: ["red", "green"])
         // Static props are the base, dynamic props override them
@@ -487,6 +488,7 @@ export function chartDataFromInsightData(insightsData, inputs = {}, typeOverride
       const traceProps = mapQueryResultsToProps(data, props_mapping);
 
       applyPropsSlices(traceProps, props_slices);
+      unwrapScalarProps(traceProps, effectiveType);
 
       // Merge static props (non-query props like marker.color: ["red", "green"])
       // Static props are the base, dynamic props override them
@@ -505,6 +507,26 @@ export function chartDataFromInsightData(insightsData, inputs = {}, typeOverride
   }
 
   return traces;
+}
+
+// Props Plotly draws only from a single number. An aggregate query binds them
+// to a one-row column, so `value: ?{sum(x)}` without `[0]` would render the
+// indicator as a dash.
+const SCALAR_PROPS = {
+  indicator: [['value'], ['delta', 'reference'], ['gauge', 'threshold', 'value']],
+};
+
+function unwrapScalarProps(traceProps, type) {
+  for (const path of SCALAR_PROPS[type] || []) {
+    let parent = traceProps;
+    for (const key of path.slice(0, -1)) {
+      parent = parent?.[key];
+    }
+    const last = path[path.length - 1];
+    if (Array.isArray(parent?.[last]) && parent[last].length === 1) {
+      parent[last] = parent[last][0];
+    }
+  }
 }
 
 /**
