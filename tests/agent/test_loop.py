@@ -277,3 +277,143 @@ class TestARefusalIsAConversation:
         does if it has been told to."""
         assert "Never repeat a call that" in INSTRUCTIONS
         assert "get_schema" in INSTRUCTIONS
+
+
+SALES_SQL = (
+    "with recursive t as (select 0 as i union all select i + 1 from t where i < 119) "
+    "select date('2024-01-01', '+' || i || ' days') as day, "
+    "case i % 3 when 0 then 'North' when 1 then 'South' else 'East' end as region, "
+    "(i * 7) % 23 + 1 as amount from t"
+)
+
+
+def _result_of(messages, tool):
+    """The newest result the model was handed for ``tool``."""
+    for message in reversed(messages):
+        for part in reversed(message.parts):
+            if type(part).__name__ == "ToolReturnPart" and part.tool_name == tool:
+                return part.content
+    raise AssertionError(f"no result for {tool}")
+
+
+class TestTheWholePipeline:
+    """VIS-1450: one scripted turn through every stage the skills teach, against
+    the real registry. The regression guard for the pipeline: a renamed tool, a
+    changed argument shape or a refusal anywhere in the chain fails here."""
+
+    def _turns(self):
+        def card(messages, column):
+            cards = _result_of(messages, "profile_columns")["cards"]
+            return {**next(c for c in cards if c["column"] == column), "model": "sales"}
+
+        def family(messages):
+            return _result_of(messages, "recommend_charts")["recommendations"][0]["family"]
+
+        def rows(messages):
+            return _result_of(messages, "recommend_layout")["dashboards"][0]["rows"]
+
+        insight = {
+            "name": "amount_by_day",
+            "props": {
+                "type": "scatter",
+                "mode": "lines",
+                "x": "?{ ${ref(sales).day} }",
+                "y": "?{ sum(${ref(sales).amount}) }",
+            },
+            "interactions": [{"sort": "?{ ${ref(sales).day} ASC }"}],
+        }
+        return [
+            _calls("read_skill", {"name": "explore-a-source"}),
+            _calls("describe_source", {"name": "source"}),
+            _calls("profile_columns", {"source": "source", "sql": SALES_SQL}),
+            _calls(
+                "write_model",
+                {"config": {"name": "sales", "source": "${ref(source)}", "sql": SALES_SQL}},
+            ),
+            lambda m, i: ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        "score_candidates",
+                        {"cards": [card(m, c) for c in ("day", "region", "amount")]},
+                    )
+                ]
+            ),
+            lambda m, i: ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        "recommend_charts",
+                        {
+                            "metrics": [{"name": "amount", "agg": "sum"}],
+                            "dimensions": [card(m, "day")],
+                            "intent": "trend",
+                            "context": {"model": "sales"},
+                        },
+                    )
+                ]
+            ),
+            lambda m, i: ModelResponse(
+                parts=[ToolCallPart("read_skill", {"name": f"charts/{family(m)}"})]
+            ),
+            _calls("write_insight", {"config": insight}),
+            _calls("preview_insight", {"name": "amount_by_day"}),
+            lambda m, i: ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        "recommend_inputs",
+                        {
+                            "cards": [card(m, c) for c in ("day", "region")],
+                            "insights": [
+                                {"name": "amount_by_day", "model": "sales", "columns": ["day"]}
+                            ],
+                        },
+                    )
+                ]
+            ),
+            _calls(
+                "write_chart",
+                {"config": {"name": "amount_chart", "insights": ["${ref(amount_by_day)}"]}},
+            ),
+            _calls(
+                "recommend_layout",
+                {
+                    "items": [{"name": "amount_chart", "kind": "chart", "family": "line"}],
+                    "intent": "trend",
+                },
+            ),
+            lambda m, i: ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        "write_dashboard", {"config": {"name": "pipeline", "rows": rows(m)}}
+                    )
+                ]
+            ),
+        ]
+
+    def test_a_scripted_exploration_builds_a_valid_dashboard_within_budget(self, integration_app):
+        from visivo.agent import skills
+        from visivo.agent.loop import MAX_MODEL_REQUESTS, MAX_TOOL_CALLS
+
+        agent = build_agent(integration_app, _model(*self._turns()))
+        result = agent.run_sync("explore it and build a dashboard", usage_limits=usage_limits())
+
+        returns = [
+            (part.tool_name, part.content)
+            for message in result.all_messages()
+            for part in message.parts
+            if type(part).__name__ == "ToolReturnPart"
+        ]
+        refused = [(name, c) for name, c in returns if isinstance(c, dict) and "error" in c]
+        assert not refused, refused
+        assert len(returns) == len(self._turns())
+        assert _result_of(result.all_messages(), "preview_insight")["rows"]
+        usage = result.usage
+        assert usage.requests <= MAX_MODEL_REQUESTS and usage.tool_calls <= MAX_TOOL_CALLS
+        assert len(skills.always_on_prompt().encode()) <= skills.MAX_ALWAYS_BYTES
+        dashboard = integration_app.dashboard_manager.get("pipeline")
+        assert dashboard is not None
+        from visivo.agent.tools import call
+
+        config = integration_app.dashboard_manager.get("pipeline").model_dump(
+            mode="json", exclude_none=True
+        )
+        assert call(integration_app, "validate_dashboard", {"config": config})["valid"] is True
