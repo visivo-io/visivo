@@ -8,6 +8,7 @@ products.
 """
 
 import json
+import re
 
 import pytest
 
@@ -551,3 +552,23 @@ class TestExploreASource:
         body = skills.body("build-a-model")
 
         assert "describe_source" in body and "infer_columns" in body
+
+    def test_a_skill_names_only_tools_that_exist(self):
+        """VIS-1449: a skill that tells the agent to call a tool it does not
+        have costs a failed call, or a made-up answer."""
+        from visivo.agent.tools import TOOLS
+
+        verbs = "read|write|get|list|validate|describe|preview|query|profile|infer|recommend|score|check"
+        for skill in skills.packaged():
+            for name in re.findall(rf"`((?:{verbs})_[a-z_]+)(?:\(|`)", skill["text"]):
+                assert name in TOOLS, f"{skill['name']} names `{name}`, which is not a tool"
+
+    def test_chart_from_an_insight_previews_before_the_chart(self):
+        body = skills.body("chart-from-an-insight")
+        steps = [
+            "recommend_charts",
+            "read_skill('charts/<family>')",
+            "preview_insight",
+            "write_chart",
+        ]
+        assert [body.index(step) for step in steps] == sorted(body.index(step) for step in steps)
