@@ -173,6 +173,36 @@ def render_input_value(value, accessor):
     return sql_literal(get_accessor_sample_value(accessor, list(value), list(value)))
 
 
+def default_selection(input_obj):
+    """What the viewer selects on first load, when the input states it as
+    literals: a single-select's ``value``, a multi-select's ``values``, or a
+    range's ``[start, end]``. ``None`` when the default is a query or absent.
+
+    The parse-time sampler is not a stand-in for this: it exists to make SQL
+    parse, so it returns ``start`` unquoted for both ``.min`` and ``.max`` of a
+    date range, which a preview then runs as integer arithmetic.
+    """
+
+    def literal(value):
+        return isinstance(value, (str, int, float, bool)) and not (
+            isinstance(value, str) and value.lstrip().startswith("?{")
+        )
+
+    default = getattr(getattr(input_obj, "display", None), "default", None)
+    if default is None:
+        return None
+    value = getattr(default, "value", None)
+    if literal(value):
+        return value
+    values = getattr(default, "values", None)
+    if isinstance(values, list) and all(literal(v) for v in values):
+        return values
+    start, end = getattr(default, "start", None), getattr(default, "end", None)
+    if literal(start) and literal(end):
+        return [start, end]
+    return None
+
+
 def substitute_inputs(flask_app, node, input_values, substituted):
     """``node`` with every ``${ref(input).accessor}`` replaced by a concrete
     value: the caller's, else the input's default, else its first option.
@@ -188,6 +218,8 @@ def substitute_inputs(flask_app, node, input_values, substituted):
                 rendered_for[key] = None
             elif name in input_values:
                 rendered_for[key] = render_input_value(input_values[name], accessor)
+            elif default_selection(input_obj) is not None:
+                rendered_for[key] = render_input_value(default_selection(input_obj), accessor)
             else:
                 rendered_for[key] = str(
                     get_sample_value_for_input(input_obj, flask_app.output_dir, accessor)

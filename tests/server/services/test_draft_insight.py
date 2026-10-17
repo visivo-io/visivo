@@ -5,9 +5,13 @@ from unittest.mock import Mock
 
 import pytest
 
+from visivo.models.inputs.types.multi_select import MultiSelectInput
+from visivo.models.inputs.types.single_select import SingleSelectInput
+
 from visivo.server.services import draft_insight as module
 from visivo.server.services.draft_insight import (
     DraftInsightError,
+    default_selection,
     execute_draft_insight,
     render_input_value,
     substitute_inputs,
@@ -118,6 +122,56 @@ class TestSubstituteInputs:
 
         assert out == {"a": "x > 4", "b": ["y > 4"]} and substituted == {"min_x": {"value": "4"}}
         assert substitute_inputs(app, "x > ${ref(min_x).value}", {"min_x": 2}, {}) == "x > 2"
+
+    def test_a_date_range_previews_its_default_window_quoted(self, monkeypatch):
+        """``.min``/``.max`` of a date range are its default start and end, as
+        string literals; the parse-time sample gave ``2024-01-01`` for both,
+        unquoted, which DuckDB ran as ``2024 - 1 - 1``."""
+        dates = MultiSelectInput(
+            name="pickup_dates",
+            range={"start": "2024-01-01", "end": "2024-03-31", "step": "1 day"},
+            display={"type": "date-range", "default": {"start": "2024-01-10", "end": "2024-02-20"}},
+        )
+        app = self._app(monkeypatch, {"pickup_dates": dates}, loader=lambda *a: "2024-01-01")
+
+        out = substitute_inputs(
+            app, "d between ${ref(pickup_dates).min} and ${ref(pickup_dates).max}", {}, {}
+        )
+
+        assert out == "d between '2024-01-10' and '2024-02-20'"
+
+    def test_literal_defaults_are_used_and_queries_fall_back_to_the_sample(self, monkeypatch):
+        borough = SingleSelectInput(
+            name="borough",
+            options=["Manhattan", "Queens"],
+            display={"type": "dropdown", "default": {"value": "Queens"}},
+        )
+        kinds = MultiSelectInput(
+            name="kinds",
+            options=["a", "b", "c"],
+            display={"type": "checkboxes", "default": {"values": ["b", "c"]}},
+        )
+        queried = SingleSelectInput(
+            name="queried",
+            options="?{ select distinct x from ${ref(t)} }",
+            display={"type": "dropdown", "default": {"value": "?{ select max(x) from ${ref(t)} }"}},
+        )
+        app = self._app(
+            monkeypatch, {"borough": borough, "kinds": kinds, "queried": queried, "bare": Mock()}
+        )
+
+        assert default_selection(borough) == "Queens"
+        assert default_selection(kinds) == ["b", "c"]
+        assert default_selection(queried) is None
+        assert (
+            substitute_inputs(
+                app,
+                "${ref(borough).value} ${ref(kinds).values} ${ref(queried).value}",
+                {},
+                {},
+            )
+            == "'Queens' 'b', 'c' 4"
+        )
 
     def test_a_repeated_reference_loads_its_options_once(self, monkeypatch):
         loads = []
