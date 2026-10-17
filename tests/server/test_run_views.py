@@ -1,11 +1,14 @@
 """Tests for the run-on-save machinery: RunManager, the run/logs endpoints,
 the status:"draft" signal, and the debounced request_run trigger."""
 
+import os
 import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+
+from visivo.constants import DEFAULT_RUN_ID
 
 from visivo.server import user_config
 from visivo.server.managers.run_manager import Run, RunManager, RunState
@@ -18,6 +21,8 @@ from visivo.server.jobs import save_run_executor
 from visivo.server.views.run_views import (
     _RESOURCE_ROUTE_RE,
     RESOURCE_META,
+    _resource_fingerprint,
+    _unbuilt_models_read_by,
     resource_fingerprint,
     stage_and_maybe_run,
 )
@@ -508,6 +513,75 @@ class TestDataAffectingGate:
             r = integration_client.delete("/api/charts/c/")
             assert r.status_code < 400
             req.assert_not_called()
+
+
+class TestTableReadsBuiltModelData:
+    """A table is not data-producing, but it reads its model's parquet, and a
+    model run writes that only when something consumes the model. Saving a
+    table whose model has no parquet yet has to run, or the table 404s."""
+
+    def _parquet(self, app, model):
+        return os.path.join(app.output_dir, DEFAULT_RUN_ID, "models", f"{model}.parquet")
+
+    def test_a_table_over_an_unbuilt_model_runs(self, integration_app, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            integration_client.post("/api/models/m/", json={"sql": "select 1 as x"})
+            req.reset_mock()
+            if os.path.exists(self._parquet(integration_app, "m")):
+                os.remove(self._parquet(integration_app, "m"))
+
+            r = integration_client.post("/api/tables/t/", json={"columns": ['${ref(m).x} as "X"']})
+
+            assert r.status_code == 201
+            req.assert_called_once()
+            assert req.call_args[0][1] == ["t"]
+
+    def test_a_table_over_a_built_model_skips_run(self, integration_app, integration_client):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            integration_client.post("/api/models/m/", json={"sql": "select 1 as x"})
+            req.reset_mock()
+            os.makedirs(os.path.dirname(self._parquet(integration_app, "m")), exist_ok=True)
+            open(self._parquet(integration_app, "m"), "wb").close()
+
+            integration_client.post("/api/tables/t/", json={"data": "${ref(m)}"})
+
+            req.assert_not_called()
+
+
+class TestUnmappedAndFailurePaths:
+    """A type the run loop does not track never stages, and nothing in the
+    run-on-save hooks or the run endpoints can turn a save into a 500."""
+
+    def test_an_unmapped_type_neither_stages_nor_fingerprints(self, integration_app):
+        assert stage_and_maybe_run(integration_app, "explorations", "x", None) is None
+        assert resource_fingerprint(integration_app, "explorations", "x") is None
+
+    def test_a_missing_manager_has_no_fingerprint_or_unbuilt_models(self):
+        app = SimpleNamespace()
+        assert _resource_fingerprint(app, "tables", "t") is None
+        assert _unbuilt_models_read_by(app, object()) == []
+        assert _unbuilt_models_read_by(SimpleNamespace(model_manager=object()), None) == []
+
+    def test_a_failing_presave_snapshot_does_not_break_the_save(self, integration_client):
+        with patch(
+            "visivo.server.views.run_views._resource_fingerprint", side_effect=RuntimeError("x")
+        ):
+            r = integration_client.post("/api/models/m/", json={"sql": "select 1 as x"})
+        assert r.status_code == 201
+
+    def test_a_failing_run_on_save_does_not_break_the_save(self, integration_client):
+        with patch(
+            "visivo.server.views.run_views.stage_and_maybe_run", side_effect=RuntimeError("x")
+        ):
+            r = integration_client.post("/api/models/m/", json={"sql": "select 1 as x"})
+        assert r.status_code == 201
+
+    def test_the_run_endpoints_report_failures_as_500(self, integration_app, integration_client):
+        with patch.object(integration_app.run_manager, "list", side_effect=RuntimeError("down")):
+            listed = integration_client.get("/api/projects/id/run/")
+            triggered = integration_client.post("/api/projects/id/run/", json={})
+        assert listed.status_code == 500 and listed.get_json() == {"error": "down"}
+        assert triggered.status_code == 500 and triggered.get_json() == {"error": "down"}
 
 
 class TestTriggerMode:

@@ -22,12 +22,15 @@ Local serve has a single project and an in-memory ``RunManager``; the
 ``<project_id>`` path token is accepted for URL parity but not used to scope.
 """
 
+import os
 import re
 from urllib.parse import unquote
 
 from flask import g, jsonify, request
 
+from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
+from visivo.query.patterns import extract_ref_names
 from visivo.server.hash.data_fingerprint import data_fingerprint
 from visivo.server.jobs.save_run_executor import cancel_pending_run, request_run, run_now
 from visivo.server.managers.object_manager import location_free_dump
@@ -96,6 +99,18 @@ def stage_and_maybe_run(flask_app, type_key, name, before, *, deleted=False):
         return None
     after = _resource_fingerprint(flask_app, type_key, name, deleted=deleted)
     if after == before:
+        # A table is not data-producing, but it reads a model's built parquet,
+        # and a model run builds that only when something consumes the model.
+        # A table added after its model's run would read a file nobody builds.
+        if (
+            type_key == "tables"
+            and not deleted
+            and manager is not None
+            and get_run_trigger() == AUTOMATIC
+            and _unbuilt_models_read_by(flask_app, manager.get(name))
+        ):
+            request_run(flask_app, [name])
+            return "ran"
         return None
     flask_app.staged_manager.record(
         RESOURCE_TYPE_NAMES[type_key],
@@ -107,6 +122,24 @@ def stage_and_maybe_run(flask_app, type_key, name, before, *, deleted=False):
         request_run(flask_app, [name])
         return "ran"
     return "staged"
+
+
+def _unbuilt_models_read_by(flask_app, table):
+    """Names of the models ``table`` reads whose data has not been built."""
+    if table is None or getattr(flask_app, "model_manager", None) is None:
+        return []
+    names = set(table.ref_names())
+    if table.data:
+        names.update(extract_ref_names(str(table.data)))
+    output_dir = getattr(flask_app, "output_dir", None) or ""
+    return sorted(
+        name
+        for name in names
+        if flask_app.model_manager.get(name) is not None
+        and not os.path.exists(
+            os.path.join(output_dir, DEFAULT_RUN_ID, "models", f"{name}.parquet")
+        )
+    )
 
 
 def resource_fingerprint(flask_app, type_key, name, *, deleted=False):
