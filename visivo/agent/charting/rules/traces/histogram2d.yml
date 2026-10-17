@@ -47,6 +47,6 @@ gotchas:
   - "Set `xbins.size`/`ybins.size` when the step means something (0.5 mi, $2); `nbinsx` is only a hint."
   - "`split` overlays one grid per value on the same axes and only the last is visible; use small multiples."
   - "Use one sequential colorscale (Viridis, Blues); a rainbow scale such as `Jet` invents boundaries that are not in the data."
-pairings: [scatter_overlay, histogram_beside, detail_table_below]
+pairings: [scatter_overlay, chart_beside(histogram), detail_table_below]
 layout: {height: medium, width_share: 0.5, row_role: relationship}
 mobile: Half-width becomes full width; keep the bins coarse enough that cells stay tappable.

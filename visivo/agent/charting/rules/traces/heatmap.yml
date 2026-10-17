@@ -26,16 +26,19 @@ data_shape:
 required_props: [x, y, z]
 example: |
   insights:
-    - name: rides-by-hour-and-weekday
+    - name: rides-by-week-and-borough
       props:
         type: heatmap
-        x: ?{ extract(hour from ${ref(trips).pickup_at}) }
-        y: ?{ dayname(${ref(trips).pickup_at}) }
+        x: ?{ date_trunc('week', ${ref(trips).pickup_at}) }
+        y: ?{ ${ref(trips).pickup_borough} }
         z: ?{ count(*) }
         colorscale: Viridis
       interactions:
-        - sort: ?{ isodow(${ref(trips).pickup_at}) ASC }
-        - sort: ?{ extract(hour from ${ref(trips).pickup_at}) ASC }
+        - sort: ?{ date_trunc('week', ${ref(trips).pickup_at}) ASC }
+  charts:
+    - name: rides-by-week-and-borough-chart
+      insights: ["${ref(rides-by-week-and-borough)}"]
+      layout: {yaxis: {categoryorder: total ascending}}
 variations:
   - when: "the grid is small and the exact values matter"
     then: "`texttemplate: '%{z:,.0f}'` prints each cell's value on it"
@@ -56,4 +59,5 @@ gotchas:
   - "Pick one theme-neutral `colorscale` (Viridis, or Blues with `reversescale: true`, since Plotly's Blues runs dark to light); a diverging scale needs `zmid` at the meaningful centre."
 pairings: [detail_table_below, kpi_strip_above]
 layout: {height: medium, width_share: 1.0, row_role: breakdown}
+order_axes: [x, y]
 mobile: Keep the longer axis vertical; a grid with many columns becomes unreadable on narrow screens.

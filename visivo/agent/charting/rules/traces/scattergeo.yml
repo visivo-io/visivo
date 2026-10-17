@@ -56,6 +56,6 @@ gotchas:
   - "The theme colors `layout.geo` land, ocean and borders; do not override `landcolor` or `bgcolor` per chart or dark mode breaks."
   - "`marker.color` as hex strings from a CASE gives each series a fixed colour; a numeric column needs `marker.colorscale` instead."
   - "`mode: lines` connects points in row order: add `- sort:` on the sequence column and one `split` per route, or every point is joined into one zig-zag."
-pairings: [bar_beside, detail_table_below, kpi_strip_above]
+pairings: [chart_beside(bar), detail_table_below, kpi_strip_above]
 layout: {height: large, width_share: 0.67, row_role: hero}
 mobile: "Full width, `large`; set `layout.geo.fitbounds: locations` so the data, not the whole globe, fills the narrow frame."

@@ -49,6 +49,6 @@ gotchas:
   - "Every z expression shares the insight's GROUP BY, so x must be the only non-aggregated column; sort on x or the surface folds over itself."
   - "Axis titles live under `layout.scene`; `layout.xaxis` is ignored for 3D."
   - "No `split`; it would stack several surfaces in one scene. One insight, one surface."
-pairings: [heatmap_beside]
+pairings: [chart_beside(heatmap)]
 layout: {height: large, width_share: 0.5, row_role: relationship}
 mobile: Rotation conflicts with scroll and the scene shrinks to illegibility; show the heatmap instead below 1024 px.

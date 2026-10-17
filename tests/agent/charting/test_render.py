@@ -117,3 +117,59 @@ class TestTheAlwaysOnTier:
 
     def test_the_tier_still_fits_the_budget(self):
         assert len(skills.always_on_prompt().encode()) <= skills.MAX_ALWAYS_BYTES
+
+
+class TestChooseAChart:
+    def test_the_committed_skill_equals_its_render(self):
+        path = render.SKILLS_DIR / "choose-a-chart.md"
+        assert path.read_text() == render.rendered(
+            path
+        ), "run python -m visivo.agent.charting.render"
+
+    def test_it_is_always_on_and_short(self):
+        skill = next(s for s in skills.packaged() if s["name"] == "choose-a-chart")
+        assert skill["always"] is True and len(skill["text"].splitlines()) <= 40
+        assert "recommend_charts" in skill["text"]
+
+    def test_the_tree_is_read_from_the_rule_files(self):
+        text = render.choose_rules_markdown()
+        assert "geo → geo_region, geo_point, geo_density" in text
+        assert "`ordered_stages` → funnel (required)" in text
+        assert "(iso3, country_name, us_state)" in text
+        assert "one 1 · few 2–7 · some 8–20 · many 21–100 · high 101+" in text
+        assert "from `some` up, an input" in text
+        assert "`top_n_other`, `input_filter`" in text and "`clip_p99`" not in text
+
+    def test_a_new_intent_clause_lands_in_the_tree(self):
+        from visivo.agent.charting import rules
+        from visivo.agent.charting.schema import ScoreAdjustment
+
+        doc = rules.load_family_doc()
+        boosted = [
+            (
+                f.model_copy(
+                    update={
+                        "score": [
+                            *f.score,
+                            ScoreAdjustment(when="intent == flow", delta=0.9, reason="r"),
+                        ]
+                    }
+                )
+                if f.name == "image"
+                else f
+            )
+            for f in doc.families
+        ]
+        text = render.choose_rules_markdown(doc.model_copy(update={"families": boosted}))
+        assert "flow → image, flow;" in text
+
+    def test_theming_states_the_same_colour_rule(self):
+        def rule(name, heading):
+            text = (render.SKILLS_DIR / name).read_text()
+            return " ".join(text.split(heading)[1].split("\n\n")[1].split())
+
+        choose = rule("choose-a-chart.md", "## Colour")
+        assert choose.startswith("Set `marker.color`") and "precedence" in choose
+        assert choose == rule(
+            "theming-a-project.md", "## Do not restyle a chart to change the palette"
+        )

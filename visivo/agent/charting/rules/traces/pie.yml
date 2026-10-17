@@ -45,6 +45,7 @@ limits:
   series_ideal: 4
   series_max: 5
   repair: [top_n_other, bar]
+  other_not_largest: true
 transforms: [top_n_other, collapse_rare]
 gotchas:
   - "`values` should be an aggregate over `labels` so the query returns one row per slice; Plotly sums rows that share a label, but only after every raw row has been shipped."
@@ -52,6 +53,6 @@ gotchas:
   - "The theme colours slices in row order, not by category; to give a category a fixed colour, pin it with `marker.colors: ?{ CASE <col> WHEN ... END }`."
   - "A `split` draws one pie per value on top of each other in the same circle; a split pie is a stacked bar."
   - "Nulls become a slice labelled 'null'; filter or coalesce them in SQL."
-pairings: [kpi_total_in_hole, bar_beside]
+pairings: [indicator_overlay, chart_beside(bar)]
 layout: {height: medium, width_share: 0.33, row_role: breakdown}
 mobile: One-third width is fine until the stack; then it takes a full row, so keep the labels on the slices (`textinfo`) and drop the legend.

@@ -38,7 +38,7 @@ variations:
   - when: "there is a target or bound to measure progress against"
     then: "`mode: gauge+number` with `gauge.axis.range` and `gauge.threshold.value`"
   - when: "several KPIs share one chart"
-    then: "a `domain.x`/`domain.y` per insight so they sit side by side, or one chart per KPI in a `kpi` row"
+    then: "the `indicator_overlay` pairing with a `domain` per insight so they sit side by side, or one chart per KPI in a `kpi` row"
 limits:
   series_ideal: 1
   series_max: 1
@@ -50,6 +50,6 @@ gotchas:
   - "Units go in `number.prefix`/`number.suffix`; keep the value a plain aggregate so `number.valueformat` can format it."
   - "A `split` draws one indicator per value in the same `domain`, stacked on top of each other; a split KPI is a bar chart."
   - "A gauge (`mode` containing `gauge`) keeps a chart's full margins and is unreadable in an `xsmall` KPI row; tell `recommend_layout` with `hints.gauge: true` and it gets a taller row."
-pairings: [indicator_total_overlay, kpi_strip_above, kpi_cluster_beside]
+pairings: [indicator_overlay, kpi_strip_above, kpi_cluster_beside]
 layout: {height: xsmall, width_share: 0.25, row_role: kpi}
 mobile: KPIs stack one per line; order them by importance and keep only the strongest.
