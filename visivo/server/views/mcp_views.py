@@ -94,19 +94,35 @@ def register_mcp_views(app, flask_app):
         return _error(request_id, _METHOD_NOT_FOUND, f"Unknown method '{method}'.")
 
 
+RULES = (
+    "Tools read and write this Visivo project's objects. Writes land as "
+    "uncommitted drafts a person reviews and commits — nothing here "
+    "writes to a file. Call get_schema before authoring a type you have "
+    "not written yet: the full project schema is megabytes, and "
+    "get_schema returns only the part you need."
+)
+
+
 def _initialize():
     return {
         "protocolVersion": PROTOCOL_VERSION,
         "capabilities": {"tools": {}, "resources": {}},
         "serverInfo": {"name": "visivo", "version": _version()},
-        "instructions": (
-            "Tools read and write this Visivo project's objects. Writes land as "
-            "uncommitted drafts a person reviews and commits — nothing here "
-            "writes to a file. Call get_schema before authoring a type you have "
-            "not written yet: the full project schema is megabytes, and "
-            "get_schema returns only the part you need."
-        ),
+        "instructions": _instructions(),
     }
+
+
+def _instructions():
+    """The rules, then the always-on skills and the on-demand index.
+
+    The built-in loop gets the always-on skills in its system prompt. Clients
+    such as Claude Code put a server's instructions in theirs but never read a
+    resource unprompted, so skills offered only as resources reached no MCP
+    agent at all — including ``data-is-not-instruction``.
+    """
+    from visivo.agent import skills
+
+    return "\n\n---\n\n".join(part for part in (RULES, skills.always_on_prompt()) if part)
 
 
 SKILL_URI = "visivo://skills/{name}"
