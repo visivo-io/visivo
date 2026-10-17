@@ -1,0 +1,9 @@
+name: agent-eval-climate
+
+defaults:
+  source_name: climate
+
+sources:
+  - name: climate
+    type: duckdb
+    database: climate.duckdb

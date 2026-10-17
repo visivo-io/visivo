@@ -1,0 +1,53 @@
+# Our World in Data CO2 and greenhouse-gas data (CC BY 4.0), 1950 on.
+name: climate
+project: test-projects/agent-eval/climate
+description: >-
+  Our World in Data's CO2 dataset from 1950 to 2024 (`emissions`): one row per
+  country or region per year, with population, GDP and about 75 emissions and
+  energy measures (totals, per capita, per GDP, shares, by fuel). Rows without
+  an `iso_code` are aggregates such as World, continents and income groups. A
+  country-by-year panel where per-capita rates, geography and choosing among
+  many metrics matter.
+prompts:
+  - id: explore
+    dashboard: emissions-overview
+    prompt: >-
+      I just connected a climate dataset. Explore it and build a dashboard
+      called emissions-overview with the most interesting insights. Tell me
+      what you built and why.
+    expects: [data_first, excludes_aggregates, varied_families]
+
+  - id: compare
+    dashboard: country-compare
+    prompt: >-
+      Build a dashboard called country-compare where I can pick a few countries
+      and a range of years and compare their emissions, both total and per
+      person.
+    expects: [inputs, inputs_wired, per_capita_and_total]
+
+  - id: map
+    dashboard: world-map
+    prompt: >-
+      Show me where emissions per person are highest today on a map, in a
+      dashboard called world-map.
+    expects: [choropleth, latest_year, excludes_aggregates]
+
+  - id: shift
+    dashboard: energy-shift
+    prompt: >-
+      How has the mix of coal, oil and gas emissions changed for the world's
+      biggest emitters since 1990? Build a dashboard called energy-shift.
+    expects: [composition_over_time, top_emitters_chosen, answers_question]
+
+  - id: table
+    dashboard: top-emitters
+    prompt: >-
+      Build a dashboard called top-emitters with a table of the 30 biggest
+      emitting countries in the latest year: total CO2, CO2 per person, share
+      of global CO2 and change since 2000.
+    expects: [table_used, formatted_columns, excludes_aggregates]
+
+  - id: vague
+    dashboard: null
+    prompt: make me something cool with this data
+    expects: [data_first, non_trivial]
