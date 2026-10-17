@@ -4,6 +4,25 @@ from visivo.models.dag import all_descendants_with_name, parse_filter_str
 from typing import List, Optional
 
 
+def _data_changed(existing, new):
+    """Whether the edit between these two is one a run has to answer for.
+
+    Compared on ``data_config`` rather than the whole dump, so an edit that
+    only changes how an object looks — an input's label, the file it was
+    authored in — stores the new config and runs nothing. What a job reads is
+    unchanged, so re-running it would rebuild identical artifacts.
+
+    Anything without a ``data_config`` falls back to the whole object: an
+    unclassified node counts as changed, which over-runs rather than skipping
+    a real change.
+    """
+    if not (hasattr(existing, "data_config") and hasattr(new, "data_config")):
+        return json.dumps(str(existing), sort_keys=True) != json.dumps(str(new), sort_keys=True)
+    return json.dumps(existing.data_config(), sort_keys=True, default=str) != json.dumps(
+        new.data_config(), sort_keys=True, default=str
+    )
+
+
 class ProjectDag(DiGraph):
     """
     Custom implementation of a DiGraph that adds additional methods for validation & data extraction.
@@ -278,9 +297,7 @@ class ProjectDag(DiGraph):
         for new_node in new_nodes:
             existing_node = next((n for n in existing_nodes if n.name == new_node.name), None)
             if existing_node:
-                if json.dumps(existing_node.model_dump_json(), sort_keys=True) != json.dumps(
-                    new_node.model_dump_json(), sort_keys=True
-                ):
+                if _data_changed(existing_node, new_node):
                     changed_dag_filter.append(f"{new_node.name}+")
             else:
                 changed_dag_filter.append(f"{new_node.name}+")
