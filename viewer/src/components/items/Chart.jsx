@@ -75,6 +75,21 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     })
   );
 
+  // The live authored props, for the presentation-only edits that skip a run
+  // (VIS-1518). The selector returns the store's own objects, so the shallow
+  // compare stays stable between renders.
+  const insightLiveProps = useStore(
+    useShallow(state => {
+      if (!chartInsightNames.length) return {};
+      const props = {};
+      for (const name of chartInsightNames) {
+        const live = state.insights?.find(i => i.name === name)?.config?.props;
+        if (live) props[name] = live;
+      }
+      return props;
+    })
+  );
+
   const hasAllInsightData = useMemo(() => {
     if (!chartInsightNames.length) return true;
     return chartInsightNames.every(
@@ -93,14 +108,19 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
 
     if (hasInsights && insightsData) {
       const insightNames = chart.insights.map(i => i.name);
-      const insightData = chartDataFromInsightData(insightsData, inputs, insightTypeOverrides);
+      const insightData = chartDataFromInsightData(
+        insightsData,
+        inputs,
+        insightTypeOverrides,
+        insightLiveProps
+      );
       data.push(
         ...insightData.filter(insight => insightNames.includes(insight.sourceInsight || insight.name))
       );
     }
 
     return data;
-  }, [insightsData, chart.insights, hasInsights, inputs, insightTypeOverrides]);
+  }, [insightsData, chart.insights, hasInsights, inputs, insightTypeOverrides, insightLiveProps]);
 
   const { plotlyTemplateFor } = useDashboardTheme();
 
