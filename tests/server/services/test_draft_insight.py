@@ -123,10 +123,11 @@ class TestSubstituteInputs:
         assert out == {"a": "x > 4", "b": ["y > 4"]} and substituted == {"min_x": {"value": "4"}}
         assert substitute_inputs(app, "x > ${ref(min_x).value}", {"min_x": 2}, {}) == "x > 2"
 
-    def test_a_date_range_previews_its_default_window_quoted(self, monkeypatch):
-        """``.min``/``.max`` of a date range are its default start and end, as
-        string literals; the parse-time sample gave ``2024-01-01`` for both,
-        unquoted, which DuckDB ran as ``2024 - 1 - 1``."""
+    def test_a_date_range_previews_its_default_window_as_the_viewer_does(self, monkeypatch):
+        """``.min``/``.max`` are the default start and end, raw, as the viewer
+        substitutes them: the documented ``'...'::date`` form previews, and an
+        unquoted date fails in the preview exactly as it fails on the page. The
+        parse-time sample gave the start for both."""
         dates = MultiSelectInput(
             name="pickup_dates",
             range={"start": "2024-01-01", "end": "2024-03-31", "step": "1 day"},
@@ -134,11 +135,15 @@ class TestSubstituteInputs:
         )
         app = self._app(monkeypatch, {"pickup_dates": dates}, loader=lambda *a: "2024-01-01")
 
-        out = substitute_inputs(
-            app, "d between ${ref(pickup_dates).min} and ${ref(pickup_dates).max}", {}, {}
+        documented = substitute_inputs(
+            app,
+            "d between '${ref(pickup_dates).min}'::date and '${ref(pickup_dates).max}'::date",
+            {},
+            {},
         )
 
-        assert out == "d between '2024-01-10' and '2024-02-20'"
+        assert documented == "d between '2024-01-10'::date and '2024-02-20'::date"
+        assert render_input_value(["2024-01-10", "2024-02-20"], "max") == "2024-02-20"
 
     def test_literal_defaults_are_used_and_queries_fall_back_to_the_sample(self, monkeypatch):
         borough = SingleSelectInput(
