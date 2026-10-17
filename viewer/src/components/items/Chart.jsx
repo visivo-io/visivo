@@ -85,6 +85,14 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     );
   }, [chartInsightNames, insightsData]);
 
+  // A query that fails in the browser (DuckDB-WASM) still resolves the insight,
+  // with `data: []` and an `error`. Without this the chart drew empty axes and
+  // the error went only to the console.
+  const queryErrors = useMemo(
+    () => chartInsightNames.map(name => insightsData[name]?.error).filter(Boolean),
+    [chartInsightNames, insightsData]
+  );
+
   const isInsightsWaiting = hasInsights && !hasAllInsightData;
   const isDataLoading = !shouldLoad || isInsightsWaiting;
 
@@ -245,6 +253,18 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
       className={hideToolbar ? 'h-full' : ''}
       id={itemNameToSlug(chart.name)}
     >
+      {queryErrors.length > 0 && (
+        <div
+          role="alert"
+          data-testid={`chart_error_${chart.name}`}
+          className="absolute inset-x-3 top-10 z-10 rounded-md border border-red-500/60 bg-(--vt-surface) px-3 py-2 text-xs text-(--vt-text) shadow-sm"
+        >
+          <p className="font-semibold text-red-500">This chart's query failed</p>
+          <p className="mt-1 font-mono break-words line-clamp-4">
+            {queryErrors[0].split('\n')[0]}
+          </p>
+        </div>
+      )}
       <Plot
         key={`chart_${chart.name}`}
         data-testid={`chart_${chart.name}`}

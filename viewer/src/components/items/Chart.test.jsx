@@ -210,6 +210,37 @@ describe('Chart', () => {
       expect(screen.queryByText('Mock Plot')).not.toBeInTheDocument();
     });
 
+    test('shows the query error instead of silent empty axes', async () => {
+      chart.insights = [{ name: 'i1' }];
+      useStore.setState({
+        insightJobs: {
+          i1: {
+            data: [],
+            props_mapping: { 'props.x': 'xcol' },
+            error:
+              'Binder Error: Cannot mix values of type DATE and INTEGER in BETWEEN clause\nLINE 5: ...',
+          },
+        },
+      });
+      render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+      const alert = await screen.findByTestId('chart_error_name');
+      expect(alert).toHaveTextContent("This chart's query failed");
+      expect(alert).toHaveTextContent('Cannot mix values of type DATE and INTEGER');
+      expect(alert).not.toHaveTextContent('LINE 5');
+    });
+
+    test('shows no error panel when every insight query succeeded', async () => {
+      chart.insights = [{ name: 'i1' }];
+      useStore.setState({
+        insightJobs: {
+          i1: { data: [{ xcol: 1 }], props_mapping: { 'props.x': 'xcol' }, error: null },
+        },
+      });
+      render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+      await waitFor(() => expect(capturedData).not.toBeNull());
+      expect(screen.queryByTestId('chart_error_name')).not.toBeInTheDocument();
+    });
+
     test('shows Loading when shouldLoad is false', () => {
       render(<Chart chart={chart} project={{ id: 1 }} shouldLoad={false} />, {
         wrapper: withProviders,
