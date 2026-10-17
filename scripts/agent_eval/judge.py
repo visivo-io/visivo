@@ -115,7 +115,8 @@ def main():
     pending = [
         os.path.dirname(p)
         for p in sorted(glob.glob(os.path.join(args.runs, "*", "summary.json")))
-        if args.force or not os.path.exists(os.path.join(os.path.dirname(p), "judge.json"))
+        if (args.force or not os.path.exists(os.path.join(os.path.dirname(p), "judge.json")))
+        and not json.load(open(p))["client"].get("invalid")
     ]
     with ThreadPoolExecutor(max_workers=args.parallel) as pool:
         for run_dir, verdict in pool.map(lambda d: judge(d, args.model), pending):

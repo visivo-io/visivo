@@ -243,6 +243,9 @@ def parse_claude(path, elapsed, timed_out):
         "cost_usd": final.get("total_cost_usd"),
         "turns": final.get("num_turns"),
         "client_error": final.get("is_error", True),
+        # A run the client could not finish (a usage limit, a crash) says
+        # nothing about the agent; the judge and the report leave it out.
+        "invalid": final.get("is_error", True) or not calls,
     }
 
 
@@ -271,12 +274,22 @@ def run_builtin(serve, prompt, run_dir):
     with open(os.path.join(run_dir, "transcript.json"), "w") as out:
         json.dump({"session": session, "actions": actions}, out, indent=2, default=str)
     return {
-        "calls": [{"tool": a.get("tool"), "error": a.get("outcome") == "error"} for a in actions],
+        "calls": builtin_calls(session) or builtin_calls({"transcript": [{"actions": actions}]}),
         "final_message": session.get("output") or session.get("error"),
         "elapsed_s": round(time.time() - started, 1),
         "timed_out": time.time() - started >= CLIENT_TIMEOUT_SECONDS,
         "client_error": session.get("state") != "succeeded",
     }
+
+
+def builtin_calls(session):
+    """The tool calls a built-in session made, from its own transcript: the
+    process-wide action log is shared with MCP clients and capped."""
+    return [
+        {"tool": a.get("tool"), "error": a.get("outcome") == "error"}
+        for turn in session.get("transcript") or []
+        for a in turn.get("actions") or []
+    ]
 
 
 def screenshot(serve, dashboard, path, width, expected):

@@ -36,7 +36,8 @@ def load(runs_dir):
         judge_path = os.path.join(run_dir, "judge.json")
         summary["judge"] = json.load(open(judge_path)) if os.path.exists(judge_path) else {}
         summary["dir"] = run_dir
-        runs.append(summary)
+        if not summary["client"].get("invalid"):
+            runs.append(summary)
     return runs
 
 
