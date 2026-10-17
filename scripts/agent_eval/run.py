@@ -262,7 +262,7 @@ def run_builtin(serve, prompt, run_dir):
     while time.time() - started < CLIENT_TIMEOUT_SECONDS:
         time.sleep(3)
         _, session = serve.http("GET", f"/api/agent/{session['id']}/")
-        if session.get("state") not in ("running", "pending", "queued"):
+        if session.get("state") not in ("running", "queued"):
             break
     else:
         serve.http("POST", f"/api/agent/{session['id']}/cancel/")
@@ -270,19 +270,12 @@ def run_builtin(serve, prompt, run_dir):
     actions = after.get("actions", after if isinstance(after, list) else [])[seen:]
     with open(os.path.join(run_dir, "transcript.json"), "w") as out:
         json.dump({"session": session, "actions": actions}, out, indent=2, default=str)
-    messages = session.get("messages") or session.get("turns") or []
-    final = next(
-        (m.get("content") for m in reversed(messages) if m.get("role") == "assistant"), None
-    )
     return {
-        "calls": [
-            {"tool": a.get("tool") or a.get("name"), "error": a.get("outcome") == "error"}
-            for a in actions
-        ],
-        "final_message": final or session.get("result"),
+        "calls": [{"tool": a.get("tool"), "error": a.get("outcome") == "error"} for a in actions],
+        "final_message": session.get("output") or session.get("error"),
         "elapsed_s": round(time.time() - started, 1),
         "timed_out": time.time() - started >= CLIENT_TIMEOUT_SECONDS,
-        "client_error": session.get("state") not in ("done", "completed", "finished"),
+        "client_error": session.get("state") != "succeeded",
     }
 
 
