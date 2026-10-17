@@ -1,0 +1,3 @@
+taxi.duckdb
+taxi.duckdb.wal
+target/

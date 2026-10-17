@@ -1,0 +1,9 @@
+name: agent-dogfood
+
+defaults:
+  source_name: taxi
+
+sources:
+  - name: taxi
+    type: duckdb
+    database: taxi.duckdb
