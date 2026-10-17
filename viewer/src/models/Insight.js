@@ -390,7 +390,48 @@ export function applySliceExpression(value, sliceExpr) {
  * @param {Object} inputs - Optional map of input names to input objects with accessor values
  * @returns {Array<Object>} Array of Plotly trace objects
  */
-export function chartDataFromInsightData(insightsData, inputs = {}, typeOverrides = {}) {
+const isPlainObject = value =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+// A literal is safe to take from the live config; a value that mentions a query
+// or a ref keeps the built artifact's resolved form.
+const isLiteral = value =>
+  typeof value === 'string'
+    ? !value.includes('?{') && !value.includes('${')
+    : !Array.isArray(value) || value.every(isLiteral);
+
+/**
+ * The built ``static_props`` with the live config's literal props laid over
+ * them, and literals the live config no longer has removed. A presentation-only
+ * edit (a colorscale, a marker colour) moves no data fingerprint, so no run
+ * rebuilds the artifact; without this the chart kept the stale value (VIS-1518).
+ */
+export function overlayLiveProps(built, live) {
+  if (!isPlainObject(live)) return built;
+  const result = isPlainObject(built) ? { ...built } : {};
+  for (const key of Object.keys(result)) {
+    if (key !== 'type' && !(key in live) && isLiteral(result[key]) && !isPlainObject(result[key])) {
+      delete result[key];
+    }
+  }
+  for (const [key, value] of Object.entries(live)) {
+    if (key === 'type') continue;
+    if (isPlainObject(value)) {
+      const nested = overlayLiveProps(result[key], value);
+      if (Object.keys(nested).length) result[key] = nested;
+    } else if (isLiteral(value)) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+export function chartDataFromInsightData(
+  insightsData,
+  inputs = {},
+  typeOverrides = {},
+  liveProps = {}
+) {
   if (!insightsData) {
     return [];
   }
@@ -417,9 +458,13 @@ export function chartDataFromInsightData(insightsData, inputs = {}, typeOverride
       continue;
     }
 
+    const effectiveStatic = liveProps[insightName]
+      ? overlayLiveProps(static_props, liveProps[insightName])
+      : static_props;
+
     // Process static_props to replace input refs with actual values
-    const processedStaticProps = static_props
-      ? processInputRefsInProps(static_props, inputs)
+    const processedStaticProps = effectiveStatic
+      ? processInputRefsInProps(effectiveStatic, inputs)
       : null;
 
     const hasPropsMapping = props_mapping && Object.keys(props_mapping).length > 0;

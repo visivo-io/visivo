@@ -6,6 +6,7 @@ import {
   applySliceExpression,
   mapQueryResultsToProps,
   tableDataFromQueryResults,
+  overlayLiveProps,
 } from './Insight';
 
 const sampleInsightsData = {
@@ -1100,3 +1101,57 @@ describe('chartDataFromInsightData — static insights (VIS-1464)', () => {
     expect(traces[0].type).toBe('bar');
   });
 });
+
+describe('live presentation props (VIS-1518)', () => {
+  const built = {
+    colorscale: 'Blues',
+    marker: { color: '#111', line: { width: 1 } },
+    text: '${pickup_borough.value}',
+    hovertemplate: 'old',
+  };
+
+  it('lays the live literals over the built static props', () => {
+    const live = {
+      type: 'heatmap',
+      x: '?{ ${ref(trips).hour} }',
+      colorscale: 'Viridis',
+      marker: { color: '#222' },
+      text: '${ref(pickup_borough).value}',
+      hovertemplate: 'old',
+    };
+    expect(overlayLiveProps(built, live)).toEqual({
+      colorscale: 'Viridis',
+      marker: { color: '#222', line: { width: 1 } },
+      text: '${pickup_borough.value}',
+      hovertemplate: 'old',
+    });
+  });
+
+  it('drops a literal the live config removed but keeps refs it cannot resolve', () => {
+    const result = overlayLiveProps(built, { marker: { color: '#111' } });
+    expect(result).not.toHaveProperty('colorscale');
+    expect(result).not.toHaveProperty('hovertemplate');
+    expect(result.text).toBe('${pickup_borough.value}');
+  });
+
+  it('keeps the built props when there is no live config', () => {
+    expect(overlayLiveProps(built, undefined)).toBe(built);
+    expect(overlayLiveProps(undefined, { colorscale: 'Reds' })).toEqual({ colorscale: 'Reds' });
+  });
+
+  it('renders the live colorscale through chartDataFromInsightData', () => {
+    const insights = {
+      grid: {
+        type: 'heatmap',
+        data: [{ z: 3 }],
+        props_mapping: { 'props.z': 'z' },
+        static_props: { colorscale: 'Blues' },
+      },
+    };
+    const [stale] = chartDataFromInsightData(insights);
+    const [fresh] = chartDataFromInsightData(insights, {}, {}, { grid: { colorscale: 'Viridis' } });
+    expect(stale.colorscale).toBe('Blues');
+    expect(fresh.colorscale).toBe('Viridis');
+  });
+});
+
