@@ -769,7 +769,7 @@ class _Model:
         self.tags = {c.column: scoring.tag_dimension(c, doc, interactivity) for c in cards}
         self.metrics = _propose_metrics(name, cards, doc, layer, warnings)
         self.lead, self.lead_why = self._lead()
-        self.min_points = interactivity.design_rules.time_default_min_points
+        self.min_points = doc.reductions.regrain.points_min
         self.inputs = [c.column for c in self.of("input_candidate")]
         self.splits = []
         for card in self.of("split_candidate"):

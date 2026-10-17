@@ -821,7 +821,6 @@ class DesignRules(_Strict):
     require_default: bool = True
     multi_select_default: str = "explicit_static_list"
     numeric_range_default: str = "full_span"
-    time_default_min_points: int = Field(default=12, ge=1)
     string_operand_quoting: str = "'${ref(I).value}'"
     input_name_style: str = "snake_case"
     write_order: str = "inputs_before_insights"
@@ -1045,7 +1044,17 @@ class BucketReduction(Reduction):
 
 
 class Regrain(Reduction):
+    # The readable range of a trend: fewer than points_min no longer reads as a
+    # trend, more than points_max is too dense to draw. Input defaults keep a
+    # time window at points_min or more, so they read it from here too.
+    points_min: int = Field(ge=2)
     points_max: int = Field(ge=2)
+
+    @model_validator(mode="after")
+    def _a_range(self):
+        if self.points_min >= self.points_max:
+            raise ValueError("regrain.points_min must be below points_max")
+        return self
 
 
 class CollapseRare(Reduction):

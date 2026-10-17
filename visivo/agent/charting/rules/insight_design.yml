@@ -45,6 +45,7 @@ reductions:
     bins: 10
     when: a continuous column used as a dimension
   regrain:
+    points_min: 12
     points_max: 600
     when: a time axis with too many points at its natural grain
   collapse_rare:

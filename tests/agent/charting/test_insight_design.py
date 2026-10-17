@@ -117,10 +117,23 @@ class TestTheRuleFile:
     def test_reductions_use_the_shared_transform_vocabulary(self):
         assert set(Reductions.model_fields) <= TRANSFORM_VOCABULARY
 
-    def test_the_input_bucket_and_trend_minimum_are_read_not_restated(self):
+    def test_the_input_bucket_is_read_not_restated(self):
         text = (rules.RULES_DIR / "insight_design.yml").read_text()
-        for restated in ("input_over_split_min_bucket", "time_default_min_points", "points_min"):
-            assert restated not in text
+        assert "input_over_split_min_bucket" not in text
+
+    def test_the_trend_minimum_lives_beside_the_regrain_it_bounds(self):
+        interactivity = (rules.RULES_DIR / "interactivity.yml").read_text()
+        assert "min_points" not in interactivity
+        regrain = rules.load_insight_design().reductions.regrain
+        assert regrain.points_min < regrain.points_max
+
+    def test_a_regrain_range_must_be_a_range(self):
+        broken = raw()
+        broken["reductions"]["regrain"]["points_min"] = broken["reductions"]["regrain"][
+            "points_max"
+        ]
+        with pytest.raises(ValueError, match="points_min must be below points_max"):
+            InsightDesignDoc(**broken)
 
 
 class TestHeavyTail:
@@ -164,6 +177,6 @@ class TestTheSkill:
         doc.reductions.regrain.points_max = 333
         interactivity = rules.load_interactivity()
         interactivity.design_rules.input_over_split_min_bucket = "many"
-        interactivity.design_rules.time_default_min_points = 9
+        doc.reductions.regrain.points_min = 9
         text = render.insight_design_markdown(doc, interactivity)
         assert "top 6 hold" in text and "9–333 points" in text and "at `many`" in text

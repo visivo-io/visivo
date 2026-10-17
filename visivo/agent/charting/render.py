@@ -87,9 +87,10 @@ def _card_row(rule):
     )
 
 
-def interactivity_rules_markdown(doc=None):
+def interactivity_rules_markdown(doc=None, insight_design=None):
     """The interactivity rules as the make-it-interactive skill states them."""
     doc = doc or load_interactivity()
+    min_points = (insight_design or load_insight_design()).reductions.regrain.points_min
     d = doc.design_rules
     lines = [
         "| column | cardinality | input → interaction | why |",
@@ -102,7 +103,7 @@ def interactivity_rules_markdown(doc=None):
         f"- **Input vs split:** split a `few` column; from `{d.input_over_split_min_bucket}` up, an input.",
         f"- **Defaults:** every input has one, so the first render is complete. Multi-select defaults are an "
         f"explicit list (never `all` or a query); numeric ranges default to the full span; a time default "
-        f"leaves ≥{d.time_default_min_points} points at the column's grain.",
+        f"leaves ≥{min_points} points at the column's grain.",
         f"- **Quoting:** string operands as `{d.string_operand_quoting}`, numbers bare. Input names are "
         f"{d.input_name_style} (the viewer substitutes `\\w+` names only).",
         f"- **Order:** write inputs before the insights that reference them. A global filter goes on "
@@ -318,7 +319,7 @@ def insight_design_markdown(doc=None, interactivity=None):
             f"  - `top_n_other` (top {red.top_n_other.n}, at most {red.top_n_other.n_max}, "
             f"+ Other): {red.top_n_other.when};",
             f"  - `bucket` ({red.bucket.bins} bins): {red.bucket.when};",
-            f"  - `regrain` ({d.time_default_min_points}–{red.regrain.points_max} points): "
+            f"  - `regrain` ({red.regrain.points_min}–{red.regrain.points_max} points): "
             f"{red.regrain.when};",
             f"  - `collapse_rare` (under {_pct(red.collapse_rare.min_share)} → Other): "
             f"{red.collapse_rare.when};",
