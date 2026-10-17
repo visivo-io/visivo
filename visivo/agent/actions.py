@@ -68,7 +68,7 @@ class ActionLog:
         self._listeners.append(listener)
         return listener
 
-    def record(self, tool, *, obj=None, outcome="ok", error=None, summary=None):
+    def record(self, tool, *, obj=None, outcome="ok", error=None, summary=None, image_url=None):
         source, session_id = _caller.get()
         action = {
             "id": next(_counter),
@@ -80,6 +80,9 @@ class ActionLog:
             "summary": summary or _summarise(tool, obj, outcome, error),
             "source": source,
             "session_id": session_id,
+            # What the agent was looking at, when a tool produced a picture.
+            # Nullable and additive: every consumer reads this dict by key.
+            "image_url": image_url,
         }
         with self._lock:
             self._actions.append(action)

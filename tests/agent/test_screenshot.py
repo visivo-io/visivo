@@ -408,3 +408,40 @@ class TestTheToolIsOffered:
 
         assert set(schema["properties"]) == {"name", "full_page"}
         assert schema["required"] == ["name"]
+
+
+class TestTheCaptureReachesTheAgentTab:
+    """The transcript should show what the agent was looking at when it decided
+    something, rather than asking the reader to take its word for it."""
+
+    def _only_dashboard(self, app):
+        return [
+            d.name for d in app.dashboard_manager.get_all_objects_list() if getattr(d, "name", None)
+        ][0]
+
+    def test_the_action_carries_the_image(self, integration_app, browser):
+        name = self._only_dashboard(integration_app)
+
+        call(integration_app, "screenshot_dashboard", {"name": name})
+
+        entry = [a for a in log().since(0) if a["tool"] == "screenshot_dashboard"][-1]
+        assert entry["image_url"].startswith("/api/agent/captures/")
+
+    def test_every_other_action_has_the_field_and_no_image(self, integration_app):
+        """Additive: the action is a fixed dict every consumer reads by key, so
+        a nullable field costs the other 61 tools nothing."""
+        call(integration_app, "list_dashboards", {})
+
+        entry = log().since(0)[-1]
+        assert entry["image_url"] is None
+
+    def test_a_capture_that_could_not_be_stored_logs_no_image(
+        self, integration_app, browser, monkeypatch
+    ):
+        monkeypatch.setattr(screenshot.os, "makedirs", mock.Mock(side_effect=OSError("read-only")))
+        name = self._only_dashboard(integration_app)
+
+        call(integration_app, "screenshot_dashboard", {"name": name})
+
+        entry = [a for a in log().since(0) if a["tool"] == "screenshot_dashboard"][-1]
+        assert entry["image_url"] is None
