@@ -38,6 +38,13 @@ def warnings(app, type_key, config):
 def _insight(app, config):
     found = []
     props = config.get("props") or {}
+    text = str(props) + str(config.get("interactions") or "")
+    if "?{" in text and not _REF.search(text):
+        found.append(
+            "The insight references no model, so it has nothing to run and its chart never "
+            "loads. Name the model in a query, e.g. `?{ count(${ref(trips).trip_id}) }` instead "
+            "of `?{ count(*) }`."
+        )
     trace = props.get("type")
     scale = props.get("colorscale")
     if trace in COLOR_SCALED and scale in DARK_TO_LIGHT and not props.get("reversescale"):
