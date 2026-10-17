@@ -59,8 +59,7 @@ class TestTheHandshake:
         assert skills.always_on()
         for skill in skills.always_on():
             assert skill["text"].strip() in instructions
-        for skill in skills.on_demand():
-            assert f"`{skill['name']}`" in instructions
+        assert skills.skill_index() in instructions
 
     def test_a_notification_gets_no_body(self, integration_client):
         response = integration_client.post(
