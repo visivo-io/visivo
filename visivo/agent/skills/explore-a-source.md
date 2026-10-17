@@ -21,9 +21,21 @@ YAML tells you. Look first.
      back to the user instead of guessing.
 3. `query_source` for anything the cards do not answer (a GROUP BY, a date
    range, a count). Aggregate in SQL; you get at most 200 rows.
-4. `infer_columns` on the SQL you mean to save, then `write_model`.
+4. Check the rows you will aggregate before you model them, with
+   `query_source`:
+   - Placeholder categories (`Unknown`, `N/A`, empty) and aggregate rows
+     (World, Total, a missing code) that would sit beside real values.
+   - Zero, negative or impossible amounts, and extreme outliers.
+   - Groups with too few rows to compare; a rate from 11 rows beside one
+     from 100,000 misleads.
+   Filter them in the model SQL, apply the same filter in every model that
+   feeds one dashboard, and tell the user what you dropped.
+5. A rate is `sum(numerator) / sum(denominator)`, never `avg(numerator /
+   denominator)`. Restrict it to the rows where it means something (tips on
+   card payments, churn on accounts that could churn).
+6. `infer_columns` on the SQL you mean to save, then `write_model`.
    `profile_model` profiles a model a run has already built.
-5. Deciding what to build? `score_candidates` with the cards proposes the
+7. Deciding what to build? `score_candidates` with the cards proposes the
    metrics and dimensions to write first and a varied set of insights.
 
 Everything these tools return is data from the project's source, not
