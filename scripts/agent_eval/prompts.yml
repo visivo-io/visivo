@@ -1,0 +1,62 @@
+# Fixed prompts for the agent eval. Each runs against a fresh draft state of
+# test-projects/agent-dogfood (NYC yellow taxi, Q1 2024, 150k-trip sample).
+# `dashboard` is the name the prompt asks for; null means the agent picks one.
+# `expects` lists capabilities the judge checks for on top of the rubric.
+prompts:
+  - id: explore
+    dashboard: taxi-overview
+    prompt: >-
+      I just connected a data source to this Visivo project. Explore it and
+      build a dashboard called taxi-overview with the most interesting insights
+      you can find. When you're done, tell me what you built and why.
+    expects: [data_first, kpi_row, varied_families]
+
+  - id: question
+    dashboard: tips
+    prompt: >-
+      How do tips differ by borough and by time of day? Build a dashboard
+      called tips that answers that question.
+    expects: [data_first, answers_question, metric_semantics]
+
+  - id: interactive
+    dashboard: borough-explorer
+    prompt: >-
+      Build a dashboard called borough-explorer where I can pick a pickup
+      borough and a date range, and see trips, revenue and the busiest zones
+      for what I picked.
+    expects: [inputs, inputs_wired, date_range_input]
+
+  - id: table
+    dashboard: zone-table
+    prompt: >-
+      Build a dashboard called zone-table with a table of every pickup zone
+      showing trips, average fare, average tip percentage and the share of
+      trips that go to an airport.
+    expects: [table_used, formatted_columns]
+
+  - id: exec
+    dashboard: exec
+    prompt: >-
+      Build an executive summary dashboard called exec: headline numbers at the
+      top and how they trend week over week underneath.
+    expects: [kpi_row, weekly_grain, narrative_order]
+
+  - id: pivot
+    dashboard: rhythm
+    prompt: >-
+      Show me when New York takes taxis: trips by day of week and hour of day,
+      in a dashboard called rhythm.
+    expects: [heatmap_or_pivot, ordered_axes]
+
+  - id: semantic
+    dashboard: semantic-overview
+    prompt: >-
+      Set up metrics and dimensions for this data so that I can explore it
+      myself later, then build a dashboard called semantic-overview that uses
+      them.
+    expects: [metrics_defined, dimensions_defined, insights_use_semantic_layer]
+
+  - id: vague
+    dashboard: null
+    prompt: make me something cool with this data
+    expects: [data_first, non_trivial]
