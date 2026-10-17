@@ -179,7 +179,17 @@ def skill_index():
     rest = on_demand()
     if not rest:
         return ""
-    lines = [f"- `{s['name']}` — {s['summary']}" for s in rest]
+    # One line for the chart families: the agent picks a family from
+    # recommend_charts, not from summaries, and 25 lines would not fit the budget.
+    charts = sorted(s["name"].split("/", 1)[1] for s in rest if s["name"].startswith("charts/"))
+    lines = [
+        f"- `{s['name']}` — {s['summary']}" for s in rest if not s["name"].startswith("charts/")
+    ]
+    if charts:
+        lines.append(
+            "- `charts/<family>` — how to write one chart family, read after `recommend_charts` "
+            "names it: " + ", ".join(charts) + "."
+        )
     return (
         "# Skills you can read\n\n"
         "Before a task one of these covers, call `read_skill(name)` and follow it. "

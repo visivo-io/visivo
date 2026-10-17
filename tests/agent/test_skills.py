@@ -42,7 +42,7 @@ class TestBothAgentsGetTheSame:
         prompt = _instructions_for(integration_app, INSTRUCTIONS)
 
         for skill in skills.packaged():
-            assert skill["name"] in prompt, "inlined if always-on, indexed otherwise"
+            assert _named(skill["name"], prompt), "inlined if always-on, indexed otherwise"
 
     def test_mcp_lists_them_as_resources(self, integration_client):
         response = integration_client.post(
@@ -283,7 +283,7 @@ class TestTheTwoTiers:
     def test_on_demand_bodies_are_indexed_not_inlined(self, skill_tree):
         prompt = skills.as_prompt(str(skill_tree))
 
-        assert "`charts/line` — Lines." in prompt
+        assert "- `charts/<family>` — " in prompt and prompt.rstrip().endswith("line.")
         assert "# Line" not in prompt
         assert "read_skill(name)" in prompt
 
@@ -312,7 +312,17 @@ class TestTheTwoTiers:
         prompt = skills.as_prompt()
 
         for name, _, _ in skills.index():
-            assert name in prompt
+            assert _named(name, prompt)
+
+
+def _named(name, prompt):
+    """A skill is named in the prompt verbatim, or, for a chart family, on the
+    one ``charts/<family>`` line that lists every family."""
+    if name in prompt:
+        return True
+    family = name.removeprefix("charts/")
+    line = next((ln for ln in prompt.splitlines() if ln.startswith("- `charts/<family>`")), "")
+    return family != name and family in line.split("names it: ", 1)[-1].rstrip(".").split(", ")
 
 
 class TestReadSkill:
