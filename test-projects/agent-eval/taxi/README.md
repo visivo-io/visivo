@@ -8,5 +8,5 @@ for January to March 2024 (`yellow_trips`) and the zone lookup (`taxi_zones`).
 The data is public domain. Build it with:
 
 ```bash
-bash scripts/agent_eval/seed_taxi.sh
+bash scripts/agent_eval/datasets/taxi/seed.sh
 ```

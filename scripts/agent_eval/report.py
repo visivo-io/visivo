@@ -51,6 +51,10 @@ def thumbnail(path, width=1000):
     return "data:image/jpeg;base64," + base64.b64encode(out.getvalue()).decode()
 
 
+def prompt_key(run):
+    return f"{run.get('dataset', 'taxi')}/{run['prompt_id']}"
+
+
 def rendered_ok(run):
     dashboards = run["dashboards"].values()
     return bool(dashboards) and all(
@@ -162,7 +166,7 @@ def run_cell(run, index):
 def prompt_sections(runs, conditions, prompts):
     sections = []
     for prompt_id in prompts:
-        group = [r for r in runs if r["prompt_id"] == prompt_id]
+        group = [r for r in runs if prompt_key(r) == prompt_id]
         if not group:
             continue
         cells = "".join(
@@ -186,7 +190,7 @@ def top_defects(runs, limit=12):
                 (
                     SEVERITY_ORDER.get(defect.get("severity"), 3),
                     run["condition"],
-                    run["prompt_id"],
+                    prompt_key(run),
                     defect,
                 )
             )
@@ -276,8 +280,9 @@ a { color: var(--accent); }
 
 def render(runs, title, notes=""):
     conditions = list(dict.fromkeys(r["condition"] for r in runs))
-    prompts = list(dict.fromkeys(r["prompt_id"] for r in runs))
+    prompts = list(dict.fromkeys(prompt_key(r) for r in runs))
     models = sorted({r["model"] for r in runs})
+    datasets = sorted({r.get("dataset", "taxi") for r in runs})
     judges = sorted({r["judge"].get("judge_model", "?") for r in runs if r["judge"]})
     legend = "".join(
         f"<span><i class='c{i}' style='background:var(--cc)'></i>{html.escape(c)}</span>"
@@ -292,7 +297,7 @@ def render(runs, title, notes=""):
 <main>
   <header>
     <h1>{html.escape(title)}</h1>
-    <p class='lede'>Each run gives one agent client one fixed prompt against a fresh copy of the NYC taxi eval project (150,000 yellow-cab trips, Q1 2024, raw source only). The harness records every tool call, renders each dashboard at 1280 px and 390 px, and an LLM judge scores it on ten criteria, 0–2 each.</p>
+    <p class='lede'>Each run gives one agent client one fixed prompt against a fresh copy of an eval project that holds a raw source only ({html.escape(', '.join(datasets))}). The harness records every tool call, renders each dashboard at 1280 px and 390 px, and an LLM judge scores it on ten criteria, 0–2 each.</p>
     <div class='meta'><span>{len(runs)} runs</span><span>agent model: {html.escape(', '.join(models))}</span><span>judge: {html.escape(', '.join(judges))}</span></div>
   </header>
   {notes}

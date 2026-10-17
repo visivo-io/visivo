@@ -300,8 +300,8 @@ fork the palette in a single component.
 
 Run the agent eval for every change to `visivo/agent/`, to the MCP endpoint, or to a viewer path that agent-built dashboards use. CI does not run the eval.
 
-1. Seed the data and start the eval sandbox as `scripts/agent_eval/README.md` describes.
-2. Run the same prompts and repeats on `main` and on your branch: `python scripts/agent_eval/run.py --conditions mcp --repeats 2 --out <dir>`.
+1. Build the three datasets and start the eval sandbox as `scripts/agent_eval/README.md` describes.
+2. Run each dataset with the same prompts and repeats on `main` and on your branch: `python scripts/agent_eval/run.py --dataset <taxi|saas|climate> --conditions mcp --repeats 2 --out <dir>`.
 3. Score each run with `judge.py`. Render the report with `report.py`.
 4. Put the mean score per condition, the change from `main`, and the defects that appeared or went away into the PR description.
 

@@ -373,7 +373,7 @@ def inspect_dashboards(serve, objects, run_dir):
     return found
 
 
-def run_one(serve, condition, item, model, run_dir):
+def run_one(serve, condition, item, model, run_dir, dataset):
     os.makedirs(run_dir, exist_ok=True)
     serve.discard()
     if condition == "builtin":
@@ -386,6 +386,8 @@ def run_one(serve, condition, item, model, run_dir):
     with open(os.path.join(run_dir, "objects.json"), "w") as out:
         json.dump(objects, out, indent=2, default=str)
     summary = {
+        "dataset": dataset["name"],
+        "dataset_description": dataset["description"],
         "prompt_id": item["id"],
         "prompt": item["prompt"],
         "expected_dashboard": item.get("dashboard"),
@@ -413,6 +415,7 @@ def main():
     )
     parser.add_argument("--backend", default="http://localhost:8011")
     parser.add_argument("--frontend", default="http://localhost:3011")
+    parser.add_argument("--dataset", default="taxi", help="a directory under datasets/")
     parser.add_argument("--conditions", default="mcp")
     parser.add_argument("--prompts", default="all", help="comma-separated prompt ids, or 'all'")
     parser.add_argument("--model", default="sonnet")
@@ -420,7 +423,8 @@ def main():
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
 
-    suite = yaml.safe_load(open(os.path.join(HERE, "prompts.yml")))["prompts"]
+    dataset = yaml.safe_load(open(os.path.join(HERE, "datasets", args.dataset, "prompts.yml")))
+    suite = dataset["prompts"]
     if args.prompts != "all":
         wanted = args.prompts.split(",")
         suite = [p for p in suite if p["id"] in wanted]
@@ -429,9 +433,11 @@ def main():
     for condition in args.conditions.split(","):
         for item in suite:
             for repeat in range(args.repeats):
-                run_dir = os.path.join(args.out, f"{condition}__{item['id']}__{repeat}")
+                run_dir = os.path.join(
+                    args.out, f"{args.dataset}__{condition}__{item['id']}__{repeat}"
+                )
                 print(f"[{stamp}] {condition} {item['id']} #{repeat} ...", flush=True)
-                summary = run_one(serve, condition, item, args.model, run_dir)
+                summary = run_one(serve, condition, item, args.model, run_dir, dataset)
                 stats = summary["stats"]
                 print(
                     f"    {summary['client']['elapsed_s']}s, {stats['tool_calls']} calls, "

@@ -1,7 +1,13 @@
 # Fixed prompts for the agent eval. Each runs against a fresh draft state of
-# test-projects/agent-dogfood (NYC yellow taxi, Q1 2024, 150k-trip sample).
-# `dashboard` is the name the prompt asks for; null means the agent picks one.
-# `expects` lists capabilities the judge checks for on top of the rubric.
+# test-projects/agent-eval/taxi. `dashboard` is the name the prompt asks for;
+# null means the agent picks one. `expects` lists capabilities the judge checks
+# for on top of the rubric.
+name: taxi
+project: test-projects/agent-eval/taxi
+description: >-
+  A 150,000-trip sample of NYC yellow taxi trips from January to March 2024
+  (`yellow_trips`), with a `taxi_zones` lookup (borough, zone). Transactional
+  rows with timestamps, money, distance and geography.
 prompts:
   - id: explore
     dashboard: taxi-overview

@@ -1,6 +1,5 @@
 You are reviewing a dashboard that an AI agent built in Visivo (BI-as-code) in
-answer to one user prompt. The data is a 150,000-trip sample of NYC yellow taxi
-trips from January to March 2024, with a `taxi_zones` lookup (borough, zone).
+answer to one user prompt. The data: {dataset}
 
 You are a demanding senior analytics engineer. Score what was built, not what
 the agent said it built. Look at every screenshot listed below with the Read

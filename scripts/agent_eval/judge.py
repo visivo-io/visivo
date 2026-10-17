@@ -16,6 +16,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RUBRIC = open(os.path.join(HERE, "rubric.md")).read()
+TAXI = (
+    "A 150,000-trip sample of NYC yellow taxi trips from January to March 2024, "
+    "with a `taxi_zones` lookup (borough, zone)."
+)
 JUDGE_TIMEOUT_SECONDS = 600
 MAX_OBJECTS_CHARS = 60_000
 
@@ -26,7 +30,8 @@ def judge_prompt(run_dir, summary):
         objects = objects[:MAX_OBJECTS_CHARS] + "\n... (truncated)"
     shots = sorted(os.path.basename(p) for p in glob.glob(os.path.join(run_dir, "*.png")))
     facts = {name: {k: v for k, v in d.items()} for name, d in summary["dashboards"].items()}
-    return f"""{RUBRIC}
+    rubric = RUBRIC.replace("{dataset}", summary.get("dataset_description") or TAXI)
+    return f"""{rubric}
 
 ## User prompt
 

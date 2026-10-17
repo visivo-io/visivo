@@ -1,10 +1,10 @@
 #!/bin/bash
-# Build test-projects/agent-dogfood/taxi.duckdb from NYC TLC yellow-trip data
+# Build test-projects/agent-eval/taxi/taxi.duckdb from NYC TLC yellow-trip data
 # (public domain): a seeded 150,000-trip sample of Q1 2024 plus the zone lookup.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-PROJECT="$ROOT/test-projects/agent-dogfood"
+ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
+PROJECT="$ROOT/test-projects/agent-eval/taxi"
 DOWNLOADS="$(mktemp -d)"
 trap 'rm -rf "$DOWNLOADS"' EXIT
 BASE="https://d37ci6vzurychx.cloudfront.net"
