@@ -1,7 +1,7 @@
 /* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import { render, screen, fireEvent } from '@testing-library/react';
 import selectEvent from 'react-select-event';
-import PivotableTable from './PivotableTable';
+import PivotableTable, { columnFormat } from './PivotableTable';
 import * as DuckDBContext from '../../contexts/DuckDBContext';
 
 jest.mock('../../contexts/DuckDBContext');
@@ -854,3 +854,96 @@ describe('PivotableTable — gradients and paging (VIS-1463)', () => {
   });
 });
 /* eslint-enable testing-library/no-node-access */
+
+describe('PivotableTable column formats', () => {
+  const draw = (table, sourceData = mockInsightData) =>
+    render(
+      <PivotableTable table={table} sourceData={sourceData} itemWidth={600} height={400} width={600} />
+    );
+
+  beforeEach(() => {
+    DuckDBContext.useDuckDB.mockReturnValue({});
+    mockPivotReturn = {
+      rows: [{ zone: 'Midtown', rev: 8160.4, share: 0.1234, year: 2024 }],
+      columns: [
+        { accessorKey: 'zone', header: 'Zone' },
+        { accessorKey: 'rev', header: 'Revenue ($)' },
+        { accessorKey: 'share', header: 'Tip share' },
+        { accessorKey: 'year', header: 'Year' },
+      ],
+      nestedColumns: null,
+      pivotMeta: null,
+      isLoading: false,
+      error: null,
+    };
+  });
+
+  it('formats column-select cells by their alias, and a year without a separator', () => {
+    draw({
+      name: 'zones',
+      rows_per_page: 50,
+      columns: ['${ref(i).zone}'],
+      column_formats: { 'Revenue ($)': '$,.0f', 'Tip share': '.1%' },
+    });
+    expect(screen.getByText('$8,160')).toBeInTheDocument();
+    expect(screen.getByText('12.3%')).toBeInTheDocument();
+    expect(screen.getByText('2024')).toBeInTheDocument();
+  });
+
+  it('formats a data table by column name and searches the shown text', () => {
+    draw({ name: 'plain', rows_per_page: 50, column_formats: { col_b: '$,.2f' } });
+    expect(screen.getByText('$100.00')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Search...'), { target: { value: '$300.00' } });
+    expect(screen.getByText('Charlie')).toBeInTheDocument();
+    expect(screen.queryByText('Alice')).not.toBeInTheDocument();
+  });
+
+  it('formats pivot cells under grouped headers', () => {
+    mockPivotReturn = {
+      ...mockPivotReturn,
+      rows: [{ name: 'Alice', East: 1234.5 }],
+      columns: [
+        { accessorKey: 'name', header: 'Name', isPivotRow: true },
+        { accessorKey: 'East', header: 'East' },
+      ],
+      nestedColumns: [
+        { accessorKey: 'name', header: 'Name', meta: { isPivotRow: true } },
+        { id: 'region', header: 'Region', columns: [{ accessorKey: 'East', header: 'East' }] },
+      ],
+    };
+    draw({
+      name: 'piv',
+      rows_per_page: 50,
+      columns: ['${ref(i).region}'],
+      rows: ['${ref(i).name}'],
+      values: ['sum(${ref(i).rev})'],
+      column_formats: { '*': '$,.0f' },
+    });
+    expect(screen.getByText('$1,235')).toBeInTheDocument();
+  });
+});
+
+describe('columnFormat', () => {
+  const rows = [{ year: 2024, order_year: 2023.5, n: 5 }];
+
+  it('prefers an explicit format for the header, then the name', () => {
+    expect(columnFormat({ Year: '.0f' }, 'year', 'Year', 'number', rows)).toBe('.0f');
+    expect(columnFormat({ year: ',d' }, 'year', 'Year', 'number', rows)).toBe(',d');
+  });
+
+  it('gives * to the remaining number columns, never to a pivot row field', () => {
+    const formats = { '*': '$,.0f', n: ',d' };
+    expect(columnFormat(formats, 'East', 'East', 'number', rows)).toBe('$,.0f');
+    expect(columnFormat(formats, 'n', 'N', 'number', rows)).toBe(',d');
+    expect(columnFormat(formats, 'year', 'Year', 'number', rows)).toBe('d');
+    expect(columnFormat(formats, 'store', 'Store', 'number', rows, true)).toBeUndefined();
+    expect(columnFormat(formats, 'zone', 'Zone', 'string', rows)).toBeUndefined();
+  });
+
+  it('defaults only integer number columns named like a year', () => {
+    expect(columnFormat(undefined, 'year', 'Year', 'number', rows)).toBe('d');
+    expect(columnFormat(null, 'order_year', 'Order Year', 'number', rows)).toBeUndefined();
+    expect(columnFormat({}, 'year', 'Year', 'string', rows)).toBeUndefined();
+    expect(columnFormat({}, 'n', 'Years Active', 'number', rows)).toBeUndefined();
+  });
+});

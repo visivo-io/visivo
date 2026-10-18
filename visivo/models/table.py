@@ -1,5 +1,5 @@
 import re
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from typing_extensions import Annotated
 
 from visivo.models.insight import Insight
@@ -15,8 +15,13 @@ from visivo.models.base.context_string import CONTEXT_STRING_VALUE_PATTERN
 from visivo.models.models.sql_model import SqlModel
 from visivo.query.patterns import extract_ref_names, replace_refs
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from enum import IntEnum
+
+# d3-format's specifier grammar, the one Plotly's valueformat and tickformat use.
+D3_FORMAT = re.compile(
+    r"^(?:(.)?([<>=^]))?([+\-( ])?([$#])?(0)?(\d+)?(,)?(\.\d+)?(~)?([efgrsdoxXbcnp%])?$"
+)
 
 
 def get_data_discriminator_value(value):
@@ -83,6 +88,21 @@ class Table(NamedModel, ParentModel):
           - ${ref(sales-insight).revenue} as "Total Revenue"
     ```
 
+    ### Number Formats
+    ``` yaml
+    tables:
+      - name: zone-table
+        columns:
+          - ${ref(trips).zone} as Zone
+          - ${ref(trips).revenue} as "Revenue ($)"
+          - ${ref(trips).tip_share} as "Tip share"
+        column_formats:
+          "Revenue ($)": "$,.0f"
+          "Tip share": ".1%"
+    ```
+
+    In a pivot the value columns are named by the data, so format them all with `"*": "$,.0f"`.
+
     ### Pivot Table
     ``` yaml
     tables:
@@ -128,6 +148,26 @@ class Table(NamedModel, ParentModel):
         None,
         description="Gradient/heatmap cell formatting configuration.",
     )
+    column_formats: Optional[Dict[str, str]] = Field(
+        None,
+        description="Number formats by column, keyed by the column's header (its alias) or "
+        "name. Each value is a d3-format string, the grammar Plotly's valueformat uses: "
+        '{"Revenue ($)": "$,.0f", "Tip share": ".1%", "Year": "d"}. The key "*" formats '
+        "every other number column except pivot row fields, which suits a pivot's value "
+        "columns. An integer column named like a year shows no thousands separator unless "
+        "listed. Formats change only what a cell shows; sorting and CSV export keep the numbers.",
+    )
+
+    @field_validator("column_formats")
+    @classmethod
+    def validate_column_formats(cls, formats):
+        for column, spec in (formats or {}).items():
+            if not D3_FORMAT.match(spec):
+                raise ValueError(
+                    f"column_formats['{column}'] = '{spec}' is not a d3-format string. "
+                    "Use one like ',.0f', '$,.2f', '.1%' or 'd'."
+                )
+        return formats
 
     def ref_names(self) -> set:
         """Names of every object referenced from ``columns`` / ``rows`` / ``values``."""

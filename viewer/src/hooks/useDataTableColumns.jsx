@@ -10,8 +10,8 @@ const MIN_RESIZE_WIDTH = 60;
 export const useDataTableColumns = ({ columns, nestedColumns, sorting, onSortChange, onColumnProfileRequest, HeaderComponent, isCompressed = false }) => {
   return useMemo(() => {
     if (nestedColumns) {
-      const typeByName = new Map(columns.map(col => [col.name, col.normalizedType]));
-      return attachRenderers(nestedColumns, typeByName, { sorting, onSortChange, onColumnProfileRequest, isCompressed });
+      const columnByName = new Map(columns.map(col => [col.name, col]));
+      return attachRenderers(nestedColumns, columnByName, { sorting, onSortChange, onColumnProfileRequest, isCompressed });
     }
 
     return columns.map(col => buildLeafColumnDef(col, { sorting, onSortChange, onColumnProfileRequest, HeaderComponent, isCompressed }));
@@ -33,7 +33,7 @@ function buildLeafColumnDef(col, { sorting, onSortChange, onColumnProfileRequest
       />
     ),
     cell: ({ getValue }) => (
-      <DataTableCell value={getValue()} columnType={col.normalizedType} />
+      <DataTableCell value={getValue()} columnType={col.normalizedType} format={col.format} />
     ),
     size: calculateColumnWidth(col.displayName || col.name, col.normalizedType),
     minSize: MIN_RESIZE_WIDTH,
@@ -41,7 +41,7 @@ function buildLeafColumnDef(col, { sorting, onSortChange, onColumnProfileRequest
   };
 }
 
-function attachRenderers(columnDefs, typeByName, opts) {
+function attachRenderers(columnDefs, columnByName, opts) {
   return columnDefs.map(def => {
     if (def.columns) {
       // Group header
@@ -49,7 +49,7 @@ function attachRenderers(columnDefs, typeByName, opts) {
         id: def.id,
         header: () => <DataTableGroupHeader label={def.header} />,
         meta: { isGroupHeader: true },
-        columns: attachRenderers(def.columns, typeByName, opts),
+        columns: attachRenderers(def.columns, columnByName, opts),
       };
     }
 
@@ -58,7 +58,8 @@ function attachRenderers(columnDefs, typeByName, opts) {
     const col = {
       name,
       displayName: def.displayName || def.header || def.id,
-      normalizedType: typeByName.get(name) ?? COLUMN_TYPES.UNKNOWN,
+      normalizedType: columnByName.get(name)?.normalizedType ?? COLUMN_TYPES.UNKNOWN,
+      format: columnByName.get(name)?.format,
       duckdbType: 'VARCHAR',
       isPivotRow: def.meta?.isPivotRow || false,
     };

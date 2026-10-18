@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import DataTableCell from './DataTableCell';
+import DataTableCell, { formatCellText, numberFormatter } from './DataTableCell';
 
 describe('DataTableCell', () => {
   it('formats null values with italic styling', () => {
@@ -76,5 +76,27 @@ describe('DataTableCell', () => {
   it('shows formatted date in title attribute', () => {
     render(<DataTableCell value={1704067200} columnType="date" />);
     expect(screen.getByTitle('2024-01-01')).toBeInTheDocument();
+  });
+
+  describe('column formats', () => {
+    it('formats a number with the column format', () => {
+      render(<DataTableCell value={8160.4} columnType="number" format="$,.0f" />);
+      expect(screen.getByText('$8,160')).toBeInTheDocument();
+    });
+
+    it('formats a bigint and a signed fixed format', () => {
+      // eslint-disable-next-line no-undef
+      render(<DataTableCell value={BigInt(2024)} columnType="number" format="d" />);
+      expect(screen.getByText('2024')).toBeInTheDocument();
+      expect(formatCellText(8.0004, 'number', '+.1f')).toBe('+8.0');
+    });
+
+    it('leaves strings alone and falls back when the format does not parse', () => {
+      expect(formatCellText('north', 'string', '$,.0f')).toBe('north');
+      expect(formatCellText(1234.5, 'number', 'not a format')).toBe(
+        new Intl.NumberFormat(navigator.language, { maximumFractionDigits: 4 }).format(1234.5)
+      );
+      expect(numberFormatter('not a format')).toBeNull();
+    });
   });
 });

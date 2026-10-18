@@ -413,6 +413,12 @@ def test_Project_validate_set_path_on_named_models():
     assert project.tables[0].path == "project.tables[0]"
 
 
+def test_a_table_keeps_its_column_formats_free_of_paths():
+    table = {"name": "t", "column_formats": {"Revenue ($)": "$,.0f"}}
+    project = Project(name="p", tables=[table])
+    assert project.tables[0].column_formats == {"Revenue ($)": "$,.0f"}
+
+
 def test_set_paths_on_models():
     project_data = {
         "name": "test_project",

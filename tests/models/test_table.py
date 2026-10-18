@@ -491,3 +491,15 @@ def test_Table_refs_to_two_related_models_are_accepted():
     relation = RelationFactory(name="a_to_b", condition="${ref(model_a).id} = ${ref(model_b).a_id}")
     table = Table(name="joined", columns=["${ref(model_a).x}", "${ref(model_b).y}"])
     assert validate_project_table_sources(_project_with([table], [relation])) is None
+
+
+def test_Table_column_formats_accept_d3_formats():
+    formats = {"Revenue ($)": "$,.0f", "Tip share": ".1%", "Year": "d", "Change": "+.1f", "*": "~s"}
+    table = Table(name="t", columns=['${ref(m).zone} as "Zone"'], column_formats=formats)
+    assert table.column_formats == formats
+
+
+@pytest.mark.parametrize("spec", ["$%,.2f", "#,##0.00", "dollars", ".1f%"])
+def test_Table_column_formats_reject_non_d3_strings(spec):
+    with pytest.raises(ValidationError, match="is not a d3-format string"):
+        Table(name="t", data="ref(m)", column_formats={"Revenue": spec})

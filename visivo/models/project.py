@@ -441,6 +441,7 @@ class Project(NamedModel, ParentModel):
                         "display",
                         "default",
                         "range",
+                        "column_formats",
                     ]:
                         new_path = f"{path}.{key}" if path else key
                         set_path_recursively(value, new_path)
