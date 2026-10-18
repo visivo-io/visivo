@@ -27,6 +27,7 @@ COLOR_SCALED = {
 _RANGE_ACCESSOR = re.compile(r"(?<!')\$\{\s*ref\(\s*([\w-]+)\s*\)\.(min|max)\s*\}(?!')")
 _REF = re.compile(r"\$\{\s*ref\(")
 _COLUMN_IN_REF = re.compile(r"\$\{\s*ref\(\s*([\w-]+)\.([\w.-]+)\s*\)")
+_BARE_COLUMN = re.compile(r"\s*\$\{\s*ref\(\s*([\w-]+)\s*\)\.[\w.-]+\s*\}\s*")
 # Plotly puts a `~` in front of a format that starts with a sign and holds an
 # f, s or p, which d3 then rejects, so the number prints raw.
 _UNREADABLE_FORMAT = re.compile(r"^[-+( #].*[fps]")
@@ -64,6 +65,13 @@ def _insight(app, config):
             f"`${{ref({model}.{column})}}` puts the column inside the ref, so it names no object "
             f"and the insight never runs. Write `${{ref({model}).{column}}}`."
         )
+    for key, value in _strings(props):
+        bare = _BARE_COLUMN.fullmatch(value)
+        if bare and not _is_input(app, bare.group(1)):
+            found.append(
+                f"`{key}: {value}` sits outside a query, so it is a plain string, the insight "
+                f"runs nothing and its chart never loads. Write `{key}: ?{{ {value.strip()} }}`."
+            )
     if "?{" in text and not _REF.search(text):
         found.append(
             "The insight references no model, so it has nothing to run and its chart never "
@@ -197,6 +205,22 @@ def _table(config):
         "Alias every column with a readable label and its unit "
         f'(`{unaliased[0]} as "Label"`); unaliased headers show raw or hashed names.'
     ]
+
+
+def _strings(node, path=""):
+    if isinstance(node, str):
+        yield path, node
+    elif isinstance(node, dict):
+        for key, value in node.items():
+            yield from _strings(value, f"{path}.{key}" if path else str(key))
+    elif isinstance(node, list):
+        for value in node:
+            yield from _strings(value, path)
+
+
+def _is_input(app, name):
+    manager = getattr(app, "input_manager", None)
+    return manager is not None and manager.get(name) is not None
 
 
 def _is_date_range(app, name):

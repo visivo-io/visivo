@@ -175,6 +175,28 @@ class TestRefShapes:
             "and the insight never runs. Write `${ref(tips).borough}`."
         ]
 
+    def test_a_column_ref_outside_a_query_is_flagged_with_the_fix(self):
+        props = {
+            "type": "heatmap",
+            "x": "${ref(trips).hour}",
+            "marker": {"color": ["${ref(trips).day}"]},
+            "z": "?{ count(${ref(trips).id}) }",
+        }
+        found = lint.warnings(APP, "insights", _insight(props))
+        assert found[:2] == [
+            "`x: ${ref(trips).hour}` sits outside a query, so it is a plain string, the insight "
+            "runs nothing and its chart never loads. Write `x: ?{ ${ref(trips).hour} }`.",
+            "`marker.color: ${ref(trips).day}` sits outside a query, so it is a plain string, "
+            "the insight runs nothing and its chart never loads. "
+            "Write `marker.color: ?{ ${ref(trips).day} }`.",
+        ]
+
+    def test_an_input_accessor_outside_a_query_passes(self):
+        props = {"type": "bar", "x": "?{ ${ref(tips).borough} }", "name": "${ref(b).value}"}
+        assert lint.warnings(APP, "insights", _insight(props)) == []
+        no_inputs = SimpleNamespace()
+        assert "sits outside a query" in lint.warnings(no_inputs, "insights", _insight(props))[0]
+
     def test_a_ref_in_a_model_sql_is_flagged(self):
         sql = "SELECT * FROM ${ref(trips)} t JOIN ${ref(zones)} z ON t.z = z.id"
         found = lint.warnings(APP, "models", {"name": "m", "sql": sql})
