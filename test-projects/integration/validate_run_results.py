@@ -277,6 +277,10 @@ class VisivoRunValidator:
             "revenue-cost-split-insight",
             "cost-margin-split-insight",
             "titled-kpi-insight",
+            "sales_total_revenue",
+            "sales_total_units",
+            "sales_revenue_by_category",
+            "sales_revenue_by_quarter",
         ]
 
         success = True
