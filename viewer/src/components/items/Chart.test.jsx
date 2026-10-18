@@ -34,7 +34,7 @@ beforeEach(() => {
     name: 'name',
     insights: [],
   };
-  useStore.setState({ insightJobs: {}, inputJobs: {} });
+  useStore.setState({ insightJobs: {}, inputJobs: {}, insights: [] });
 });
 
 describe('Chart', () => {
@@ -208,6 +208,24 @@ describe('Chart', () => {
       render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
       expect(screen.getByText('name')).toBeInTheDocument();
       expect(screen.queryByText('Mock Plot')).not.toBeInTheDocument();
+    });
+
+    test('draws a presentation-only edit from the live config without a run', async () => {
+      chart.insights = [{ name: 'i1' }];
+      useStore.setState({
+        insightJobs: {
+          i1: {
+            data: [{ zcol: 1 }],
+            props_mapping: { 'props.z': 'zcol' },
+            static_props: { colorscale: 'Blues' },
+            type: 'heatmap',
+          },
+        },
+        insights: [{ name: 'i1', config: { props: { type: 'heatmap', colorscale: 'Viridis' } } }],
+      });
+      render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+      await waitFor(() => expect(capturedData).not.toBeNull());
+      expect(capturedData[0].colorscale).toBe('Viridis');
     });
 
     test('shows Loading when shouldLoad is false', () => {
