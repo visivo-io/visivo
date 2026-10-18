@@ -114,6 +114,40 @@ class TestModelReferences:
             )
 
 
+class TestAxisTitles:
+    INSIGHTS = {
+        "bars": SimpleNamespace(props=SimpleNamespace(type=SimpleNamespace(value="bar"))),
+        "kpi": SimpleNamespace(props=SimpleNamespace(type="indicator")),
+    }
+    APP = SimpleNamespace(insight_manager=SimpleNamespace(get=INSIGHTS.get))
+
+    def test_an_axis_chart_without_titles_is_flagged(self):
+        config = {
+            "name": "c",
+            "insights": ["${ref(bars)}"],
+            "layout": {"yaxis": {"title": "Trips"}},
+        }
+        found = lint.warnings(self.APP, "charts", config)
+        assert len(found) == 1 and "no title on xaxis" in found[0]
+        bare = lint.warnings(self.APP, "charts", {"name": "c", "insights": ["${ref(bars)}"]})
+        assert "xaxis or yaxis" in bare[0]
+
+    def test_titled_axes_kpis_unknown_insights_and_bare_apps_pass(self):
+        titled = {"xaxis": {"title": {"text": "Week"}}, "yaxis": {"title": {"text": "Trips"}}}
+        for config, app in (
+            ({"name": "c", "insights": ["${ref(bars)}"], "layout": titled}, self.APP),
+            ({"name": "c", "insights": ["${ref(kpi)}"]}, self.APP),
+            ({"name": "c", "insights": ["${ref(nope)}"]}, self.APP),
+            ({"name": "c", "insights": ["${ref(bars)}"]}, SimpleNamespace()),
+        ):
+            assert lint.warnings(app, "charts", config) == []
+
+    def test_a_blank_title_counts_as_missing(self):
+        layout = {"xaxis": {"title": {"text": " "}}, "yaxis": {"title": "Trips"}}
+        config = {"name": "c", "insights": ["${ref(bars)}"], "layout": layout}
+        assert "no title on xaxis" in lint.warnings(self.APP, "charts", config)[0]
+
+
 class TestTables:
     def test_an_unaliased_column_is_flagged(self):
         config = {"name": "t", "columns": ["${ref(m).trips}", '${ref(m).zone} as "Zone"']}
@@ -126,9 +160,17 @@ class TestTables:
 
     def test_other_types_are_not_linted(self):
         assert lint.warnings(APP, "charts", {"name": "c"}) == []
+        assert lint.warnings(APP, "markdowns", {"name": "m"}) == []
 
 
 class TestTheWriteCarriesThem:
+    def test_write_chart_warns_about_untitled_axes(self, integration_app):
+        insight = {"name": "by_region", "props": {"type": "bar", "x": "?{ 1 }", "y": "?{ 2 }"}}
+        call(integration_app, "write_insight", {"config": insight})
+        chart = {"name": "by_region_chart", "insights": ["${ref(by_region)}"]}
+        result = call(integration_app, "write_chart", {"config": chart})
+        assert any("Name each axis" in w for w in result["warnings"])
+
     def test_write_insight_returns_its_warnings(self, integration_app):
         config = {
             "name": "map",

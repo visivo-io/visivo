@@ -9,6 +9,8 @@ eval found repeatedly; none of them refuses the write.
 import re
 from datetime import date
 
+from visivo.query.patterns import extract_ref_names
+
 # Plotly's named scales that run dark to light: the highest values come out palest.
 DARK_TO_LIGHT = {"Blues", "Greens", "Greys", "YlGnBu", "YlOrRd"}
 COLOR_SCALED = {
@@ -28,6 +30,19 @@ _REF = re.compile(r"\$\{\s*ref\(")
 # f, s or p, which d3 then rejects, so the number prints raw.
 _UNREADABLE_FORMAT = re.compile(r"^[-+( #].*[fps]")
 FORMAT_KEYS = {"valueformat", "tickformat", "hoverformat"}
+# Traces drawn on x and y axes, whose reader needs each axis named with its unit.
+AXIS_TRACES = {
+    "bar",
+    "scatter",
+    "scattergl",
+    "histogram",
+    "box",
+    "violin",
+    "waterfall",
+    "heatmap",
+    "contour",
+    "histogram2d",
+}
 
 
 def warnings(app, type_key, config):
@@ -37,7 +52,7 @@ def warnings(app, type_key, config):
     if type_key == "tables":
         return _table(config)
     if type_key == "charts":
-        return _formats(config.get("layout"))
+        return _axis_titles(app, config) + _formats(config.get("layout"))
     return []
 
 
@@ -90,6 +105,36 @@ def _formats(node):
         else:
             found.extend(_formats(value))
     return found
+
+
+def _axis_titles(app, config):
+    manager = getattr(app, "insight_manager", None)
+    if manager is None:
+        return []
+    names = set()
+    for ref in config.get("insights") or []:
+        names |= extract_ref_names(ref if isinstance(ref, str) else str(ref))
+    types = set()
+    for name in names:
+        insight = manager.get(name)
+        trace = getattr(getattr(insight, "props", None), "type", None)
+        types.add(getattr(trace, "value", trace))
+    if not types & AXIS_TRACES:
+        return []
+    layout = config.get("layout") or {}
+    missing = [axis for axis in ("xaxis", "yaxis") if not _title_text(layout.get(axis))]
+    if not missing:
+        return []
+    return [
+        f"The chart has no title on {' or '.join(missing)}. Name each axis with its unit, e.g. "
+        "`layout.yaxis.title.text: 'Revenue ($)'`, so the reader knows what is measured."
+    ]
+
+
+def _title_text(axis):
+    title = (axis or {}).get("title") if isinstance(axis, dict) else None
+    text = title.get("text") if isinstance(title, dict) else title
+    return isinstance(text, str) and text.strip() != ""
 
 
 def _table(config):
