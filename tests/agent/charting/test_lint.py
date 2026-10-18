@@ -45,6 +45,25 @@ class TestIndicators:
         assert lint.warnings(APP, "insights", _insight(props)) == []
 
 
+class TestNumberFormats:
+    def test_a_signed_fixed_format_is_flagged_wherever_it_sits(self):
+        props = {
+            "type": "indicator",
+            "number": {"valueformat": "+.1f", "suffix": "%"},
+            "delta": {"valueformat": "-,.0f"},
+        }
+        found = lint.warnings(APP, "insights", _insight(props))
+        assert len(found) == 2 and "Drop the sign (`.1f`)" in found[0]
+        layout = {"yaxis": {"tickformat": "+.2s"}, "annotations": [{"hoverformat": "(.0f"}]}
+        assert len(lint.warnings(APP, "charts", {"name": "c", "layout": layout})) == 2
+
+    def test_formats_plotly_reads_pass(self):
+        for valueformat in (",.0f", "$,.2f", ".1%", "+.1%", "+d", "+.3r", "~s"):
+            props = {"type": "indicator", "number": {"valueformat": valueformat}}
+            assert lint.warnings(APP, "insights", _insight(props)) == []
+        assert lint.warnings(APP, "charts", {"name": "c", "layout": {"title": "+.1f"}}) == []
+
+
 class TestDateRangeAccessors:
     def test_an_unquoted_date_accessor_is_flagged_once_per_use(self):
         filter_ = "?{ ${ref(m).day} between ${ref(d).min} and ${ref(d).max} }"

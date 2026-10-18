@@ -24,6 +24,10 @@ COLOR_SCALED = {
 }
 _RANGE_ACCESSOR = re.compile(r"(?<!')\$\{\s*ref\(\s*([\w-]+)\s*\)\.(min|max)\s*\}(?!')")
 _REF = re.compile(r"\$\{\s*ref\(")
+# Plotly puts a `~` in front of a format that starts with a sign and holds an
+# f, s or p, which d3 then rejects, so the number prints raw.
+_UNREADABLE_FORMAT = re.compile(r"^[-+( #].*[fps]")
+FORMAT_KEYS = {"valueformat", "tickformat", "hoverformat"}
 
 
 def warnings(app, type_key, config):
@@ -32,6 +36,8 @@ def warnings(app, type_key, config):
         return _insight(app, config)
     if type_key == "tables":
         return _table(config)
+    if type_key == "charts":
+        return _formats(config.get("layout"))
     return []
 
 
@@ -65,6 +71,24 @@ def _insight(app, config):
                         f"`${{ref({name}).{accessor}}}` is a date and is substituted unquoted, so "
                         f"the database reads it as arithmetic. Write `'${{ref({name}).{accessor}}}'::date`."
                     )
+    return found + _formats(props)
+
+
+def _formats(node):
+    if isinstance(node, list):
+        return [w for item in node for w in _formats(item)]
+    if not isinstance(node, dict):
+        return []
+    found = []
+    for key, value in node.items():
+        if key in FORMAT_KEYS and isinstance(value, str) and _UNREADABLE_FORMAT.match(value):
+            found.append(
+                f"Plotly cannot read `{key}: '{value}'` (a sign before an f, s or p format) and "
+                f"prints the raw number, e.g. 8.000414846174507. Drop the sign (`{value[1:]}`), "
+                "or show a change as the indicator's `delta` against a `reference`."
+            )
+        else:
+            found.extend(_formats(value))
     return found
 
 
