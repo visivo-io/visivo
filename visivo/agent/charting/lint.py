@@ -48,6 +48,8 @@ def warnings(app, type_key, config):
             "resolve there and the model fails to build. Query the source's tables directly, "
             "and join them in this model's SQL."
         ]
+    if type_key == "dashboards":
+        return _dashboard_refs(app, config)
     if type_key == "charts":
         return _axis_titles(app, config) + _formats(config.get("layout"))
     return []
@@ -150,6 +152,37 @@ def _title_text(axis):
     title = (axis or {}).get("title") if isinstance(axis, dict) else None
     text = title.get("text") if isinstance(title, dict) else title
     return isinstance(text, str) and text.strip() != ""
+
+
+ITEM_MANAGERS = {"chart": "chart_manager", "table": "table_manager", "input": "input_manager"}
+
+
+def _dashboard_refs(app, config):
+    found = []
+    for kind, name in dict.fromkeys(_item_refs(config.get("rows") or [])):
+        manager = getattr(app, ITEM_MANAGERS[kind], None)
+        if manager is None or manager.get(name) is not None:
+            continue
+        insights = getattr(app, "insight_manager", None)
+        if kind == "chart" and insights is not None and insights.get(name) is not None:
+            found.append(
+                f"`{name}` is an insight, not a chart, so its slot shows 'Chart not found'. "
+                f"Wrap it with write_chart (`insights: ['${{ref({name})}}']`) and place the chart."
+            )
+        else:
+            found.append(f"The dashboard places {kind} `{name}`, which does not exist.")
+    return found
+
+
+def _item_refs(rows):
+    for row in rows:
+        for item in (row or {}).get("items") or []:
+            for kind in ITEM_MANAGERS:
+                value = item.get(kind)
+                if isinstance(value, str):
+                    for name in extract_ref_names(value):
+                        yield kind, name
+            yield from _item_refs(item.get("rows") or [])
 
 
 def _table(config):

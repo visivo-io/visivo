@@ -186,6 +186,37 @@ class TestRefShapes:
         assert lint.warnings(APP, "models", {"name": "m", "sql": "select * from trips"}) == []
 
 
+class TestDashboardRefs:
+    CHARTS = {"trend_chart": object()}
+    INSIGHTS = {"kpi_trips": object()}
+    APP = SimpleNamespace(
+        chart_manager=SimpleNamespace(get=CHARTS.get),
+        table_manager=SimpleNamespace(get={}.get),
+        insight_manager=SimpleNamespace(get=INSIGHTS.get),
+    )
+
+    def test_an_insight_placed_as_a_chart_and_missing_items_are_flagged(self):
+        rows = [
+            {"items": [{"chart": "${ref(kpi_trips)}"}, {"chart": "${ref(trend_chart)}"}]},
+            {
+                "items": [
+                    {"rows": [{"items": [{"table": "${ref(nope)}"}, {"chart": "${ref(gone)}"}]}]}
+                ]
+            },
+            {"items": [{"chart": "${ref(kpi_trips)}"}, {"markdown": {"content": "# hi"}}]},
+        ]
+        found = lint.warnings(self.APP, "dashboards", {"name": "d", "rows": rows})
+        assert len(found) == 3
+        assert "`kpi_trips` is an insight, not a chart" in found[0]
+        assert "table `nope`, which does not exist" in found[1]
+        assert "chart `gone`, which does not exist" in found[2]
+
+    def test_existing_items_and_apps_without_managers_pass(self):
+        rows = [{"items": [{"chart": "${ref(trend_chart)}"}, {"input": "${ref(region)}"}]}]
+        assert lint.warnings(self.APP, "dashboards", {"name": "d", "rows": rows}) == []
+        assert lint.warnings(SimpleNamespace(), "dashboards", {"name": "d", "rows": rows}) == []
+
+
 class TestTables:
     def test_an_unaliased_column_is_flagged(self):
         config = {"name": "t", "columns": ["${ref(m).trips}", '${ref(m).zone} as "Zone"']}
