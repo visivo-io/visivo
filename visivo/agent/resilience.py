@@ -58,13 +58,21 @@ MAX_MODEL_REQUESTS = 40
 MAX_TOOL_CALLS = 100
 
 
+MALFORMED_CALL = "Malformed function call"
+
+
 def is_transient(error):
     """Whether another attempt could plausibly do better.
 
     Deliberately narrow. The default is "no", because the cost of a wrong
     "yes" is spending a user's credit on a failure that was already final.
     """
-    from pydantic_ai.exceptions import IncompleteToolCall, ModelAPIError, ModelHTTPError
+    from pydantic_ai.exceptions import (
+        ContentFilterError,
+        IncompleteToolCall,
+        ModelAPIError,
+        ModelHTTPError,
+    )
 
     # A spend limit arrives as a 429 from our own proxy. It is the one 429
     # that will never clear by waiting, and core has already phrased it.
@@ -73,6 +81,12 @@ def is_transient(error):
 
     if isinstance(error, ModelHTTPError):
         return error.status_code in RETRYABLE_STATUSES
+
+    # Gemini sometimes writes a tool call as Python (`print(default_api.x(...))`).
+    # The relay reports it as a content-filter refusal, but nothing was refused:
+    # the same request usually comes back well formed. A real refusal stays final.
+    if isinstance(error, ContentFilterError):
+        return MALFORMED_CALL in str(error)
 
     # A truncated tool call — the model was cut off mid-argument. Nothing is
     # wrong with the request, so sending it again is reasonable.

@@ -94,6 +94,22 @@ class TestWhatCountsAsTransient:
     def test_a_bad_key_is_not(self):
         assert not is_transient(ModelHTTPError(status_code=401, model_name="m", body={}))
 
+    def test_a_malformed_function_call_is_worth_resending(self):
+        from pydantic_ai.exceptions import ContentFilterError
+
+        malformed = ContentFilterError(
+            "Content filter triggered. Refusal: 'Malformed function call: "
+            "print(default_api.write_insight(config = {}))'"
+        )
+        assert is_transient(malformed)
+
+    def test_a_real_refusal_is_final(self):
+        from pydantic_ai.exceptions import ContentFilterError
+
+        assert not is_transient(
+            ContentFilterError("Content filter triggered. Finish reason: 'SAFETY'")
+        )
+
     def test_a_model_that_will_not_behave_is_not(self):
         assert not is_transient(UnexpectedModelBehavior("exceeded max retries"))
 
