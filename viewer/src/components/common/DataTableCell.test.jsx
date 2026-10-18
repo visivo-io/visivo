@@ -45,7 +45,7 @@ describe('DataTableCell', () => {
 
   it('stringifies a struct that holds a BigInt', () => {
     render(<DataTableCell value={{ _0: 113825n }} columnType="unknown" />);
-    expect(screen.getByText('{"_0":"113825"}')).toBeInTheDocument();
+    expect(screen.getByText('{"_0":113825}')).toBeInTheDocument();
   });
 
   it('formats numeric epoch date values as YYYY-MM-DD', () => {

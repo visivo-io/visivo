@@ -6,9 +6,9 @@ import {
 } from './cellFormatting';
 
 describe('stringifyValue', () => {
-  it('prints BigInts nested in structs and lists as their digits', () => {
+  it('prints nested BigInts as numbers when safe and exact strings when not', () => {
     expect(stringifyValue({ _0: 9007199254740993n, tags: [2n] })).toBe(
-      '{"_0":"9007199254740993","tags":["2"]}'
+      '{"_0":"9007199254740993","tags":[2]}'
     );
   });
 
