@@ -67,7 +67,9 @@ class TestTheOrder:
 
         assert source == SOURCE_CLOUD
         assert overlay == {}
-        assert model.__class__.__name__ == "OpenAIChatModel"
+        from pydantic_ai.models.openai import OpenAIChatModel
+
+        assert isinstance(model, OpenAIChatModel)
 
     def test_nothing_at_all_still_names_the_key_as_a_way_out(self, no_cloud):
         """With no cloud inference on offer here, a login is not a way out —
@@ -387,3 +389,99 @@ class TestTheCreditFigureComesFromTheDeployment:
         monkeypatch.setattr(cloud_model, "capability", lambda host=None: {"enabled": True})
 
         assert cloud_model.free_credit() is None
+
+
+class TestCloudCompletionsAreNormalised:
+    """VIS-1515: Visivo Cloud relays Gemini through an OpenAI-compatible
+    surface. Two eval turns died on what it passed through: a null
+    completion token count and `finish_reason: malformed_function_call`."""
+
+    def _payload(self, finish_reason="stop", completion_tokens=12):
+        return {
+            "id": "c1",
+            "object": "chat.completion",
+            "created": 1,
+            "model": "google/gemini-2.5-pro",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": "Done."},
+                    "finish_reason": finish_reason,
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": completion_tokens,
+                "total_tokens": None,
+            },
+        }
+
+    def test_null_counts_become_zero_and_unknown_reasons_stop(self):
+        payload = cloud_model.normalise_completion(
+            self._payload("malformed_function_call", completion_tokens=None)
+        )
+        assert payload["usage"] == {"prompt_tokens": 10, "completion_tokens": 0, "total_tokens": 0}
+        assert payload["choices"][0]["finish_reason"] == "stop"
+
+    def test_a_well_formed_completion_is_unchanged(self):
+        payload = self._payload("tool_calls")
+        payload["usage"]["total_tokens"] = 22
+        assert (
+            cloud_model.normalise_completion(
+                self._payload("tool_calls") | {"usage": payload["usage"]}
+            )
+            == payload
+        )
+
+    def test_the_built_model_accepts_what_crashed_the_turn(self, monkeypatch):
+        monkeypatch.setattr(cloud_model, "token", lambda h=None: "tok")
+        model = cloud_model.build(HOST)
+        response = type(
+            "R", (), {"model_dump": lambda s: self._payload("malformed_function_call", None)}
+        )()
+
+        validated = model._validate_completion(response)
+
+        assert validated.choices[0].finish_reason == "stop"
+        assert validated.usage.completion_tokens == 0
+
+
+class TestTheCapabilityCheck:
+    """What a deployment offers is asked once per host, and any failure reads
+    as "nothing on offer" so the agent falls back to a local key."""
+
+    def setup_method(self):
+        cloud_model.forget()
+
+    def teardown_method(self):
+        cloud_model.forget()
+
+    def _answer(self, monkeypatch, status=200, body=None, error=None):
+        calls = []
+
+        def get(url, timeout):
+            calls.append(url)
+            if error:
+                raise error
+            return type("R", (), {"status_code": status, "json": lambda s: body or {}})()
+
+        monkeypatch.setattr(cloud_model.requests, "get", get)
+        return calls
+
+    def test_an_enabled_deployment_is_read_and_cached(self, monkeypatch):
+        calls = self._answer(monkeypatch, body={"enabled": True, "free_credit_micros": 30_000_000})
+
+        assert cloud_model.capability(HOST)["enabled"] is True
+        assert cloud_model.free_credit(HOST) == "$30"
+        assert calls == [f"{HOST}/api/inference/"]
+
+    def test_a_404_or_a_network_error_means_nothing_on_offer(self, monkeypatch):
+        self._answer(monkeypatch, status=404)
+        assert cloud_model.capability(HOST) == {"enabled": False, "free_credit_micros": None}
+        cloud_model.forget(HOST)
+        self._answer(monkeypatch, error=OSError("unreachable"))
+        assert cloud_model.capability(HOST)["enabled"] is False
+
+    def test_the_token_is_looked_up_for_the_host(self, monkeypatch):
+        monkeypatch.setattr(cloud_model, "get_existing_token", lambda host: f"tok-for-{host}")
+        assert cloud_model.token(HOST) == f"tok-for-{HOST}"
