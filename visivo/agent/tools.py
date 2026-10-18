@@ -26,6 +26,7 @@ is what makes an autonomous loop safe to ship, because the blast radius of a
 hijacked agent is a draft someone can discard.
 """
 
+import re
 from typing import Dict, get_args
 
 from visivo.agent import images
@@ -101,9 +102,31 @@ def _get_handler(type_key):
     return handler
 
 
+_MODEL_SCOPED = ("metrics", "dimensions")
+
+
+def _scoped_config(app, type_key, config):
+    """``(config, model)``: a metric's or dimension's ``model`` key taken off its
+    config, naming the model it is scoped to, as the editor's ``parentModel`` does."""
+    if type_key not in _MODEL_SCOPED or "model" not in config:
+        return config, None
+    from visivo.server.source_resolution import find_model
+
+    config = dict(config)
+    value = str(config.pop("model") or "")
+    named = re.search(r"ref\(\s*([^)\s]+)\s*\)", value)
+    model = named.group(1) if named else value.strip()
+    if find_model(app, model) is None:
+        raise ToolError(
+            f"No model named '{model}' to scope the {_singular(type_key)} to. "
+            "Call list_models to see them."
+        )
+    return config, model
+
+
 def _validate_handler(type_key):
     def handler(app, arguments):
-        config = _config_argument(arguments)
+        config, model = _scoped_config(app, type_key, _config_argument(arguments))
         manager = _manager(app, type_key)
         try:
             obj = manager.validate_object(config)
@@ -111,6 +134,8 @@ def _validate_handler(type_key):
             raise
         except Exception as error:
             return {"valid": False, "error": str(error)}
+        if model:
+            obj.set_parent_name(model)
         name = config.get("name")
         clash = manager.name_clash and isinstance(name, str) and manager.name_clash(name, obj)
         if clash:
@@ -122,7 +147,7 @@ def _validate_handler(type_key):
 
 def _write_handler(type_key):
     def handler(app, arguments):
-        config = _config_argument(arguments)
+        config, model = _scoped_config(app, type_key, _config_argument(arguments))
         name = config.get("name")
         if not isinstance(name, str) or not name.strip():
             raise ToolError("The config must carry a 'name'.")
@@ -132,6 +157,8 @@ def _write_handler(type_key):
         except Exception as error:
             hints = "".join(f"\nHint: {hint}" for hint in _write_hints(type_key, error))
             raise ToolError(f"Invalid {_singular(type_key)}: {error}{hints}")
+        if model:
+            obj.set_parent_name(model)
 
         # Local import: run_views reaches back into the server package, and the
         # tool registry is imported from it.
@@ -198,14 +225,9 @@ def _write_hints(type_key, error):
                 f'`interactions: [{{{field}: "?{{ ... }}"}}]`.'
             )
         elif field == "model" and problem.get("type") == "extra_forbidden":
-            example = (
-                "`expression: sum(${ref(trips).fare})`"
-                if type_key in ("metrics", "dimensions")
-                else "`?{ sum(${ref(trips).fare}) }`"
-            )
             hints.append(
                 f"A {_singular(type_key)} has no `model` field. Name the model inside its "
-                f"expressions, e.g. {example}."
+                "expressions, e.g. `?{ sum(${ref(trips).fare}) }`."
             )
         elif type_key == "models" and field == "source":
             hints.append("Write the source as a reference, e.g. `source: ${ref(taxi)}`.")
@@ -253,12 +275,21 @@ _PER_TYPE = {
 }
 
 
+_SCOPED_NOTE = (
+    " Put `model: <model name>` in the config to scope the {singular} to that model, "
+    "as score_candidates' semantic_layer lists it; its expression then uses the "
+    "model's columns by name, e.g. `sum(fare_amount)`."
+)
+
+
 def _generated_tools():
     tools = {}
     for type_key in TYPE_TO_MANAGER:
         singular = _singular(type_key)
         for verb, (schema, factory, description) in _PER_TYPE.items():
             name = f"{verb}_{singular}" if verb != "list" else f"list_{type_key}"
+            if verb in ("write", "validate") and type_key in _MODEL_SCOPED:
+                description += _SCOPED_NOTE
             tools[name] = Tool(
                 name=name,
                 description=description.format(singular=singular, plural=type_key),

@@ -381,15 +381,6 @@ class TestWriteHints:
         with pytest.raises(ToolError, match=r"has no `model` field"):
             call(integration_app, "write_insight", {"config": config})
 
-    @pytest.mark.parametrize("tool", ["write_metric", "write_dimension"])
-    def test_a_semantic_model_field_shows_a_plain_expression(self, integration_app, tool):
-        config = {"name": "m", "expression": "sum(fare)", "model": "${ref(trips)}"}
-        with pytest.raises(ToolError) as raised:
-            call(integration_app, tool, {"config": config})
-        message = str(raised.value)
-        assert "`expression: sum(${ref(trips).fare})`" in message
-        assert "?{" not in message.split("Hint:", 1)[1]
-
     def test_a_bare_source_name_asks_for_a_reference(self, integration_app):
         config = {"name": "m", "source": "taxi", "sql": "select 1"}
         with pytest.raises(ToolError, match=r"source: \$\{ref\(taxi\)\}"):
@@ -404,6 +395,52 @@ class TestWriteHints:
         from visivo.agent.tools import _write_hints
 
         assert _write_hints("insights", ValueError("boom")) == []
+
+
+class TestModelScopedFields:
+    """A metric or dimension written with `model`, as score_candidates' semantic_layer
+    lists it, is scoped to that model the way the editor's parentModel scopes it."""
+
+    def _model(self, app):
+        call(app, "write_model", {"config": {"name": "trips", "sql": "select 1 as fare"}})
+
+    @pytest.mark.parametrize(
+        "tool, type_key", [("write_metric", "metrics"), ("write_dimension", "dimensions")]
+    )
+    @pytest.mark.parametrize("model", ["trips", "${ref(trips)}", "ref(trips)"])
+    def test_a_model_key_scopes_the_field(self, integration_app, tool, type_key, model):
+        self._model(integration_app)
+        config = {"name": "f", "expression": "sum(fare)", "model": model}
+
+        result = call(integration_app, tool, {"config": config})
+
+        manager = getattr(integration_app, f"{type_key[:-1]}_manager")
+        assert result["status"] == "draft"
+        assert manager.cached_objects["f"]._parent_name == "trips"
+
+    @pytest.mark.parametrize("tool", ["write_metric", "validate_dimension"])
+    def test_an_unknown_model_is_a_refusal(self, integration_app, tool):
+        config = {"name": "f", "expression": "sum(fare)", "model": "ghost"}
+        with pytest.raises(ToolError, match="No model named 'ghost'.*list_models"):
+            call(integration_app, tool, {"config": config})
+
+    def test_validate_accepts_the_model_key(self, integration_app):
+        self._model(integration_app)
+        config = {"name": "f", "expression": "sum(fare)", "model": "trips"}
+        assert call(integration_app, "validate_metric", {"config": config}) == {"valid": True}
+
+    def test_a_field_without_a_model_stays_project_level(self, integration_app):
+        self._model(integration_app)
+        config = {"name": "f", "expression": "sum(${ref(trips).fare})"}
+        call(integration_app, "write_metric", {"config": config})
+        assert integration_app.metric_manager.cached_objects["f"]._parent_name is None
+
+    def test_the_write_tools_describe_the_model_key(self):
+        from visivo.agent.tools import TOOLS
+
+        assert "model: <model name>" in TOOLS["write_metric"].description
+        assert "model: <model name>" in TOOLS["validate_dimension"].description
+        assert "model: <model name>" not in TOOLS["write_insight"].description
 
 
 class TestModelProbe:
