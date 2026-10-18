@@ -95,7 +95,7 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
       const insightNames = chart.insights.map(i => i.name);
       const insightData = chartDataFromInsightData(insightsData, inputs, insightTypeOverrides);
       data.push(
-        ...insightData.filter(insight => insightNames.includes(insight.sourceInsight || insight.name))
+        ...insightData.filter(insight => insightNames.includes(insight.insightName))
       );
     }
 

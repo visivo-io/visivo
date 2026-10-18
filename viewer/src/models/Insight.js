@@ -370,6 +370,16 @@ export function applySliceExpression(value, sliceExpr) {
   return i >= 0 && i < len ? value[i] : null;
 }
 
+// The legend shows an authored `props.name`, else the insight name.
+// `insightName` keeps the trace's owner whatever the legend says, so a chart can
+// pick out its own insights' traces.
+function nameTrace(traceProps, insightName) {
+  if (typeof traceProps.name !== 'string' || traceProps.name === '') {
+    traceProps.name = insightName;
+  }
+  traceProps.insightName = insightName;
+}
+
 /**
  * Transform insights data into chart-ready format
  *
@@ -439,7 +449,7 @@ export function chartDataFromInsightData(insightsData, inputs = {}, typeOverride
         if (effectiveType) {
           traceProps.type = effectiveType;
         }
-        traceProps.name = insightName;
+        nameTrace(traceProps, insightName);
         traces.push(traceProps);
       }
       continue;
@@ -478,6 +488,7 @@ export function chartDataFromInsightData(insightsData, inputs = {}, typeOverride
         // Set trace name to split value only (for cleaner legend display)
         traceProps.name = splitValue;
         traceProps.sourceInsight = insightName; // Track original insight name for filtering
+        traceProps.insightName = insightName;
         traceProps.legendgroup = splitValue;
 
         traces.push(traceProps);
@@ -499,7 +510,7 @@ export function chartDataFromInsightData(insightsData, inputs = {}, typeOverride
         traceProps.type = effectiveType;
       }
 
-      traceProps.name = insightName;
+      nameTrace(traceProps, insightName);
       traces.push(traceProps);
     }
   }

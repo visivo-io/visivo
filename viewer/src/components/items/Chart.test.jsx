@@ -540,4 +540,26 @@ describe('Chart — a container resize reaches Plotly (M28)', () => {
     expect(observers).toHaveLength(1);
     expect(observers[0].targets[0]).toBeInstanceOf(HTMLElement);
   });
+
+  describe('legend names', () => {
+    test('draws a trace whose authored name differs from its insight', async () => {
+      chart.insights = [{ name: 'new-accounts' }, { name: 'churned-accounts' }];
+      const job = name => ({
+        data: [{ m: 'Jan', n: 3 }],
+        props_mapping: { 'props.x': 'm', 'props.y': 'n' },
+        static_props: { name },
+        type: 'bar',
+      });
+      useStore.setState({
+        insightJobs: {
+          'new-accounts': job('New accounts'),
+          'churned-accounts': job('Churned accounts'),
+          'other-insight': job('Other'),
+        },
+      });
+      render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+      await waitFor(() => expect(capturedData).not.toBeNull());
+      expect(capturedData.map(trace => trace.name)).toEqual(['New accounts', 'Churned accounts']);
+    });
+  });
 });
