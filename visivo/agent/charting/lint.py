@@ -30,19 +30,9 @@ _REF = re.compile(r"\$\{\s*ref\(")
 # f, s or p, which d3 then rejects, so the number prints raw.
 _UNREADABLE_FORMAT = re.compile(r"^[-+( #].*[fps]")
 FORMAT_KEYS = {"valueformat", "tickformat", "hoverformat"}
-# Traces drawn on x and y axes, whose reader needs each axis named with its unit.
-AXIS_TRACES = {
-    "bar",
-    "scatter",
-    "scattergl",
-    "histogram",
-    "box",
-    "violin",
-    "waterfall",
-    "heatmap",
-    "contour",
-    "histogram2d",
-}
+# Traces whose value axis (y, or x when horizontal) needs a title with its unit.
+# A category axis reads from its labels, and a heatmap's measure is its colour bar.
+AXIS_TRACES = {"bar", "scatter", "scattergl", "histogram", "box", "violin", "waterfall"}
 
 
 def warnings(app, type_key, config):
@@ -114,21 +104,24 @@ def _axis_titles(app, config):
     names = set()
     for ref in config.get("insights") or []:
         names |= extract_ref_names(ref if isinstance(ref, str) else str(ref))
-    types = set()
+    value_axes = set()
     for name in names:
-        insight = manager.get(name)
-        trace = getattr(getattr(insight, "props", None), "type", None)
-        types.add(getattr(trace, "value", trace))
-    if not types & AXIS_TRACES:
-        return []
+        props = getattr(manager.get(name), "props", None)
+        if _plain(getattr(props, "type", None)) in AXIS_TRACES:
+            horizontal = _plain(getattr(props, "orientation", None)) == "h"
+            value_axes.add("xaxis" if horizontal else "yaxis")
     layout = config.get("layout") or {}
-    missing = [axis for axis in ("xaxis", "yaxis") if not _title_text(layout.get(axis))]
+    missing = sorted(axis for axis in value_axes if not _title_text(layout.get(axis)))
     if not missing:
         return []
     return [
-        f"The chart has no title on {' or '.join(missing)}. Name each axis with its unit, e.g. "
-        "`layout.yaxis.title.text: 'Revenue ($)'`, so the reader knows what is measured."
+        f"The chart's value axis ({' and '.join(missing)}) has no title. Name it with its unit, "
+        "e.g. `layout.yaxis.title.text: 'Revenue ($)'`, so the reader knows what is measured."
     ]
+
+
+def _plain(value):
+    return getattr(value, "value", value)
 
 
 def _title_text(axis):

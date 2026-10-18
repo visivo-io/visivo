@@ -117,35 +117,47 @@ class TestModelReferences:
 class TestAxisTitles:
     INSIGHTS = {
         "bars": SimpleNamespace(props=SimpleNamespace(type=SimpleNamespace(value="bar"))),
+        "hbars": SimpleNamespace(props=SimpleNamespace(type="bar", orientation="h")),
+        "grid": SimpleNamespace(props=SimpleNamespace(type="heatmap")),
         "kpi": SimpleNamespace(props=SimpleNamespace(type="indicator")),
     }
     APP = SimpleNamespace(insight_manager=SimpleNamespace(get=INSIGHTS.get))
 
-    def test_an_axis_chart_without_titles_is_flagged(self):
-        config = {
-            "name": "c",
-            "insights": ["${ref(bars)}"],
-            "layout": {"yaxis": {"title": "Trips"}},
-        }
-        found = lint.warnings(self.APP, "charts", config)
-        assert len(found) == 1 and "no title on xaxis" in found[0]
-        bare = lint.warnings(self.APP, "charts", {"name": "c", "insights": ["${ref(bars)}"]})
-        assert "xaxis or yaxis" in bare[0]
+    def chart(self, insight, layout=None):
+        return {"name": "c", "insights": [f"${{ref({insight})}}"], "layout": layout}
 
-    def test_titled_axes_kpis_unknown_insights_and_bare_apps_pass(self):
-        titled = {"xaxis": {"title": {"text": "Week"}}, "yaxis": {"title": {"text": "Trips"}}}
+    def test_an_untitled_value_axis_is_flagged(self):
+        found = lint.warnings(self.APP, "charts", self.chart("bars", {"xaxis": {"title": "Week"}}))
+        assert len(found) == 1 and "value axis (yaxis)" in found[0]
+        horizontal = lint.warnings(self.APP, "charts", self.chart("hbars"))
+        assert "value axis (xaxis)" in horizontal[0]
+        both = {"name": "c", "insights": ["${ref(bars)}", "${ref(hbars)}"]}
+        assert "(xaxis and yaxis)" in lint.warnings(self.APP, "charts", both)[0]
+
+    def test_a_titled_value_axis_passes_without_a_category_title(self):
+        assert (
+            lint.warnings(
+                self.APP, "charts", self.chart("bars", {"yaxis": {"title": {"text": "Trips"}}})
+            )
+            == []
+        )
+        assert (
+            lint.warnings(self.APP, "charts", self.chart("hbars", {"xaxis": {"title": "Mt CO2"}}))
+            == []
+        )
+
+    def test_heatmaps_kpis_unknown_insights_and_bare_apps_pass(self):
         for config, app in (
-            ({"name": "c", "insights": ["${ref(bars)}"], "layout": titled}, self.APP),
-            ({"name": "c", "insights": ["${ref(kpi)}"]}, self.APP),
-            ({"name": "c", "insights": ["${ref(nope)}"]}, self.APP),
-            ({"name": "c", "insights": ["${ref(bars)}"]}, SimpleNamespace()),
+            (self.chart("grid"), self.APP),
+            (self.chart("kpi"), self.APP),
+            (self.chart("nope"), self.APP),
+            (self.chart("bars"), SimpleNamespace()),
         ):
             assert lint.warnings(app, "charts", config) == []
 
     def test_a_blank_title_counts_as_missing(self):
-        layout = {"xaxis": {"title": {"text": " "}}, "yaxis": {"title": "Trips"}}
-        config = {"name": "c", "insights": ["${ref(bars)}"], "layout": layout}
-        assert "no title on xaxis" in lint.warnings(self.APP, "charts", config)[0]
+        layout = {"yaxis": {"title": {"text": " "}}}
+        assert "value axis" in lint.warnings(self.APP, "charts", self.chart("bars", layout))[0]
 
 
 class TestTables:
@@ -169,7 +181,7 @@ class TestTheWriteCarriesThem:
         call(integration_app, "write_insight", {"config": insight})
         chart = {"name": "by_region_chart", "insights": ["${ref(by_region)}"]}
         result = call(integration_app, "write_chart", {"config": chart})
-        assert any("Name each axis" in w for w in result["warnings"])
+        assert any("value axis (yaxis)" in w for w in result["warnings"])
 
     def test_write_insight_returns_its_warnings(self, integration_app):
         config = {
