@@ -26,6 +26,7 @@ COLOR_SCALED = {
 }
 _RANGE_ACCESSOR = re.compile(r"(?<!')\$\{\s*ref\(\s*([\w-]+)\s*\)\.(min|max)\s*\}(?!')")
 _REF = re.compile(r"\$\{\s*ref\(")
+_COLUMN_IN_REF = re.compile(r"\$\{\s*ref\(\s*([\w-]+)\.([\w.-]+)\s*\)")
 # Plotly puts a `~` in front of a format that starts with a sign and holds an
 # f, s or p, which d3 then rejects, so the number prints raw.
 _UNREADABLE_FORMAT = re.compile(r"^[-+( #].*[fps]")
@@ -41,6 +42,12 @@ def warnings(app, type_key, config):
         return _insight(app, config)
     if type_key == "tables":
         return _table(config)
+    if type_key == "models" and _REF.search(str(config.get("sql") or "")):
+        return [
+            "A model's SQL runs on its source exactly as written, so `${ref(...)}` does not "
+            "resolve there and the model fails to build. Query the source's tables directly, "
+            "and join them in this model's SQL."
+        ]
     if type_key == "charts":
         return _axis_titles(app, config) + _formats(config.get("layout"))
     return []
@@ -50,6 +57,11 @@ def _insight(app, config):
     found = []
     props = config.get("props") or {}
     text = str(props) + str(config.get("interactions") or "")
+    for model, column in dict.fromkeys(_COLUMN_IN_REF.findall(text)):
+        found.append(
+            f"`${{ref({model}.{column})}}` puts the column inside the ref, so it names no object "
+            f"and the insight never runs. Write `${{ref({model}).{column}}}`."
+        )
     if "?{" in text and not _REF.search(text):
         found.append(
             "The insight references no model, so it has nothing to run and its chart never "

@@ -166,6 +166,26 @@ class TestAxisTitles:
         assert "value axis" in lint.warnings(self.APP, "charts", self.chart("bars", layout))[0]
 
 
+class TestRefShapes:
+    def test_a_column_inside_the_ref_is_flagged_once_with_the_fix(self):
+        props = {"type": "bar", "x": "?{${ref(tips.borough)}}", "y": "?{${ref(tips.borough)}}"}
+        found = lint.warnings(APP, "insights", _insight(props))
+        assert found == [
+            "`${ref(tips.borough)}` puts the column inside the ref, so it names no object "
+            "and the insight never runs. Write `${ref(tips).borough}`."
+        ]
+
+    def test_a_ref_in_a_model_sql_is_flagged(self):
+        sql = "SELECT * FROM ${ref(trips)} t JOIN ${ref(zones)} z ON t.z = z.id"
+        found = lint.warnings(APP, "models", {"name": "m", "sql": sql})
+        assert len(found) == 1 and "Query the source's tables directly" in found[0]
+
+    def test_well_formed_refs_and_plain_sql_pass(self):
+        props = {"type": "bar", "x": "?{ ${ref(tips).borough} }"}
+        assert lint.warnings(APP, "insights", _insight(props)) == []
+        assert lint.warnings(APP, "models", {"name": "m", "sql": "select * from trips"}) == []
+
+
 class TestTables:
     def test_an_unaliased_column_is_flagged(self):
         config = {"name": "t", "columns": ["${ref(m).trips}", '${ref(m).zone} as "Zone"']}
