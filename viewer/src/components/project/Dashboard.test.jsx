@@ -1771,7 +1771,7 @@ describe('Dashboard', () => {
       expect(chartHeights()).toEqual([152, 152, 152, 152]);
     });
 
-    it('L3: a stacked [8,4] large row splits 512px by width share (341 + 171)', () => {
+    it('VIS-1520: a stacked [8,4] large row gives each chart the whole 512px', () => {
       mockDimensionWidth = 900;
       mountDashboard(
         {
@@ -1788,7 +1788,28 @@ describe('Dashboard', () => {
         },
         { charts }
       );
-      expect(chartHeights()).toEqual([341 - 8, 171 - 8]);
+      expect(chartHeights()).toEqual([512 - 8, 512 - 8]);
+    });
+
+    it('VIS-1520: a stacked [4,4,4] medium row keeps 396px per chart, not the 160px floor', () => {
+      mockDimensionWidth = 390;
+      mountDashboard(
+        {
+          name: 'breakdowns',
+          rows: [
+            {
+              height: 'medium',
+              items: [
+                { chart: 'c', width: 4 },
+                { chart: 'c', width: 4 },
+                { chart: 'c', width: 4 },
+              ],
+            },
+          ],
+        },
+        { charts }
+      );
+      expect(chartHeights()).toEqual([388, 388, 388]);
     });
 
     it('L3: a stacked row-container keeps 160px per sub-row instead of its width share', () => {
@@ -1815,9 +1836,11 @@ describe('Dashboard', () => {
         },
         { charts }
       );
-      // 512 * 1/3 = 171 would give 57px sub-rows; the floor keeps 3 x 160.
-      expect(screen.getByTestId('dashboard-nested-rows').style.minHeight).toBe('480px');
-      expect(chartHeights()).toEqual([341 - 8, 152, 152, 152]);
+      // A large row stacks each item at the whole 512px, which already clears
+      // the 3 x 160 floor the container needs for its sub-rows.
+      expect(screen.getByTestId('dashboard-nested-rows').style.minHeight).toBe('512px');
+      expect(chartHeights()[0]).toBe(512 - 8);
+      expect(chartHeights().slice(1).every(h => h >= 152)).toBe(true);
     });
 
     it('L3: a full-width single item keeps the whole row height when stacked', () => {
