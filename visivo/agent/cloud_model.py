@@ -118,17 +118,48 @@ def base_url(host=None):
     return f"{host or VISIVO_HOST}{INFERENCE_PATH}"
 
 
+OPENAI_FINISH_REASONS = {"stop", "length", "tool_calls", "content_filter", "function_call"}
+
+
+def normalise_completion(payload):
+    """A chat completion as the OpenAI schema allows it.
+
+    Visivo Cloud relays another provider through an OpenAI-compatible surface,
+    and that provider can answer with null token counts or a finish reason
+    OpenAI does not define (`malformed_function_call`). pydantic-ai rejects
+    either, which ended the user's turn on a raw validation error.
+    """
+    usage = payload.get("usage")
+    if isinstance(usage, dict):
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+            if usage.get(key) is None:
+                usage[key] = 0
+    for choice in payload.get("choices") or []:
+        if choice.get("finish_reason") not in OPENAI_FINISH_REASONS:
+            choice["finish_reason"] = "stop"
+    return payload
+
+
+def _cloud_chat_model_class():
+    from pydantic_ai.models.openai import OpenAIChatModel, _ChatCompletion
+
+    class CloudChatModel(OpenAIChatModel):
+        def _validate_completion(self, response):
+            return _ChatCompletion.model_validate(normalise_completion(response.model_dump()))
+
+    return CloudChatModel
+
+
 def build(host=None, model_name=CLOUD_MODEL_NAME):
     """A pydantic-ai model that talks to core.
 
     Imported lazily: the OpenAI client is only needed on the cloud path, and a
     BYO-key run should not pay to import it.
     """
-    from pydantic_ai.models.openai import OpenAIChatModel
     from pydantic_ai.providers.openai import OpenAIProvider
 
     where = base_url(host)
-    model = OpenAIChatModel(
+    model = _cloud_chat_model_class()(
         model_name,
         provider=OpenAIProvider(base_url=where, api_key=token(host)),
     )
