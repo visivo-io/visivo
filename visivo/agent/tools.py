@@ -146,6 +146,15 @@ def _write_handler(type_key):
                     "everything built on it will not build until it runs. Fix the SQL, "
                     "querying the source's own tables, and write the model again."
                 ]
+        if type_key == "insights":
+            from visivo.agent.data_tools import probe_insight
+
+            problems = probe_insight(app, obj.model_dump(exclude_none=True, mode="json"))
+            if problems:
+                result["warnings"] = problems + [
+                    "Call preview_insight to see the rows, fix the props, and write the "
+                    "insight again."
+                ]
         return result
 
     return handler

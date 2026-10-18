@@ -197,6 +197,57 @@ def probe_model_sql(app, model):
     return None
 
 
+# A preview that cannot run server-side, rather than one that failed.
+_UNJUDGED_PREVIEWS = {"requires_client_lane", "multi_source", "model_not_run"}
+
+
+def probe_insight(app, config):
+    """Problems with ``config``'s data, found by previewing one row; ``[]``
+    when it reads right or cannot be judged server-side.
+
+    An insight write validates its shape, not its query, so a prop that names
+    no column, comes back as a struct, or drops out of the query left a chart
+    that never loaded and an agent that thought it was done.
+    """
+    try:
+        result = execute_draft_insight(
+            app,
+            app.output_dir,
+            config,
+            model_schemas=_unbuilt_model_schemas(app, config),
+            max_rows=1,
+            timeout_s=AGENT_QUERY_TIMEOUT_S,
+        )
+    except DraftInsightError as refused:
+        if refused.payload.get("error_type") in _UNJUDGED_PREVIEWS or isinstance(
+            refused.__context__, QueryTimeout
+        ):
+            return []
+        return [f"The insight's query fails ({str(refused).strip()[:400]})."]
+    mapping = result.get("props_mapping") or {}
+    row = (result.get("rows") or [None])[0]
+    found = []
+    for path in _query_props(config.get("props") or {}, "props"):
+        column = mapping.get(path)
+        if column is None or (row is not None and column not in row):
+            found.append(f"`{path}` resolved to no column, so the chart gets nothing for it.")
+        elif row is not None and isinstance(row[column], dict):
+            found.append(
+                f"`{path}` comes back as a struct ({row[column]}), not a value. A `${{name}}` "
+                "that is not a `${ref(model).column}`, or a `?{ }` inside a metric or "
+                "dimension expression, does this."
+            )
+    return found
+
+
+def _query_props(node, path):
+    if isinstance(node, dict):
+        for key, value in node.items():
+            yield from _query_props(value, f"{path}.{key}")
+    elif isinstance(node, str) and node.lstrip().startswith("?{"):
+        yield path
+
+
 def _query_source_handler(app, arguments):
     source = _source_argument(app, arguments)
     sql = (arguments or {}).get("sql")
