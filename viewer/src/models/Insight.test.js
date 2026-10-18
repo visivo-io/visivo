@@ -1102,6 +1102,7 @@ describe('chartDataFromInsightData — static insights (VIS-1464)', () => {
   });
 });
 
+/* eslint-disable no-template-curly-in-string */
 describe('live presentation props (VIS-1518)', () => {
   const built = {
     colorscale: 'Blues',
