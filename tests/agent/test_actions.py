@@ -381,6 +381,15 @@ class TestWriteHints:
         with pytest.raises(ToolError, match=r"has no `model` field"):
             call(integration_app, "write_insight", {"config": config})
 
+    @pytest.mark.parametrize("tool", ["write_metric", "write_dimension"])
+    def test_a_semantic_model_field_shows_a_plain_expression(self, integration_app, tool):
+        config = {"name": "m", "expression": "sum(fare)", "model": "${ref(trips)}"}
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, tool, {"config": config})
+        message = str(raised.value)
+        assert "`expression: sum(${ref(trips).fare})`" in message
+        assert "?{" not in message.split("Hint:", 1)[1]
+
     def test_a_bare_source_name_asks_for_a_reference(self, integration_app):
         config = {"name": "m", "source": "taxi", "sql": "select 1"}
         with pytest.raises(ToolError, match=r"source: \$\{ref\(taxi\)\}"):

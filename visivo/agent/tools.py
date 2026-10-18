@@ -169,9 +169,14 @@ def _write_hints(type_key, error):
                 f'`interactions: [{{{field}: "?{{ ... }}"}}]`.'
             )
         elif field == "model" and problem.get("type") == "extra_forbidden":
+            example = (
+                "`expression: sum(${ref(trips).fare})`"
+                if type_key in ("metrics", "dimensions")
+                else "`?{ sum(${ref(trips).fare}) }`"
+            )
             hints.append(
                 f"A {_singular(type_key)} has no `model` field. Name the model inside its "
-                "expressions, e.g. `?{ sum(${ref(trips).fare}) }`."
+                f"expressions, e.g. {example}."
             )
         elif type_key == "models" and field == "source":
             hints.append("Write the source as a reference, e.g. `source: ${ref(taxi)}`.")

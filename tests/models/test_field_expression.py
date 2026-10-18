@@ -65,3 +65,37 @@ def test_field_expression_rejects_accessor_outside_reference(field_type):
         field_type(name="total", expression="sum(${ref(orders)}.amount)")
     assert "expression" in str(excinfo.value)
     assert "${ref(orders).amount}" in str(excinfo.value)
+
+
+class TestWrappedExpressions:
+    @pytest.mark.parametrize(
+        "expression,inner",
+        [
+            ("?{ count(${ref(trips).id}) }", "count(${ref(trips).id})"),
+            ("?{sum(amount)}", "sum(amount)"),
+            ("  ?{\n  ${ref(trips).borough}\n}  ", "${ref(trips).borough}"),
+        ],
+    )
+    def test_metric_and_dimension_reject_a_query_string_wrapper(self, expression, inner):
+        for model, name in ((Metric, "metric"), (Dimension, "dimension")):
+            with pytest.raises(ValidationError) as excinfo:
+                model(name="m", expression=expression)
+            message = str(excinfo.value)
+            assert f"A {name} expression is plain SQL" in message
+            assert f"Write '{inner}' without the '?{{ }}' wrapper" in message
+
+    @pytest.mark.parametrize(
+        "expression",
+        ["count(*)", "${ref(trips).borough}", "case when x = '?{' then 1 end"],
+    )
+    def test_an_unwrapped_expression_passes(self, expression):
+        assert Metric(name="m", expression=expression).expression == expression
+
+    def test_sql_that_does_not_parse_fails_open(self):
+        assert Metric(name="m", expression="sum(amount").expression == "sum(amount"
+
+    @pytest.mark.parametrize("expression", ["", None])
+    def test_an_empty_expression_is_left_to_the_field(self, expression):
+        from visivo.models.base.field_expression import reject_aliased_expression
+
+        assert reject_aliased_expression(expression, "metric") == expression
