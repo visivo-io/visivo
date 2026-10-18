@@ -12,7 +12,11 @@ import sqlglot
 from sqlglot import exp
 
 from visivo.agent.tool_types import Tool, ToolError
-from visivo.jobs.run_model_data_job import AGENT_QUERY_TIMEOUT_S, execute_and_get_result
+from visivo.jobs.run_model_data_job import (
+    AGENT_QUERY_TIMEOUT_S,
+    QueryTimeout,
+    execute_and_get_result,
+)
 from visivo.query.patterns import extract_ref_names
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.services.draft_insight import (
@@ -156,6 +160,41 @@ def guard_read_only(sql, dialect, limit):
         if current is not None and current <= limit:
             return statement.sql(dialect=dialect)
     return statement.limit(limit).sql(dialect=dialect)
+
+
+def _default_source(app):
+    """The source a model without one runs on: ``defaults.source_name``, else the
+    project's only source."""
+    name = getattr(getattr(app.project, "defaults", None), "source_name", None)
+    if name:
+        return find_source(app, name)
+    sources = app.source_manager.get_all_objects_list()
+    return sources[0] if len(sources) == 1 else None
+
+
+def probe_model_sql(app, model):
+    """The source's error for ``model``'s SQL, or ``None`` when it runs.
+
+    A model write validates its shape, not its SQL, and the run that would
+    fail is asynchronous, so an agent learned of a broken model only from
+    charts that never loaded. One row is enough to prove the SQL runs. A
+    model with no SQL, no resolvable source, or a query that times out is
+    not judged.
+    """
+    sql = getattr(model, "sql", None)
+    if not isinstance(sql, str) or not sql.strip():
+        return None
+    source = source_for_model(app, model, app.output_dir) or _default_source(app)
+    if source is None:
+        return None
+    try:
+        bounded = guard_read_only(sql, source.get_sqlglot_dialect(), 1)
+        execute_and_get_result(source, bounded, max_rows=1, timeout_s=AGENT_QUERY_TIMEOUT_S)
+    except QueryTimeout:
+        return None
+    except Exception as error:
+        return f"{source.name}: {str(error).strip()[:400]}"
+    return None
 
 
 def _query_source_handler(app, arguments):

@@ -395,3 +395,58 @@ class TestWriteHints:
         from visivo.agent.tools import _write_hints
 
         assert _write_hints("insights", ValueError("boom")) == []
+
+
+class TestModelProbe:
+    """A model write runs its SQL once on the source, so a model that cannot
+    build says so at the write instead of through charts that never load."""
+
+    def test_sql_that_runs_carries_no_warning(self, integration_app):
+        config = {"name": "probe-ok", "sql": "select 1 as n"}
+        assert "warnings" not in call(integration_app, "write_model", {"config": config})
+
+    def test_sql_the_source_rejects_comes_back_with_its_error(self, integration_app):
+        config = {"name": "probe-bad", "sql": "select * from no_such_table"}
+        result = call(integration_app, "write_model", {"config": config})
+        assert result["status"] == "draft"
+        [warning] = result["warnings"]
+        assert "fails on its source (" in warning and "no_such_table" in warning
+
+    def test_a_macro_the_source_does_not_know_is_caught(self, integration_app):
+        config = {"name": "probe-macro", "sql": "select * from source(taxi, 'yellow_trips')"}
+        assert "warnings" in call(integration_app, "write_model", {"config": config})
+
+    def test_the_default_source_then_the_only_source_is_used(self, integration_app, monkeypatch):
+        from types import SimpleNamespace
+
+        import visivo.agent.data_tools as data_tools
+
+        [only] = integration_app.source_manager.get_all_objects_list()
+        assert data_tools._default_source(integration_app) is only
+        defaults = SimpleNamespace(source_name=only.name)
+        monkeypatch.setattr(integration_app.project, "defaults", defaults)
+        assert data_tools._default_source(integration_app) is only
+        monkeypatch.setattr(integration_app.source_manager, "get_all_objects_list", lambda: [])
+        monkeypatch.setattr(integration_app.project, "defaults", None)
+        assert data_tools._default_source(integration_app) is None
+
+    def test_models_without_sql_or_source_and_timeouts_are_not_judged(
+        self, integration_app, monkeypatch
+    ):
+        from types import SimpleNamespace
+
+        import visivo.agent.data_tools as data_tools
+        from visivo.jobs.run_model_data_job import QueryTimeout
+
+        assert data_tools.probe_model_sql(integration_app, SimpleNamespace(sql=None)) is None
+        monkeypatch.setattr(data_tools, "source_for_model", lambda *a: None)
+        monkeypatch.setattr(data_tools, "_default_source", lambda app: None)
+        assert data_tools.probe_model_sql(integration_app, SimpleNamespace(sql="select 1")) is None
+
+        def slow(*args, **kwargs):
+            raise QueryTimeout("slow")
+
+        monkeypatch.undo()
+        monkeypatch.setattr(data_tools, "execute_and_get_result", slow)
+        model = SimpleNamespace(sql="select 1", name="m")
+        assert data_tools.probe_model_sql(integration_app, model) is None

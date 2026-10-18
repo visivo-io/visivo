@@ -136,6 +136,16 @@ def _write_handler(type_key):
         result = {"name": name, "status": "draft"}
         if outcome:
             result["change"] = outcome
+        if type_key == "models":
+            from visivo.agent.data_tools import probe_model_sql
+
+            problem = probe_model_sql(app, obj)
+            if problem:
+                result["warnings"] = [
+                    f"The model's SQL fails on its source ({problem}). The model and "
+                    "everything built on it will not build until it runs. Fix the SQL, "
+                    "querying the source's own tables, and write the model again."
+                ]
         return result
 
     return handler
