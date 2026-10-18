@@ -82,6 +82,15 @@ const stackedItemHeight = (items, item, rowPixelHeight) => {
   return Math.max(Math.round(rowPixelHeight * (spanOf(item) / totalWidth)), minStackedHeight(item));
 };
 
+// A top-level row that stacks on a phone has no fixed height, so an item in a
+// medium or taller row keeps the whole row height: a third of 396px leaves a
+// chart about 40px of plot once its margins are taken. Shorter rows (KPI
+// strips) keep the width-share split (VIS-1520).
+const topLevelStackedHeight = (items, item, rowPixelHeight) =>
+  rowPixelHeight >= HEIGHT_PX.medium
+    ? Math.max(rowPixelHeight, minStackedHeight(item))
+    : stackedItemHeight(items, item, rowPixelHeight);
+
 // Shared with the slot's accessible name (WCAG 2.5.3, Label in Name).
 export const EMPTY_SLOT_LABEL = 'Empty slot — click to choose';
 
@@ -922,7 +931,7 @@ const Dashboard = ({
     // the row height and a grid item gets the whole row.
     const slotHeightFor = item => {
       if (isCompact) return undefined;
-      return isColumn ? stackedItemHeight(visibleItems, item, getHeight(row.height)) : gridRowHeight;
+      return isColumn ? topLevelStackedHeight(visibleItems, item, getHeight(row.height)) : gridRowHeight;
     };
     // VIS-827: eager-load by default. The row-visibility lazy-loader
     // (useVisibleRows) relies on an IntersectionObserver that does not fire
