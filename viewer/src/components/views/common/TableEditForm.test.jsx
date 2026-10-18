@@ -342,6 +342,80 @@ describe('TableEditForm — save payloads', () => {
     });
   });
 
+  test('a number format saves an entry as { value, format } and clearing it saves a string', async () => {
+    seed();
+    const onSave = jest.fn(async () => ({ success: true }));
+    renderForm({ onSave });
+
+    setName('fmt');
+    addPivotEntry('columns');
+    addPivotEntry('columns');
+    setRefEntry(0, 'ref(m).zone');
+    setRefEntry(1, 'ref(m).rev as Revenue');
+    const format = screen.getByLabelText('Columns entry 2 number format');
+    fireEvent.change(format, { target: { value: '$,.0f' } });
+    setRefEntry(1, 'ref(m).revenue as Revenue');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][2].columns).toEqual([
+      'ref(m).zone',
+      { value: 'ref(m).revenue as Revenue', format: '$,.0f' },
+    ]);
+
+    fireEvent.change(format, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+    expect(onSave.mock.calls[1][2].columns).toEqual(['ref(m).zone', 'ref(m).revenue as Revenue']);
+  });
+
+  test('a saved formatted pivot round-trips through edit mode', async () => {
+    seed();
+    const onSave = jest.fn(async () => ({ success: true }));
+    const config = {
+      name: 'piv',
+      rows_per_page: 25,
+      columns: ['ref(m).region'],
+      rows: [{ value: 'ref(m).year', format: 'd' }],
+      values: [{ value: 'sum(ref(m).rev)', format: '$,.0f' }],
+    };
+    renderForm({
+      table: { name: 'piv', status: ObjectStatus.PUBLISHED, config },
+      isCreate: false,
+      onSave,
+    });
+
+    expect(screen.getAllByLabelText('ref').map(el => el.value)).toEqual([
+      'ref(m).region',
+      'ref(m).year',
+      'sum(ref(m).rev)',
+    ]);
+    expect(screen.getByLabelText('Rows entry 1 number format')).toHaveValue('d');
+    expect(screen.getByLabelText('Values entry 1 number format')).toHaveValue('$,.0f');
+    expect(screen.getByLabelText('Columns entry 1 number format')).toHaveValue('');
+
+    await makeDirty();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave).toHaveBeenCalledWith('table', 'piv', { ...config, rows_per_page: 50 });
+  });
+
+  test('a formatted entry with a blank value blocks save', async () => {
+    seed();
+    const onSave = jest.fn();
+    renderForm({ onSave });
+
+    setName('blank');
+    addPivotEntry('columns');
+    fireEvent.change(screen.getByLabelText('Columns entry 1 number format'), {
+      target: { value: ',d' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Column entries cannot be empty')).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   test('surfaces a save failure message', async () => {
     seed();
     const onSave = jest.fn(async () => ({ success: false, error: 'save broke' }));

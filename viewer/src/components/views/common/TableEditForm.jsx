@@ -15,6 +15,7 @@ import Select from '../../common/Select';
 import { REF_INSERT_HINT } from './RefTextArea';
 import useRenameFlow from '../../../hooks/useRenameFlow';
 import RenameImpactDialog from '../workspace/RenameImpactDialog';
+import { fieldExpression, fieldFormat, withFormat } from '../../../utils/tableFields';
 
 /**
  * TableEditForm - Form component for editing/creating tables
@@ -136,7 +137,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
   // Blank pivot entries (the '' scaffold RefListField's Add button creates, or
   // whitespace-only edits) must never save — `columns: ['']` is not a valid
   // pivot config. Validation rejects them with a visible per-list error.
-  const hasBlankEntry = list => list.some(entry => typeof entry === 'string' && entry.trim() === '');
+  const hasBlankEntry = list => list.some(entry => String(fieldExpression(entry) ?? '').trim() === '');
 
   const validateForm = () => {
     const newErrors = {};
@@ -502,13 +503,15 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
 
 /**
  * Reusable component for editing a list of ref expressions using RefTextArea.
+ * Each entry has an optional d3 number format; an entry with one saves as
+ * `{ value, format }`, an entry without one as a plain string.
  */
 const RefListField = ({ label, items, onChange, helperText, error }) => {
   const handleAdd = () => onChange([...items, '']);
   const handleRemove = index => onChange(items.filter((_, i) => i !== index));
-  const handleChange = (index, value) => {
+  const handleChange = (index, value, format) => {
     const updated = [...items];
-    updated[index] = value;
+    updated[index] = withFormat(value, format);
     onChange(updated);
   };
 
@@ -525,27 +528,40 @@ const RefListField = ({ label, items, onChange, helperText, error }) => {
           Add
         </button>
       </div>
-      {items.map((item, index) => (
-        <div key={index} className="flex items-start gap-1.5">
-          <div className="flex-1">
-            <ExpressionField
-              objectType="table"
-              field="columns"
-              value={item}
-              onChange={value => handleChange(index, value)}
-              rows={1}
+      {items.map((item, index) => {
+        const expression = fieldExpression(item) ?? '';
+        const format = fieldFormat(item) ?? '';
+        return (
+          <div key={index} className="flex items-start gap-1.5">
+            <div className="flex-1 min-w-0">
+              <ExpressionField
+                objectType="table"
+                field="columns"
+                value={expression}
+                onChange={value => handleChange(index, value, format)}
+                rows={1}
+              />
+            </div>
+            <input
+              type="text"
+              value={format}
+              onChange={e => handleChange(index, expression, e.target.value)}
+              placeholder="Format"
+              aria-label={`${label} entry ${index + 1} number format`}
+              title="Number format (d3-format), e.g. $,.0f or .1%"
+              className="mt-0.5 w-16 shrink-0 px-2 py-1.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
+            <button
+              type="button"
+              onClick={() => handleRemove(index)}
+              className="mt-1 p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+              title={`Remove ${label.toLowerCase()} entry`}
+            >
+              <RemoveCircleOutlineIcon fontSize="small" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => handleRemove(index)}
-            className="mt-1 p-0.5 text-gray-400 hover:text-red-500 transition-colors"
-            title={`Remove ${label.toLowerCase()} entry`}
-          >
-            <RemoveCircleOutlineIcon fontSize="small" />
-          </button>
-        </div>
-      ))}
+        );
+      })}
       {items.length === 0 && helperText && (
         <p className="text-xs text-gray-400">{helperText}</p>
       )}

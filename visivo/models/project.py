@@ -432,7 +432,7 @@ class Project(NamedModel, ParentModel):
             if isinstance(obj, dict):
                 obj["path"] = path
                 for key, value in obj.items():
-                    if key not in [
+                    if key in [
                         "props",
                         "defaults",
                         "theme",
@@ -441,10 +441,14 @@ class Project(NamedModel, ParentModel):
                         "display",
                         "default",
                         "range",
-                        "column_formats",
+                        "values",
                     ]:
-                        new_path = f"{path}.{key}" if path else key
-                        set_path_recursively(value, new_path)
+                        continue
+                    # A pivot table's `rows` are fields, not dashboard Rows.
+                    if key == "rows" and "values" in obj:
+                        continue
+                    new_path = f"{path}.{key}" if path else key
+                    set_path_recursively(value, new_path)
             elif isinstance(obj, list):
                 for index, item in enumerate(obj):
                     new_path = f"{path}[{index}]"

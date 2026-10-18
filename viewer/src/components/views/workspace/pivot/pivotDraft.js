@@ -1,5 +1,6 @@
 import { formatRefExpression } from '../../../../utils/refString';
 import { AGGREGATIONS } from './PivotShelf';
+import { fieldExpression, fieldFormat, withFormat } from '../../../../utils/tableFields';
 
 /**
  * pivotDraft — VIS-1008 pure (de)serialisation helpers shared by PivotPlayground.
@@ -19,6 +20,9 @@ import { AGGREGATIONS } from './PivotShelf';
  * DISTINCT, compound expressions, …) becomes an OPAQUE chip
  * (`{ raw, field, source: null, label, agg: null }`) that serialises back
  * verbatim, so Save never rewrites it.
+ *
+ * A formatted entry (`{ value, format }`) seeds a chip that keeps its `format`,
+ * and the chip serialises back to a formatted entry.
  */
 
 const DEFAULT_AGG = 'sum';
@@ -80,26 +84,39 @@ export const parseValueExprToChip = valueExpr => {
   return makeRawValueChip(valueExpr);
 };
 
+const seedChips = (entries, parse) =>
+  (entries || [])
+    .map(entry => {
+      const chip = parse(fieldExpression(entry));
+      const format = fieldFormat(entry);
+      return chip && format ? { ...chip, format } : chip;
+    })
+    .filter(Boolean);
+
 /** Seed a structured chip draft from a table record's ref-string pivot config. */
 export const seedDraftFromRecord = record => {
   const cfg = record || {};
   return {
-    columns: (cfg.columns || []).map(parseFieldRefToChip).filter(Boolean),
-    rows: (cfg.rows || []).map(parseFieldRefToChip).filter(Boolean),
-    values: (cfg.values || []).map(parseValueExprToChip).filter(Boolean),
+    columns: seedChips(cfg.columns, parseFieldRefToChip),
+    rows: seedChips(cfg.rows, parseFieldRefToChip),
+    values: seedChips(cfg.values, parseValueExprToChip),
   };
 };
 
 /** Serialise a structured chip draft into the pipeline / save ref-string shape. */
 export const serializeDraft = draft => {
   const d = draft || {};
+  const field = c => withFormat(formatRefExpression(c.source, c.field), c.format);
   return {
-    columns: (d.columns || []).map(c => formatRefExpression(c.source, c.field)),
-    rows: (d.rows || []).map(c => formatRefExpression(c.source, c.field)),
+    columns: (d.columns || []).map(field),
+    rows: (d.rows || []).map(field),
     // Raw chips serialise back VERBATIM — never rewrite an expression the
     // builder couldn't parse into an agg + single-ref chip.
     values: (d.values || []).map(c =>
-      c.raw != null ? c.raw : `${c.agg || DEFAULT_AGG}(${formatRefExpression(c.source, c.field)})`
+      withFormat(
+        c.raw != null ? c.raw : `${c.agg || DEFAULT_AGG}(${formatRefExpression(c.source, c.field)})`,
+        c.format
+      )
     ),
   };
 };

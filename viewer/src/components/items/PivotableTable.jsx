@@ -58,14 +58,7 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
           normalizedType,
           duckdbType: 'VARCHAR',
           isPivotRow: col.isPivotRow || false,
-          format: columnFormat(
-            table.column_formats,
-            name,
-            col.header,
-            normalizedType,
-            pivotRows,
-            col.isPivotRow
-          ),
+          format: columnFormat(col.format, name, col.header, normalizedType, pivotRows),
         };
       });
       return { allRows: pivotRows, dataTableColumns: cols };
@@ -85,12 +78,12 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
         displayName,
         normalizedType,
         duckdbType: normalizedType === COLUMN_TYPES.NUMBER ? 'DOUBLE' : 'VARCHAR',
-        format: columnFormat(table.column_formats, key, displayName, normalizedType, data),
+        format: columnFormat(undefined, key, displayName, normalizedType, data),
       };
     });
 
     return { allRows: data, dataTableColumns: cols };
-  }, [hasDuckDBMode, pivotRows, pivotColumns, sourceData, table.column_formats]);
+  }, [hasDuckDBMode, pivotRows, pivotColumns, sourceData]);
 
   // Client-side global filter
   const isSearching = globalFilter !== '';
@@ -320,21 +313,18 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
 const YEAR_NAME = /(^|[^a-z])year([^a-z]|$)/i;
 
 /**
- * The d3-format spec a column's cells use: the table's `column_formats` entry
- * for its header or name; else `d` for an integer column named like a year,
- * so 2024 does not print as 2,024; else the `*` entry, for every other number
- * column that is not a pivot row field (a pivot's value columns are named by
- * the data, so they cannot be listed ahead).
+ * The d3-format spec a column's cells use: the format of the table entry the
+ * column comes from; else `d` for an integer column named like a year, so 2024
+ * does not print as 2,024.
  */
-export function columnFormat(formats, name, header, normalizedType, rows, isRowField = false) {
-  const explicit = formats?.[header] ?? formats?.[name];
+export function columnFormat(explicit, name, header, normalizedType, rows) {
   if (explicit) return explicit;
   if (normalizedType !== COLUMN_TYPES.NUMBER) return undefined;
   const yearNamed = YEAR_NAME.test(String(header)) || YEAR_NAME.test(name);
   if (yearNamed && rows.every(row => row[name] == null || Number.isInteger(row[name]))) {
     return 'd';
   }
-  return isRowField ? undefined : formats?.['*'];
+  return undefined;
 }
 
 // The shape processArrowResult gives every DATE / TIMESTAMP value.

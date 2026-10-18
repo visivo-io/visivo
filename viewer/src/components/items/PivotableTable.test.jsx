@@ -867,8 +867,8 @@ describe('PivotableTable column formats', () => {
       rows: [{ zone: 'Midtown', rev: 8160.4, share: 0.1234, year: 2024 }],
       columns: [
         { accessorKey: 'zone', header: 'Zone' },
-        { accessorKey: 'rev', header: 'Revenue ($)' },
-        { accessorKey: 'share', header: 'Tip share' },
+        { accessorKey: 'rev', header: 'Revenue ($)', format: '$,.0f' },
+        { accessorKey: 'share', header: 'Tip share', format: '.1%' },
         { accessorKey: 'year', header: 'Year' },
       ],
       nestedColumns: null,
@@ -878,24 +878,28 @@ describe('PivotableTable column formats', () => {
     };
   });
 
-  it('formats column-select cells by their alias, and a year without a separator', () => {
+  it('formats column-select cells by their entry format, and a year without a separator', () => {
     draw({
       name: 'zones',
       rows_per_page: 50,
-      columns: ['${ref(i).zone}'],
-      column_formats: { 'Revenue ($)': '$,.0f', 'Tip share': '.1%' },
+      columns: [
+        '${ref(i).zone} as Zone',
+        { value: '${ref(i).rev} as "Revenue ($)"', format: '$,.0f' },
+        { value: '${ref(i).share} as "Tip share"', format: '.1%' },
+        '${ref(i).year} as Year',
+      ],
     });
     expect(screen.getByText('$8,160')).toBeInTheDocument();
     expect(screen.getByText('12.3%')).toBeInTheDocument();
     expect(screen.getByText('2024')).toBeInTheDocument();
   });
 
-  it('formats a data table by column name and searches the shown text', () => {
-    draw({ name: 'plain', rows_per_page: 50, column_formats: { col_b: '$,.2f' } });
-    expect(screen.getByText('$100.00')).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText('Search...'), { target: { value: '$300.00' } });
-    expect(screen.getByText('Charlie')).toBeInTheDocument();
-    expect(screen.queryByText('Alice')).not.toBeInTheDocument();
+  it('searches the shown text of a formatted cell', () => {
+    draw({ name: 'zones', rows_per_page: 50, columns: ['${ref(i).zone}'] });
+    fireEvent.change(screen.getByPlaceholderText('Search...'), { target: { value: '$8,160' } });
+    expect(screen.getByText('Midtown')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Search...'), { target: { value: '$9,000' } });
+    expect(screen.queryByText('Midtown')).not.toBeInTheDocument();
   });
 
   it('formats pivot cells under grouped headers', () => {
@@ -904,7 +908,7 @@ describe('PivotableTable column formats', () => {
       rows: [{ name: 'Alice', East: 1234.5 }],
       columns: [
         { accessorKey: 'name', header: 'Name', isPivotRow: true },
-        { accessorKey: 'East', header: 'East' },
+        { accessorKey: 'East', header: 'East', format: '$,.0f' },
       ],
       nestedColumns: [
         { accessorKey: 'name', header: 'Name', meta: { isPivotRow: true } },
@@ -916,34 +920,32 @@ describe('PivotableTable column formats', () => {
       rows_per_page: 50,
       columns: ['${ref(i).region}'],
       rows: ['${ref(i).name}'],
-      values: ['sum(${ref(i).rev})'],
-      column_formats: { '*': '$,.0f' },
+      values: [{ value: 'sum(${ref(i).rev})', format: '$,.0f' }],
     });
     expect(screen.getByText('$1,235')).toBeInTheDocument();
+  });
+
+  it('defaults a data table year column and leaves its other numbers alone', () => {
+    const sourceData = { ...mockInsightData, data: [{ year: 2024, amount: 1234.5 }] };
+    draw({ name: 'plain', rows_per_page: 50, data: '${ref(i)}' }, sourceData);
+    expect(screen.getByText('2024')).toBeInTheDocument();
+    expect(screen.queryByText('$1,235')).not.toBeInTheDocument();
   });
 });
 
 describe('columnFormat', () => {
   const rows = [{ year: 2024, order_year: 2023.5, n: 5 }];
 
-  it('prefers an explicit format for the header, then the name', () => {
-    expect(columnFormat({ Year: '.0f' }, 'year', 'Year', 'number', rows)).toBe('.0f');
-    expect(columnFormat({ year: ',d' }, 'year', 'Year', 'number', rows)).toBe(',d');
-  });
-
-  it('gives * to the remaining number columns, never to a pivot row field', () => {
-    const formats = { '*': '$,.0f', n: ',d' };
-    expect(columnFormat(formats, 'East', 'East', 'number', rows)).toBe('$,.0f');
-    expect(columnFormat(formats, 'n', 'N', 'number', rows)).toBe(',d');
-    expect(columnFormat(formats, 'year', 'Year', 'number', rows)).toBe('d');
-    expect(columnFormat(formats, 'store', 'Store', 'number', rows, true)).toBeUndefined();
-    expect(columnFormat(formats, 'zone', 'Zone', 'string', rows)).toBeUndefined();
+  it('prefers the entry format', () => {
+    expect(columnFormat('.0f', 'year', 'Year', 'number', rows)).toBe('.0f');
+    expect(columnFormat('$,.0f', 'zone', 'Zone', 'string', rows)).toBe('$,.0f');
   });
 
   it('defaults only integer number columns named like a year', () => {
     expect(columnFormat(undefined, 'year', 'Year', 'number', rows)).toBe('d');
-    expect(columnFormat(null, 'order_year', 'Order Year', 'number', rows)).toBeUndefined();
-    expect(columnFormat({}, 'year', 'Year', 'string', rows)).toBeUndefined();
-    expect(columnFormat({}, 'n', 'Years Active', 'number', rows)).toBeUndefined();
+    expect(columnFormat(undefined, 'order_year', 'Order Year', 'number', rows)).toBeUndefined();
+    expect(columnFormat(undefined, 'year', 'Year', 'string', rows)).toBeUndefined();
+    expect(columnFormat(undefined, 'n', 'Years Active', 'number', rows)).toBeUndefined();
+    expect(columnFormat(undefined, 'n', 'N', 'number', rows)).toBeUndefined();
   });
 });

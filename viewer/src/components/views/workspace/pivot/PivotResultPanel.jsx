@@ -51,6 +51,7 @@ const PivotResultPanel = ({ config, sourceName }) => {
         normalizedType: COLUMN_TYPES.UNKNOWN,
         duckdbType: 'VARCHAR',
         isPivotRow: col.isPivotRow || false,
+        format: col.format,
       })),
     [pivotColumns]
   );

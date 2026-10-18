@@ -379,4 +379,89 @@ describe('usePivotData', () => {
       ]);
     });
   });
+
+  describe('formatted entries', () => {
+    const formatsOf = columns => Object.fromEntries(columns.map(c => [c.id, c.format]));
+
+    it('column-select queries the value and gives each column its entry format', async () => {
+      const config = {
+        columns: [
+          { value: '${ref(ins).x}', format: ',d' },
+          { value: '${ref(ins).y} as Alias', format: '$,.0f' },
+        ],
+      };
+      const plain = { columns: ['${ref(ins).x}', '${ref(ins).y} as Alias'] };
+      const { result } = renderHook(() => usePivotData(config, insightSource));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      const { result: plainResult } = renderHook(() => usePivotData(plain, insightSource));
+      await waitFor(() => expect(plainResult.current.isLoading).toBe(false));
+
+      expect(executed[0]).toBe(executed[1]);
+      expect(formatsOf(result.current.columns)).toEqual({ [X_HASH]: ',d', Alias: '$,.0f' });
+      expect(formatsOf(plainResult.current.columns)).toEqual({
+        [X_HASH]: undefined,
+        Alias: undefined,
+      });
+    });
+
+    it('a single-value pivot formats its row field and every value column', async () => {
+      const config = {
+        columns: ['${ref(sales_data).region}'],
+        rows: [{ value: '${ref(sales_data).year}', format: 'd' }],
+        values: [{ value: 'sum(${ref(sales_data).rev})', format: '$,.0f' }],
+      };
+      queries.runDuckDBQuery.mockImplementation((_db, sql) => {
+        executed.push(sql);
+        return Promise.resolve(arrowResult([{ year: 2024, East: 1.5, West: 2.5 }]));
+      });
+      const { result } = renderHook(() => usePivotData(config, modelSource));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(executed[0]).toBe(
+        'PIVOT (SELECT * FROM "model_hash") ON "region" USING sum("rev") GROUP BY "year"'
+      );
+      expect(formatsOf(result.current.columns)).toEqual({ year: 'd', East: '$,.0f', West: '$,.0f' });
+    });
+
+    it('a multi-value pivot gives each value column the format of its own value', async () => {
+      const config = {
+        columns: ['${ref(sales_data).region}'],
+        rows: ['${ref(sales_data).name}'],
+        values: [
+          { value: 'sum(${ref(sales_data).rev})', format: '$,.0f' },
+          'sum(${ref(sales_data).qty})',
+          { value: 'count(*)', format: ',d' },
+        ],
+      };
+      queries.runDuckDBQuery.mockImplementation((_db, sql) => {
+        executed.push(sql);
+        return Promise.resolve(
+          arrowResult([
+            {
+              name: 'A',
+              'East_sum(rev)': 1.5,
+              'East_sum(qty)': 2,
+              'East_count_star()': 1,
+              'West_sum(rev)': 2.5,
+              'West_sum(qty)': 3,
+              'West_count_star()': 1,
+            },
+          ])
+        );
+      });
+      const { result } = renderHook(() => usePivotData(config, modelSource));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(executed[0]).toContain('USING sum("rev"), sum("qty"), count(*)');
+      expect(formatsOf(result.current.columns)).toEqual({
+        name: undefined,
+        'East_sum(rev)': '$,.0f',
+        'East_sum(qty)': undefined,
+        'East_count_star()': ',d',
+        'West_sum(rev)': '$,.0f',
+        'West_sum(qty)': undefined,
+        'West_count_star()': ',d',
+      });
+    });
+  });
 });

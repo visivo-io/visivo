@@ -123,6 +123,23 @@ describe('pivotDraft', () => {
     expect(serializeDraft(seedDraftFromRecord(config))).toEqual(config);
   });
 
+  test('seed → serialize keeps formatted entries, raw values included', () => {
+    const config = {
+      columns: ['${ref(s).region}'],
+      rows: [{ value: '${ref(s).year}', format: 'd' }],
+      values: [
+        { value: 'sum(${ref(s).revenue})', format: '$,.0f' },
+        { value: 'count(distinct ${ref(s).id})', format: ',d' },
+      ],
+    };
+    const draft = seedDraftFromRecord(config);
+    expect(draft.rows[0]).toMatchObject({ field: 'year', format: 'd' });
+    expect(draft.values[0]).toMatchObject({ agg: 'sum', format: '$,.0f' });
+    expect(draft.columns[0]).not.toHaveProperty('format');
+    expect(serializeDraft(draft)).toEqual(config);
+    expect(draftToPivotConfig(draft)).toEqual(config);
+  });
+
   test('draftToPivotConfig yields a pivot config when columns+values present (rows optional)', () => {
     const full = {
       columns: [{ field: 'region', source: 's' }],

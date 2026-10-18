@@ -1,10 +1,10 @@
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Union
 from typing_extensions import Annotated
 
 from visivo.models.insight import Insight
 from visivo.models.format_cells import FormatCells
-from pydantic import Field, Discriminator, Tag
+from pydantic import BaseModel, ConfigDict, Field, Discriminator, Tag
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.base.base_model import (
@@ -22,6 +22,55 @@ from enum import IntEnum
 D3_FORMAT = re.compile(
     r"^(?:(.)?([<>=^]))?([+\-( ])?([$#])?(0)?(\d+)?(,)?(\.\d+)?(~)?([efgrsdoxXbcnp%])?$"
 )
+
+
+class FormattedColumn(BaseModel):
+    """
+    A table column, row field or pivot value with a number format.
+
+    ``` yaml
+    tables:
+      - name: zone-table
+        columns:
+          - ${ref(trips).zone} as Zone
+          - value: ${ref(trips).revenue} as "Revenue ($)"
+            format: "$,.0f"
+    ```
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    value: str = Field(
+        description="The entry, written as a plain `columns`/`rows`/`values` entry is: "
+        '`${ref(trips).revenue} as "Revenue ($)"`, or `sum(${ref(trips).revenue})` in `values`.',
+    )
+    format: str = Field(
+        description="A d3-format string, the grammar Plotly's valueformat uses: `$,.0f`, "
+        "`.1%`, `d`. On a pivot value it formats every column that value produces. It "
+        "changes only what a cell shows; sorting and CSV export keep the numbers.",
+    )
+
+    @field_validator("format")
+    @classmethod
+    def validate_format(cls, spec):
+        if not D3_FORMAT.match(spec):
+            raise ValueError(
+                f"'{spec}' is not a d3-format string. Use one like ',.0f', '$,.2f', '.1%' or 'd'."
+            )
+        return spec
+
+
+TableField = Union[str, FormattedColumn]
+
+
+def field_value(entry: Any) -> Any:
+    """The expression of a `columns`/`rows`/`values` entry: the string itself, or a
+    formatted entry's `value`."""
+    if isinstance(entry, FormattedColumn):
+        return entry.value
+    if isinstance(entry, dict):
+        return entry.get("value")
+    return entry
 
 
 def get_data_discriminator_value(value):
@@ -89,19 +138,20 @@ class Table(NamedModel, ParentModel):
     ```
 
     ### Number Formats
+    Write an entry as `value` and `format` to format its numbers with a d3-format string.
     ``` yaml
     tables:
       - name: zone-table
         columns:
           - ${ref(trips).zone} as Zone
-          - ${ref(trips).revenue} as "Revenue ($)"
-          - ${ref(trips).tip_share} as "Tip share"
-        column_formats:
-          "Revenue ($)": "$,.0f"
-          "Tip share": ".1%"
+          - value: ${ref(trips).revenue} as "Revenue ($)"
+            format: "$,.0f"
+          - value: ${ref(trips).tip_share} as "Tip share"
+            format: ".1%"
     ```
 
-    In a pivot the value columns are named by the data, so format them all with `"*": "$,.0f"`.
+    A format on a pivot `values` entry formats every column that value produces. An integer
+    column named like a year shows no thousands separator unless it has a format.
 
     ### Pivot Table
     ``` yaml
@@ -130,51 +180,34 @@ class Table(NamedModel, ParentModel):
         description="The number of rows to show per page. Default is 50 rows",
     )
 
-    columns: Optional[List[str]] = Field(
+    columns: Optional[List[TableField]] = Field(
         None,
         description="Column fields using ${ref(name).field} syntax. "
-        "Use alone for column selection/renaming, or with rows and values for pivot tables.",
+        "Use alone for column selection/renaming, or with rows and values for pivot tables. "
+        "An entry may be {value, format} to format its numbers.",
     )
-    rows: Optional[List[str]] = Field(
+    rows: Optional[List[TableField]] = Field(
         None,
-        description="Pivot row fields using ${ref(name).field} syntax. Requires columns and values.",
+        description="Pivot row fields using ${ref(name).field} syntax. Requires columns and values. "
+        "An entry may be {value, format} to format its numbers.",
     )
-    values: Optional[List[str]] = Field(
+    values: Optional[List[TableField]] = Field(
         None,
         description="Pivot value expressions with inline aggregation, "
-        "e.g. [sum(${ref(insight).revenue})]. Requires columns and rows.",
+        "e.g. [sum(${ref(insight).revenue})]. Requires columns and rows. "
+        "An entry may be {value, format}; the format applies to every column the value produces.",
     )
     format_cells: Optional[FormatCells] = Field(
         None,
         description="Gradient/heatmap cell formatting configuration.",
     )
-    column_formats: Optional[Dict[str, str]] = Field(
-        None,
-        description="Number formats by column, keyed by the column's header (its alias) or "
-        "name. Each value is a d3-format string, the grammar Plotly's valueformat uses: "
-        '{"Revenue ($)": "$,.0f", "Tip share": ".1%", "Year": "d"}. The key "*" formats '
-        "every other number column except pivot row fields, which suits a pivot's value "
-        "columns. An integer column named like a year shows no thousands separator unless "
-        "listed. Formats change only what a cell shows; sorting and CSV export keep the numbers.",
-    )
-
-    @field_validator("column_formats")
-    @classmethod
-    def validate_column_formats(cls, formats):
-        for column, spec in (formats or {}).items():
-            if not D3_FORMAT.match(spec):
-                raise ValueError(
-                    f"column_formats['{column}'] = '{spec}' is not a d3-format string. "
-                    "Use one like ',.0f', '$,.2f', '.1%' or 'd'."
-                )
-        return formats
 
     def ref_names(self) -> set:
         """Names of every object referenced from ``columns`` / ``rows`` / ``values``."""
         names = set()
         for field_list in (self.columns, self.rows, self.values):
-            for ref_str in field_list or []:
-                names.update(extract_ref_names(ref_str))
+            for entry in field_list or []:
+                names.update(extract_ref_names(field_value(entry)))
         return names
 
     def child_items(self):
@@ -209,10 +242,12 @@ class Table(NamedModel, ParentModel):
             raise ValueError("'columns' must be specified when using 'rows' and 'values'.")
 
         # Only iterate a real list; any other type is left to the field's own
-        # `List[str]` validation (a string would otherwise iterate per character).
+        # list validation (a string would otherwise iterate per character).
         if has_values and isinstance(data["values"], list):
             for value in data["values"]:
-                _assert_aggregate_value(value)
+                if isinstance(value, dict) and "value" not in value:
+                    continue
+                _assert_aggregate_value(field_value(value))
 
         return data
 

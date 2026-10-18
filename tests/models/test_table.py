@@ -1,4 +1,4 @@
-from visivo.models.table import Table
+from visivo.models.table import FormattedColumn, Table, field_value
 from pydantic import ValidationError
 import pytest
 
@@ -493,13 +493,81 @@ def test_Table_refs_to_two_related_models_are_accepted():
     assert validate_project_table_sources(_project_with([table], [relation])) is None
 
 
-def test_Table_column_formats_accept_d3_formats():
-    formats = {"Revenue ($)": "$,.0f", "Tip share": ".1%", "Year": "d", "Change": "+.1f", "*": "~s"}
-    table = Table(name="t", columns=['${ref(m).zone} as "Zone"'], column_formats=formats)
-    assert table.column_formats == formats
+@pytest.mark.parametrize("spec", ["$,.0f", ".1%", "d", "+.1f", "~s", ",d"])
+def test_Table_formatted_column_accepts_d3_formats(spec):
+    table = Table(name="t", columns=[{"value": '${ref(m).rev} as "Revenue ($)"', "format": spec}])
+    assert table.columns == [FormattedColumn(value='${ref(m).rev} as "Revenue ($)"', format=spec)]
 
 
 @pytest.mark.parametrize("spec", ["$%,.2f", "#,##0.00", "dollars", ".1f%"])
-def test_Table_column_formats_reject_non_d3_strings(spec):
+def test_Table_formatted_column_rejects_non_d3_strings(spec):
     with pytest.raises(ValidationError, match="is not a d3-format string"):
-        Table(name="t", data="ref(m)", column_formats={"Revenue": spec})
+        Table(name="t", columns=[{"value": "${ref(m).rev}", "format": spec}])
+
+
+def test_Table_formatted_column_forbids_other_keys():
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        Table(name="t", columns=[{"value": "${ref(m).rev}", "format": ",d", "path": "x"}])
+
+
+def test_Table_mixes_plain_and_formatted_entries_in_a_pivot():
+    table = Table(
+        name="t",
+        columns=["${ref(m).region}"],
+        rows=[{"value": "${ref(m).year}", "format": "d"}],
+        values=[{"value": "sum(${ref(m).rev})", "format": "$,.0f"}, "count(*)"],
+    )
+    assert table.rows[0].format == "d"
+    assert table.values[1] == "count(*)"
+    assert table.model_dump(exclude_none=True)["values"] == [
+        {"value": "sum(${ref(m).rev})", "format": "$,.0f"},
+        "count(*)",
+    ]
+
+
+def test_Table_ref_names_read_formatted_entries():
+    table = Table(name="t", columns=["${ref(a).x}", {"value": "${ref(b).y} as Y", "format": ",d"}])
+    assert table.ref_names() == {"a", "b"}
+
+
+def test_Table_formatted_pivot_value_must_be_an_aggregate():
+    with pytest.raises(ValidationError, match="is not an aggregate"):
+        Table(
+            name="t",
+            columns=["${ref(m).region}"],
+            rows=["${ref(m).name}"],
+            values=[{"value": "${ref(m).rev}", "format": ",d"}],
+        )
+
+
+def test_Table_formatted_pivot_value_instance_must_be_an_aggregate():
+    with pytest.raises(ValidationError, match="is not an aggregate"):
+        Table(
+            name="t",
+            columns=["${ref(m).region}"],
+            rows=["${ref(m).name}"],
+            values=[FormattedColumn(value="${ref(m).rev}", format=",d")],
+        )
+
+
+def test_Table_formatted_pivot_value_without_value_is_left_to_field_validation():
+    with pytest.raises(ValidationError, match="Field required"):
+        Table(
+            name="t",
+            columns=["${ref(m).region}"],
+            rows=["${ref(m).name}"],
+            values=[{"format": ",d"}],
+        )
+
+
+@pytest.mark.parametrize(
+    "entry, expected",
+    [
+        ("${ref(m).x}", "${ref(m).x}"),
+        ({"value": "${ref(m).x}", "format": "d"}, "${ref(m).x}"),
+        (FormattedColumn(value="${ref(m).x}", format="d"), "${ref(m).x}"),
+        (5, 5),
+    ],
+)
+def test_field_value(entry, expected):
+    assert field_value(entry) == expected

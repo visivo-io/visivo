@@ -38,7 +38,7 @@ const PIVOT_RESULT = {
   rows: [{ a: 1 }, { a: 2 }],
   columns: [
     { id: 'region', accessorKey: 'region', header: 'Region', isPivotRow: true },
-    { id: 'blue_sum', accessorKey: 'blue_sum', header: 'Blue' },
+    { id: 'blue_sum', accessorKey: 'blue_sum', header: 'Blue', format: '$,.0f' },
   ],
   nestedColumns: null,
   pivotMeta: { aggregationLabel: 'SUM of Revenue', pivotFieldName: 'Region', rowFieldNames: ['Category'] },
@@ -109,6 +109,17 @@ describe('PivotResultPanel', () => {
     expect(props.stickyLeftColumns).toEqual(['region']);
     // The metadata banner is handed to DataTable as a node (rendered above headers).
     expect(props.headerBanner).toBeTruthy();
+  });
+
+  test('hands each column its entry format', () => {
+    seedSource('sales-insight');
+    render(
+      <PivotResultPanel
+        config={{ columns: ['${ref(sales-insight).region}'], rows: ['${ref(sales-insight).x}'], values: [{ value: 'sum(${ref(sales-insight).r})', format: '$,.0f' }] }}
+        sourceName="sales-insight"
+      />
+    );
+    expect(dataTableProps[0].columns.map(c => c.format)).toEqual([undefined, '$,.0f']);
   });
 
   test('passes null config to the pipeline and shows the empty hint when columns are absent', () => {

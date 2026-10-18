@@ -63,8 +63,8 @@ const formatTimestamp = date => {
 };
 
 /**
- * The text a cell shows for a non-null value. `format` is the column's
- * d3-format spec from the table's `column_formats`, applied to numbers only.
+ * The text a cell shows for a non-null value. `format` is the d3-format spec
+ * of the column's table entry, applied to numbers only.
  */
 export const formatCellText = (value, columnType, format) => {
   if (format && (typeof value === 'number' || typeof value === 'bigint')) {

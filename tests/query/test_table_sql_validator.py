@@ -67,6 +67,22 @@ def test_double_wrapped_alias_is_caught():
     assert "invalid SQL" in err
 
 
+def test_formatted_entries_are_checked_by_their_value():
+    from visivo.models.table import FormattedColumn
+
+    ok = validate_table_sql(
+        "pivot",
+        ["${ref(i).region}"],
+        [FormattedColumn(value="${ref(i).year}", format="d")],
+        [{"value": "sum(${ref(i).rev})", "format": "$,.0f"}],
+    )
+    assert ok is None
+    err = validate_table_sql(
+        "bad", [FormattedColumn(value='${ref(i).sex} as ""Sex""', format=",d")], None, None
+    )
+    assert "invalid SQL" in err
+
+
 def test_structurally_invalid_pivot_value_is_caught():
     # A value expression that isn't an aggregate call breaks the USING clause.
     err = validate_table_sql(

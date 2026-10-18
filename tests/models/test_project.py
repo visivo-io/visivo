@@ -413,10 +413,24 @@ def test_Project_validate_set_path_on_named_models():
     assert project.tables[0].path == "project.tables[0]"
 
 
-def test_a_table_keeps_its_column_formats_free_of_paths():
-    table = {"name": "t", "column_formats": {"Revenue ($)": "$,.0f"}}
-    project = Project(name="p", tables=[table])
-    assert project.tables[0].column_formats == {"Revenue ($)": "$,.0f"}
+def test_a_table_keeps_its_formatted_entries_free_of_paths():
+    table = {
+        "name": "t",
+        "columns": ["${ref(m).region}", {"value": "${ref(m).rev} as Rev", "format": "$,.0f"}],
+        "rows": [{"value": "${ref(m).year}", "format": "d"}],
+        "values": [{"value": "sum(${ref(m).rev})", "format": "$,.0f"}],
+    }
+    source = SourceFactory(name="s")
+    model = {"name": "m", "sql": "select 1", "source": "ref(s)"}
+    project = Project(name="p", sources=[source], models=[model], tables=[table])
+    assert project.tables[0].rows[0].format == "d"
+    assert project.tables[0].values[0].format == "$,.0f"
+    assert project.tables[0].columns[1].format == "$,.0f"
+
+
+def test_a_dashboard_row_still_gets_a_path():
+    project = Project(name="p", dashboards=[{"name": "d", "rows": [{"items": []}]}])
+    assert project.dashboards[0].rows[0].path == "project.dashboards[0].rows[0]"
 
 
 def test_set_paths_on_models():
