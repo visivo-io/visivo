@@ -106,3 +106,64 @@ def test_a_name_collision_across_types_is_not_substituted():
 
     assert replaced == set()
     assert _inline_chart(project).name == name
+
+
+class TestReplaceInlineDefinitionsShapes:
+    """The walker's dict, nested-model, type-mismatch and revisit branches."""
+
+    def _models(self):
+        from typing import Any, Dict, Optional
+
+        from pydantic import BaseModel
+
+        class Leaf(BaseModel):
+            name: str
+            size: int = 0
+
+        class Other(BaseModel):
+            name: str
+
+        class Holder(BaseModel):
+            child: Optional[Any] = None
+            by_key: Dict[str, Any] = {}
+
+        return Leaf, Other, Holder
+
+    def test_a_draft_replaces_a_model_held_in_a_dict(self):
+        Leaf, _, Holder = self._models()
+        holder = Holder(by_key={"a": Leaf(name="x")})
+
+        replaced = replace_inline_definitions(holder, {"x": Leaf(name="x", size=2)})
+
+        assert replaced == {"x"} and holder.by_key["a"].size == 2
+
+    def test_the_walk_descends_into_models_held_in_a_dict_and_a_field(self):
+        Leaf, _, Holder = self._models()
+        holder = Holder(
+            child=Holder(child=Leaf(name="y")),
+            by_key={"a": Holder(child=Leaf(name="x")), "skip": "not a model"},
+        )
+
+        replaced = replace_inline_definitions(
+            holder, {"x": Leaf(name="x", size=2), "y": Leaf(name="y", size=3)}
+        )
+
+        assert replaced == {"x", "y"}
+        assert holder.by_key["a"].child.size == 2 and holder.child.child.size == 3
+
+    def test_a_draft_of_another_type_does_not_replace_the_inline_object(self):
+        Leaf, Other, Holder = self._models()
+        holder = Holder(child=Leaf(name="x"))
+
+        replaced = replace_inline_definitions(holder, {"x": Other(name="x")})
+
+        assert replaced == set() and isinstance(holder.child, Leaf)
+
+    def test_a_container_reached_twice_is_walked_once(self):
+        Leaf, _, Holder = self._models()
+        shared = Holder(child=Leaf(name="x"))
+        holder = Holder(by_key={"a": shared, "b": shared})
+
+        replaced = replace_inline_definitions(holder, {"x": Leaf(name="x", size=2)})
+
+        assert replaced == {"x"} and shared.child.size == 2

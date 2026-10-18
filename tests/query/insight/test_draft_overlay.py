@@ -498,3 +498,30 @@ class TestBuildDraftOverlayIgnoresUnrelatedDrafts:
         _, dag, _ = build_draft_overlay(app, insight_config(model_name="cohort_q"))
 
         assert any(getattr(n, "name", None) == "cohort_q" for n in dag.nodes)
+
+
+class TestDraftObjectEdgeCases:
+    def test_an_invalid_draft_metric_raises_draft_overlay_error(self, flask_app):
+        with pytest.raises(DraftOverlayError, match="Invalid draft metrics"):
+            build_draft_overlay(
+                flask_app, insight_config(), draft_metrics=[{"name": "m", "bogus": 1}]
+            )
+
+    def test_a_draft_model_that_fails_validation_raises_draft_overlay_error(self, flask_app):
+        with pytest.raises(DraftOverlayError, match="Invalid draft models"):
+            build_draft_overlay(
+                flask_app,
+                insight_config(),
+                draft_models=[{"name": "m", "sql": "select 1", "bogus": 1}],
+            )
+
+    def test_a_draft_field_with_no_adapter_is_ignored(self, project_with_model):
+        from visivo.query.insight.draft_overlay import (
+            _inject_draft_objects,
+            _inject_model_scoped_fields,
+        )
+
+        _inject_draft_objects(project_with_model, {"charts": [{"name": "c"}]})
+        _inject_model_scoped_fields(project_with_model, "charts", [{"name": "c"}])
+
+        assert not project_with_model.charts
