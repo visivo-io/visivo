@@ -37,6 +37,6 @@ gotchas:
   - "On Plotly 3 the basemap tiles read \"API KEY REQUIRED\" even with the theme's carto style; the data draws, but migrate to the `*map` trace."
   - "Plotly.js 3 logs a deprecation warning on every render and will remove the trace; do not let the agent emit it."
   - "All `scattermap` gotchas apply: aggregate to a location, check lat/lon are not swapped, set center and zoom."
-pairings: [bar_beside, detail_table_below]
+pairings: [chart_beside(bar), detail_table_below]
 layout: {height: large, width_share: 0.67, row_role: hero}
 mobile: As scattermap; full width, legend hidden.

@@ -1,0 +1,64 @@
+# Repairs and reshapings. `fixes` names the ranges a repair brings back
+# within the entry's own limit; `roles` the dimensions it acts on (any when empty).
+
+regrain_steps: {second: 60, minute: 60, hour: 24, day: 7, week: 4.345, month: 3, quarter: 4}
+
+transforms:
+  - name: top_n_other
+    how: "In the model, replace <dim> with `CASE WHEN <dim> IN (SELECT <dim> FROM <model> GROUP BY 1 ORDER BY <metric> DESC LIMIT <n>) THEN <dim> ELSE '{label}' END`, n + 1 values within the chart's limit, and add `<dim>{rank_column}` (1 to n by <metric>, n + 1 for {label}). On the insight, {label} takes `{color}` (a CASE on <dim> in the colour prop, `[0]` on a split; unsplit, a {null_is_black} draws a null black, so give it `ELSE <the theme's first colour>`) and a `sort: ?{{ min(<dim>{rank_column}) ASC }}` of its own goes first, so {label} is last and colours stay put; a pie keeps `sort: false`."
+    fixes: [series, cardinality, cells]
+    roles: [categorical, boolean, geo_region, numeric_discrete, text, identifier]
+    other:
+      label: Other
+      color: "#9e9e9e"
+      rank_column: _rank
+      series_color: {scatter: [line.color, marker.color], scattergl: [line.color, marker.color], bar: [marker.color]}
+      slice_color: {bar: [marker.color], funnel: [marker.color], pie: [marker.colors], funnelarea: [marker.colors], treemap: [marker.colors]}
+      null_is_black: [bar, funnel]
+  - name: input_filter
+    how: "An input over the dimension (recommend_inputs builds it) and a `filter` interaction on every insight that reads the column."
+    fixes: [series, cardinality, axis_points, cells, dimensions, rows]
+  - name: small_multiples
+    how: "One insight per top value, each filtered to it, in a row of equal widths; set the same `yaxis.range` on every chart."
+    fixes: [series]
+  - name: regrain
+    how: "`date_trunc('<coarser grain>', <time>)` on x and in the `sort`, one grain at a time; for prices use first open, max high, min low, last close."
+    fixes: [axis_points, cardinality, cells, rows]
+    roles: [time]
+  - name: scattergl
+    how: "`type: scattergl` with the same props; keep the browser's WebGL context limit in mind with several on one page."
+    fixes: [rows]
+  - name: clip_p99
+    how: "`least(<col>, <p99>)` on the axis, with the p99 from the column's profile stats, and say so in the title; never on a box or violin, where one global cap moves the quartiles of every long group."
+  - name: dominant_category
+    how: "In SQL, `arg_max(<category>, <metric>)` per region as the colour, with a categorical colorscale; the share of the winner can be the hover text."
+    fixes: [series, dimensions]
+  - name: bucket
+    how: "`floor(<col> / <width>) * <width>` or a CASE of named ranges, sorted by the lower bound."
+    fixes: [cardinality, cells, axis_points]
+    roles: [numeric_continuous, numeric_discrete]
+  - name: collapse_rare
+    how: "`CASE WHEN <share> < <threshold> THEN 'Other' ELSE <dim> END` from the column's top-N shares; check the count that remains."
+    fixes: [series, cardinality, cells]
+    roles: [categorical, boolean, geo_region, numeric_discrete, text, identifier]
+  - name: sample
+    how: "A dedicated model with `USING SAMPLE <rows>` (DuckDB) or `TABLESAMPLE`; an input filter does not cap the rows a split ships."
+    fixes: [rows]
+  - name: grid_bucket
+    how: "`round(<lat>, <digits>)`, `round(<lon>, <digits>)` and `count(*)` grouped by both."
+    fixes: [rows]
+  - name: aggregate_to_centroid
+    how: "`avg(<lat>)`, `avg(<lon>)` grouped by the place, `marker.size: ?{ sqrt(<metric>) }`."
+    fixes: [rows]
+  - name: rate_per_capita
+    how: "Join the denominator in the model and plot `<metric> / <population>`."
+  - name: stage_order
+    how: "A `stage_order` column in the model and `sort: ?{ min(<stage_order>) ASC }`."
+  - name: precomputed_quartiles
+    how: "`quantile_cont(<col>, [0.25, 0.5, 0.75])`, min and max per group, drawn with `q1`, `median`, `q3`, `lowerfence`, `upperfence`."
+  - name: precomputed_totals
+    how: "`GROUP BY GROUPING SETS ((<dims>), ())` or a UNION ALL total row labelled 'Total'."
+  - name: log_scale
+    how: "`layout.xaxis.type: log` (or `yaxis`) on the chart; never with zeros or negatives."
+  - name: normalize_0_1
+    how: "`(<m> - min(<m>) over ()) / nullif(max(<m>) over () - min(<m>) over (), 0)` per measure."

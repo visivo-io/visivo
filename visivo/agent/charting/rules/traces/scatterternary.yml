@@ -49,6 +49,6 @@ gotchas:
   - "Without `layout.ternary.aaxis.title` (and `baxis`, `caxis`) the corners are unlabeled and the chart is unreadable; set them explicitly."
   - "Tiny entities sit on the corners (1 trip is 100% cash); filter them with HAVING or size markers by volume."
   - "`text` is the grouping column (one point per zone); it is not an aggregate, so it defines the GROUP BY."
-pairings: [detail_table_below, bar_beside]
+pairings: [detail_table_below, chart_beside(bar)]
 layout: {height: large, width_share: 0.5, row_role: relationship}
 mobile: The triangle needs a square; at half width the axis titles crowd, so turn tick labels off and rely on hover.

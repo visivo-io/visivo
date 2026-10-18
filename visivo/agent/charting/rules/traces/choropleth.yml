@@ -47,7 +47,7 @@ variations:
 limits:
   series_ideal: 1
   series_max: 1
-  repair: [input_filter]
+  repair: [dominant_category, input_filter]
 transforms: [rate_per_capita, regrain]
 gotchas:
   - "`locationmode` must match the column: `ISO-3` (USA, FRA), `USA-states` (NY, NJ), `country names` (United States). Mismatched codes draw an empty map with no error."
@@ -55,6 +55,6 @@ gotchas:
   - "Set chart `layout.geo.scope` (`usa` for states) or `layout.geo.fitbounds: locations`; the default is the world and US states are a smudge."
   - "Totals follow population; prefer a rate (per resident, per trip) or say in the title that it is a count."
   - "The theme colors `layout.geo` land, ocean and borders for light and dark mode; do not override `landcolor` or `bgcolor` per chart."
-pairings: [bar_beside, detail_table_below]
+pairings: [chart_beside(bar), detail_table_below]
 layout: {height: large, width_share: 0.67, row_role: hero}
 mobile: Full width and `large`; a half-width world map is unreadable.
