@@ -3,6 +3,8 @@
  * Used by SQLEditor to profile query results without DuckDB.
  */
 
+import { stringifyValue } from './cellFormatting';
+
 const isNumeric = value => typeof value === 'number' && !isNaN(value);
 
 /**
@@ -19,14 +21,14 @@ const getDisplayType = columnDef => {
   return 'UNKNOWN';
 };
 
-const median = sortedArr => {
+export const median = sortedArr => {
   const len = sortedArr.length;
   if (len === 0) return null;
   const mid = Math.floor(len / 2);
   return len % 2 !== 0 ? sortedArr[mid] : (sortedArr[mid - 1] + sortedArr[mid]) / 2;
 };
 
-const percentile = (sortedArr, p) => {
+export const percentile = (sortedArr, p) => {
   if (sortedArr.length === 0) return null;
   const index = (p / 100) * (sortedArr.length - 1);
   const lower = Math.floor(index);
@@ -35,7 +37,7 @@ const percentile = (sortedArr, p) => {
   return sortedArr[lower] + (sortedArr[upper] - sortedArr[lower]) * (index - lower);
 };
 
-const stdDev = (arr, mean) => {
+export const stdDev = (arr, mean) => {
   if (arr.length === 0) return null;
   const squaredDiffs = arr.map(v => Math.pow(v - mean, 2));
   return Math.sqrt(squaredDiffs.reduce((a, b) => a + b, 0) / arr.length);
@@ -67,7 +69,7 @@ export const computeColumnProfile = (columnName, columnDef, rows) => {
   const nullPercentage = (nullCount / values.length) * 100;
 
   // Distinct count
-  const distinctSet = new Set(nonNullValues.map(v => JSON.stringify(v)));
+  const distinctSet = new Set(nonNullValues.map(stringifyValue));
   const distinctCount = distinctSet.size;
 
   // Check if numeric

@@ -1,5 +1,6 @@
 import React from 'react';
 import { COLUMN_TYPES } from '../../duckdb/schemaUtils';
+import { stringifyValue } from '../../utils/cellFormatting';
 
 /**
  * Convert a numeric epoch value to a Date, detecting the scale automatically.
@@ -76,7 +77,7 @@ export const formatCellText = (value, columnType) => {
   }
 
   if (typeof value === 'object') {
-    return JSON.stringify(value);
+    return stringifyValue(value);
   }
 
   const str = String(value);

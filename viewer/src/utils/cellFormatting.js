@@ -1,6 +1,17 @@
 import { readableTextOn } from '../theme/colorUtils';
 
 /**
+ * JSON text for a cell value. A struct or list from DuckDB can hold BigInts,
+ * which plain JSON.stringify throws on; they print as their digits.
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+export function stringifyValue(value) {
+  return JSON.stringify(value, (_key, v) => (typeof v === 'bigint' ? v.toString() : v));
+}
+
+/**
  * Parse a hex color string to { r, g, b }.
  * @param {string} hex - e.g. "#ff0000" or "#f00"
  * @returns {{ r: number, g: number, b: number }}

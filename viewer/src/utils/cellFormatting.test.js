@@ -1,4 +1,21 @@
-import { computeGradientStyles, toGradientNumber, selectGradientColumns } from './cellFormatting';
+import {
+  computeGradientStyles,
+  toGradientNumber,
+  selectGradientColumns,
+  stringifyValue,
+} from './cellFormatting';
+
+describe('stringifyValue', () => {
+  it('prints BigInts nested in structs and lists as their digits', () => {
+    expect(stringifyValue({ _0: 9007199254740993n, tags: [2n] })).toBe(
+      '{"_0":"9007199254740993","tags":["2"]}'
+    );
+  });
+
+  it('matches JSON.stringify for plain values', () => {
+    expect(stringifyValue({ a: 1, b: ['x', null] })).toBe('{"a":1,"b":["x",null]}');
+  });
+});
 
 describe('computeGradientStyles', () => {
   const rows = [
