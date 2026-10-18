@@ -118,7 +118,8 @@ def _write_handler(type_key):
         try:
             obj = manager.validate_object(config)
         except Exception as error:
-            raise ToolError(f"Invalid {_singular(type_key)}: {error}")
+            hints = "".join(f"\nHint: {hint}" for hint in _write_hints(type_key, error))
+            raise ToolError(f"Invalid {_singular(type_key)}: {error}{hints}")
 
         # Local import: run_views reaches back into the server package, and the
         # tool registry is imported from it.
@@ -138,6 +139,33 @@ def _write_handler(type_key):
         return result
 
     return handler
+
+
+# Fixes for the config shapes agents get wrong most, keyed by the field Pydantic
+# names. A bare "Extra inputs are not permitted" leaves the agent guessing where
+# the field belongs.
+_INTERACTION_FIELDS = ("filter", "split", "sort")
+
+
+def _write_hints(type_key, error):
+    errors = error.errors() if callable(getattr(error, "errors", None)) else []
+    hints = []
+    for problem in errors:
+        loc = problem.get("loc") or ()
+        field = loc[0] if loc else None
+        if type_key == "insights" and field in _INTERACTION_FIELDS:
+            hints.append(
+                f"`{field}` goes inside `interactions`, e.g. "
+                f'`interactions: [{{{field}: "?{{ ... }}"}}]`.'
+            )
+        elif field == "model" and problem.get("type") == "extra_forbidden":
+            hints.append(
+                f"A {_singular(type_key)} has no `model` field. Name the model inside its "
+                "expressions, e.g. `?{ sum(${ref(trips).fare}) }`."
+            )
+        elif type_key == "models" and field == "source":
+            hints.append("Write the source as a reference, e.g. `source: ${ref(taxi)}`.")
+    return list(dict.fromkeys(hints))
 
 
 _NAME_SCHEMA = {

@@ -362,3 +362,36 @@ class TestWhoMadeTheCall:
             log.record("write_table")
 
         assert [a["id"] for a in log.since(mark, session_id="s1")] == [ours["id"]]
+
+
+class TestWriteHints:
+    """The shapes agents get wrong most come back with the fix, not only the
+    Pydantic message."""
+
+    def test_an_interaction_at_the_top_level_points_inside_interactions(self, integration_app):
+        config = {"name": "i", "props": {"type": "bar"}, "sort": "?{ x DESC }", "filter": "?{ y }"}
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, "write_insight", {"config": config})
+        message = str(raised.value)
+        assert "Hint: `sort` goes inside `interactions`" in message
+        assert "Hint: `filter` goes inside `interactions`" in message
+
+    def test_a_model_field_names_the_model_in_the_expression_instead(self, integration_app):
+        config = {"name": "i", "props": {"type": "bar"}, "model": "trips"}
+        with pytest.raises(ToolError, match=r"has no `model` field"):
+            call(integration_app, "write_insight", {"config": config})
+
+    def test_a_bare_source_name_asks_for_a_reference(self, integration_app):
+        config = {"name": "m", "source": "taxi", "sql": "select 1"}
+        with pytest.raises(ToolError, match=r"source: \$\{ref\(taxi\)\}"):
+            call(integration_app, "write_model", {"config": config})
+
+    def test_other_errors_carry_no_hint(self, integration_app):
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, "write_insight", {"config": {"name": "i", "props": "bar"}})
+        assert "Hint:" not in str(raised.value)
+
+    def test_an_error_without_details_carries_no_hint(self):
+        from visivo.agent.tools import _write_hints
+
+        assert _write_hints("insights", ValueError("boom")) == []
