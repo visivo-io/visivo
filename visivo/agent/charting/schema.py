@@ -14,7 +14,7 @@ Nothing here is a project object: these models are not under
 
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from visivo.models.props.types import PropType
 
@@ -107,6 +107,8 @@ FAMILIES = (
     "image",
     "table",
 )
+
+REQUESTABLE = frozenset(FAMILIES) | KNOWN_TYPES
 
 
 class _Strict(BaseModel):
@@ -201,6 +203,8 @@ class RequestContext(_Strict):
     max_results: int = Field(default=5, ge=1)
     # The model the columns come from, for the ${ref()}s in a skeleton.
     model: str = "model"
+    # The first theme colorway colour (the built-in light theme's unless the tool reads another).
+    theme_color: str = "#0a9396"
 
 
 class RecommendRequest(_Strict):
@@ -212,6 +216,16 @@ class RecommendRequest(_Strict):
     intent: Optional[Intent] = None
     semantics: Semantics = Field(default_factory=Semantics)
     context: RequestContext = Field(default_factory=RequestContext)
+    # The family or trace type the user named: it ranks first with its penalties
+    # and warnings intact; only a hard gate still rejects it.
+    requested: Optional[str] = None
+
+    @field_validator("requested")
+    @classmethod
+    def _known_request(cls, requested):
+        if requested is not None and requested not in REQUESTABLE:
+            raise ValueError(f"'{requested}' is neither a family nor a trace type")
+        return requested
 
 
 # --- what the rules say ------------------------------------------------------
@@ -238,16 +252,14 @@ class LayoutHint(_Strict):
 
 
 class HardGates(_Strict):
-    """What must be true of a request for a family to be drawable at all.
-    Preferences belong in ``score``; a gate here means the chart would be
-    wrong, not merely worse."""
+    """Structural conditions only: a chart that fails one would be wrong, not
+    merely worse. Counts and ranges are never written here; they come from
+    the member entries' ``data_shape`` (minimums gate, maximums rank)."""
 
     ordered_axis_required: bool = False
-    metrics: MinMax = Field(default_factory=MinMax)
-    dimensions: MinMax = Field(default_factory=MinMax)
     axis_roles: List[Role] = Field(default_factory=list)
-    dimension_roles: List[Role] = Field(default_factory=list)
-    axis_points: MinMax = Field(default_factory=MinMax)
+    # `when` clauses that must all fire, e.g. ordered_stages for a funnel.
+    requires: List[str] = Field(default_factory=list)
     intents: List[Intent] = Field(default_factory=list)
 
 
@@ -255,6 +267,8 @@ class Limits(_Strict):
     series_ideal: Optional[int] = Field(default=None, ge=1)
     series_max: Optional[int] = Field(default=None, ge=1)
     repair: List[str] = Field(default_factory=list)
+    # A top-N that would leave Other the largest value moves on to the next repair.
+    other_not_largest: bool = False
 
     @model_validator(mode="after")
     def _ordered(self):
@@ -271,29 +285,6 @@ class ScoreAdjustment(_Strict):
     when: str
     delta: float
     reason: str
-
-
-class FamilyRule(_Strict):
-    """One row of ``families.yml``: when a family is allowed, how far it
-    scales, and why it should rank where it does."""
-
-    name: str
-    trace_types: List[str] = Field(default_factory=list)
-    hard_gates: HardGates = Field(default_factory=HardGates)
-    limits: Limits = Field(default_factory=Limits)
-    score: List[ScoreAdjustment] = Field(default_factory=list)
-    encodings: Dict[str, str] = Field(default_factory=dict)
-    pairings: List[str] = Field(default_factory=list)
-    layout: LayoutHint = Field(default_factory=LayoutHint)
-    warnings: List[str] = Field(default_factory=list)
-    skill: Optional[str] = None
-
-    @model_validator(mode="after")
-    def _known_types(self):
-        unknown = [t for t in self.trace_types if t not in TRACE_TYPES]
-        if unknown:
-            raise ValueError(f"unknown trace types {unknown}")
-        return self
 
 
 class DataShape(_Strict):
@@ -326,6 +317,13 @@ class OtherUse(_Strict):
     how: str
 
 
+class TextLabels(_Strict):
+    """When value labels on the marks stay readable: at most ``max_marks``
+    marks (categories times series) at the entry's own layout width."""
+
+    max_marks: int = Field(ge=1)
+
+
 class TraceEntry(_Strict):
     """One ``rules/traces/<type>.yml``: what the agent reads to choose a trace
     and write it."""
@@ -346,8 +344,14 @@ class TraceEntry(_Strict):
     transforms: List[str] = Field(default_factory=list)
     gotchas: List[str] = Field(default_factory=list, max_length=5)
     pairings: List[str] = Field(default_factory=list)
+    alternatives: List[str] = Field(default_factory=list)
     layout: LayoutHint = Field(default_factory=LayoutHint)
     mobile: Optional[str] = None
+    # Read by the skeleton: labels only up to a size, and the props whose
+    # category axis is ordered by the metric's total (time stays chronological).
+    text_labels: Optional[TextLabels] = None
+    order_axes: List[Literal["x", "y"]] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _consistent(self):
@@ -372,6 +376,155 @@ class TraceEntry(_Strict):
 
     def families(self):
         return [self.family, *self.secondary_families]
+
+
+class FamilyRule(_Strict):
+    """One row of ``families.yml``: the judgement a family adds on top of the
+    entries ``trace_types`` claims, preferred first. The loader attaches them
+    as ``members``; only a family without entries carries a ``data_shape``."""
+
+    name: str
+    trace_types: List[str] = Field(default_factory=list)
+    hard_gates: HardGates = Field(default_factory=HardGates)
+    score: List[ScoreAdjustment] = Field(default_factory=list)
+    props: Dict[str, Any] = Field(default_factory=dict)
+    warnings: List[str] = Field(default_factory=list)
+    skill: Optional[str] = None
+    skeleton: Literal["chart", "table", "pivot"] = "chart"
+    data_shape: Optional[DataShape] = None
+    layout: Optional[LayoutHint] = None
+    members: List[TraceEntry] = Field(default_factory=list, exclude=True)
+
+    @model_validator(mode="after")
+    def _known_types(self):
+        unknown = [t for t in self.trace_types if t not in TRACE_TYPES]
+        if unknown:
+            raise ValueError(f"unknown trace types {unknown}")
+        return self
+
+    def layout_hint(self):
+        """The family's own layout, else its preferred member's."""
+        if self.layout is not None:
+            return self.layout
+        return self.members[0].layout if self.members else LayoutHint()
+
+
+class Penalties(_Strict):
+    out_of_range: float = Field(ge=0)
+    repair: float = Field(ge=0)
+    niche: float = Field(ge=0)
+
+
+class FamiliesDoc(_Strict):
+    """The whole of ``families.yml``."""
+
+    penalties: Penalties
+    builtin_boundaries: List[GeoKind] = Field(default_factory=list)
+    families: List[FamilyRule] = Field(min_length=1)
+
+
+# The ranges a repair can bring back within limits, in the order the recommender repairs them.
+Measure = Literal["dimensions", "metrics", "series", "cardinality", "axis_points", "cells", "rows"]
+
+
+class OtherRecipe(_Strict):
+    """How a top-N draws its Other: one neutral colour, set on the insight
+    through the props each type colours by, and last by its rank column. The
+    named marks of a type that draws a null colour black take the theme's."""
+
+    label: str
+    color: str
+    rank_column: str
+    series_color: Dict[str, List[str]] = Field(default_factory=dict)
+    slice_color: Dict[str, List[str]] = Field(default_factory=dict)
+    null_is_black: List[str] = Field(default_factory=list)
+
+
+class Transform(_Strict):
+    """A repair or reshaping: how to apply it, the ranges it fixes, and the
+    dimension roles it can act on (any when empty)."""
+
+    name: str
+    how: str
+    fixes: List[Measure] = Field(default_factory=list)
+    roles: List[Role] = Field(default_factory=list)
+    other: Optional[OtherRecipe] = None
+
+    def acts_on(self, role):
+        return not self.roles or role in self.roles
+
+    def instructions(self):
+        if not self.other:
+            return self.how
+        fields = self.other.model_dump()
+        return self.how.format(**{**fields, "null_is_black": " or ".join(fields["null_is_black"])})
+
+
+class TransformsDoc(_Strict):
+    """The whole of ``transforms.yml``."""
+
+    # How many of each grain make the next coarser one (calendar facts).
+    regrain_steps: Dict[TimeGrain, float] = Field(default_factory=dict)
+    transforms: List[Transform] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _unique(self):
+        names = [t.name for t in self.transforms]
+        if len(names) != len(set(names)):
+            raise ValueError("transform names must be unique")
+        return self
+
+    def get(self, name):
+        return next((t for t in self.transforms if t.name == name), None)
+
+
+class Pairing(_Strict):
+    """One row of ``pairings.yml``. An ``overlay`` is a second insight in the
+    same chart; a ``companion`` is a separate item placed beside, above or
+    below it. ``param`` names what a parametrised pairing takes, written
+    ``name(value)`` in a trace entry."""
+
+    name: str
+    kind: Literal["overlay", "companion"]
+    adds: str
+    param: Optional[Literal["type", "family"]] = None
+    insight_props: Dict[str, Any] = Field(default_factory=dict)
+    chart_layout: Dict[str, Any] = Field(default_factory=dict)
+    placement: Optional[Literal["above", "below", "beside"]] = None
+    item: Optional[Literal["chart", "table", "kpi"]] = None
+
+    @model_validator(mode="after")
+    def _shape(self):
+        if self.kind == "overlay" and not (self.insight_props or self.chart_layout):
+            raise ValueError(f"overlay {self.name} needs insight_props or chart_layout")
+        if self.kind == "companion" and (self.placement is None or self.item is None):
+            raise ValueError(f"companion {self.name} needs a placement and an item")
+        if self.kind == "companion" and (self.insight_props or self.chart_layout):
+            raise ValueError(f"companion {self.name} is its own item; it sets no chart props")
+        return self
+
+
+class PairingsDoc(_Strict):
+    """The whole of ``pairings.yml``: every way to combine insights."""
+
+    pairings: List[Pairing] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _unique(self):
+        names = [p.name for p in self.pairings]
+        if len(names) != len(set(names)):
+            raise ValueError("pairing names must be unique")
+        return self
+
+    def get(self, name):
+        return next((p for p in self.pairings if p.name == name), None)
+
+
+def split_pairing(reference):
+    """``("chart_beside", "bar")`` for ``chart_beside(bar)``; the argument is
+    ``None`` for a plain name."""
+    name, _, rest = reference.partition("(")
+    return name.strip(), (rest.rstrip(")").strip() or None) if rest else None
 
 
 HEIGHT_TOKENS = ("compact", "xsmall", "small", "medium", "large", "xlarge", "xxlarge")
@@ -546,8 +699,10 @@ class Recommendation(_Strict):
     transforms: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     yaml_skeleton: Optional[str] = None
+    example_yaml: Optional[str] = None
     table_yaml: Optional[str] = None
     pairings: List[str] = Field(default_factory=list)
+    alternatives: List[str] = Field(default_factory=list)
     layout: LayoutHint = Field(default_factory=LayoutHint)
     skill: Optional[str] = None
 

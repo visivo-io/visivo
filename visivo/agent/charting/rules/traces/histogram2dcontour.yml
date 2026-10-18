@@ -33,7 +33,7 @@ example: |
         - filter: ?{ ${ref(trips).trip_distance} > 0 and ${ref(trips).fare_amount} > 0 }
 variations:
   - when: "the reader should also see the points underneath"
-    then: "a second insight (scattergl, low opacity) on the same chart, with the contours on top and `contours.coloring: none`"
+    then: "the `scatter_overlay` pairing (scattergl, low opacity), with the contours on top and `contours.coloring: none`"
   - when: "two groups to compare"
     then: "two insights, each filtered to one value, with `contours.coloring: none` and a distinct `line.dash`"
   - when: "a third numeric measure to summarize"
@@ -49,6 +49,6 @@ gotchas:
   - "`contours.coloring: heatmap` is a histogram2d with extra artifacts; prefer histogram2d for filled views."
   - "`split` stacks filled contour sets on top of each other and the last hides the rest; use two filtered insights with `contours.coloring: none`."
   - "Clip tails in SQL first; one outlier compresses every contour into a corner."
-pairings: [scatter_overlay, histogram_beside]
+pairings: [scatter_overlay, chart_beside(histogram)]
 layout: {height: medium, width_share: 0.5, row_role: relationship}
 mobile: Full width; contour lines thin out on small screens, so lower `ncontours`.

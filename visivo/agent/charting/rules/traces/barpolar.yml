@@ -54,6 +54,6 @@ gotchas:
   - "Weekday and month names sort alphabetically; sort on `isodow` or `month` and label with `dayname` or `monthname`."
   - "The default angular axis starts at 3 o'clock and runs counter-clockwise; set `direction: clockwise, rotation: 90` so the cycle reads like a clock."
   - "A constant `marker.color`, or a hex CASE per split value, opts out of the theme; `split` already colors each series."
-pairings: [bar_beside, kpi_strip_above]
+pairings: [chart_beside(bar), kpi_strip_above]
 layout: {height: medium, width_share: 0.5, row_role: breakdown}
 mobile: A rose needs a square; at half width it survives the stack, but keep few stacked series and label every other sector on an hour-of-day rose.

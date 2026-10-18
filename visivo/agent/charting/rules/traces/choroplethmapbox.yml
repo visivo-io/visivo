@@ -30,13 +30,13 @@ variations:
 limits:
   series_ideal: 1
   series_max: 1
-  repair: [input_filter]
+  repair: [dominant_category, input_filter]
 transforms: [rate_per_capita]
 gotchas:
   - "Migrate: change `type` to `choroplethmap` and any chart `layout.mapbox` to `layout.map`; `geojson`, `featureidkey`, `below` carry over."
   - "On Plotly 3 the basemap tiles read \"API KEY REQUIRED\" even with the theme's carto style; the data draws, but migrate to the `*map` trace."
   - "Plotly.js 3 logs a deprecation warning on every render and will remove the trace; do not let the agent emit it."
   - "All `choroplethmap` gotchas apply: `featureidkey` must match `locations`, the GeoJSON URL must be public and CORS-enabled."
-pairings: [bar_beside, detail_table_below]
+pairings: [chart_beside(bar), detail_table_below]
 layout: {height: large, width_share: 0.67, row_role: hero}
 mobile: As choroplethmap; full width, colorbar hidden below 1024 px.

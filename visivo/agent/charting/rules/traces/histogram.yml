@@ -42,7 +42,7 @@ variations:
 limits:
   series_ideal: 2
   series_max: 3
-  repair: [top_n_other, input_filter, box]
+  repair: [box, small_multiples, input_filter]
 transforms: [clip_p99, bucket, log_scale]
 gotchas:
   - "A histogram takes the raw column, not an aggregate: `x: ?{ trip_distance }` with no GROUP BY; every row is sent to the browser."
@@ -50,6 +50,7 @@ gotchas:
   - "`nbinsx` is a hint; Plotly picks nice edges. Set `xbins.size` when the step matters (e.g. 1 km)."
   - "Overlaid groups need `opacity` < 1, `barmode: overlay` on the chart layout, and one `bingroup`; otherwise the front group hides the rest and each group gets its own bin width."
   - "Zero and null are different: filter nulls in SQL, and ask whether zeros are real before binning them."
-pairings: [box_beside, kpi_strip_above]
+pairings: [chart_beside(box), kpi_strip_above]
 layout: {height: medium, width_share: 0.5, row_role: relationship}
+warnings: ["Pre-bucket in SQL for a large model; the browser bins every row otherwise."]
 mobile: Fewer groups than on desktop; with `histnorm` set, name the unit (percent of trips) in the axis title.

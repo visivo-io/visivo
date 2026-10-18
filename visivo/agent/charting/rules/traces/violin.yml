@@ -27,7 +27,7 @@ example: |
       props:
         type: violin
         x: ?{ ${ref(trips).pickup_borough} }
-        y: ?{ least(${ref(trips).fare_amount}, 100) }
+        y: ?{ ${ref(trips).fare_amount} }
         box: {visible: true}
         meanline: {visible: true}
         points: false
@@ -45,13 +45,13 @@ limits:
   series_ideal: 4
   series_max: 8
   repair: [top_n_other, input_filter, box]
-transforms: [clip_p99, sample]
+transforms: [sample]
 gotchas:
   - "Raw rows, no aggregate on `y` (like box); every row is shipped and the browser runs the KDE, so sample in SQL on large tables."
   - "`points` defaults to `outliers`; `points: all` on a large group draws every row, so use `false` and `box.visible: true`."
-  - "Clip the tail in SQL (`least(x, p99)`) or one outlier flattens every violin; the kernel still draws past the clipped max unless `spanmode: hard`."
+  - "Never clip the values (`least(x, p99)`): one global cap piles every long group's tail onto one value. Zoom a long tail with `layout.yaxis.range`; `spanmode: hard` stops the kernel at the data."
   - "`split` on the same column as `x` makes one trace per group; harmless, but it doubles the legend. Split only on a second dimension."
   - "The density is smoothed (`bandwidth` auto); say 'estimated density' in the subtitle and never read a value off the outline."
-pairings: [box_beside, histogram_beside, kpi_strip_above]
+pairings: [chart_beside(box), chart_beside(histogram), kpi_strip_above]
 layout: {height: medium, width_share: 0.5, row_role: relationship}
 mobile: "Fewer groups than on desktop, horizontal orientation (`orientation: h`, swap x/y) when labels are long; the body needs width to show shape."

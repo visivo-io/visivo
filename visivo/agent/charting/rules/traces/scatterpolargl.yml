@@ -41,6 +41,6 @@ gotchas:
   - "The browser still receives every row; sample or clip in SQL on large tables."
   - "Set `marker.opacity` to 0.2–0.4 or the cloud is a solid disc."
   - "Same theme rule as scatter: no constant `marker.color`; color only from a CASE that encodes data."
-pairings: [detail_table_below, histogram_beside]
+pairings: [detail_table_below, chart_beside(histogram)]
 layout: {height: medium, width_share: 0.5, row_role: relationship}
 mobile: WebGL is slow on phones; sample harder than on desktop and keep a square half-width slot.

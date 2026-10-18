@@ -51,6 +51,7 @@ gotchas:
   - "Bucket raw numerics in SQL (`floor(x/step)*step`); one distinct value per raw row produces a grid of mostly empty cells."
   - "`z` is one column, not a list; a list of columns is read as a matrix with one row per column, not the intended grid."
   - "Never `split` a contour; overlapping filled surfaces hide each other."
-pairings: [heatmap_alternative, kpi_strip_above]
+pairings: [kpi_strip_above]
+alternatives: [heatmap]
 layout: {height: medium, width_share: 0.5, row_role: relationship}
 mobile: Full width with `showlabels`; a colorbar beside a half-width contour leaves no plot area.
