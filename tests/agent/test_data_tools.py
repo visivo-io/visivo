@@ -879,3 +879,75 @@ class TestBounds:
         assert str(data_tools.MAX_PREVIEW_INSIGHT_ROWS) in TOOLS["preview_insight"].description
         columns = TOOLS["profile_columns"].input_schema["properties"]["columns"]["description"]
         assert str(data_tools.MAX_PROFILE_COLUMNS) in columns
+
+
+class TestInsightProbe:
+    """An insight write previews one row, so a prop that names no column,
+    comes back as a struct, or fails says so at the write."""
+
+    @pytest.fixture(autouse=True)
+    def model(self, integration_app):
+        call(integration_app, "describe_source", {"name": _source(integration_app).name})
+        source = _source(integration_app).name
+        config = {
+            "name": "orders_q",
+            "sql": "SELECT x, y FROM test_table",
+            "source": f"ref({source})",
+        }
+        call(integration_app, "write_model", {"config": config})
+
+    def _write(self, app, interactions=None, **props):
+        base = {"type": "bar", "x": "?{${ref(orders_q).x}}", "y": "?{sum(${ref(orders_q).y})}"}
+        config = {"name": "probed", "props": {**base, **props}}
+        if interactions:
+            config["interactions"] = interactions
+        return call(app, "write_insight", {"config": config})
+
+    def test_props_that_resolve_to_values_carry_no_warning(self, integration_app):
+        result = self._write(integration_app, marker={"color": "?{sum(${ref(orders_q).y})}"})
+        assert "warnings" not in result
+
+    def test_a_struct_value_is_flagged(self, integration_app, monkeypatch):
+        preview = {
+            "props_mapping": {"props.x": "c", "props.y": "d"},
+            "rows": [{"c": {"_0": 1}, "d": 2}],
+        }
+        monkeypatch.setattr(data_tools, "execute_draft_insight", lambda *a, **k: preview)
+        [struct, fix] = self._write(integration_app, x="?{ ${x} }")["warnings"]
+        assert struct.startswith("`props.x` comes back as a struct ({'_0': 1})")
+        assert "Call preview_insight" in fix
+
+    def test_an_empty_preview_judges_only_the_mapping(self, integration_app, monkeypatch):
+        preview = {"props_mapping": {"props.x": "c"}, "rows": []}
+        monkeypatch.setattr(data_tools, "execute_draft_insight", lambda *a, **k: preview)
+        [missing, _] = self._write(integration_app)["warnings"]
+        assert missing.startswith("`props.y` resolved to no column")
+
+    def test_a_dropped_prop_resolves_to_no_column(self, integration_app):
+        warnings = self._write(integration_app, x="?{ ${ref(orders_q, 'x')} }")["warnings"]
+        assert warnings[0] == "`props.x` resolved to no column, so the chart gets nothing for it."
+
+    def test_a_query_that_fails_comes_back_with_its_error(self, integration_app):
+        warnings = self._write(integration_app, y="?{ count(${ref(orders_q)}) }")["warnings"]
+        assert (
+            warnings[0].startswith("The insight's query fails (") and "needs a field" in warnings[0]
+        )
+
+    def test_an_insight_on_an_input_is_not_judged(self, integration_app):
+        call(
+            integration_app,
+            "write_input",
+            {"config": {"name": "min_x", "type": "single-select", "options": ["2", "4"]}},
+        )
+        interactions = [{"filter": "?{${ref(orders_q).x} > ${ref(min_x).value}}"}]
+        assert "warnings" not in self._write(integration_app, interactions=interactions)
+
+    def test_a_timeout_is_not_judged(self, integration_app, monkeypatch):
+        import visivo.server.services.draft_insight as draft_insight
+        from visivo.jobs.run_model_data_job import QueryTimeout
+
+        def slow(*args, **kwargs):
+            raise QueryTimeout("slow")
+
+        monkeypatch.setattr(draft_insight, "execute_and_get_result", slow)
+        assert "warnings" not in self._write(integration_app)

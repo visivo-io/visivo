@@ -1,5 +1,7 @@
 """Shared validation for the SQL expression on a Metric or a Dimension."""
 
+import re
+
 from visivo.query.reference_validation import validate_field_reference_syntax
 
 
@@ -29,10 +31,18 @@ def reject_aliased_expression(expression: str, field_kind: str) -> str:
     :param expression: the raw expression as authored
     :param field_kind: "metric" or "dimension", for the message
     :returns: the expression, unchanged, when it is acceptable
-    :raises ValueError: when the expression aliases itself
+    :raises ValueError: when the expression aliases itself or is wrapped in ``?{ }``
     """
     if not expression or not isinstance(expression, str):
         return expression
+
+    wrapped = re.fullmatch(r"\s*\?\{\s*(.*?)\s*\}\s*", expression, re.DOTALL)
+    if wrapped:
+        raise ValueError(
+            f"A {field_kind} expression is plain SQL, not a query string. "
+            f"Write '{wrapped.group(1)}' without the '?{{ }}' wrapper. "
+            "The wrapper turns every value into a one-field struct."
+        )
 
     validate_field_reference_syntax(expression)
 
