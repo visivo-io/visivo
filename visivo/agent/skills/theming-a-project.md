@@ -38,10 +38,12 @@ fails — check `get_schema('theme')` rather than guessing a name.
 
 ## Do not restyle a chart to change the palette
 
-If someone wants different colors, set `colorway` on the theme. Writing
-`marker.color` onto each insight does the same thing for one project and then
-opts those charts out of theming forever, because an explicit color always beats
-the theme. A chart that names its own color cannot follow light/dark.
+Set `marker.color` (or `line.color`) on an insight only when the colour
+encodes data: a CASE that pins a value to its colour (a line needs the `[0]`
+slice, `"?{ CASE ... END }[0]"`), or a measure on a colorscale. Insight colour
+takes precedence over the chart's `layout.colorway` and the theme by design
+(Plotly's precedence), so a constant colour takes that chart out of the
+palette and out of light/dark; change the palette with the theme's `colorway`.
 
 ## Contrast is a real constraint
 

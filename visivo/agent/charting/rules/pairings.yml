@@ -1,0 +1,56 @@
+# An overlay is a second insight in the same chart; a companion is a separate
+# item placed beside, above or below it. Entries name a parametrised one as
+# `chart_beside(bar)`.
+pairings:
+  - name: bar_line_dual_axis
+    kind: overlay
+    adds: A second metric with another unit as a line on its own right-hand axis.
+    insight_props: {type: scatter, mode: lines, yaxis: y2}
+    chart_layout: {yaxis2: {overlaying: y, side: right, showgrid: false}}
+
+  - name: indicator_overlay
+    kind: overlay
+    adds: "A headline number inside the chart: the total over a line, or in a donut's hole. Give it a `domain` on empty space and `value: ?{ <metric> }[0]`."
+    insight_props: {type: indicator, mode: number}
+
+  - name: scatter_overlay
+    kind: overlay
+    adds: The individual points as markers over a density, contour or image.
+    insight_props: {type: scatter, mode: markers}
+
+  - name: volume_bar_subplot
+    kind: overlay
+    adds: Volume bars in their own band under the price, with the dates under the volume; give the bars a neutral colour, since the second colorway colour can read as a down day.
+    insight_props: {type: bar, yaxis: y2}
+    chart_layout: {yaxis: {domain: [0.25, 1]}, yaxis2: {domain: [0, 0.2]}, xaxis: {anchor: y2}}
+
+  - name: carpet_overlay
+    kind: overlay
+    param: type
+    adds: "Another carpet-family insight (the carpet base, a contourcarpet or a scattercarpet) in the same chart with the same literal `carpet: <id>`."
+    insight_props: {carpet: "<id>"}
+
+  - name: detail_table_below
+    kind: companion
+    adds: The rows behind the chart, aliased and paged, full width below it.
+    placement: below
+    item: table
+
+  - name: kpi_strip_above
+    kind: companion
+    adds: The chart's headline numbers as KPIs in the row above it.
+    placement: above
+    item: kpi
+
+  - name: kpi_cluster_beside
+    kind: companion
+    adds: The hero chart's own KPIs stacked beside it, as recommend_layout's kpi_cluster arranges them.
+    placement: beside
+    item: kpi
+
+  - name: chart_beside
+    kind: companion
+    param: type
+    adds: A second view of the same data beside the chart (a sorted bar beside a map, a histogram beside a box); unnamed, the chart a table details.
+    placement: beside
+    item: chart

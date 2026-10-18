@@ -51,6 +51,7 @@ gotchas:
   - "`sort` defaults to true and reorders sectors largest-first; set `sort: false` only when the SQL order (an ordered categorical) means something."
   - "`marker.colorscale` does nothing unless `marker.colors` is numeric; a list of hex codes per row opts out of the theme colorway."
   - "A `split` draws one sunburst per value on top of each other; a hierarchy is one insight, one trace."
-pairings: [detail_table_below, kpi_strip_above, treemap_toggle]
+pairings: [detail_table_below, kpi_strip_above]
+alternatives: [treemap]
 layout: {height: large, width_share: 0.5, row_role: breakdown}
 mobile: "Survives the stack well because it is square; drop to `maxdepth: 2` so the outer ring keeps readable labels."

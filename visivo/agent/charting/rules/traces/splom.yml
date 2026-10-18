@@ -50,6 +50,7 @@ gotchas:
   - "Clip each column's tail in SQL; one outlier squashes its whole row and column of panels."
   - "Splom panels are WebGL; they count toward the browser's ~8–16 WebGL context cap like scattergl."
   - "Color clusters with `split` rather than a hard-coded CASE on `marker.color`, so the theme colorway (and its colorblind-safe order) applies."
-pairings: [scatter_drilldown, detail_table_below]
+pairings: [detail_table_below]
+alternatives: [scatter]
 layout: {height: large, width_share: 1.0, row_role: relationship}
 mobile: Poor on narrow screens; keep only a few dimensions with the upper half hidden, or replace it with the single most interesting scatter.

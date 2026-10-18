@@ -13,7 +13,7 @@ other_uses:
     how: "`boxmean: sd`."
 avoid_when:
   - A single group; a histogram shows the shape, and a lone box hides bimodality.
-  - Too many groups to label; use a top-N or an input.
+  - Too many groups to label; use an input filter. A top-N pools the distinctive groups into an Other box that describes no real group.
   - The audience needs exact figures; show median and p99 as a table or KPIs.
   - "Very small groups, where quartiles of a handful of points mislead; show the points (`boxpoints: all`) or a table."
 data_shape:
@@ -30,7 +30,7 @@ example: |
       props:
         type: box
         x: ?{ ${ref(trips).pickup_borough} }
-        y: ?{ least(${ref(trips).trip_minutes}, 120) }
+        y: ?{ ${ref(trips).trip_minutes} }
         boxpoints: outliers
       interactions:
         - filter: ?{ ${ref(trips).trip_minutes} > 0 }
@@ -42,16 +42,14 @@ variations:
   - when: "the table is too large to ship raw rows"
     then: "aggregate quartiles in SQL (`quantile_cont`) and pass `q1`, `median`, `q3`, `lowerfence`, `upperfence` instead of raw rows"
 limits:
-  series_ideal: 5
-  series_max: 8
-  repair: [top_n_other, input_filter]
-transforms: [clip_p99, precomputed_quartiles]
+  repair: [input_filter]
+transforms: [precomputed_quartiles]
 gotchas:
   - "A box takes raw rows, not an aggregate: `y: ?{ trip_minutes }` with no GROUP BY; on large tables precompute quartiles in SQL."
   - "`x` is the group, `y` the value; swapping them with `orientation: h` also swaps the props."
   - "`boxpoints: all` on a large group draws every row; use `outliers` (the default) or `false`."
   - "Groups appear in storage order; add `- sort: ?{ <group expr> }` or sort by the median in SQL."
-  - "A heavy tail stretches the axis for every group; clip in SQL (`least(x, p99)`) and say so in the title."
-pairings: [histogram_beside, kpi_strip_above]
+  - "Never clip the values (`least(x, p99)`): one global cap moves the quartiles of every long group. A heavy tail shows as outlier points; zoom with `layout.yaxis.range` if it must."
+pairings: [chart_beside(histogram), kpi_strip_above]
 layout: {height: medium, width_share: 0.5, row_role: relationship}
 mobile: Fewer groups than on desktop, horizontal orientation when the labels are long.

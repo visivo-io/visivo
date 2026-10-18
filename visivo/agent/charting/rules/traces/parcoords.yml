@@ -52,6 +52,7 @@ gotchas:
   - "`line.color` must be numeric with a `line.colorscale`; a constant color opts out of the theme and a CASE of strings does nothing useful."
   - "Axis order is the reading order; put the measure of interest in the middle so both neighbours relate to it."
   - "Clip tails in SQL; one outlier stretches its axis and every other line collapses to its bottom."
-pairings: [detail_table_below, splom_alternative]
+pairings: [detail_table_below]
+alternatives: [splom]
 layout: {height: large, width_share: 1.0, row_role: relationship}
 mobile: Poor below 1024 px; use fewer axes, full width, and accept that brushing is fiddly on touch.

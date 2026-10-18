@@ -46,7 +46,7 @@ variations:
 limits:
   series_ideal: 1
   series_max: 1
-  repair: [input_filter]
+  repair: [dominant_category, input_filter]
 transforms: [rate_per_capita]
 gotchas:
   - "`featureidkey` must point at the GeoJSON property that holds the same values as `locations` (default `id`); a mismatch renders the basemap with no regions and no error."
@@ -54,6 +54,6 @@ gotchas:
   - "Use `choroplethmap`, not `choroplethmapbox`; the mapbox traces are deprecated and need an access token, while the `*map` traces use MapLibre with the theme's carto style."
   - "Set `layout.map.center` and `layout.map.zoom`; the default view is the whole world."
   - "One row per location (aggregate in SQL); duplicate locations overdraw."
-pairings: [bar_beside, detail_table_below]
+pairings: [chart_beside(bar), detail_table_below]
 layout: {height: large, width_share: 0.67, row_role: hero}
 mobile: "Full width, `large`; drop the colorbar (`showscale: false`) below 1024 px."

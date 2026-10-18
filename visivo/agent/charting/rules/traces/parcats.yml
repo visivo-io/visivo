@@ -49,6 +49,7 @@ gotchas:
   - "Category order on each axis is first-seen; pass `dimensions[].categoryorder: category ascending` or sort in SQL so axes are stable across refreshes."
   - "`split` overlays one parcats per value on the same domain; put the attribute on an axis instead."
   - "`line.colorscale` applies only to numeric `line.color`; color-name strings ignore the scale and bypass the theme."
-pairings: [sankey_alternative, detail_table_below]
+pairings: [detail_table_below]
+alternatives: [sankey]
 layout: {height: large, width_share: 1.0, row_role: breakdown}
 mobile: Full width with fewer axes and fewer values per axis; axis labels collide first.

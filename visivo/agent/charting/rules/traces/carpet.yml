@@ -46,6 +46,6 @@ gotchas:
   - "Never `split` a carpet: each value becomes another carpet with the same id, and dependents bind to the first one."
   - "`aaxis` and `baxis` titles label the grid; `layout.xaxis` and `layout.yaxis` titles label the outputs. Set both or the chart is unreadable."
   - "A `filter` interaction drops grid nodes and the smoothing fills the hole; filter the dependents, not the carpet."
-pairings: [contourcarpet_overlay, scattercarpet_overlay, detail_table_below]
+pairings: [carpet_overlay(contourcarpet), carpet_overlay(scattercarpet), detail_table_below]
 layout: {height: large, width_share: 1.0, row_role: relationship}
 mobile: The mesh labels collide below 1024 px; use fewer levels per parameter than on desktop and drop the minor grid lines.

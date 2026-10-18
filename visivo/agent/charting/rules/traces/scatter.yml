@@ -42,7 +42,7 @@ variations:
   - when: "a second `few` categorical dimension"
     then: "`split` interaction; one line per value on shared axes"
   - when: "a second metric with a different unit"
-    then: "put it on a second insight with `yaxis: y2` and set the chart `layout.yaxis2: {overlaying: y, side: right}`"
+    then: "the `bar_line_dual_axis` pairing: the second metric on its own right-hand axis"
   - when: "a third numeric measure per point in markers mode"
     then: "`marker.size` (it scales area, not radius); never `marker.color` unless it encodes data"
   - when: "split markers rather than lines"
@@ -62,6 +62,6 @@ gotchas:
   - "To give a series a fixed colour (a brand colour, or the same one on every dashboard), pin it with a CASE on the split column: `marker.color: ?{ CASE ... END }` for markers, `line.color: \"?{ CASE ... END }[0]\"` for lines. Without the `[0]` the line colour is silently ignored."
   - "A `split` adds a series per distinct value: check the column's cardinality bucket first (`few` is fine, `some` needs top-N)."
   - "`fill: tonexty` fills to the previous insight in the chart, so insight order in `charts.insights` is the stacking order; prefer `stackgroup` for stacked areas."
-pairings: [indicator_total_overlay, bar_line_dual_axis, detail_table_below]
+pairings: [indicator_overlay, bar_line_dual_axis, detail_table_below]
 layout: {height: medium, width_share: 1.0, row_role: hero}
 mobile: Keep fewer series than on desktop and the legend horizontal; a full-width line survives the stack, a half-width one gets too short to read.

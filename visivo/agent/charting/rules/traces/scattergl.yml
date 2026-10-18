@@ -15,6 +15,7 @@ data_shape:
   metrics: {min: 1, max: 2}
   dimensions: {min: 1, max: 2}
   dimension_roles: [time, numeric_continuous, numeric_discrete, categorical]
+  axis_points: {min: 3}
   rows: {min: 10000}
 required_props: [x, y]
 example: |
@@ -43,6 +44,6 @@ gotchas:
   - "Set `marker.opacity` well below 1 (0.2–0.4) or a dense cloud is a solid blob."
   - "Hover is coarser than scatter; put the exact figures in a table beside it when they matter."
   - "With `mode: lines`, add `- sort: ?{ <x expression> ASC }`; without it the line connects points in storage order and zig-zags."
-pairings: [detail_table_below, histogram_beside]
+pairings: [detail_table_below, chart_beside(histogram)]
 layout: {height: medium, width_share: 0.5, row_role: relationship}
 mobile: Same as scatter; WebGL on phones is slower, so sample harder than on desktop.
