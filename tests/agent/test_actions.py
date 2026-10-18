@@ -381,10 +381,24 @@ class TestWriteHints:
         with pytest.raises(ToolError, match=r"has no `model` field"):
             call(integration_app, "write_insight", {"config": config})
 
-    def test_a_bare_source_name_asks_for_a_reference(self, integration_app):
-        config = {"name": "m", "source": "taxi", "sql": "select 1"}
+    def test_an_unknown_source_name_asks_for_a_reference_to_it(self, integration_app):
+        config = {"name": "m", "source": "nope", "sql": "select 1"}
+        with pytest.raises(ToolError, match=r"source: \$\{ref\(nope\)\}`; list_sources"):
+            call(integration_app, "write_model", {"config": config})
+
+    def test_a_source_that_is_not_a_name_gets_the_example(self, integration_app):
+        config = {"name": "m", "source": "not a name", "sql": "select 1"}
         with pytest.raises(ToolError, match=r"source: \$\{ref\(taxi\)\}"):
             call(integration_app, "write_model", {"config": config})
+
+    def test_a_bare_name_of_a_real_source_is_written_as_its_reference(self, integration_app):
+        source = integration_app.source_manager.get_all_objects_list()[0].name
+        config = {"name": "m", "source": source, "sql": "select 1"}
+
+        assert call(integration_app, "validate_model", {"config": config}) == {"valid": True}
+        assert call(integration_app, "write_model", {"config": config})["status"] == "draft"
+        written = integration_app.model_manager.cached_objects["m"].source
+        assert str(written) == f"${{ref({source})}}"
 
     def test_other_errors_carry_no_hint(self, integration_app):
         with pytest.raises(ToolError) as raised:

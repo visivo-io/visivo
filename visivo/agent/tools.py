@@ -124,9 +124,28 @@ def _scoped_config(app, type_key, config):
     return config, model
 
 
+def _source_reference(app, type_key, config):
+    """A model's ``source`` given as a bare name of a source in the project,
+    written as the reference it means."""
+    source = config.get("source")
+    if type_key != "models" or not isinstance(source, str) or not re.fullmatch(r"[\w-]+", source):
+        return config
+    from visivo.server.source_resolution import find_source
+
+    if find_source(app, source) is None:
+        return config
+    return {**config, "source": f"${{ref({source})}}"}
+
+
+def _agent_config(app, type_key, arguments):
+    """``(config, model)``: the config in the shapes the agent sends, made valid."""
+    config, model = _scoped_config(app, type_key, _config_argument(arguments))
+    return _source_reference(app, type_key, config), model
+
+
 def _validate_handler(type_key):
     def handler(app, arguments):
-        config, model = _scoped_config(app, type_key, _config_argument(arguments))
+        config, model = _agent_config(app, type_key, arguments)
         manager = _manager(app, type_key)
         try:
             obj = manager.validate_object(config)
@@ -147,7 +166,7 @@ def _validate_handler(type_key):
 
 def _write_handler(type_key):
     def handler(app, arguments):
-        config, model = _scoped_config(app, type_key, _config_argument(arguments))
+        config, model = _agent_config(app, type_key, arguments)
         name = config.get("name")
         if not isinstance(name, str) or not name.strip():
             raise ToolError("The config must carry a 'name'.")
@@ -230,7 +249,12 @@ def _write_hints(type_key, error):
                 "expressions, e.g. `?{ sum(${ref(trips).fare}) }`."
             )
         elif type_key == "models" and field == "source":
-            hints.append("Write the source as a reference, e.g. `source: ${ref(taxi)}`.")
+            given = problem.get("input")
+            name = given if isinstance(given, str) and re.fullmatch(r"[\w-]+", given) else "taxi"
+            hints.append(
+                f"Write the source as a reference to one of the project's sources, e.g. "
+                f"`source: ${{ref({name})}}`; list_sources names them."
+            )
     return list(dict.fromkeys(hints))
 
 
