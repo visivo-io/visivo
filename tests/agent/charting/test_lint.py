@@ -3,6 +3,8 @@ is a defect the agent eval found more than once."""
 
 from types import SimpleNamespace
 
+import pytest
+
 from visivo.agent.charting import lint
 from visivo.agent.tools import call
 
@@ -196,6 +198,18 @@ class TestRefShapes:
         assert lint.warnings(APP, "insights", _insight(props)) == []
         no_inputs = SimpleNamespace()
         assert "sits outside a query" in lint.warnings(no_inputs, "insights", _insight(props))[0]
+
+    @pytest.mark.parametrize("type_key", ["metrics", "dimensions"])
+    def test_a_column_inside_the_ref_of_a_semantic_expression_is_flagged(self, type_key):
+        config = {"name": "m", "expression": "count(${ref(trips.vendor)})"}
+        assert lint.warnings(APP, type_key, config) == [
+            "`${ref(trips.vendor)}` puts the column inside the ref, so it names no object "
+            f"and the {type_key[:-1]} never runs. Write `${{ref(trips).vendor}}`."
+        ]
+        assert (
+            lint.warnings(APP, type_key, {"name": "m", "expression": "count(${ref(trips).vendor})"})
+            == []
+        )
 
     def test_a_ref_in_a_model_sql_is_flagged(self):
         sql = "SELECT * FROM ${ref(trips)} t JOIN ${ref(zones)} z ON t.z = z.id"

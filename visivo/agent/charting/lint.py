@@ -49,6 +49,8 @@ def warnings(app, type_key, config):
             "resolve there and the model fails to build. Query the source's tables directly, "
             "and join them in this model's SQL."
         ]
+    if type_key in ("metrics", "dimensions"):
+        return _columns_in_refs(str(config.get("expression") or ""), _singular(type_key))
     if type_key == "dashboards":
         return _dashboard_refs(app, config)
     if type_key == "charts":
@@ -60,11 +62,7 @@ def _insight(app, config):
     found = []
     props = config.get("props") or {}
     text = str(props) + str(config.get("interactions") or "")
-    for model, column in dict.fromkeys(_COLUMN_IN_REF.findall(text)):
-        found.append(
-            f"`${{ref({model}.{column})}}` puts the column inside the ref, so it names no object "
-            f"and the insight never runs. Write `${{ref({model}).{column}}}`."
-        )
+    found += _columns_in_refs(text, "insight")
     for key, value in _strings(props):
         bare = _BARE_COLUMN.fullmatch(value)
         if bare and not _is_input(app, bare.group(1)):
@@ -205,6 +203,18 @@ def _table(config):
         "Alias every column with a readable label and its unit "
         f'(`{unaliased[0]} as "Label"`); unaliased headers show raw or hashed names.'
     ]
+
+
+def _columns_in_refs(text, kind):
+    return [
+        f"`${{ref({model}.{column})}}` puts the column inside the ref, so it names no object "
+        f"and the {kind} never runs. Write `${{ref({model}).{column}}}`."
+        for model, column in dict.fromkeys(_COLUMN_IN_REF.findall(text))
+    ]
+
+
+def _singular(type_key):
+    return type_key[:-1]
 
 
 def _strings(node, path=""):
