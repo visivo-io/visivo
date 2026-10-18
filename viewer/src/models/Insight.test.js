@@ -294,6 +294,57 @@ describe('chartDataFromInsightData', () => {
       expect(result[0].name).toBe('Regular Insight');
     });
 
+    describe('trace names', () => {
+      const bars = staticProps => ({
+        'new-accounts': {
+          data: [{ m: 'Jan', n: 3 }],
+          props_mapping: { 'props.x': 'm', 'props.y': 'n' },
+          static_props: staticProps,
+          type: 'bar',
+        },
+      });
+
+      it('keeps an authored props.name for the legend and the insight as owner', () => {
+        const [trace] = chartDataFromInsightData(bars({ name: 'New accounts' }));
+        expect(trace.name).toBe('New accounts');
+        expect(trace.insightName).toBe('new-accounts');
+        expect(trace.sourceInsight).toBeUndefined();
+      });
+
+      it('falls back to the insight name when the name is missing, empty or not text', () => {
+        for (const staticProps of [undefined, { name: '' }, { name: ['a', 'b'] }]) {
+          const [trace] = chartDataFromInsightData(bars(staticProps));
+          expect(trace.name).toBe('new-accounts');
+        }
+      });
+
+      it('names a static insight the same way', () => {
+        const [trace] = chartDataFromInsightData({
+          logo: { data: [], props_mapping: {}, static_props: { z: [[1]], name: 'Logo' }, type: 'image' },
+        });
+        expect(trace.name).toBe('Logo');
+        expect(trace.insightName).toBe('logo');
+      });
+
+      it('marks each split trace with its owner too', () => {
+        const traces = chartDataFromInsightData({
+          'by-kind': {
+            data: [
+              { x: 1, y: 2, k: 'a' },
+              { x: 1, y: 3, k: 'b' },
+            ],
+            props_mapping: { 'props.x': 'x', 'props.y': 'y' },
+            split_key: 'k',
+            type: 'bar',
+          },
+        });
+        expect(traces.map(t => [t.name, t.insightName])).toEqual([
+          ['a', 'by-kind'],
+          ['b', 'by-kind'],
+        ]);
+      });
+    });
+
     it('handles null split values gracefully', () => {
       const insightWithNullSplit = {
         'Null Split Insight': {
@@ -1053,7 +1104,7 @@ describe('chartDataFromInsightData — static insights (VIS-1464)', () => {
       pixels: { type: 'image', data: [], props_mapping: {}, static_props: { z: IMAGE_Z } },
     });
     expect(traces).toHaveLength(1);
-    expect(traces[0]).toEqual({ type: 'image', z: IMAGE_Z, name: 'pixels' });
+    expect(traces[0]).toEqual({ type: 'image', z: IMAGE_Z, name: 'pixels', insightName: 'pixels' });
   });
 
   it('resolves input refs inside a static-only trace', () => {
