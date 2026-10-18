@@ -20,18 +20,24 @@ def _insight(props, interactions=None):
 
 class TestColorScales:
     def test_a_dark_to_light_scale_on_a_map_is_flagged(self):
-        found = lint.warnings(
-            APP, "insights", _insight({"type": "choropleth", "colorscale": "YlOrRd"})
-        )
+        props = {"type": "choropleth", "colorscale": "YlOrRd", "colorbar": {"title": "t"}}
+        found = lint.warnings(APP, "insights", _insight(props))
         assert len(found) == 1 and "reversescale: true" in found[0]
 
     def test_reversed_or_light_to_dark_scales_and_other_traces_pass(self):
+        titled = {"colorbar": {"title": {"text": "Trips"}}}
         for props in (
-            {"type": "heatmap", "colorscale": "Blues", "reversescale": True},
-            {"type": "heatmap", "colorscale": "Viridis"},
+            {"type": "heatmap", "colorscale": "Blues", "reversescale": True, **titled},
+            {"type": "heatmap", "colorscale": "Viridis", **titled},
             {"type": "bar", "colorscale": "YlOrRd"},
         ):
             assert lint.warnings(APP, "insights", _insight(props)) == []
+
+    def test_an_untitled_colour_bar_is_flagged_unless_hidden(self):
+        found = lint.warnings(APP, "insights", _insight({"type": "choropleth", "colorbar": {}}))
+        assert len(found) == 1 and "colour bar has no title" in found[0] and "zmax" in found[0]
+        hidden = {"type": "heatmap", "showscale": False}
+        assert lint.warnings(APP, "insights", _insight(hidden)) == []
 
 
 class TestIndicators:

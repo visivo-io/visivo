@@ -63,6 +63,16 @@ def _insight(app, config):
             f"`colorscale: {scale}` runs dark to light in Plotly, so the highest values come out "
             "palest. Add `reversescale: true`, or use Reds or Viridis."
         )
+    if (
+        trace in COLOR_SCALED
+        and not _title_text(props.get("colorbar"))
+        and props.get("showscale") is not False
+    ):
+        found.append(
+            "The colour bar has no title. Name it with its unit (`colorbar.title.text: "
+            "'t CO2 per person'`). If one or two values dwarf the rest, cap the scale with "
+            "`zmax` near a high percentile so the others stay distinguishable."
+        )
     if trace == "indicator" and not (props.get("number") or {}).get("valueformat"):
         found.append(
             "The indicator has no `number.valueformat`; set one (`,.0f`, `$,.0f`, `.1%`) so the "
