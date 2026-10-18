@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
-from visivo.agent.charting.rules import load_interactivity
+from visivo.agent.charting.rules import load_insight_design, load_interactivity
 from visivo.agent.charting.schema import ShapeCard
 from visivo.models.inputs.types.multi_select import MultiSelectInput
 from visivo.models.inputs.types.single_select import SingleSelectInput
@@ -191,7 +191,7 @@ class _Builder:
             start_all = _date(options["range"]["start"])
             days = (
                 GRAIN_DAYS.get(card.time_grain or "day", 1)
-                * self.rules.design_rules.time_default_min_points
+                * load_insight_design().reductions.regrain.points_min
             )
             start = max(start_all, end - _dt.timedelta(days=math.ceil(days)))
             return {"start": start.isoformat(), "end": end.isoformat()}

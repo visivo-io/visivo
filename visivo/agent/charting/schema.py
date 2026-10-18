@@ -821,7 +821,6 @@ class DesignRules(_Strict):
     require_default: bool = True
     multi_select_default: str = "explicit_static_list"
     numeric_range_default: str = "full_span"
-    time_default_min_points: int = Field(default=12, ge=1)
     string_operand_quoting: str = "'${ref(I).value}'"
     input_name_style: str = "snake_case"
     write_order: str = "inputs_before_insights"
@@ -955,3 +954,210 @@ class TablesDoc(_Strict):
     pivot_rules: PivotRules
     gotchas: List[str] = Field(min_length=1)
     placement: TablePlacement = Field(default_factory=TablePlacement)
+
+
+# --- what insight_design.yml says --------------------------------------------
+
+
+class MetricRule(_Strict):
+    """An empty ``additive`` admits any additivity; ``heavy_tail_agg``
+    replaces ``avg`` on a heavy tail."""
+
+    roles: List[Role] = Field(min_length=1)
+    additive: List[Optional[bool]] = Field(default_factory=list)
+    aggs: List[Aggregation] = Field(default_factory=list)
+    heavy_tail_agg: Optional[Aggregation] = None
+    duration_agg: Optional[Aggregation] = None
+    why: str
+
+    def admits(self, card):
+        return card.role in self.roles and (not self.additive or card.additive in self.additive)
+
+
+class HeavyTail(_Strict):
+    skew_over: float = Field(gt=0)
+    p99_over_median: float = Field(gt=1)
+
+    def holds(self, stats):
+        if stats is None:
+            return False
+        if stats.skew is not None and stats.skew > self.skew_over:
+            return True
+        return bool(
+            stats.p99 is not None
+            and stats.median is not None
+            and stats.median > 0
+            and stats.p99 / stats.median > self.p99_over_median
+        )
+
+
+class PrimaryMetric(_Strict):
+    """Before stats rank the totals, the first whose column holds one of
+    ``words`` leads."""
+
+    words: List[str] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _plain(self):
+        if any(w != w.lower() or not w.isalpha() for w in self.words):
+            raise ValueError("primary_metric words are lower-case single words")
+        return self
+
+    def matches(self, column):
+        tokens = "".join(c if c.isalnum() else " " for c in str(column).lower()).split()
+        return [w for w in self.words if w in tokens]
+
+
+class PairingLimits(_Strict):
+    categoricals_with_time: int = Field(ge=0)
+    chart_max_cells: int = Field(ge=1)
+    pivot_max_cells: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def _ordered(self):
+        if self.pivot_max_cells < self.chart_max_cells:
+            raise ValueError("pivot_max_cells is below chart_max_cells")
+        return self
+
+
+class SplitVsInput(_Strict):
+    top_n_min_share: float = Field(gt=0, le=1)
+
+
+class Reduction(_Strict):
+    when: str
+
+
+class TopNOther(Reduction):
+    n: int = Field(ge=1)
+    n_max: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def _ordered(self):
+        if self.n_max < self.n:
+            raise ValueError("top_n_other n_max is below n")
+        return self
+
+
+class BucketReduction(Reduction):
+    bins: int = Field(ge=2)
+
+
+class Regrain(Reduction):
+    # The readable range of a trend: fewer than points_min no longer reads as a
+    # trend, more than points_max is too dense to draw. Input defaults keep a
+    # time window at points_min or more, so they read it from here too.
+    points_min: int = Field(ge=2)
+    points_max: int = Field(ge=2)
+
+    @model_validator(mode="after")
+    def _a_range(self):
+        if self.points_min >= self.points_max:
+            raise ValueError("regrain.points_min must be below points_max")
+        return self
+
+
+class CollapseRare(Reduction):
+    min_share: float = Field(gt=0, lt=1)
+
+
+class Reductions(_Strict):
+    top_n_other: TopNOther
+    bucket: BucketReduction
+    regrain: Regrain
+    collapse_rare: CollapseRare
+    clip_p99: Reduction
+
+
+class Penalties(_Strict):
+    high_nulls: float = Field(ge=0, le=1)
+    constant_metric: float = Field(ge=0, le=1)
+    cardinality_one: float = Field(ge=0, le=1)
+    derived_correlation: float = Field(ge=0, le=1)
+    dependent_pair: float = Field(ge=0, le=1)
+
+
+class Scoring(_Strict):
+    high_nulls: float = Field(gt=0, lt=1)
+    derived_r: float = Field(gt=0, le=1)
+    scatter_min_r: float = Field(ge=0, le=1)
+    banded_min_r: float = Field(ge=0, le=1)
+    anomaly_z: float = Field(gt=0)
+    material_change: float = Field(gt=0)
+    dependent_lambda: float = Field(gt=0, le=1)
+    top_share_of: int = Field(ge=1)
+    seasonality_lags: Dict[TimeGrain, int] = Field(min_length=1)
+    unmeasured: float = Field(ge=0, le=1)
+    penalties: Penalties
+
+    @model_validator(mode="after")
+    def _lags(self):
+        if any(lag < 2 for lag in self.seasonality_lags.values()):
+            raise ValueError("a seasonality lag must be at least 2")
+        if self.banded_min_r > self.scatter_min_r:
+            raise ValueError("banded_min_r is above scatter_min_r")
+        return self
+
+
+class PortfolioSlot(_Strict):
+    name: str
+    intents: List[Intent] = Field(min_length=1)
+    max: int = Field(ge=1)
+
+
+class Portfolio(_Strict):
+    max_candidates: int = Field(ge=1)
+    min_score: float = Field(ge=0, lt=1)
+    kpi_metrics: MinMax
+    slots: List[PortfolioSlot] = Field(min_length=1)
+    repeat_family: float = Field(ge=0, le=1)
+    repeat_dimension: float = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def _slots(self):
+        intents = [i for slot in self.slots for i in slot.intents]
+        if len(intents) != len(set(intents)):
+            raise ValueError("an intent may belong to one portfolio slot only")
+        if sum(slot.max for slot in self.slots) > self.max_candidates:
+            raise ValueError("the slots hold more candidates than max_candidates")
+        return self
+
+    def slot_for(self, intent):
+        return next((slot for slot in self.slots if intent in slot.intents), None)
+
+
+class InsightDesignDoc(_Strict):
+    """``insight_design.yml``. The input bucket and a trend's fewest points
+    are read from ``interactivity.yml``, never restated here."""
+
+    metric_by_role: List[MetricRule] = Field(min_length=1)
+    heavy_tail: HeavyTail
+    primary_metric: PrimaryMetric
+    pairing_limits: PairingLimits
+    split_vs_input: SplitVsInput
+    reductions: Reductions
+    scoring: Scoring
+    portfolio: Portfolio
+
+    @model_validator(mode="after")
+    def _floor_admits_the_prior(self):
+        if self.portfolio.min_score > self.scoring.unmeasured:
+            raise ValueError("portfolio min_score is above scoring unmeasured")
+        return self
+
+    @model_validator(mode="after")
+    def _every_card_has_one_rule(self):
+        roles = Role.__args__
+        for role in roles:
+            for additive in (True, False, None):
+                probe = ShapeCard(column="c", role=role, cardinality=2, additive=additive)
+                matches = [r for r in self.metric_by_role if r.admits(probe)]
+                if len(matches) != 1:
+                    raise ValueError(
+                        f"metric_by_role has {len(matches)} rules for role {role} "
+                        f"with additive {additive}; it needs exactly one"
+                    )
+        return self
+
+    def metric_rule(self, card):
+        return next(r for r in self.metric_by_role if r.admits(card))
