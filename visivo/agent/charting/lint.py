@@ -28,6 +28,7 @@ _RANGE_ACCESSOR = re.compile(r"(?<!')\$\{\s*ref\(\s*([\w-]+)\s*\)\.(min|max)\s*\
 _REF = re.compile(r"\$\{\s*ref\(")
 _COLUMN_IN_REF = re.compile(r"\$\{\s*ref\(\s*([\w-]+)\.([\w.-]+)\s*\)")
 _BARE_COLUMN = re.compile(r"\s*\$\{\s*ref\(\s*([\w-]+)\s*\)\.[\w.-]+\s*\}\s*")
+_WORD = re.compile(r"[A-Za-z]{4,}")
 _QUERY = re.compile(r"\s*\?\{\s*(.*?)\s*\}\s*", re.DOTALL)
 # Plotly puts a `~` in front of a format that starts with a sign and holds an
 # f, s or p, which d3 then rejects, so the number prints raw.
@@ -95,11 +96,8 @@ def _insight(app, config):
             "'t CO2 per person'`). If one or two values dwarf the rest, cap the scale with "
             "`zmax` near a high percentile so the others stay distinguishable."
         )
-    if trace == "indicator" and not (props.get("number") or {}).get("valueformat"):
-        found.append(
-            "The indicator has no `number.valueformat`; set one (`,.0f`, `$,.0f`, `.1%`) so the "
-            "value does not print raw, e.g. 8.000414846174507."
-        )
+    if trace == "indicator":
+        found += _indicator(props)
     for interaction in config.get("interactions") or []:
         for expression in interaction.values():
             for name, accessor in _RANGE_ACCESSOR.findall(str(expression)):
@@ -109,6 +107,30 @@ def _insight(app, config):
                         f"the database reads it as arithmetic. Write `'${{ref({name}).{accessor}}}'::date`."
                     )
     return found + _formats(props)
+
+
+def _indicator(props):
+    found = []
+    number = props.get("number") or {}
+    delta = props.get("delta") or {}
+    if not number.get("valueformat"):
+        found.append(
+            "The indicator has no `number.valueformat`; set one (`,.0f`, `$,.0f`, `.1%`) so the "
+            "value does not print raw, e.g. 8.000414846174507."
+        )
+    prefix = str(number.get("prefix") or "")
+    if _WORD.search(prefix):
+        found.append(
+            f"`number.prefix: {prefix}` prints against the value with no gap (`{prefix}12,541`). "
+            f"Put the label in `title.text: {prefix.strip()}` and keep the prefix for a unit "
+            "such as `$`."
+        )
+    if delta.get("relative") and not delta.get("valueformat"):
+        found.append(
+            "`delta.relative: true` with no `delta.valueformat` prints the change unrounded "
+            "(1.300485%). Set `delta.valueformat: '.1%'`."
+        )
+    return found
 
 
 def _line_order(trace, props, interactions):

@@ -78,6 +78,31 @@ class TestLineOrder:
             assert lint.warnings(APP, "insights", _insight(props)) == []
 
 
+class TestIndicatorLabels:
+    def test_a_label_in_the_prefix_is_flagged(self):
+        props = {"type": "indicator", "number": {"valueformat": ",.0f", "prefix": "Total Trips"}}
+        found = lint.warnings(APP, "insights", _insight(props))
+        assert len(found) == 1 and "`title.text: Total Trips`" in found[0]
+
+    def test_a_unit_prefix_passes(self):
+        for prefix in ("$", "USD ", "\u20ac"):
+            props = {"type": "indicator", "number": {"valueformat": ",.0f", "prefix": prefix}}
+            assert lint.warnings(APP, "insights", _insight(props)) == []
+
+    def test_an_unformatted_relative_delta_is_flagged(self):
+        props = {
+            "type": "indicator",
+            "number": {"valueformat": ",.0f"},
+            "delta": {"reference": "?{ ${ref(m).x} }[1]", "relative": True},
+        }
+        found = lint.warnings(APP, "insights", _insight(props))
+        assert len(found) == 1 and "delta.valueformat: '.1%'" in found[0]
+        props["delta"]["valueformat"] = ".1%"
+        assert lint.warnings(APP, "insights", _insight(props)) == []
+        props["delta"] = {"reference": "?{ ${ref(m).x} }[1]"}
+        assert lint.warnings(APP, "insights", _insight(props)) == []
+
+
 class TestNumberFormats:
     def test_a_signed_fixed_format_is_flagged_wherever_it_sits(self):
         props = {
