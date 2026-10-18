@@ -6,6 +6,7 @@ import json
 import pytest
 
 from visivo.agent import data_tools
+from visivo.agent.data_tools import model_cards
 from visivo.agent.tools import TOOLS, ToolError, call
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.services import draft_insight
@@ -547,6 +548,41 @@ class TestProfileModel:
             call(integration_app, "profile_model", {"name": "ghost"})
         with pytest.raises(ToolError, match="required"):
             call(integration_app, "profile_model", {})
+
+
+class TestModelCards:
+    def _write(self, app, name, sql):
+        config = {"name": name, "sql": sql, "source": f"ref({_source(app).name})"}
+        call(app, "write_model", {"config": config})
+
+    def test_a_built_model_is_carded_from_its_parquet(self, integration_app):
+        name = TestProfileModel()._write_model(integration_app)
+
+        cards = model_cards(integration_app, name)
+
+        assert {c["column"] for c in cards} == {"x", "kind"}
+        assert {c["model"] for c in cards} == {name}
+
+    def test_an_unbuilt_model_is_carded_from_its_sql(self, integration_app):
+        self._write(integration_app, "unbuilt", "SELECT 1 AS one, 'a' AS kind")
+
+        cards = model_cards(integration_app, "unbuilt")
+
+        assert [(c["column"], c["model"]) for c in cards] == [
+            ("one", "unbuilt"),
+            ("kind", "unbuilt"),
+        ]
+
+    def test_an_unknown_model_is_a_refusal(self, integration_app):
+        with pytest.raises(ToolError, match="No model named 'ghost'"):
+            model_cards(integration_app, "ghost")
+
+    def test_an_unbuilt_model_with_no_source_is_a_refusal(self, integration_app, monkeypatch):
+        self._write(integration_app, "orphan", "SELECT 1 AS one")
+        monkeypatch.setattr(data_tools, "source_for_model", lambda *a: None)
+
+        with pytest.raises(ToolError, match="no built data and no SQL"):
+            model_cards(integration_app, "orphan")
 
 
 class TestInferColumns:

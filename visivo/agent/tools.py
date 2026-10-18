@@ -466,10 +466,19 @@ def _score_candidates_handler(app, arguments):
     from pydantic import ValidationError
 
     from visivo.agent.charting.candidates import CandidatesError, score_candidates
-    from visivo.agent.data_tools import MAX_QUERY_ROWS, _source_argument
+    from visivo.agent.data_tools import MAX_QUERY_ROWS, _source_argument, model_cards
 
     named = _source_argument(app, arguments) if arguments.get("source") else None
     cards = arguments.get("cards")
+    models = arguments.get("models")
+    if models is not None:
+        if not isinstance(models, list) or not all(isinstance(m, str) for m in models):
+            raise ToolError("'models' is a list of model names.")
+        if cards is not None and not isinstance(cards, list):
+            raise ToolError("'cards' is a list of shape cards.")
+        cards = list(cards or []) + [card for name in models for card in model_cards(app, name)]
+    if cards is None:
+        raise ToolError("Pass 'models' (the names of written models) or 'cards'.")
     dialects, unresolved = _model_dialects(app, cards if isinstance(cards, list) else [], named)
     try:
         result = score_candidates(
@@ -600,9 +609,10 @@ _HAND_WRITTEN = {
     "score_candidates": Tool(
         name="score_candidates",
         description=(
-            "Decide what is worth showing before choosing charts. Pass the shape "
-            "cards from profile_columns/profile_model (each with its model) and, "
-            "once you have them, GROUP BY stats from query_source; get back the "
+            "Decide what is worth showing before choosing charts. Pass the names "
+            "of the written models to score in `models` (the tool profiles them), "
+            "or shape cards from profile_columns (each with its model), and, once "
+            "you have them, GROUP BY stats from query_source; get back the "
             "Metrics, Dimensions and Relations to write first (semantic_layer), a "
             "varied portfolio of candidates (a KPI set, a trend, breakdowns, a "
             "distribution or relationship) each with a `request` for "
@@ -612,9 +622,14 @@ _HAND_WRITTEN = {
         input_schema={
             "type": "object",
             "properties": {
+                "models": {
+                    "type": "array",
+                    "description": "Names of written models; the tool profiles each into cards.",
+                    "items": {"type": "string"},
+                },
                 "cards": {
                     "type": "array",
-                    "description": "Shape cards with a 'model' field.",
+                    "description": "Shape cards with a 'model' field, for SQL no model holds yet.",
                     "items": {"type": "object"},
                 },
                 "stats": {
@@ -639,7 +654,6 @@ _HAND_WRITTEN = {
                     ),
                 },
             },
-            "required": ["cards"],
         },
         handler=_score_candidates_handler,
     ),
