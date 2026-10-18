@@ -28,6 +28,7 @@ _RANGE_ACCESSOR = re.compile(r"(?<!')\$\{\s*ref\(\s*([\w-]+)\s*\)\.(min|max)\s*\
 _REF = re.compile(r"\$\{\s*ref\(")
 _COLUMN_IN_REF = re.compile(r"\$\{\s*ref\(\s*([\w-]+)\.([\w.-]+)\s*\)")
 _BARE_COLUMN = re.compile(r"\s*\$\{\s*ref\(\s*([\w-]+)\s*\)\.[\w.-]+\s*\}\s*")
+_QUERY = re.compile(r"\s*\?\{\s*(.*?)\s*\}\s*", re.DOTALL)
 # Plotly puts a `~` in front of a format that starts with a sign and holds an
 # f, s or p, which d3 then rejects, so the number prints raw.
 _UNREADABLE_FORMAT = re.compile(r"^[-+( #].*[fps]")
@@ -77,6 +78,7 @@ def _insight(app, config):
             "of `?{ count(*) }`."
         )
     trace = props.get("type")
+    found += _line_order(trace, props, config.get("interactions"))
     scale = props.get("colorscale")
     if trace in COLOR_SCALED and scale in DARK_TO_LIGHT and not props.get("reversescale"):
         found.append(
@@ -107,6 +109,18 @@ def _insight(app, config):
                         f"the database reads it as arithmetic. Write `'${{ref({name}).{accessor}}}'::date`."
                     )
     return found + _formats(props)
+
+
+def _line_order(trace, props, interactions):
+    mode = str(props.get("mode") or "")
+    query = _QUERY.fullmatch(str(props.get("x") or ""))
+    sorted_ = any(isinstance(i, dict) and "sort" in i for i in interactions or [])
+    if trace not in ("scatter", "scattergl") or "lines" not in mode or not query or sorted_:
+        return []
+    return [
+        f"`mode: {mode}` joins the points in row order, not x order, so the line zig-zags. "
+        f"Add `- sort: ?{{ {query.group(1)} ASC }}` under `interactions`."
+    ]
 
 
 def _formats(node):

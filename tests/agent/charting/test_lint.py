@@ -53,6 +53,31 @@ class TestIndicators:
         assert lint.warnings(APP, "insights", _insight(props)) == []
 
 
+class TestLineOrder:
+    X = "?{ date_trunc('day', ${ref(m).pickup_at}) }"
+    Y = "?{ count(${ref(m).id}) }"
+
+    def test_an_unsorted_line_is_flagged_with_its_own_x(self):
+        props = {"type": "scatter", "mode": "lines+markers", "x": self.X, "y": self.Y}
+        found = lint.warnings(APP, "insights", _insight(props))
+        assert found == [
+            "`mode: lines+markers` joins the points in row order, not x order, so the line "
+            "zig-zags. Add `- sort: ?{ date_trunc('day', ${ref(m).pickup_at}) ASC }` under "
+            "`interactions`."
+        ]
+
+    def test_a_sorted_line_markers_or_a_literal_x_pass(self):
+        sort = [{"sort": "?{ ${ref(m).pickup_at} ASC }"}]
+        line = {"type": "scatter", "mode": "lines", "x": self.X, "y": self.Y}
+        assert lint.warnings(APP, "insights", _insight(line, sort)) == []
+        for props in (
+            {**line, "mode": "markers"},
+            {**line, "type": "bar"},
+            {**line, "x": ["a", "b"]},
+        ):
+            assert lint.warnings(APP, "insights", _insight(props)) == []
+
+
 class TestNumberFormats:
     def test_a_signed_fixed_format_is_flagged_wherever_it_sits(self):
         props = {
