@@ -76,9 +76,16 @@ def _dump(obj):
 
     ``model_dump(mode="json")`` keeps ``${ref(name)}`` as the string it is —
     the same form the object managers serve to the editor, so an agent reads
-    what a person reads.
+    what a person reads. A metric or dimension scoped to a model carries it as
+    ``model``, the key its write takes.
     """
-    return obj.model_dump(exclude_none=True, mode="json") if obj is not None else None
+    if obj is None:
+        return None
+    data = obj.model_dump(exclude_none=True, mode="json")
+    parent = getattr(obj, "_parent_name", None)
+    if parent:
+        data["model"] = parent
+    return data
 
 
 # --- the generated per-type tools ------------------------------------------

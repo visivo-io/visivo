@@ -449,6 +449,20 @@ class TestModelScopedFields:
         call(integration_app, "write_metric", {"config": config})
         assert integration_app.metric_manager.cached_objects["f"]._parent_name is None
 
+    def test_list_and_get_carry_the_model_back(self, integration_app):
+        self._model(integration_app)
+        config = {"name": "f", "expression": "sum(fare)", "model": "trips"}
+        call(integration_app, "write_dimension", {"config": config})
+
+        listed = call(integration_app, "list_dimensions", {})
+        got = call(integration_app, "get_dimension", {"name": "f"})
+
+        assert got["model"] == "trips"
+        assert next(d for d in listed if d["name"] == "f")["model"] == "trips"
+        unscoped = {"name": "g", "expression": "sum(${ref(trips).fare})"}
+        call(integration_app, "write_metric", {"config": unscoped})
+        assert "model" not in call(integration_app, "get_metric", {"name": "g"})
+
     def test_the_write_tools_describe_the_model_key(self):
         from visivo.agent.tools import TOOLS
 
