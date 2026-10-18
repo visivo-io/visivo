@@ -59,6 +59,12 @@ def _get_type_adapter(field_name: str):
     return adapter
 
 
+# What an insight's query can depend on. Cached insights, charts, tables,
+# dashboards and markdowns stay out of the overlay: a draft among them with a
+# dangling ref would otherwise fail the DAG for every other insight's preview.
+_INSIGHT_DEPENDENCY_FIELDS = ("models", "sources", "dimensions", "metrics", "relations", "inputs")
+
+
 class DraftOverlayError(ValueError):
     """A draft insight/model/metric/dimension config failed Pydantic
     validation, or the draft's model schema hasn't been introspected yet.
@@ -201,7 +207,7 @@ def build_draft_overlay(
     Pydantic ``ValidationError`` escape uncaught to the view).
     """
     project = deepcopy(flask_app.project)
-    inject_cached_objects(flask_app, project)
+    inject_cached_objects(flask_app, project, fields=_INSIGHT_DEPENDENCY_FIELDS)
     _inject_draft_objects(
         project,
         {

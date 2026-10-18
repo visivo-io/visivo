@@ -168,3 +168,19 @@ class TestRenestOnItsOwn:
         renest_model_scoped_fields(project)
 
         assert [m.name for m in project.metrics] == ["orphan"]
+
+
+def test_fields_limits_the_overlay_to_the_named_project_fields():
+    cached_model = SqlModelFactory(name="cached_model")
+    cached_metric = MetricFactory(name="cached_metric")
+    app = _flask_app(
+        _project(),
+        model={"cached_model": cached_model},
+        metric={"cached_metric": cached_metric},
+    )
+    project = deepcopy(app.project)
+
+    inject_cached_objects(app, project, fields=("models",))
+
+    assert "cached_model" in {m.name for m in project.models}
+    assert "cached_metric" not in {m.name for m in project.metrics or []}

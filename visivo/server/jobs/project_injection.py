@@ -113,12 +113,15 @@ def renest_model_scoped_fields(project):
         setattr(project, field_attr, remaining)
 
 
-def inject_cached_objects(flask_app, project):
+def inject_cached_objects(flask_app, project, fields=None):
     """Overlay every manager's cached objects onto ``project`` so refs to
     objects that exist only in the cached tier (created/modified in the editor,
-    not yet written to YAML) resolve during the run. Re-nesting runs last so a
-    field lands on the cached model, not the published one."""
+    not yet written to YAML) resolve during the run. ``fields`` limits the
+    overlay to those project fields. Re-nesting runs last so a field lands on
+    the cached model, not the published one."""
     for manager_attr, project_field in MANAGER_TO_PROJECT_FIELD:
+        if fields is not None and project_field not in fields:
+            continue
         manager = getattr(flask_app, manager_attr, None)
         if not manager:
             continue
