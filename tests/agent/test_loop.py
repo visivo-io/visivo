@@ -125,6 +125,53 @@ class TestWhenAToolRefuses:
         assert agent.run_sync("go").output == "Done."
 
 
+class TestItDoesNotStopOnAPlan:
+    """A reply without a tool call ends the turn, so a model that ends on "I will
+    now create the charts" leaves half a dashboard (built-in eval, 2026-10-18)."""
+
+    def test_a_plan_only_reply_goes_back_once_and_the_calls_follow(self, integration_app):
+        nudges = []
+
+        def promises(messages, info: AgentInfo):
+            return ModelResponse(parts=[TextPart("I will now create the weekly charts.")])
+
+        def acts(messages, info: AgentInfo):
+            nudges.append(str(messages[-1]))
+            return ModelResponse(parts=[ToolCallPart("list_sources", {})])
+
+        agent = build_agent(integration_app, _model(promises, acts))
+        assert agent.run_sync("build the exec dashboard").output == "Done."
+        assert "described calls you have not made" in nudges[0]
+        assert [a["tool"] for a in log().recent()] == ["list_sources"]
+
+    def test_a_second_plan_is_accepted_rather_than_failing_the_turn(self, integration_app):
+        def promises(messages, info: AgentInfo):
+            return ModelResponse(parts=[TextPart("Next, I'll build the table.")])
+
+        agent = build_agent(integration_app, _model(promises, promises))
+        assert agent.run_sync("go").output == "Next, I'll build the table."
+
+    def test_a_finished_reply_passes(self, integration_app):
+        agent = build_agent(integration_app, _model())
+        assert agent.run_sync("go").output == "Done."
+
+    def test_the_pattern_reads_promises_not_reports(self):
+        from visivo.agent.loop import PLAN_ONLY
+
+        for text in (
+            "I'll now write the insight.",
+            "Let me create a model",
+            "I am going to build it",
+        ):
+            assert PLAN_ONLY.search(text)
+        for text in (
+            "I created the dashboard.",
+            "Write access is needed.",
+            "I will need a source.",
+        ):
+            assert not PLAN_ONLY.search(text)
+
+
 class TestItIsBounded:
     def test_a_model_that_never_stops_is_stopped(self, integration_app):
         """The ticket's hard requirement: a loop cannot spend a BYO key
