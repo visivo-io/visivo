@@ -21,6 +21,20 @@ export const CONTEXT_REF_PATTERN = /^\$\{\s*ref\(\s*([^)]+)\s*\)\s*\}$/;
 export const REF_NAME_PATTERN = /\$\{\s*ref\(\s*([^)]+)\s*\)/g;
 
 /**
+ * A ref name without the quotes `ref('my name')` may wrap it, as the Python
+ * parser strips them. Without this, `${ref('trips')}` validated but its chart
+ * asked the server for an insight named `'trips'`, which never loads.
+ */
+export const unquoteRefName = name => {
+  const trimmed = name.trim();
+  const quote = trimmed[0];
+  if (trimmed.length >= 2 && (quote === "'" || quote === '"') && trimmed.endsWith(quote)) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+};
+
+/**
  * Extract name from a ref string.
  * Handles: ${ref(name)}, ${ ref( name ) }, ref(name), or raw name (returned as-is).
  * Returns null for falsy or non-string input.
@@ -32,13 +46,13 @@ export const parseRefValue = value => {
   // Match ${ ref(name) } pattern (context string format)
   const contextRefMatch = value.match(CONTEXT_REF_PATTERN);
   if (contextRefMatch) {
-    return contextRefMatch[1].trim();
+    return unquoteRefName(contextRefMatch[1]);
   }
 
   // Match ref(name) pattern (bare format)
   const refMatch = value.match(/^ref\(\s*([^)]+)\s*\)$/);
   if (refMatch) {
-    return refMatch[1].trim();
+    return unquoteRefName(refMatch[1]);
   }
 
   // Return as-is if not a ref format (could be raw name)
@@ -106,7 +120,7 @@ export const extractRefNames = (str) => {
   const pattern = new RegExp(REF_NAME_PATTERN.source, REF_NAME_PATTERN.flags);
   let match;
   while ((match = pattern.exec(str)) !== null) {
-    names.push(match[1].trim());
+    names.push(unquoteRefName(match[1]));
   }
   return names;
 };

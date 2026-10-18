@@ -5,6 +5,8 @@ import {
   formatRefExpression,
   parseMultiRefValue,
   formatMultiRefValue,
+  extractRefNames,
+  unquoteRefName,
 } from './refString';
 
 describe('parseRefValue', () => {
@@ -131,5 +133,24 @@ describe('roundtrip: parse then format', () => {
   it('roundtrips context string with spaces', () => {
     const name = parseRefValue('${ ref( mySource ) }');
     expect(formatRefExpression(name)).toBe('${ref(mySource)}');
+  });
+});
+
+describe('quoted ref names', () => {
+  it('strips one pair of matching quotes, as the Python parser does', () => {
+    expect(parseRefValue("${ref('trips_kpi')}")).toBe('trips_kpi');
+    expect(parseRefValue('${ ref( "my insight" ) }')).toBe('my insight');
+    expect(parseRefValue("ref('trips')")).toBe('trips');
+    expect(extractRefNames("sum(${ref('trips').fare}) / ${ref(\"zones\").n}")).toEqual([
+      'trips',
+      'zones',
+    ]);
+  });
+
+  it('leaves unquoted, mismatched and lone-quote names as they are', () => {
+    expect(unquoteRefName(' trips ')).toBe('trips');
+    expect(unquoteRefName("'trips\"")).toBe("'trips\"");
+    expect(unquoteRefName("'")).toBe("'");
+    expect(unquoteRefName("o'brien")).toBe("o'brien");
   });
 });
