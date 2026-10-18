@@ -486,6 +486,35 @@ def unaliased_projection_message(model_name: str, unaliased: list) -> str:
     )
 
 
+def _leaf_names(schema: dict):
+    """The column names of a flat or nested schema dict."""
+    for key, value in schema.items():
+        if isinstance(value, dict):
+            yield from _leaf_names(value)
+        else:
+            yield key
+
+
+def _match_quoted_source_columns(expr, schema: dict) -> None:
+    """Unquote a quoted column reference that names a source column in another
+    case, such as ``z."Borough"``. The schema lookup lowercases the source's
+    names, as it does for every unquoted reference, so the quoted one would
+    otherwise miss. A name the query itself defines as an alias keeps its quotes."""
+    source = {name.lower() for name in _leaf_names(schema)}
+    aliases = {alias.alias for alias in expr.find_all(exp.Alias)}
+    for column in expr.find_all(exp.Column):
+        identifier = column.this
+        name = identifier.name if isinstance(identifier, exp.Identifier) else None
+        if (
+            name
+            and identifier.quoted
+            and name != name.lower()
+            and name.lower() in source
+            and name not in aliases
+        ):
+            identifier.set("quoted", False)
+
+
 def schema_from_sql(
     sqlglot_dialect: str,
     sql: str,
@@ -533,6 +562,7 @@ def schema_from_sql(
     # Solution: regenerate SQL without comments and re-parse for a clean AST.
     sql_without_comments = expr.sql(dialect=sqlglot_dialect, comments=False)
     expr = sqlglot.parse_one(sql_without_comments, read=sqlglot_dialect)
+    _match_quoted_source_columns(expr, schema)
 
     # 3. Qualify with schema so column refs resolve
     # Pass db parameter for default schema context (used for unqualified table references)
