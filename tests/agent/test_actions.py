@@ -463,6 +463,22 @@ class TestModelScopedFields:
         call(integration_app, "write_metric", {"config": unscoped})
         assert "model" not in call(integration_app, "get_metric", {"name": "g"})
 
+    @pytest.mark.parametrize("segment", ["metrics", "dimensions"])
+    def test_the_agent_saves_what_the_editor_saves(self, integration_app, segment):
+        self._model(integration_app)
+        client = integration_app.app.test_client()
+        manager = getattr(integration_app, f"{segment[:-1]}_manager")
+        body = {"expression": "sum(fare)", "parentModel": "trips"}
+        assert client.post(f"/api/{segment}/by_editor/", json=body).status_code == 201
+        config = {"name": "by_agent", "expression": "sum(fare)", "model": "trips"}
+
+        call(integration_app, f"write_{segment[:-1]}", {"config": config})
+
+        editor, agent = manager.cached_objects["by_editor"], manager.cached_objects["by_agent"]
+        assert agent._parent_name == editor._parent_name == "trips"
+        dump = {"exclude_none": True, "mode": "json", "exclude": {"name"}}
+        assert agent.model_dump(**dump) == editor.model_dump(**dump)
+
     def test_the_write_tools_describe_the_model_key(self):
         from visivo.agent.tools import TOOLS
 
