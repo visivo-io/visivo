@@ -53,6 +53,35 @@ class TestIndicators:
         assert lint.warnings(APP, "insights", _insight(props)) == []
 
 
+class TestIndicatorCells:
+    """A one-row column bound to `value` renders as a dash; the KPI skill's
+    first gotcha says to pick `[0]`, and this says it again at write time."""
+
+    def test_a_query_with_no_index_is_flagged_for_each_cell(self):
+        props = {
+            "type": "indicator",
+            "number": {"valueformat": ",.0f"},
+            "value": "?{ sum(${ref(m).x}) }",
+            "delta": {"reference": " ?{ sum(${ref(m).x}) } "},
+            "gauge": {"threshold": {"value": "?{ max(${ref(m).target}) }"}},
+        }
+        found = lint.warnings(APP, "insights", _insight(props))
+        assert len(found) == 3
+        assert "`value: ?{ sum(${ref(m).x}) }[0]`" in found[0]
+        assert "`delta.reference: ?{ sum(${ref(m).x}) }[0]`" in found[1]
+        assert "`gauge.threshold.value:" in found[2]
+
+    def test_an_indexed_query_or_a_number_passes(self):
+        props = {
+            "type": "indicator",
+            "number": {"valueformat": ",.0f"},
+            "value": "?{ sum(${ref(m).x}) }[0]",
+            "delta": {"reference": "?{ sum(${ref(m).x}) }[1]"},
+            "gauge": {"threshold": {"value": 90}},
+        }
+        assert lint.warnings(APP, "insights", _insight(props)) == []
+
+
 class TestLineOrder:
     X = "?{ date_trunc('day', ${ref(m).pickup_at}) }"
     Y = "?{ count(${ref(m).id}) }"
@@ -322,6 +351,152 @@ class TestTables:
         assert lint.warnings(APP, "markdowns", {"name": "m"}) == []
 
 
+class TestDoublePercent:
+    SQL = (
+        "SELECT tz.Zone AS zone, COUNT(*) AS trips, "
+        "AVG(yt.tip_amount / yt.fare_amount) * 100 AS tip_pct, "
+        'SUM(CASE WHEN yt."Airport_fee" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS airport_share, '
+        "AVG(yt.tip_amount / yt.fare_amount) AS tip_rate "
+        "FROM yellow_trips AS yt JOIN taxi_zones AS tz ON yt.PULocationID = tz.LocationID GROUP BY 1"
+    )
+    APP = SimpleNamespace(
+        model_manager=SimpleNamespace(get={"zones": SimpleNamespace(sql=SQL)}.get),
+        metric_manager=SimpleNamespace(
+            get={
+                "tip_share": SimpleNamespace(expression="100.0 * sum(tip) / sum(fare)"),
+                "tip_ratio": SimpleNamespace(expression="sum(tip) / sum(fare)"),
+            }.get
+        ),
+        dimension_manager=SimpleNamespace(get={}.get),
+    )
+
+    def table(self, value, fmt=".1%"):
+        return {"name": "t", "columns": [{"value": value, "format": fmt}]}
+
+    def test_a_percent_format_on_a_model_column_already_times_100_is_flagged(self):
+        for column in ("tip_pct", "airport_share", "Airport_Share"):
+            entry = f'${{ref(zones).{column}}} as "Share"'
+            found = lint.warnings(self.APP, "tables", self.table(entry))
+            assert len(found) == 1 and "2100%" in found[0] and "model `zones`" in found[0]
+
+    def test_a_fraction_or_a_non_percent_format_passes(self):
+        assert (
+            lint.warnings(self.APP, "tables", self.table('${ref(zones).tip_rate} as "Tip"')) == []
+        )
+        assert (
+            lint.warnings(self.APP, "tables", self.table('${ref(zones).tip_pct} as "Tip"', ".1f"))
+            == []
+        )
+        assert (
+            lint.warnings(self.APP, "tables", self.table('${ref(zones).trips} as "T"', ",.0f"))
+            == []
+        )
+        unknown = self.table('${ref(other).tip_pct} as "Tip"')
+        assert lint.warnings(self.APP, "tables", unknown) == []
+        assert lint.warnings(SimpleNamespace(), "tables", unknown) == []
+
+    def test_a_metric_or_inline_expression_times_100_is_flagged(self):
+        for value in ('${ref(tip_share)} as "Tip"', '${ref(zones).tip_share} as "Tip"'):
+            found = lint.warnings(self.APP, "tables", self.table(value))
+            assert len(found) == 1 and "`tip_share`" in found[0]
+        values = {
+            "name": "p",
+            "values": [{"value": "sum(${ref(zones).tip_rate}) * 100", "format": "0.1%"}],
+        }
+        found = lint.warnings(self.APP, "tables", values)
+        assert len(found) == 1 and "the expression" in found[0]
+        ratio = self.table('${ref(tip_ratio)} as "Tip"')
+        assert lint.warnings(self.APP, "tables", ratio) == []
+
+    def test_scaling_by_1000_or_100_point_5_is_not_a_percentage(self):
+        for expression in ("sum(x) * 1000", "sum(x) * 100.5", "1000 * sum(x)", "x + 100"):
+            assert lint._times_100(self.APP, expression) is None
+        for expression in ("sum(x) * 100", "100.0*sum(x)", "sum(x)*100.00 / n"):
+            assert lint._times_100(self.APP, expression) == "the expression"
+
+    def test_sql_that_does_not_parse_is_skipped(self):
+        broken = SimpleNamespace(
+            model_manager=SimpleNamespace(get=lambda n: SimpleNamespace(sql="SELECT ("))
+        )
+        assert lint._times_100(broken, "${ref(zones).tip_pct}") is None
+
+    def test_an_insight_with_a_percent_format_over_a_times_100_query_is_flagged(self):
+        props = {
+            "type": "bar",
+            "x": "?{ ${ref(zones).zone} }",
+            "y": "?{ avg(${ref(zones).tip_pct}) }",
+            "texttemplate": "%{y}",
+            "hoverlabel": {"hoverformat": ".1%"},
+        }
+        found = lint.warnings(self.APP, "insights", _insight(props))
+        assert len(found) == 1 and "`hoverlabel.hoverformat: '.1%'`" in found[0]
+        props["y"] = "?{ avg(${ref(zones).tip_rate}) }"
+        assert lint.warnings(self.APP, "insights", _insight(props)) == []
+
+    def test_a_kpi_with_a_percent_valueformat_over_a_times_100_metric_is_flagged(self):
+        props = {
+            "type": "indicator",
+            "value": "?{ ${ref(tip_share)} }[0]",
+            "number": {"valueformat": ".1%"},
+        }
+        found = lint.warnings(self.APP, "insights", _insight(props))
+        assert len(found) == 1 and "number.valueformat" in found[0]
+
+    def test_a_date_format_is_not_a_percent_format(self):
+        props = {"type": "scatter", "x": "?{ ${ref(zones).tip_pct} }", "xhoverformat": "%b %Y"}
+        props["hoverformat"] = "%Y-%m"
+        assert lint.warnings(self.APP, "insights", _insight(props)) == []
+
+    def test_an_unaliased_formatted_column_is_flagged(self):
+        found = lint.warnings(self.APP, "tables", self.table("${ref(zones).trips}", ",.0f"))
+        assert len(found) == 1 and "Alias every column" in found[0]
+
+
+class TestDateRangeInputs:
+    def b17(self, **range_):
+        return {
+            "name": "pickup_date",
+            "type": "multi-select",
+            "range": {"start": "2024-.1-01", "end": "2024-04-01", "step": "1 day", **range_},
+            "display": {
+                "type": "date-range",
+                "default": {"start": "2024-01-01", "end": "2024-01-31"},
+            },
+        }
+
+    def test_the_b17_typo_in_a_range_bound_is_flagged(self):
+        found = lint.warnings(APP, "inputs", self.b17())
+        assert len(found) == 1 and "`range.start: 2024-.1-01` is not a date" in found[0]
+
+    def test_dates_expressions_and_queries_pass(self):
+        for start in (
+            "2024-01-01",
+            "2024-01-01T00:00:00",
+            "today - 30 days",
+            "START_OF_MONTH",
+            "end_of_quarter + 1 week",
+            "?{ min(${ref(trips).pickup_date}) }",
+        ):
+            assert lint.warnings(APP, "inputs", self.b17(start=start)) == [], start
+
+    def test_a_bad_default_a_number_and_a_bad_step_are_flagged(self):
+        config = self.b17(start="2024-01-01", end=2024, step="daily")
+        config["display"]["default"]["start"] = "yesterday"
+        found = lint.warnings(APP, "inputs", config)
+        assert len(found) == 3
+        assert "`range.end: 2024`" in found[0] and "`display.default.start: yesterday`" in found[1]
+        assert "`range.step: daily`" in found[2]
+        assert lint.warnings(APP, "inputs", self.b17(start="2024-01-01", step="?{ 1 }")) == []
+
+    def test_other_inputs_pass(self):
+        chips = {"name": "b", "type": "multi-select", "display": {"type": "chips"}}
+        assert lint.warnings(APP, "inputs", chips) == []
+        assert lint.warnings(APP, "inputs", {"name": "s", "type": "single-select"}) == []
+        no_default = self.b17(start="2024-01-01")
+        del no_default["display"]["default"]
+        assert lint.warnings(APP, "inputs", no_default) == []
+
+
 class TestTheWriteCarriesThem:
     def test_write_chart_warns_about_untitled_axes(self, integration_app):
         insight = {"name": "by_region", "props": {"type": "bar", "x": "?{ 1 }", "y": "?{ 2 }"}}
@@ -338,6 +513,23 @@ class TestTheWriteCarriesThem:
         result = call(integration_app, "write_insight", {"config": config})
         assert result["status"] == "draft"
         assert any("reversescale" in w for w in result["warnings"])
+
+    def test_write_insight_warns_about_a_percentage_formatted_twice(self, integration_app):
+        model = {"name": "shares", "sql": "SELECT x, y * 100.0 / x AS share FROM test_table"}
+        call(integration_app, "write_model", {"config": model})
+        props = {
+            "type": "indicator",
+            "value": "?{ avg(${ref(shares).share}) }[0]",
+            "number": {"valueformat": ".1%"},
+        }
+        result = call(integration_app, "write_insight", {"config": _insight(props)})
+        assert any("model `shares` for `share`" in w for w in result["warnings"])
+
+    def test_write_input_warns_about_a_bound_that_is_not_a_date(self, integration_app):
+        config = TestDateRangeInputs().b17()
+        result = call(integration_app, "write_input", {"config": config})
+        assert result["status"] == "draft"
+        assert any("`range.start: 2024-.1-01`" in w for w in result["warnings"])
 
     def test_a_clean_write_has_no_warnings_key(self, integration_app):
         result = call(
