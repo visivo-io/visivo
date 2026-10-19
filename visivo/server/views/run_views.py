@@ -22,15 +22,12 @@ Local serve has a single project and an in-memory ``RunManager``; the
 ``<project_id>`` path token is accepted for URL parity but not used to scope.
 """
 
-import os
 import re
 from urllib.parse import unquote
 
 from flask import g, jsonify, request
 
-from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
-from visivo.query.patterns import extract_ref_names
 from visivo.server.hash.data_fingerprint import data_fingerprint
 from visivo.server.jobs.save_run_executor import cancel_pending_run, request_run, run_now
 from visivo.server.managers.object_manager import location_free_dump
@@ -40,12 +37,13 @@ from visivo.server.user_config import AUTOMATIC, get_run_trigger
 # resource→data-mode mapping is easy to find. Mirrors core's per-type DATA_MODE /
 # DATA_PRODUCING (``apps/deploys/models.py``):
 #   * "whole" — SQL/connection/input resources: any config field is data.
-#   * "query" — visualization resources: only query leaves matter. An insight is
-#     data-producing (its ${ref} deps + ?{ } queries feed its job); a chart /
-#     table / markdown / dashboard is NOT — only an inline ?{ } layout query
-#     counts (a ${ } there just reads already-built data), so a color / legend /
-#     layout edit leaves the fingerprint alone, while a ?{ } layout query that
-#     visivo folds into the insight's query does move it.
+#   * "query" — visualization resources: only query leaves matter. An insight or
+#     a table is data-producing (its ${ref} deps feed a build: an insight's job,
+#     or the model parquet a table reads); a chart / markdown / dashboard is
+#     NOT — only an inline ?{ } layout query counts (a ${ } there just reads
+#     already-built data), so a color / legend / layout edit leaves the
+#     fingerprint alone, while a ?{ } layout query that visivo folds into the
+#     insight's query does move it.
 RESOURCE_META = {
     "sources": ("source_manager", "whole", True),
     "models": ("model_manager", "whole", True),
@@ -55,7 +53,7 @@ RESOURCE_META = {
     "inputs": ("input_manager", "whole", True),
     "insights": ("insight_manager", "query", True),
     "charts": ("chart_manager", "query", False),
-    "tables": ("table_manager", "query", False),
+    "tables": ("table_manager", "query", True),
     "markdowns": ("markdown_manager", "query", False),
     "dashboards": ("dashboard_manager", "query", False),
 }
@@ -99,18 +97,6 @@ def stage_and_maybe_run(flask_app, type_key, name, before, *, deleted=False):
         return None
     after = _resource_fingerprint(flask_app, type_key, name, deleted=deleted)
     if after == before:
-        # A table is not data-producing, but it reads a model's built parquet,
-        # and a model run builds that only when something consumes the model.
-        # A table added after its model's run would read a file nobody builds.
-        if (
-            type_key == "tables"
-            and not deleted
-            and manager is not None
-            and get_run_trigger() == AUTOMATIC
-            and _unbuilt_models_read_by(flask_app, manager.get(name))
-        ):
-            request_run(flask_app, [name])
-            return "ran"
         return None
     flask_app.staged_manager.record(
         RESOURCE_TYPE_NAMES[type_key],
@@ -122,24 +108,6 @@ def stage_and_maybe_run(flask_app, type_key, name, before, *, deleted=False):
         request_run(flask_app, [name])
         return "ran"
     return "staged"
-
-
-def _unbuilt_models_read_by(flask_app, table):
-    """Names of the models ``table`` reads whose data has not been built."""
-    if table is None or getattr(flask_app, "model_manager", None) is None:
-        return []
-    names = set(table.ref_names())
-    if table.data:
-        names.update(extract_ref_names(str(table.data)))
-    output_dir = getattr(flask_app, "output_dir", None) or ""
-    return sorted(
-        name
-        for name in names
-        if flask_app.model_manager.get(name) is not None
-        and not os.path.exists(
-            os.path.join(output_dir, DEFAULT_RUN_ID, "models", f"{name}.parquet")
-        )
-    )
 
 
 def resource_fingerprint(flask_app, type_key, name, *, deleted=False):
