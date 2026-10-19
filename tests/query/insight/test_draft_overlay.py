@@ -449,3 +449,79 @@ class TestBuildDraftOverlayNameShadowing:
         assert "a_totally_different_table" in shadowed.sql
         # The REAL, live project object is untouched.
         assert project_with_model.models[0].sql == "select * from orders"
+
+
+class TestBuildDraftOverlayIgnoresUnrelatedDrafts:
+    """A cached insight, chart or dashboard with a dangling ref must not fail
+    the overlay for another insight's preview."""
+
+    def _app_with_broken_drafts(self, project):
+        from types import SimpleNamespace
+
+        from visivo.models.chart import Chart
+        from visivo.models.dashboard import Dashboard
+        from visivo.models.insight import Insight
+
+        app = FlaskAppStub(project)
+        broken = Insight.model_validate(
+            {"name": "broken", "props": {"type": "bar", "x": "?{${ref(nope).region}}"}}
+        )
+        app.insight_manager = SimpleNamespace(cached_objects={"broken": broken})
+        chart = Chart(name="broken_chart", insights=["${ref(missing_insight)}"])
+        app.chart_manager = SimpleNamespace(cached_objects={"broken_chart": chart})
+        dashboard = Dashboard.model_validate(
+            {"name": "board", "rows": [{"items": [{"chart": "${ref(missing_chart)}"}]}]}
+        )
+        app.dashboard_manager = SimpleNamespace(cached_objects={"board": dashboard})
+        return app
+
+    def test_the_overlay_builds_past_a_broken_draft_insight_chart_and_dashboard(
+        self, project_with_model
+    ):
+        app = self._app_with_broken_drafts(project_with_model)
+
+        project, dag, insight = build_draft_overlay(app, insight_config())
+
+        assert insight.name == "draft_insight"
+        assert [i.name for i in project.insights] == ["draft_insight"]
+        assert all(c.name != "broken_chart" for c in project.charts or [])
+
+    def test_a_cached_model_still_reaches_the_overlay(self, project_with_model):
+        from types import SimpleNamespace
+
+        app = self._app_with_broken_drafts(project_with_model)
+        cached = SqlModelFactory(
+            name="cohort_q", sql="select * from cohorts", source="ref(warehouse)"
+        )
+        app.model_manager = SimpleNamespace(cached_objects={"cohort_q": cached})
+
+        _, dag, _ = build_draft_overlay(app, insight_config(model_name="cohort_q"))
+
+        assert any(getattr(n, "name", None) == "cohort_q" for n in dag.nodes)
+
+
+class TestDraftObjectEdgeCases:
+    def test_an_invalid_draft_metric_raises_draft_overlay_error(self, flask_app):
+        with pytest.raises(DraftOverlayError, match="Invalid draft metrics"):
+            build_draft_overlay(
+                flask_app, insight_config(), draft_metrics=[{"name": "m", "bogus": 1}]
+            )
+
+    def test_a_draft_model_that_fails_validation_raises_draft_overlay_error(self, flask_app):
+        with pytest.raises(DraftOverlayError, match="Invalid draft models"):
+            build_draft_overlay(
+                flask_app,
+                insight_config(),
+                draft_models=[{"name": "m", "sql": "select 1", "bogus": 1}],
+            )
+
+    def test_a_draft_field_with_no_adapter_is_ignored(self, project_with_model):
+        from visivo.query.insight.draft_overlay import (
+            _inject_draft_objects,
+            _inject_model_scoped_fields,
+        )
+
+        _inject_draft_objects(project_with_model, {"charts": [{"name": "c"}]})
+        _inject_model_scoped_fields(project_with_model, "charts", [{"name": "c"}])
+
+        assert not project_with_model.charts
