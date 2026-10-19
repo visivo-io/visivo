@@ -296,6 +296,17 @@ fork the palette in a single component.
 - **"ref not found" errors** → DAG/YAML resolution — check project config and model refs
 - **DuckDB errors** → Check useExplorerDuckDB hook and expression translation
 
+## Agent Eval
+
+Run the agent eval for every change to `visivo/agent/`, to the MCP endpoint, or to a viewer path that agent-built dashboards use. CI does not run the eval.
+
+1. Build the three datasets and start the eval sandbox as `scripts/agent_eval/README.md` describes.
+2. Run each dataset with the same prompts and repeats on `main` and on your branch: `python scripts/agent_eval/run.py --dataset <taxi|saas|climate> --conditions mcp --repeats 2 --out <dir>`.
+3. Score each run with `judge.py`. Render the report with `report.py`.
+4. Put the mean score per condition, the change from `main`, and the defects that appeared or went away into the PR description.
+
+Use `--model sonnet` unless the change targets a different model. On 16 runs per arm, a difference below 1.5 points is run-to-run noise.
+
 ## Planning Requirements
 
 Every plan Claude creates for a non-trivial task MUST include a **Test Strategy** section:

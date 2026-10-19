@@ -1,0 +1,9 @@
+name: agent-eval-saas
+
+defaults:
+  source_name: saas
+
+sources:
+  - name: saas
+    type: duckdb
+    database: saas.duckdb

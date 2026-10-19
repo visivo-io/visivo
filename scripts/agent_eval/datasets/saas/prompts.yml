@@ -1,0 +1,53 @@
+# Seeded synthetic B2B SaaS product: see seed.py for the planted signals.
+name: saas
+project: test-projects/agent-eval/saas
+description: >-
+  A synthetic B2B analytics SaaS, January 2023 to June 2024: `accounts` (plan,
+  industry, country, size, acquisition channel, signup and churn dates),
+  `users` (role), an `events` log (signup funnel steps and product usage), and
+  `subscriptions_monthly` (plan, seats and MRR per account per month). User-level
+  event data where funnels, cohorts, retention and revenue movements matter.
+prompts:
+  - id: explore
+    dashboard: product-overview
+    prompt: >-
+      I just connected our product database to Visivo. Explore it and build a
+      dashboard called product-overview with the most important things a
+      founder should know. Tell me what you built and why.
+    expects: [data_first, kpi_row, varied_families]
+
+  - id: funnel
+    dashboard: activation
+    prompt: >-
+      Where do new users drop off between signing up and inviting a teammate?
+      Build a dashboard called activation that shows it.
+    expects: [funnel_ordered_steps, conversion_rates, answers_question]
+
+  - id: retention
+    dashboard: retention
+    prompt: >-
+      Which acquisition channels bring accounts that stay? Build a dashboard
+      called retention comparing churn by channel over time.
+    expects: [rates_not_counts, cohort_or_time_view, answers_question]
+
+  - id: revenue
+    dashboard: revenue
+    prompt: >-
+      Build a dashboard called revenue showing MRR over time, split by plan,
+      with the headline MRR and its month-over-month change at the top.
+    expects: [kpi_row, delta_or_change, stacked_or_split_by_plan]
+
+  - id: interactive
+    dashboard: usage-explorer
+    prompt: >-
+      Build a dashboard called usage-explorer where I can pick a plan and an
+      industry and a date range, and see weekly active accounts and which
+      features they use.
+    expects: [inputs, inputs_wired, date_range_input]
+
+  - id: table
+    dashboard: accounts-table
+    prompt: >-
+      Build a dashboard called accounts-table with a table of our biggest
+      accounts: current plan, seats, MRR, signup date and whether they churned.
+    expects: [table_used, formatted_columns]
