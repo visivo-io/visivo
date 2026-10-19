@@ -548,6 +548,63 @@ class TestTableReadsBuiltModelData:
             req.assert_not_called()
 
 
+class TestInsightInteractivityBuildsModelData:
+    """A model writes its parquet only while an interactive insight reads it.
+    Unlike a table, an insight is data-producing, so turning interactivity on
+    or off moves its fingerprint, and the ``+insight+`` run rebuilds the model
+    against the whole project DAG."""
+
+    STATIC = {"props": {"type": "bar", "x": "?{ ${ref(m).x} }", "y": "?{ ${ref(m).y} }"}}
+    INTERACTIVE = {**STATIC, "interactions": [{"filter": "?{ ${ref(m).x} > ${ref(threshold)} }"}]}
+
+    def _parquet(self, app):
+        return os.path.join(app.output_dir, DEFAULT_RUN_ID, "models", "m.parquet")
+
+    def _save_and_run(self, app, client, path, body):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            client.post(path, json=body)
+        names = [name for call in req.call_args_list for name in call[0][1]]
+        dag_filter = save_run_executor._dag_filter_for(app, names)
+        save_run_executor._execute(app, app.run_manager.create(dag_filter).id, dag_filter)
+
+    def test_toggling_interactivity_builds_and_drops_the_model_data(
+        self, integration_app, integration_client
+    ):
+        app, client = integration_app, integration_client
+        self._save_and_run(
+            app, client, "/api/models/m/", {"sql": "select 1 as x, 2 as y", "source": "ref(source)"}
+        )
+        self._save_and_run(
+            app, client, "/api/inputs/threshold/", {"type": "single-select", "options": ["0"]}
+        )
+        self._save_and_run(app, client, "/api/insights/i/", self.STATIC)
+        assert not os.path.exists(self._parquet(app))
+
+        self._save_and_run(app, client, "/api/insights/i/", self.INTERACTIVE)
+        assert os.path.exists(self._parquet(app))
+
+        self._save_and_run(app, client, "/api/insights/i/", self.STATIC)
+        assert not os.path.exists(self._parquet(app))
+
+        self._save_and_run(app, client, "/api/insights/j/", self.INTERACTIVE)
+        assert os.path.exists(self._parquet(app))
+
+    def test_an_input_saved_after_its_insight_builds_the_model_data(
+        self, integration_app, integration_client
+    ):
+        app, client = integration_app, integration_client
+        self._save_and_run(
+            app, client, "/api/models/m/", {"sql": "select 1 as x, 2 as y", "source": "ref(source)"}
+        )
+        self._save_and_run(app, client, "/api/insights/i/", self.INTERACTIVE)
+        assert not os.path.exists(self._parquet(app))
+
+        self._save_and_run(
+            app, client, "/api/inputs/threshold/", {"type": "single-select", "options": ["0"]}
+        )
+        assert os.path.exists(self._parquet(app))
+
+
 class TestUnmappedAndFailurePaths:
     """A type the run loop does not track never stages, and nothing in the
     run-on-save hooks or the run endpoints can turn a save into a 500."""
