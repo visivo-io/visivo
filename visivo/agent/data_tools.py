@@ -328,6 +328,26 @@ def _profile_model_handler(app, arguments):
     return _cards_payload(service, profile, model=name)
 
 
+def model_cards(app, name):
+    """Shape cards for a model's columns, each carrying the model's name: from
+    its built data when a run has built it, else from its SQL on its source."""
+    model = find_model(app, name)
+    if model is None:
+        raise ToolError(f"No model named '{name}'. Call list_models to see them.")
+    service = profiling_service_for(app.output_dir)
+    try:
+        profile = service.profile_model(name)
+    except FileNotFoundError:
+        source = source_for_model(app, model, app.output_dir)
+        sql = getattr(model, "sql", None)
+        if source is None or not sql:
+            raise ToolError(f"Model '{name}' has no built data and no SQL on a source to profile.")
+        profile = service.profile_query(
+            source, sql, sample_rows=DEFAULT_SAMPLE_ROWS, timeout_s=AGENT_QUERY_TIMEOUT_S
+        )
+    return [dict(card, model=name) for card in service.shape_cards(profile)]
+
+
 def _infer_columns_handler(app, arguments):
     arguments = arguments or {}
     model_name, sql, source_name = (

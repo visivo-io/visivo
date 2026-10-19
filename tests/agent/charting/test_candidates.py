@@ -633,6 +633,28 @@ class TestTheTool:
                 integration_app, "score_candidates", {"cards": [PAYMENT], "stats": {"groups": [{}]}}
             )
 
+    def test_models_are_profiled_into_cards(self, integration_app):
+        sqlite = integration_app.project.sources[0].name
+        sql = "select 'cash' as payment_type, 12.5 as fare_amount union all select 'card', 20.0"
+        config = {"name": "trips", "sql": sql, "source": f"ref({sqlite})"}
+        tools.call(integration_app, "write_model", {"config": config})
+
+        result = tools.call(integration_app, "score_candidates", {"models": ["trips"]})
+
+        assert result["candidates"]
+        assert {m["model"] for m in result["semantic_layer"]["metrics"]} == {"trips"}
+        assert not any("DuckDB SQL" in w for w in result["warnings"])
+
+    def test_models_and_cards_are_checked(self, integration_app):
+        with pytest.raises(tools.ToolError, match="Pass 'models'"):
+            tools.call(integration_app, "score_candidates", {})
+        with pytest.raises(tools.ToolError, match="list of model names"):
+            tools.call(integration_app, "score_candidates", {"models": "trips"})
+        with pytest.raises(tools.ToolError, match="list of shape cards"):
+            tools.call(integration_app, "score_candidates", {"models": [], "cards": PAYMENT})
+        with pytest.raises(tools.ToolError, match="No model named 'ghost'"):
+            tools.call(integration_app, "score_candidates", {"models": ["ghost"]})
+
     def test_a_source_sets_the_dialect(self, integration_app):
         name = integration_app.project.sources[0].name
         result = tools.call(integration_app, "score_candidates", {"cards": TAXI, "source": name})

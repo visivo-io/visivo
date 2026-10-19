@@ -9,8 +9,8 @@ tools: [score_candidates]
 "Build something interesting" is a choice of *what* to show. Five bar charts
 of the same metric is the failure this prevents.
 
-1. Profile first (`profile_columns`/`profile_model`), then call
-   `score_candidates` with the cards, each with its `model`. It answers with
+1. Write the model, then call `score_candidates` with `models: [<model>]`.
+   It profiles the model itself, so do not copy cards into the call. It answers with
    the GROUP BY queries worth running (`stats_wanted`, each `expression` and
    `by_expression` already in the source's SQL); run them with
    `query_source` and call again with `stats` (`groups: [{model, by, metric,
