@@ -182,7 +182,17 @@ LIMIT_REACHED = "inference_limit_reached"
 
 def _body(error):
     body = getattr(error, "body", None)
-    return body if isinstance(body, dict) else {}
+    if isinstance(body, dict):
+        return body
+    # The OpenAI SDK keeps only the "error" member of a JSON error body, so
+    # core's "action" survives only on the response of the SDK error that
+    # pydantic-ai raises from.
+    response = getattr(getattr(error, "__cause__", None), "response", None)
+    try:
+        parsed = response.json()
+    except Exception:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def limit_reached(error):
