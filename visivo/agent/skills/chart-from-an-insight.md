@@ -16,7 +16,9 @@ an insight that does not exist yet fails the DAG, so write the insight first.
 4. `preview_insight` and read the rows. Check that every prop has values, that
    categories are what you expect, and that the numbers are plausible. Fix
    the insight here; the preview fails where the dashboard would.
-5. `write_chart`, referring to the insight with `${ref(insight_name)}`. Call
+5. `write_chart`, referring to the insight with `${ref(insight_name)}`. Give the
+   chart its own name, e.g. `trips_by_day_chart`. Names are unique across the
+   project, so a chart named after its insight is refused. Call
    `get_schema('charts')` first if you set layout props you have not used.
 
 ## Format every number a reader sees

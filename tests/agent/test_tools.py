@@ -170,6 +170,46 @@ class TestValidating:
             call(integration_app, "write_markdown", {"config": {"content": "# hi"}})
 
 
+class TestNamesAreUniqueAcrossTypes:
+    """In eval rounds b14, b16 and b17 the agent named each chart after the
+    insight it wraps. The draft tier took both, every ref to the name became
+    ambiguous, the background run failed, and the dashboard's charts spun
+    forever while the agent called it ready."""
+
+    INSIGHT = {"name": "trips_by_day", "props": {"type": "bar", "x": "?{ 1 }", "y": "?{ 2 }"}}
+    CHART = {"name": "trips_by_day", "insights": ["${ref(trips_by_day)}"]}
+
+    def test_a_chart_named_after_its_insight_is_refused(self, integration_app):
+        call(integration_app, "write_insight", {"config": self.INSIGHT})
+
+        with pytest.raises(ToolError, match="already the name of an insight") as raised:
+            call(integration_app, "write_chart", {"config": self.CHART})
+
+        assert "'trips_by_day_chart'" in str(raised.value)
+        assert "trips_by_day" not in integration_app.chart_manager.cached_objects
+
+    def test_validate_reports_the_clash(self, integration_app):
+        call(integration_app, "write_insight", {"config": self.INSIGHT})
+
+        result = call(integration_app, "validate_chart", {"config": self.CHART})
+
+        assert result["valid"] is False and "names are unique" in result["error"].lower()
+
+    def test_a_chart_name_held_by_a_markdown_reads_with_a(self, integration_app):
+        call(integration_app, "write_markdown", {"config": {"name": "notes", "content": "# hi"}})
+        chart = {"name": "notes", "insights": []}
+        with pytest.raises(ToolError, match="already the name of a markdown"):
+            call(integration_app, "write_chart", {"config": chart})
+
+    def test_rewriting_the_same_object_and_a_fresh_name_pass(self, integration_app):
+        call(integration_app, "write_insight", {"config": self.INSIGHT})
+        assert call(integration_app, "write_insight", {"config": self.INSIGHT})["status"] == "draft"
+
+        chart = {"name": "trips_by_day_chart", "insights": ["${ref(trips_by_day)}"]}
+        assert call(integration_app, "write_chart", {"config": chart})["status"] == "draft"
+        assert call(integration_app, "validate_chart", {"config": chart}) == {"valid": True}
+
+
 class TestTheCallingContract:
     def test_an_unknown_tool_is_a_reason_not_a_crash(self, integration_app):
         with pytest.raises(ToolError, match="No tool named 'fly'"):

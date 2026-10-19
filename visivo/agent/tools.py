@@ -49,6 +49,21 @@ def _manager(app, type_key):
     return manager
 
 
+def _name_clash(app, type_key, name):
+    """Why ``name`` cannot be a ``type_key`` because another type holds it, or ``None``."""
+    for other, attr in TYPE_TO_MANAGER.items():
+        manager = getattr(app, attr, None)
+        if other != type_key and manager is not None and manager.get(name) is not None:
+            article = "an" if other[0] in "aeiou" else "a"
+            return (
+                f"'{name}' is already the name of {article} {_singular(other)}. Names are unique "
+                f"across a project, so a {_singular(type_key)} with it makes every ref to "
+                f"'{name}' ambiguous and the project fails to build. Choose another name, e.g. "
+                f"'{name}_{_singular(type_key)}'."
+            )
+    return None
+
+
 def _name_argument(arguments):
     name = (arguments or {}).get("name")
     if not isinstance(name, str) or not name.strip():
@@ -97,6 +112,9 @@ def _get_handler(type_key):
 def _validate_handler(type_key):
     def handler(app, arguments):
         config = _config_argument(arguments)
+        clash = isinstance(config.get("name"), str) and _name_clash(app, type_key, config["name"])
+        if clash:
+            return {"valid": False, "error": clash}
         try:
             _manager(app, type_key).validate_object(config)
         except ToolError:
@@ -115,6 +133,9 @@ def _write_handler(type_key):
         if not isinstance(name, str) or not name.strip():
             raise ToolError("The config must carry a 'name'.")
         manager = _manager(app, type_key)
+        clash = _name_clash(app, type_key, name)
+        if clash:
+            raise ToolError(clash)
         try:
             obj = manager.validate_object(config)
         except Exception as error:
