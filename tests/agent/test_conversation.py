@@ -397,6 +397,67 @@ class TestTheSpendLimitReachesTheUser:
             body={"error": detail, "action": "inference_limit_reached"},
         )
 
+    def _refused_over_http(self, payload):
+        """The refusal as it really arrives: core's JSON 429 through the OpenAI
+        SDK and pydantic-ai, not a hand-built error. The SDK keeps only the
+        body's "error" member, which dropped "action" and hid every limit."""
+        import asyncio
+
+        import httpx
+        from openai import AsyncOpenAI
+        from pydantic_ai import Agent
+        from pydantic_ai.exceptions import ModelHTTPError
+        from pydantic_ai.models.openai import OpenAIChatModel
+        from pydantic_ai.providers.openai import OpenAIProvider
+
+        transport = httpx.MockTransport(lambda request: httpx.Response(429, json=payload))
+        client = AsyncOpenAI(
+            base_url="https://app.visivo.io/api/inference",
+            api_key="token",
+            http_client=httpx.AsyncClient(transport=transport),
+            max_retries=0,
+        )
+        model = OpenAIChatModel(
+            "google/gemini-2.5-pro", provider=OpenAIProvider(openai_client=client)
+        )
+        try:
+            asyncio.run(Agent(model).run("hi"))
+        except ModelHTTPError as error:
+            return error
+        raise AssertionError("the 429 did not raise")
+
+    def test_a_real_refusal_is_recognised_and_explained_and_not_retried(self):
+        from visivo.agent import cloud_model, resilience
+
+        detail = (
+            "This account is out of credit. Buy more to keep going, or set your own provider key."
+        )
+        error = self._refused_over_http(
+            {"error": detail, "action": "inference_limit_reached", "limit": "no_credit"}
+        )
+
+        assert error.body == detail
+        assert cloud_model.limit_reached(error) is True
+        assert cloud_model.explain(error) == detail
+        assert resilience.is_transient(error) is False
+
+    def test_a_real_provider_429_is_still_retried(self):
+        from visivo.agent import cloud_model, resilience
+
+        error = self._refused_over_http({"error": {"message": "slow down"}})
+
+        assert cloud_model.limit_reached(error) is False
+        assert resilience.is_transient(error) is True
+
+    def test_a_cause_without_a_json_response_is_not_a_limit(self):
+        from pydantic_ai.exceptions import ModelHTTPError
+        from visivo.agent import cloud_model
+
+        error = ModelHTTPError(status_code=429, model_name="m", body="slow down")
+        assert cloud_model.limit_reached(error) is False
+        error.__cause__ = RuntimeError("no response here")
+        assert cloud_model.limit_reached(error) is False
+
     def test_the_limit_is_recognised_as_a_limit(self):
         from visivo.agent import cloud_model
 
