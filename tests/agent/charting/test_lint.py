@@ -322,6 +322,107 @@ class TestTables:
         assert lint.warnings(APP, "markdowns", {"name": "m"}) == []
 
 
+class TestDoublePercent:
+    SQL = (
+        "SELECT tz.Zone AS zone, COUNT(*) AS trips, "
+        "AVG(yt.tip_amount / yt.fare_amount) * 100 AS tip_pct, "
+        'SUM(CASE WHEN yt."Airport_fee" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS airport_share, '
+        "AVG(yt.tip_amount / yt.fare_amount) AS tip_rate "
+        "FROM yellow_trips AS yt JOIN taxi_zones AS tz ON yt.PULocationID = tz.LocationID GROUP BY 1"
+    )
+    APP = SimpleNamespace(
+        model_manager=SimpleNamespace(get={"zones": SimpleNamespace(sql=SQL)}.get),
+        metric_manager=SimpleNamespace(
+            get={
+                "tip_share": SimpleNamespace(expression="100.0 * sum(tip) / sum(fare)"),
+                "tip_ratio": SimpleNamespace(expression="sum(tip) / sum(fare)"),
+            }.get
+        ),
+        dimension_manager=SimpleNamespace(get={}.get),
+    )
+
+    def table(self, value, fmt=".1%"):
+        return {"name": "t", "columns": [{"value": value, "format": fmt}]}
+
+    def test_a_percent_format_on_a_model_column_already_times_100_is_flagged(self):
+        for column in ("tip_pct", "airport_share", "Airport_Share"):
+            entry = f'${{ref(zones).{column}}} as "Share"'
+            found = lint.warnings(self.APP, "tables", self.table(entry))
+            assert len(found) == 1 and "2100%" in found[0] and "model `zones`" in found[0]
+
+    def test_a_fraction_or_a_non_percent_format_passes(self):
+        assert (
+            lint.warnings(self.APP, "tables", self.table('${ref(zones).tip_rate} as "Tip"')) == []
+        )
+        assert (
+            lint.warnings(self.APP, "tables", self.table('${ref(zones).tip_pct} as "Tip"', ".1f"))
+            == []
+        )
+        assert (
+            lint.warnings(self.APP, "tables", self.table('${ref(zones).trips} as "T"', ",.0f"))
+            == []
+        )
+        unknown = self.table('${ref(other).tip_pct} as "Tip"')
+        assert lint.warnings(self.APP, "tables", unknown) == []
+        assert lint.warnings(SimpleNamespace(), "tables", unknown) == []
+
+    def test_a_metric_or_inline_expression_times_100_is_flagged(self):
+        for value in ('${ref(tip_share)} as "Tip"', '${ref(zones).tip_share} as "Tip"'):
+            found = lint.warnings(self.APP, "tables", self.table(value))
+            assert len(found) == 1 and "`tip_share`" in found[0]
+        values = {
+            "name": "p",
+            "values": [{"value": "sum(${ref(zones).tip_rate}) * 100", "format": "0.1%"}],
+        }
+        found = lint.warnings(self.APP, "tables", values)
+        assert len(found) == 1 and "the expression" in found[0]
+        ratio = self.table('${ref(tip_ratio)} as "Tip"')
+        assert lint.warnings(self.APP, "tables", ratio) == []
+
+    def test_scaling_by_1000_or_100_point_5_is_not_a_percentage(self):
+        for expression in ("sum(x) * 1000", "sum(x) * 100.5", "1000 * sum(x)", "x + 100"):
+            assert lint._times_100(self.APP, expression) is None
+        for expression in ("sum(x) * 100", "100.0*sum(x)", "sum(x)*100.00 / n"):
+            assert lint._times_100(self.APP, expression) == "the expression"
+
+    def test_sql_that_does_not_parse_is_skipped(self):
+        broken = SimpleNamespace(
+            model_manager=SimpleNamespace(get=lambda n: SimpleNamespace(sql="SELECT ("))
+        )
+        assert lint._times_100(broken, "${ref(zones).tip_pct}") is None
+
+    def test_an_insight_with_a_percent_format_over_a_times_100_query_is_flagged(self):
+        props = {
+            "type": "bar",
+            "x": "?{ ${ref(zones).zone} }",
+            "y": "?{ avg(${ref(zones).tip_pct}) }",
+            "texttemplate": "%{y}",
+            "hoverlabel": {"hoverformat": ".1%"},
+        }
+        found = lint.warnings(self.APP, "insights", _insight(props))
+        assert len(found) == 1 and "`hoverlabel.hoverformat: '.1%'`" in found[0]
+        props["y"] = "?{ avg(${ref(zones).tip_rate}) }"
+        assert lint.warnings(self.APP, "insights", _insight(props)) == []
+
+    def test_a_kpi_with_a_percent_valueformat_over_a_times_100_metric_is_flagged(self):
+        props = {
+            "type": "indicator",
+            "value": "?{ ${ref(tip_share)} }",
+            "number": {"valueformat": ".1%"},
+        }
+        found = lint.warnings(self.APP, "insights", _insight(props))
+        assert len(found) == 1 and "number.valueformat" in found[0]
+
+    def test_a_date_format_is_not_a_percent_format(self):
+        props = {"type": "scatter", "x": "?{ ${ref(zones).tip_pct} }", "xhoverformat": "%b %Y"}
+        props["hoverformat"] = "%Y-%m"
+        assert lint.warnings(self.APP, "insights", _insight(props)) == []
+
+    def test_an_unaliased_formatted_column_is_flagged(self):
+        found = lint.warnings(self.APP, "tables", self.table("${ref(zones).trips}", ",.0f"))
+        assert len(found) == 1 and "Alias every column" in found[0]
+
+
 class TestTheWriteCarriesThem:
     def test_write_chart_warns_about_untitled_axes(self, integration_app):
         insight = {"name": "by_region", "props": {"type": "bar", "x": "?{ 1 }", "y": "?{ 2 }"}}
@@ -338,6 +439,14 @@ class TestTheWriteCarriesThem:
         result = call(integration_app, "write_insight", {"config": config})
         assert result["status"] == "draft"
         assert any("reversescale" in w for w in result["warnings"])
+
+    def test_write_table_warns_about_a_percentage_formatted_twice(self, integration_app):
+        model = {"name": "shares", "sql": "SELECT x, y * 100.0 / x AS share FROM test_table"}
+        call(integration_app, "write_model", {"config": model})
+        column = {"value": '${ref(shares).share} as "Share"', "format": ".1%"}
+        table = {"name": "share_table", "columns": [column]}
+        result = call(integration_app, "write_table", {"config": table})
+        assert any("model `shares` for `share`" in w for w in result["warnings"])
 
     def test_a_clean_write_has_no_warnings_key(self, integration_app):
         result = call(

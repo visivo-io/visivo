@@ -9,6 +9,10 @@ eval found repeatedly; none of them refuses the write.
 import re
 from datetime import date
 
+import sqlglot
+from sqlglot import exp
+
+from visivo.models.table import field_value
 from visivo.query.patterns import extract_ref_names
 
 # Plotly's named scales that run dark to light: the highest values come out palest.
@@ -30,6 +34,10 @@ _COLUMN_IN_REF = re.compile(r"\$\{\s*ref\(\s*([\w-]+)\.([\w.-]+)\s*\)")
 _BARE_COLUMN = re.compile(r"\s*\$\{\s*ref\(\s*([\w-]+)\s*\)\.[\w.-]+\s*\}\s*")
 _WORD = re.compile(r"[A-Za-z]{4,}")
 _QUERY = re.compile(r"\s*\?\{\s*(.*?)\s*\}\s*", re.DOTALL)
+_TIMES_100 = re.compile(r"\*\s*100(?:\.0*)?(?![\w.])|(?<![\w.])100(?:\.0*)?\s*\*")
+_FIELD_REF = re.compile(r"\$\{\s*ref\(\s*([\w-]+)\s*\)(?:\.([\w-]+))?\s*\}")
+# A d3 number format that ends in %, as opposed to a date format such as %Y.
+_PERCENT_FORMAT = re.compile(r"[^%]*%")
 # Plotly puts a `~` in front of a format that starts with a sign and holds an
 # f, s or p, which d3 then rejects, so the number prints raw.
 _UNREADABLE_FORMAT = re.compile(r"^[-+( #].*[fps]")
@@ -44,7 +52,7 @@ def warnings(app, type_key, config):
     if type_key == "insights":
         return _insight(app, config)
     if type_key == "tables":
-        return _table(config)
+        return _table(app, config)
     if type_key == "models" and _REF.search(str(config.get("sql") or "")):
         return [
             "A model's SQL runs on its source exactly as written, so `${ref(...)}` does not "
@@ -98,6 +106,7 @@ def _insight(app, config):
         )
     if trace == "indicator":
         found += _indicator(props)
+    found += _insight_percent(app, props)
     for interaction in config.get("interactions") or []:
         for expression in interaction.values():
             for name, accessor in _RANGE_ACCESSOR.findall(str(expression)):
@@ -227,18 +236,81 @@ def _item_refs(rows):
             yield from _item_refs(item.get("rows") or [])
 
 
-def _table(config):
+def _table(app, config):
+    entries = [entry for key in ("columns", "rows", "values") for entry in config.get(key) or []]
+    found = []
     unaliased = [
-        column
-        for column in config.get("columns") or []
-        if isinstance(column, str) and _REF.search(column) and " as " not in column.lower()
+        value
+        for value in map(field_value, config.get("columns") or [])
+        if isinstance(value, str) and _REF.search(value) and " as " not in value.lower()
     ]
-    if not unaliased:
+    if unaliased:
+        found.append(
+            "Alias every column with a readable label and its unit "
+            f'(`{unaliased[0]} as "Label"`); unaliased headers show raw or hashed names.'
+        )
+    for entry in entries:
+        if not isinstance(entry, dict) or not _PERCENT_FORMAT.fullmatch(str(entry.get("format"))):
+            continue
+        source = _times_100(app, str(entry.get("value") or ""))
+        if source:
+            found.append(_double_percent(f"`format: '{entry['format']}'`", source))
+    return found
+
+
+def _insight_percent(app, props):
+    formats = [
+        f"`{key}: '{value}'`"
+        for key, value in _strings(props)
+        if key.rsplit(".", 1)[-1] in FORMAT_KEYS and _PERCENT_FORMAT.fullmatch(value)
+    ]
+    if not formats:
         return []
-    return [
-        "Alias every column with a readable label and its unit "
-        f'(`{unaliased[0]} as "Label"`); unaliased headers show raw or hashed names.'
-    ]
+    for _key, value in _strings(props):
+        source = "?{" in value and _times_100(app, value)
+        if source:
+            return [_double_percent(formats[0], source)]
+    return []
+
+
+def _double_percent(fmt, source):
+    return (
+        f"{fmt} multiplies by 100, and {source} already does, so 0.21 shows as 2100%. Drop "
+        "the `* 100` and keep the value a fraction, or keep it and format with `.1f` and a "
+        "`%` label."
+    )
+
+
+def _times_100(app, expression):
+    """Where an expression is already scaled to a percentage, or ``None``."""
+    if _TIMES_100.search(expression):
+        return "the expression"
+    for name, column in _FIELD_REF.findall(expression):
+        model = _get(app, "model_manager", name) if column else None
+        if model is not None and _column_times_100(str(getattr(model, "sql", "") or ""), column):
+            return f"the SQL of model `{name}` for `{column}`"
+        field_name = column or name
+        for manager in ("metric_manager", "dimension_manager"):
+            field = _get(app, manager, field_name)
+            if field is not None and _TIMES_100.search(str(getattr(field, "expression", "") or "")):
+                return f"`{field_name}`"
+    return None
+
+
+def _column_times_100(sql, column):
+    try:
+        tree = sqlglot.parse_one(sql)
+    except sqlglot.errors.SqlglotError:
+        return False
+    return any(
+        alias.alias.lower() == column.lower() and _TIMES_100.search(alias.this.sql())
+        for alias in tree.find_all(exp.Alias)
+    )
+
+
+def _get(app, manager, name):
+    manager = getattr(app, manager, None)
+    return manager.get(name) if manager is not None else None
 
 
 def _columns_in_refs(text, kind):
