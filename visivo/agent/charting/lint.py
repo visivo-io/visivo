@@ -28,6 +28,8 @@ _RANGE_ACCESSOR = re.compile(r"(?<!')\$\{\s*ref\(\s*([\w-]+)\s*\)\.(min|max)\s*\
 _REF = re.compile(r"\$\{\s*ref\(")
 _COLUMN_IN_REF = re.compile(r"\$\{\s*ref\(\s*([\w-]+)\.([\w.-]+)\s*\)")
 _BARE_COLUMN = re.compile(r"\s*\$\{\s*ref\(\s*([\w-]+)\s*\)\.[\w.-]+\s*\}\s*")
+_WORD = re.compile(r"[A-Za-z]{4,}")
+_QUERY = re.compile(r"\s*\?\{\s*(.*?)\s*\}\s*", re.DOTALL)
 # Plotly puts a `~` in front of a format that starts with a sign and holds an
 # f, s or p, which d3 then rejects, so the number prints raw.
 _UNREADABLE_FORMAT = re.compile(r"^[-+( #].*[fps]")
@@ -77,6 +79,7 @@ def _insight(app, config):
             "of `?{ count(*) }`."
         )
     trace = props.get("type")
+    found += _line_order(trace, props, config.get("interactions"))
     scale = props.get("colorscale")
     if trace in COLOR_SCALED and scale in DARK_TO_LIGHT and not props.get("reversescale"):
         found.append(
@@ -93,11 +96,8 @@ def _insight(app, config):
             "'t CO2 per person'`). If one or two values dwarf the rest, cap the scale with "
             "`zmax` near a high percentile so the others stay distinguishable."
         )
-    if trace == "indicator" and not (props.get("number") or {}).get("valueformat"):
-        found.append(
-            "The indicator has no `number.valueformat`; set one (`,.0f`, `$,.0f`, `.1%`) so the "
-            "value does not print raw, e.g. 8.000414846174507."
-        )
+    if trace == "indicator":
+        found += _indicator(props)
     for interaction in config.get("interactions") or []:
         for expression in interaction.values():
             for name, accessor in _RANGE_ACCESSOR.findall(str(expression)):
@@ -107,6 +107,42 @@ def _insight(app, config):
                         f"the database reads it as arithmetic. Write `'${{ref({name}).{accessor}}}'::date`."
                     )
     return found + _formats(props)
+
+
+def _indicator(props):
+    found = []
+    number = props.get("number") or {}
+    delta = props.get("delta") or {}
+    if not number.get("valueformat"):
+        found.append(
+            "The indicator has no `number.valueformat`; set one (`,.0f`, `$,.0f`, `.1%`) so the "
+            "value does not print raw, e.g. 8.000414846174507."
+        )
+    prefix = str(number.get("prefix") or "")
+    if _WORD.search(prefix):
+        found.append(
+            f"`number.prefix: {prefix}` prints against the value with no gap (`{prefix}12,541`). "
+            f"Put the label in `title.text: {prefix.strip()}` and keep the prefix for a unit "
+            "such as `$`."
+        )
+    if delta.get("relative") and not delta.get("valueformat"):
+        found.append(
+            "`delta.relative: true` with no `delta.valueformat` prints the change unrounded "
+            "(1.300485%). Set `delta.valueformat: '.1%'`."
+        )
+    return found
+
+
+def _line_order(trace, props, interactions):
+    mode = str(props.get("mode") or "")
+    query = _QUERY.fullmatch(str(props.get("x") or ""))
+    sorted_ = any(isinstance(i, dict) and "sort" in i for i in interactions or [])
+    if trace not in ("scatter", "scattergl") or "lines" not in mode or not query or sorted_:
+        return []
+    return [
+        f"`mode: {mode}` joins the points in row order, not x order, so the line zig-zags. "
+        f"Add `- sort: ?{{ {query.group(1)} ASC }}` under `interactions`."
+    ]
 
 
 def _formats(node):
@@ -146,7 +182,7 @@ def _axis_titles(app, config):
         return []
     return [
         f"The chart's value axis ({' and '.join(missing)}) has no title. Name it with its unit, "
-        "e.g. `layout.yaxis.title.text: 'Revenue ($)'`, so the reader knows what is measured."
+        f"e.g. `layout.{missing[0]}.title.text: 'Revenue ($)'`, so the reader knows what is measured."
     ]
 
 
