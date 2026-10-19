@@ -7,7 +7,7 @@ eval found repeatedly; none of them refuses the write.
 """
 
 import re
-from datetime import date
+from datetime import date, datetime
 
 import sqlglot
 from sqlglot import exp
@@ -38,6 +38,13 @@ _TIMES_100 = re.compile(r"\*\s*100(?:\.0*)?(?![\w.])|(?<![\w.])100(?:\.0*)?\s*\*
 _FIELD_REF = re.compile(r"\$\{\s*ref\(\s*([\w-]+)\s*\)(?:\.([\w-]+))?\s*\}")
 # A d3 number format that ends in %, as opposed to a date format such as %Y.
 _PERCENT_FORMAT = re.compile(r"[^%]*%")
+# The viewer's date expressions (utils/dateExpressions.js): an anchor, then an optional offset.
+_UNITS = r"(?:days?|weeks?|months?|quarters?|years?)"
+_DATE_EXPRESSION = re.compile(
+    r"(?:today|now|(?:start|end)_of_(?:week|month|quarter|year))" rf"(?:\s*[+-]\s*\d+\s*{_UNITS})?",
+    re.IGNORECASE,
+)
+_STEP = re.compile(rf"\d+\s*{_UNITS}", re.IGNORECASE)
 # Plotly puts a `~` in front of a format that starts with a sign and holds an
 # f, s or p, which d3 then rejects, so the number prints raw.
 _UNREADABLE_FORMAT = re.compile(r"^[-+( #].*[fps]")
@@ -63,6 +70,8 @@ def warnings(app, type_key, config):
         return _columns_in_refs(str(config.get("expression") or ""), _singular(type_key))
     if type_key == "dashboards":
         return _dashboard_refs(app, config)
+    if type_key == "inputs":
+        return _date_range(config)
     if type_key == "charts":
         return _axis_titles(app, config) + _formats(config.get("layout"))
     return []
@@ -271,6 +280,43 @@ def _insight_percent(app, props):
         if source:
             return [_double_percent(formats[0], source)]
     return []
+
+
+def _date_range(config):
+    display = config.get("display") or {}
+    if display.get("type") != "date-range":
+        return []
+    bounds = {f"range.{key}": (config.get("range") or {}).get(key) for key in ("start", "end")} | {
+        f"display.default.{key}": (display.get("default") or {}).get(key)
+        for key in ("start", "end")
+    }
+    found = [
+        f"`{path}: {value}` is not a date, so the input offers no dates and every insight "
+        "it filters fails. Write an ISO date (`2024-01-01`), a date expression "
+        "(`today - 30 days`, `start_of_month`) or a query."
+        for path, value in bounds.items()
+        if value is not None and not _date_bound(value)
+    ]
+    step = (config.get("range") or {}).get("step")
+    if isinstance(step, str) and "?{" not in step and not _STEP.fullmatch(step.strip()):
+        found.append(
+            f"`range.step: {step}` is not a step the date picker reads. Write a count and a "
+            "unit, e.g. `1 day` or `1 week`."
+        )
+    return found
+
+
+def _date_bound(value):
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    if "?{" in text or _DATE_EXPRESSION.fullmatch(text):
+        return True
+    try:
+        datetime.fromisoformat(text)
+        return True
+    except ValueError:
+        return False
 
 
 def _double_percent(fmt, source):

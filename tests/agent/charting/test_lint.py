@@ -423,6 +423,51 @@ class TestDoublePercent:
         assert len(found) == 1 and "Alias every column" in found[0]
 
 
+class TestDateRangeInputs:
+    def b17(self, **range_):
+        return {
+            "name": "pickup_date",
+            "type": "multi-select",
+            "range": {"start": "2024-.1-01", "end": "2024-04-01", "step": "1 day", **range_},
+            "display": {
+                "type": "date-range",
+                "default": {"start": "2024-01-01", "end": "2024-01-31"},
+            },
+        }
+
+    def test_the_b17_typo_in_a_range_bound_is_flagged(self):
+        found = lint.warnings(APP, "inputs", self.b17())
+        assert len(found) == 1 and "`range.start: 2024-.1-01` is not a date" in found[0]
+
+    def test_dates_expressions_and_queries_pass(self):
+        for start in (
+            "2024-01-01",
+            "2024-01-01T00:00:00",
+            "today - 30 days",
+            "START_OF_MONTH",
+            "end_of_quarter + 1 week",
+            "?{ min(${ref(trips).pickup_date}) }",
+        ):
+            assert lint.warnings(APP, "inputs", self.b17(start=start)) == [], start
+
+    def test_a_bad_default_a_number_and_a_bad_step_are_flagged(self):
+        config = self.b17(start="2024-01-01", end=2024, step="daily")
+        config["display"]["default"]["start"] = "yesterday"
+        found = lint.warnings(APP, "inputs", config)
+        assert len(found) == 3
+        assert "`range.end: 2024`" in found[0] and "`display.default.start: yesterday`" in found[1]
+        assert "`range.step: daily`" in found[2]
+        assert lint.warnings(APP, "inputs", self.b17(start="2024-01-01", step="?{ 1 }")) == []
+
+    def test_other_inputs_pass(self):
+        chips = {"name": "b", "type": "multi-select", "display": {"type": "chips"}}
+        assert lint.warnings(APP, "inputs", chips) == []
+        assert lint.warnings(APP, "inputs", {"name": "s", "type": "single-select"}) == []
+        no_default = self.b17(start="2024-01-01")
+        del no_default["display"]["default"]
+        assert lint.warnings(APP, "inputs", no_default) == []
+
+
 class TestTheWriteCarriesThem:
     def test_write_chart_warns_about_untitled_axes(self, integration_app):
         insight = {"name": "by_region", "props": {"type": "bar", "x": "?{ 1 }", "y": "?{ 2 }"}}
@@ -447,6 +492,12 @@ class TestTheWriteCarriesThem:
         table = {"name": "share_table", "columns": [column]}
         result = call(integration_app, "write_table", {"config": table})
         assert any("model `shares` for `share`" in w for w in result["warnings"])
+
+    def test_write_input_warns_about_a_bound_that_is_not_a_date(self, integration_app):
+        config = TestDateRangeInputs().b17()
+        result = call(integration_app, "write_input", {"config": config})
+        assert result["status"] == "draft"
+        assert any("`range.start: 2024-.1-01`" in w for w in result["warnings"])
 
     def test_a_clean_write_has_no_warnings_key(self, integration_app):
         result = call(
