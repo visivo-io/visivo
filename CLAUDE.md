@@ -332,7 +332,7 @@ Test Strategy:
 
 ## Analytics & Event Taxonomy
 
-PostHog is the single source of conversion/activation truth across `www`, `visivo` (CLI + viewer), and `core`. The canonical, cross-repo contract for event names, the required `surface`/context properties, and identity stitching is **`../specs/marketing-relaunch/event-taxonomy.md`** — read it before adding or changing any tracking.
+PostHog is the single source of conversion/activation truth across the marketing site, `visivo` (CLI + viewer), and the cloud. Event names, the required `surface`/context properties, and identity stitching follow a shared event taxonomy maintained by the Visivo team. Before adding or changing any tracking, read the existing events in `visivo/telemetry/` and `viewer/src/components/onboarding/telemetry.js` and follow their conventions (snake_case, `surface` set, no PII, additive — never rename a live event).
 
 - **CLI** emits `cli_command` / `api_request` / `new_installation` (anonymous `machine_id`); the **viewer** onboarding emits events through `viewer/src/components/onboarding/telemetry.js` (`fireEvent` → `posthog.capture`, `surface: viewer`). The CLI never sends or stores email.
 - **Developer machines are opted out on purpose.** Visivo's own developers run `visivo telemetry off` once (writes `telemetry_enabled: false` to `~/.visivo/config.yml`), because their daily `visivo serve` sessions are not product usage and were the bulk of PostHog volume in 2026. `visivo telemetry status` shows the effective state and why. Assume telemetry is off on this machine; do not "fix" that.

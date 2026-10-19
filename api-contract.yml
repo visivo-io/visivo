@@ -1,0 +1,682 @@
+# API contract between the viewer and the two servers that host it.
+#
+# The viewer (viewer/src) is served by `visivo serve` (Flask, surface `studio`), by Visivo Cloud
+# (Django, surface `cloud`) and as a static export (`dist`). Every path the viewer can request is
+# listed here, keyed by its name in viewer/src/config/urls.js. `literals` holds the paths that
+# bypass the registry; prefer adding a key and moving the call to the registry.
+#
+# Fields: path (template), verbs (what the viewer sends), serves (which surfaces answer),
+# cloud_equivalent or reason (required when studio serves a path and the cloud does not).
+#
+# Checked by tests/server/test_api_contract.py here and by the cloud's parity test. The check fails
+# on a viewer path with no entry, a `cloud` claim the cloud routes do not honor, a `studio` claim
+# the Flask routes do not honor, a studio-only entry with no equivalent and no reason, and an
+# entry that nothing references. Generated route tables are never committed.
+version: 1
+entries:
+  sourcesList:
+    path: /api/sources/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  sourceDetail:
+    path: /api/sources/{name}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  sourceValidate:
+    path: /api/sources/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  sourceConnections:
+    path: /api/source-connections/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  modelsList:
+    path: /api/models/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  modelDetail:
+    path: /api/models/{name}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  modelValidate:
+    path: /api/models/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  modelProfileInvalidate:
+    path: /api/models/{name}/profile/invalidate/
+    verbs: []
+    serves:
+    - studio
+    cloud_equivalent: /api/profiles/
+  profiles:
+    path: /api/profiles/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  profileJobDetail:
+    path: /api/profiles/{jobId}/
+    verbs: []
+    serves:
+    - cloud
+  dimensionsList:
+    path: /api/dimensions/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  dimensionDetail:
+    path: /api/dimensions/{name}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  dimensionValidate:
+    path: /api/dimensions/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  metricsList:
+    path: /api/metrics/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  metricDetail:
+    path: /api/metrics/{name}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  metricValidate:
+    path: /api/metrics/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  relationsList:
+    path: /api/relations/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  relationDetail:
+    path: /api/relations/{name}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  relationValidate:
+    path: /api/relations/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  insightsList:
+    path: /api/insights/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  insightDetail:
+    path: /api/insights/{name}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  insightValidate:
+    path: /api/insights/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  inputsList:
+    path: /api/inputs/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+    - dist
+  inputDetail:
+    path: /api/inputs/{name}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  inputValidate:
+    path: /api/inputs/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  markdownsList:
+    path: /api/markdowns/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+    - dist
+  markdownDetail:
+    path: /api/markdowns/{name}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  markdownValidate:
+    path: /api/markdowns/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  chartsList:
+    path: /api/charts/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+    - dist
+  chartDetail:
+    path: /api/charts/{name}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  chartValidate:
+    path: /api/charts/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  tablesList:
+    path: /api/tables/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+    - dist
+  tableDetail:
+    path: /api/tables/{name}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  tableValidate:
+    path: /api/tables/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  projectsList:
+    path: /api/projects/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  projectDetail:
+    path: /api/projects/{name}/
+    verbs:
+    - DELETE
+    - POST
+    serves:
+    - studio
+    - cloud
+    drift: Viewer sends POST (save) and DELETE; Flask accepts GET, POST, DELETE; Django accepts GET, PUT. VIS-1508.
+  projectValidate:
+    path: /api/projects/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+    drift: Viewer sends POST; Flask accepts POST; Django accepts GET. VIS-1508.
+  dashboardsList:
+    path: /api/dashboards/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+    - dist
+  dashboardSave:
+    path: /api/dashboards/{name}/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  dashboardDelete:
+    path: /api/dashboards/{name}/delete/
+    verbs: []
+    serves:
+    - studio
+    reason: 'Cloud gap: core has dashboard list and detail only. Deleting a dashboard in the cloud is a draft edit of the
+      project file.'
+  dashboardValidate:
+    path: /api/dashboards/{name}/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    reason: 'Cloud gap: core has dashboard list and detail only. Validation happens on the draft run.'
+  defaults:
+    path: /api/defaults/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  theme:
+    path: /api/theme/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  explorationsList:
+    path: /api/explorations/
+    verbs:
+    - GET
+    - POST
+    serves:
+    - studio
+    - cloud
+  explorationDetail:
+    path: /api/explorations/{id}/
+    verbs:
+    - DELETE
+    - GET
+    - POST
+    serves:
+    - studio
+    - cloud
+  explorationConsumeReturnTo:
+    path: /api/explorations/{id}/consume-return-to/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  explorationRecordPromotion:
+    path: /api/explorations/{id}/record-promotion/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  modelSchemasList:
+    path: /api/model-schemas/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  modelSchemaDetail:
+    path: /api/model-schemas/{name}/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  sourceSchemaJobsList:
+    path: /api/source-schema-jobs/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  sourceSchemaJobDetail:
+    path: /api/source-schema-jobs/{identifier}/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  modelQueryJobs:
+    path: /api/model-query-jobs/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  modelQueryJobDetail:
+    path: /api/model-query-jobs/{jobId}/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  insightJobsQuery:
+    path: /api/insight-jobs/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+    - dist
+  inputJobsQuery:
+    path: /api/input-jobs/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+    - dist
+  modelJobsQuery:
+    path: /api/model-jobs/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+    - dist
+  projectCapabilities:
+    path: /api/projects/{projectId}/capabilities/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  projectDraft:
+    path: /api/projects/{projectId}/draft/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  projectBranch:
+    path: /api/projects/{projectId}/branch/
+    verbs:
+    - POST
+    serves:
+    - cloud
+  projectChanges:
+    path: /api/projects/{projectId}/changes/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  projectCommit:
+    path: /api/projects/{projectId}/commit/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  projectDiscard:
+    path: /api/projects/{projectId}/discard/
+    verbs:
+    - DELETE
+    - POST
+    serves:
+    - studio
+    - cloud
+    drift: Viewer sends POST and DELETE; Flask accepts POST only. VIS-1508.
+  projectRun:
+    path: /api/projects/{projectId}/run/
+    verbs:
+    - GET
+    - POST
+    serves:
+    - studio
+    - cloud
+  runLogs:
+    path: /api/runs/{runId}/logs/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  runCancel:
+    path: /api/runs/{runId}/cancel/
+    verbs:
+    - POST
+    serves:
+    - cloud
+  commitStatus:
+    path: /api/commit/status/
+    verbs:
+    - GET
+    serves:
+    - studio
+    cloud_equivalent: /api/projects/{id}/commit/
+  commitPending:
+    path: /api/commit/pending/
+    verbs:
+    - GET
+    serves:
+    - studio
+    cloud_equivalent: /api/projects/{id}/changes/
+  commit:
+    path: /api/commit/
+    verbs:
+    - POST
+    serves:
+    - studio
+    cloud_equivalent: /api/projects/{id}/commit/
+  commitDiscard:
+    path: /api/commit/discard/
+    verbs:
+    - POST
+    serves:
+    - studio
+    cloud_equivalent: /api/projects/{id}/discard/
+  rename:
+    path: /api/rename/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  renameImpact:
+    path: /api/rename/impact/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  queryExecution:
+    path: /api/query/{projectId}/
+    verbs: []
+    serves: []
+    reason: Legacy key. No server implements it and no call site uses it. Remove the key.
+  explorerDiff:
+    path: /api/explorer/diff/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  expressionsTranslate:
+    path: /api/expressions/translate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  expressionsValidate:
+    path: /api/expressions/validate/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  insightCompileDraft:
+    path: /api/insight-compile-draft/
+    verbs:
+    - POST
+    serves:
+    - studio
+    cloud_equivalent: /api/insight-jobs/
+  insightExecuteDraft:
+    path: /api/insight-execute-draft/
+    verbs:
+    - POST
+    serves:
+    - studio
+    cloud_equivalent: /api/insight-jobs/
+  project:
+    path: /api/project/
+    verbs: []
+    serves:
+    - studio
+    - dist
+    cloud_equivalent: /api/projects/{id}/
+  error:
+    path: /api/error/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - dist
+    cloud_equivalent: /api/runs/{id}/logs/
+  projectFilePath:
+    path: /api/project/project_file_path/
+    verbs:
+    - GET
+    serves:
+    - studio
+    reason: Reports the local project file path. Meaningless in the cloud.
+  dashboardQuery:
+    path: /api/dashboards/{name}/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+    - dist
+  dashboardThumbnail:
+    path: /api/dashboards/{name}.png/
+    verbs: []
+    serves:
+    - studio
+    - dist
+    reason: 'Cloud gap: core renders thumbnails in a job, not on request. The viewer does not call it in the cloud.'
+  mePreferences:
+    path: /api/me/preferences/
+    verbs:
+    - GET
+    - PUT
+    serves:
+    - studio
+    - cloud
+  workspaceTelemetry:
+    path: /api/telemetry/workspace-event/
+    verbs: []
+    serves:
+    - studio
+    reason: Relay so the viewer never holds a PostHog key. The cloud app sends events directly.
+  agentActions:
+    path: /api/projects/{projectId}/agent/actions/
+    verbs: []
+    serves:
+    - studio
+    - cloud
+  agentSessions:
+    path: /api/projects/{projectId}/agent/
+    verbs:
+    - GET
+    - POST
+    serves:
+    - studio
+    - cloud
+  agentSession:
+    path: /api/projects/{projectId}/agent/{sessionId}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  agentSessionCancel:
+    path: /api/projects/{projectId}/agent/{sessionId}/cancel/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  socketIo:
+    path: /socket.io/
+    verbs: []
+    serves: []
+    reason: Hot-reload websocket handled by Flask-SocketIO outside the route table. The cloud polls runs instead.
+literals:
+- path: /api/auth/status/
+  verbs:
+  - GET
+  serves:
+  - studio
+  - cloud
+- path: /api/auth/authorize-device-token/
+  verbs:
+  - POST
+  serves:
+  - studio
+  reason: Local device-auth handshake with the cloud; a cloud session is already signed in.
+- path: /api/cloud/job/status/${authId}/
+  verbs:
+  - GET
+  serves:
+  - studio
+  cloud_equivalent: /api/runs/{id}/
+- path: /api/${segmentFor(type)}/${encodeURIComponent(name)}/restore/
+  verbs: []
+  serves:
+  - studio
+  cloud_equivalent: /api/<type>/{name}/restore/ (one route per object type)
+- path: /api/cloud/branches/
+  verbs:
+  - GET
+  - POST
+  serves:
+  - studio
+  cloud_equivalent: /api/branches/
+- path: /api/cloud/deploy/
+  verbs:
+  - POST
+  serves:
+  - studio
+  cloud_equivalent: /api/runs/{id}/deploy/
+- path: /api/project/load_example/
+  verbs:
+  - POST
+  serves:
+  - studio
+  reason: 'Local onboarding only: writes an example project to disk. The cloud creates projects through /api/projects/draft/.'
+- path: /api/source/create/
+  verbs:
+  - POST
+  serves:
+  - studio
+  cloud_equivalent: /api/sources/
+- path: /api/source/upload/
+  verbs:
+  - POST
+  serves:
+  - studio
+  cloud_equivalent: /api/files/
+- path: /api/project/finalize/
+  verbs:
+  - POST
+  serves:
+  - studio
+  cloud_equivalent: /api/projects/draft/
