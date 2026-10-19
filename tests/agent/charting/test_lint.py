@@ -186,9 +186,13 @@ class TestAxisTitles:
 
     def test_an_untitled_value_axis_is_flagged(self):
         found = lint.warnings(self.APP, "charts", self.chart("bars", {"xaxis": {"title": "Week"}}))
-        assert len(found) == 1 and "value axis (yaxis)" in found[0]
+        assert (
+            len(found) == 1
+            and "value axis (yaxis)" in found[0]
+            and "`layout.yaxis.title.text" in found[0]
+        )
         horizontal = lint.warnings(self.APP, "charts", self.chart("hbars"))
-        assert "value axis (xaxis)" in horizontal[0]
+        assert "value axis (xaxis)" in horizontal[0] and "`layout.xaxis.title.text" in horizontal[0]
         both = {"name": "c", "insights": ["${ref(bars)}", "${ref(hbars)}"]}
         assert "(xaxis and yaxis)" in lint.warnings(self.APP, "charts", both)[0]
 

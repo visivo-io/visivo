@@ -182,7 +182,7 @@ def _axis_titles(app, config):
         return []
     return [
         f"The chart's value axis ({' and '.join(missing)}) has no title. Name it with its unit, "
-        "e.g. `layout.yaxis.title.text: 'Revenue ($)'`, so the reader knows what is measured."
+        f"e.g. `layout.{missing[0]}.title.text: 'Revenue ($)'`, so the reader knows what is measured."
     ]
 
 
