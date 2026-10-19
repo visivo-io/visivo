@@ -5,6 +5,7 @@ import pytest
 
 from visivo.agent import skills
 from visivo.agent.charting import render
+from visivo.agent.charting.rules import load_families
 
 
 class TestTheRenderedBlock:
@@ -102,6 +103,46 @@ class TestTheTableSkill:
         assert "`table_pivot` when cross cells in (400, 2000]" in text
         assert "`rows_per_page` ∈ [3, 5, 10, 25, 50, 100, 500, 1000]" in text
         assert "#713b57" in text and "≤6 columns may sit beside its chart" in text
+
+
+class TestTheFamilySkills:
+    """VIS-1447: every family's on-demand skill is generated from its trace
+    entries, so what the agent reads before write_insight cannot drift from
+    the rules recommend_charts applies."""
+
+    def test_every_family_names_a_skill_that_exists_on_demand(self):
+        on_demand = {s["name"]: s for s in skills.on_demand()}
+        for family in load_families():
+            assert family.skill in on_demand, family.name
+            assert on_demand[family.skill]["always"] is False
+
+    def test_each_committed_skill_equals_its_render(self):
+        rendered = render.rendered_family_skills()
+        assert len(rendered) == len(load_families()) - 2  # table and table_pivot share charts/table
+        for name, text in rendered.items():
+            path = render.CHARTS_DIR / name
+            assert path.read_text() == text, f"run python -m visivo.agent.charting.render ({name})"
+
+    def test_a_skill_carries_its_entries_and_its_family_warnings(self):
+        heatmap = next(f for f in load_families() if f.name == "heatmap")
+        text = render.family_skill_markdown(heatmap)
+        assert "Weekday or month names sort alphabetically" in text
+        assert heatmap.warnings and heatmap.warnings[0] in text
+        assert "type: heatmap" in text and text.count(render.START) == 1
+
+    def test_a_deprecated_trace_is_listed_but_never_the_lead(self):
+        geo = next(f for f in load_families() if f.name == "geo_region")
+        text = render.family_skill_markdown(geo)
+        assert "`choroplethmapbox` (deprecated)" in text
+        assert "**Example** (`choroplethmapbox`)" not in text
+
+    def test_shape_ranges_read_as_words(self):
+        assert render._range(None, "rows") is None
+        from visivo.agent.charting.schema import MinMax
+
+        assert render._range(MinMax(min=1, max=1), "metrics") == "1 metric"
+        assert render._range(MinMax(min=3), "cells") == "3+ cells"
+        assert render._range(MinMax(min=2, max=9), "rows") == "2–9 rows"
 
 
 class TestTheAlwaysOnTier:

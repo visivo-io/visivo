@@ -269,6 +269,114 @@ def pattern_markdown(pattern):
     return "\n".join(lines) + "\n"
 
 
+def _range(bound, unit):
+    if bound is None or (bound.min is None and bound.max is None):
+        return None
+    if bound.max == 1 and bound.min in (None, 1) and unit.endswith("s"):
+        unit = unit[:-1]
+    if bound.max is None:
+        return f"{bound.min}+ {unit}"
+    if bound.min is None or bound.min == bound.max:
+        return f"{'up to ' if bound.min is None else ''}{bound.max} {unit}"
+    return f"{bound.min}–{bound.max} {unit}"
+
+
+def _shape_line(shape):
+    parts = [
+        _range(shape.metrics, "metrics"),
+        _range(shape.dimensions, "dimensions"),
+        _range(shape.cardinality, "values on the main dimension"),
+        _range(shape.axis_points, "points on the axis"),
+        _range(shape.cells, "cells"),
+        _range(shape.rows, "rows"),
+    ]
+    roles = f" ({', '.join(shape.dimension_roles)})" if shape.dimension_roles else ""
+    return "; ".join(p for p in parts if p) + roles
+
+
+def _unique(items):
+    seen, out = set(), []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            out.append(item)
+    return out
+
+
+def family_skill_markdown(family):
+    """One on-demand skill per chart family, generated whole from its entries:
+    what to read between ``recommend_charts`` naming the family and
+    ``write_insight``."""
+    members = [m for m in family.members if m.status != "deprecated"]
+    lead = members[0] if members else family.members[0]
+    title = family.name.replace("_", " ")
+    lines = [
+        "---",
+        f"name: {family.name}",
+        f"summary: {lead.one_liner}",
+        f"family: {family.name}",
+        "---",
+        "",
+        f"# {title[0].upper() + title[1:]} charts",
+        "",
+        "Read this after `recommend_charts` names the family and before `write_insight`. "
+        "Generated from the trace rules; do not edit by hand.",
+        "",
+        START,
+        "**Traces**",
+        *[f"- `{m.type}` ({m.status}): {m.one_liner}" for m in family.members],
+        "",
+        "**Use when**",
+        *[f"- {u}" for u in _unique(u for m in members for u in m.use_when)],
+        "",
+        "**Avoid when**",
+        *[f"- {a}" for a in _unique(a for m in members for a in m.avoid_when)],
+        "",
+        f"**Data shape:** {_shape_line(lead.data_shape)}.",
+    ]
+    limits = lead.limits
+    if limits.series_ideal or limits.series_max or limits.repair:
+        series = (
+            f"{limits.series_ideal} series ideal, {limits.series_max} at most"
+            if limits.series_max
+            else ""
+        )
+        repair = (
+            f"over the limit, repair with {', '.join(f'`{r}`' for r in limits.repair)}"
+            if limits.repair
+            else ""
+        )
+        lines += ["", "**Limits:** " + "; ".join(x for x in (series, repair) if x) + "."]
+    gotchas = _unique([*family.warnings, *(g for m in members for g in m.gotchas)])
+    if gotchas:
+        lines += ["", "**Gotchas**", *[f"- {g}" for g in gotchas]]
+    variations = [v for m in members[:1] for v in m.variations]
+    if variations:
+        lines += ["", "**Variations**", *[f"- When {v.when}: {v.then}." for v in variations]]
+    if lead.other_uses:
+        lines += ["", "**Other uses**", *[f"- {o.use} {o.how}" for o in lead.other_uses]]
+    layout = family.layout_hint()
+    placement = f"`{layout.height}` height, {round(layout.width_share * 12)} of 12 columns, as a `{layout.row_role}`"
+    if lead.pairings:
+        placement += "; pair with " + ", ".join(f"`{p}`" for p in lead.pairings)
+    lines += ["", f"**Placement:** {placement}."]
+    if lead.mobile:
+        lines += [f"**Mobile:** {lead.mobile}"]
+    lines += ["", f"**Example** (`{lead.type}`)", "", "```yaml", lead.example.rstrip(), "```", END]
+    return "\n".join(lines) + "\n"
+
+
+def rendered_family_skills(families=None):
+    """``{filename: text}`` for every family whose skill is its own
+    ``charts/<family>``; the table families share the hand-written one."""
+    families = families or load_families()
+    return {
+        f"{f.name}.md": family_skill_markdown(f)
+        for f in families
+        if f.skill == f"charts/{f.name}" and f.name != "table"
+    }
+
+
 def _pct(share):
     return f"{share * 100:g} %"
 
@@ -344,6 +452,7 @@ def insight_design_markdown(doc=None, interactivity=None):
 
 
 INTERACTIONS_DIR = SKILLS_DIR / "interactions"
+CHARTS_DIR = SKILLS_DIR / "charts"
 
 RENDERERS = {
     "choose-a-chart.md": choose_rules_markdown,
@@ -376,6 +485,10 @@ def main(argv=None, out=sys.stdout):
         path.parent.mkdir(exist_ok=True)
         path.write_text(rendered(path))
         out.write(f"rendered {path}\n")
+    CHARTS_DIR.mkdir(exist_ok=True)
+    for name, text in rendered_family_skills().items():
+        (CHARTS_DIR / name).write_text(text)
+        out.write(f"rendered {CHARTS_DIR / name}\n")
     INTERACTIONS_DIR.mkdir(exist_ok=True)
     for name, text in rendered_patterns().items():
         (INTERACTIONS_DIR / name).write_text(text)

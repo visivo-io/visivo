@@ -1165,3 +1165,31 @@ class TestWarningsBelongToTheDrawnMember:
         assert histogram.trace_type == "histogram" and box.trace_type == "box"
         assert any("Pre-bucket in SQL" in w for w in histogram.warnings)
         assert not any("Pre-bucket" in w for w in box.warnings)
+
+
+class TestOneCardListServesEveryTool:
+    """score_candidates and recommend_inputs need a card's `model`; refusing it
+    here made an agent rebuild its cards between calls."""
+
+    CARD = {"column": "day", "role": "time", "cardinality": 90, "time_grain": "day"}
+
+    def test_a_card_may_carry_its_model_and_names_the_skeletons_model(self):
+        request = RecommendRequest(dimensions=[{**self.CARD, "model": "sales"}])
+        assert request.dimensions[0].model == "sales"
+        assert request.context.model == "sales"
+
+    def test_an_explicit_context_model_wins(self):
+        request = RecommendRequest(
+            dimensions=[{**self.CARD, "model": "sales"}], context={"model": "orders"}
+        )
+        assert request.context.model == "orders"
+
+    def test_cards_from_two_models_leave_the_default(self):
+        request = RecommendRequest(
+            dimensions=[{**self.CARD, "model": "a"}, {**self.CARD, "column": "x", "model": "b"}]
+        )
+        assert request.context.model == "model"
+
+    def test_a_plain_shape_card_is_accepted(self):
+        request = RecommendRequest(dimensions=[ShapeCard(**self.CARD)])
+        assert request.dimensions[0].column == "day" and request.dimensions[0].model is None

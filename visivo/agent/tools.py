@@ -136,25 +136,30 @@ def _write_handler(type_key):
         result = {"name": name, "status": "draft"}
         if outcome:
             result["change"] = outcome
+        from visivo.agent.charting import lint
+
+        found = lint.warnings(app, type_key, config)
         if type_key == "models":
             from visivo.agent.data_tools import probe_model_sql
 
             problem = probe_model_sql(app, obj)
             if problem:
-                result["warnings"] = [
+                found.append(
                     f"The model's SQL fails on its source ({problem}). The model and "
                     "everything built on it will not build until it runs. Fix the SQL, "
                     "querying the source's own tables, and write the model again."
-                ]
+                )
         if type_key == "insights":
             from visivo.agent.data_tools import probe_insight
 
             problems = probe_insight(app, obj.model_dump(exclude_none=True, mode="json"))
             if problems:
-                result["warnings"] = problems + [
+                found += problems + [
                     "Call preview_insight to see the rows, fix the props, and write the "
                     "insight again."
                 ]
+        if found:
+            result["warnings"] = found
         return result
 
     return handler
