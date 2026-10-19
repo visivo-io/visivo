@@ -138,6 +138,18 @@ class TestSchemaOnlyAction:
         schema_file = os.path.join(output_dir, DEFAULT_RUN_ID, "schemas", f"{model.name}.json")
         assert os.path.exists(schema_file)
 
+    def test_removes_rows_left_by_an_earlier_sql(self):
+        source = SqliteSource(name="source", database=":memory:", type="sqlite")
+        model = SqlModel(name="orders", sql="SELECT 1 AS id", source="ref(source)")
+        dag = _project(model, source).dag()
+        output_dir = temp_folder()
+        stale = os.path.join(output_dir, DEFAULT_RUN_ID, "models", f"{model.name}.parquet")
+        os.makedirs(os.path.dirname(stale))
+        open(stale, "wb").close()
+
+        assert schema_only_action(model, dag, output_dir).success is True
+        assert not os.path.exists(stale)
+
     def test_failure_when_schema_build_raises(self, mocker):
         source = SqliteSource(name="source", database=":memory:", type="sqlite")
         model = SqlModel(name="orders", sql="SELECT 1 AS id", source="ref(source)")
