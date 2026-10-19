@@ -4,6 +4,7 @@ from visivo.models.validators import standalone_field_ref_error
 from pydantic import ValidationError
 from visivo.logger.logger import Logger
 from visivo.server.managers.object_manager import ObjectStatus
+from visivo.server.names import NameTakenError
 
 
 def register_metrics_views(app, flask_app, output_dir):
@@ -76,9 +77,7 @@ def register_metrics_views(app, flask_app, output_dir):
                 if ref_error:
                     return jsonify({"error": ref_error}), 400
 
-            metric = flask_app.metric_manager.save_from_config(metric_config)
-            if parent_model:
-                metric.set_parent_name(parent_model)
+            flask_app.metric_manager.save_from_config(metric_config, parent_model=parent_model)
             status = flask_app.metric_manager.get_status(metric_name)
             return (
                 jsonify(
@@ -90,6 +89,8 @@ def register_metrics_views(app, flask_app, output_dir):
                 ),
                 201 if status == ObjectStatus.NEW else 200,
             )
+        except NameTakenError as e:
+            return jsonify({"error": str(e)}), 409
         except ValidationError as e:
             Logger.instance().debug(f"Metric validation failed: {e}")
             first_error = e.errors()[0]

@@ -51,12 +51,14 @@ class DimensionManager(ObjectManager[Dimension]):
             if dimension.name:
                 self._published_objects[dimension.name] = dimension
 
-    def save_from_config(self, config: dict) -> Dimension:
+    def save_from_config(self, config: dict, parent_model: Optional[str] = None) -> Dimension:
         """
         Validate and save dimension from configuration dict.
 
         Args:
             config: Dictionary containing dimension configuration
+            parent_model: The model this dimension is scoped to, if any. Set
+                before the save, because a name's uniqueness depends on it.
 
         Returns:
             The validated Dimension object
@@ -65,6 +67,8 @@ class DimensionManager(ObjectManager[Dimension]):
             ValidationError: If the dimension configuration is invalid
         """
         dimension = self.validate_object(config)
+        if parent_model:
+            dimension.set_parent_name(parent_model)
         self.save(dimension.name, dimension)
         return dimension
 
