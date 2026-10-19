@@ -1,4 +1,17 @@
 import { readableTextOn } from '../theme/colorUtils';
+import { toPlainValue } from '../duckdb/resultProcessing';
+
+/**
+ * JSON text for a cell value. A struct or list from DuckDB can hold BigInts,
+ * which plain JSON.stringify throws on; each nested value goes through
+ * toPlainValue, as a top-level cell does.
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+export function stringifyValue(value) {
+  return JSON.stringify(value, (_key, v) => toPlainValue(v));
+}
 
 /**
  * Parse a hex color string to { r, g, b }.
