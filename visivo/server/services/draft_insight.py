@@ -17,7 +17,7 @@ from visivo.query.insight.draft_overlay import DraftOverlayError, build_draft_ov
 from visivo.query.insight.insight_query_builder import get_sample_value_for_input
 from visivo.query.patterns import extract_input_accessors, replace_input_accessors
 from visivo.server.source_resolution import find_input
-from visivo.server.views.insight_draft_common import (
+from visivo.server.services.insight_draft_helpers import (
     build_schema_overrides,
     extract_model_not_run_name,
     is_model_not_run_error,
