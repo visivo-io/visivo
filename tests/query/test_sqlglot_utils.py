@@ -9,6 +9,7 @@ This module tests SQL utility functions including:
 - Other SQL parsing utilities
 """
 
+import click
 import pytest
 from visivo.query.sqlglot_utils import (
     identify_column_references,
@@ -934,3 +935,56 @@ class TestUnaliasedProjections:
         )
 
         assert unaliased_projections(sql, "duckdb") == []
+
+
+class TestSchemaFromSqlQuotedSourceColumns:
+    """A quoted reference to a mixed-case source column resolves like an unquoted one."""
+
+    SCHEMA = {
+        "yellow_trips": {"PULocationID": "INT", "fare": "DOUBLE"},
+        "taxi_zones": {"LocationID": "INT", "Borough": "VARCHAR"},
+    }
+    JOIN = 'FROM yellow_trips t LEFT JOIN taxi_zones z ON t."PULocationID" = z."LocationID"'
+
+    @pytest.mark.parametrize("dialect", ["duckdb", "postgres", "snowflake", "sqlite"])
+    def test_a_quoted_mixed_case_column_resolves(self, dialect):
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        sql = f'SELECT z."Borough" AS pickup_borough, t.fare {self.JOIN}'
+        result = schema_from_sql(dialect, sql, self.SCHEMA, "m")
+
+        assert result["m"] == {"pickup_borough": "VARCHAR", "fare": "DOUBLE"}
+
+    def test_an_unaliased_quoted_column_is_named_as_an_unquoted_one_is(self):
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        quoted = schema_from_sql("duckdb", f'SELECT z."Borough" {self.JOIN}', self.SCHEMA, "m")
+        unquoted = schema_from_sql("duckdb", f"SELECT z.Borough {self.JOIN}", self.SCHEMA, "m")
+
+        assert quoted == unquoted == {"m": {"borough": "VARCHAR"}}
+
+    def test_a_quoted_alias_the_query_defines_keeps_its_case(self):
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        sql = (
+            'WITH x AS (SELECT fare AS "Fare" FROM yellow_trips) '
+            'SELECT x."Fare" AS "Avg Fare ($)" FROM x'
+        )
+        result = schema_from_sql("duckdb", sql, self.SCHEMA, "m")
+
+        assert result["m"] == {"Avg Fare ($)": "DOUBLE"}
+
+    def test_a_quoted_column_no_source_has_still_fails(self):
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        with pytest.raises(click.ClickException, match="Unknown column: Nope"):
+            schema_from_sql("duckdb", f'SELECT z."Nope" {self.JOIN}', self.SCHEMA, "m")
+
+    def test_a_nested_schema_is_searched_for_source_columns(self):
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        nested = {"main": self.SCHEMA}
+        sql = f'SELECT z."Borough" AS b {self.JOIN}'
+        result = schema_from_sql("duckdb", sql, nested, "m", default_schema="main")
+
+        assert result["m"] == {"b": "VARCHAR"}
