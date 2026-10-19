@@ -12,7 +12,6 @@ from datetime import date, datetime
 import sqlglot
 from sqlglot import exp
 
-from visivo.models.table import field_value
 from visivo.query.patterns import extract_ref_names
 
 # Plotly's named scales that run dark to light: the highest values come out palest.
@@ -131,6 +130,17 @@ def _indicator(props):
     found = []
     number = props.get("number") or {}
     delta = props.get("delta") or {}
+    cells = {
+        "value": props.get("value"),
+        "delta.reference": delta.get("reference"),
+        "gauge.threshold.value": ((props.get("gauge") or {}).get("threshold") or {}).get("value"),
+    }
+    for key, value in cells.items():
+        if isinstance(value, str) and _QUERY.fullmatch(value):
+            found.append(
+                f"`{key}: {value.strip()}` passes the whole column, so the indicator shows a dash. "
+                f"Pick one cell: `{key}: {value.strip()}[0]`."
+            )
     if not number.get("valueformat"):
         found.append(
             "The indicator has no `number.valueformat`; set one (`,.0f`, `$,.0f`, `.1%`) so the "
@@ -317,6 +327,11 @@ def _date_bound(value):
         return True
     except ValueError:
         return False
+
+
+def field_value(entry):
+    """A table entry's expression: the string, or a formatted entry's `value`."""
+    return entry.get("value") if isinstance(entry, dict) else entry
 
 
 def _double_percent(fmt, source):

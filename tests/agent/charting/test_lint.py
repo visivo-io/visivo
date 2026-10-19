@@ -53,6 +53,35 @@ class TestIndicators:
         assert lint.warnings(APP, "insights", _insight(props)) == []
 
 
+class TestIndicatorCells:
+    """A one-row column bound to `value` renders as a dash; the KPI skill's
+    first gotcha says to pick `[0]`, and this says it again at write time."""
+
+    def test_a_query_with_no_index_is_flagged_for_each_cell(self):
+        props = {
+            "type": "indicator",
+            "number": {"valueformat": ",.0f"},
+            "value": "?{ sum(${ref(m).x}) }",
+            "delta": {"reference": " ?{ sum(${ref(m).x}) } "},
+            "gauge": {"threshold": {"value": "?{ max(${ref(m).target}) }"}},
+        }
+        found = lint.warnings(APP, "insights", _insight(props))
+        assert len(found) == 3
+        assert "`value: ?{ sum(${ref(m).x}) }[0]`" in found[0]
+        assert "`delta.reference: ?{ sum(${ref(m).x}) }[0]`" in found[1]
+        assert "`gauge.threshold.value:" in found[2]
+
+    def test_an_indexed_query_or_a_number_passes(self):
+        props = {
+            "type": "indicator",
+            "number": {"valueformat": ",.0f"},
+            "value": "?{ sum(${ref(m).x}) }[0]",
+            "delta": {"reference": "?{ sum(${ref(m).x}) }[1]"},
+            "gauge": {"threshold": {"value": 90}},
+        }
+        assert lint.warnings(APP, "insights", _insight(props)) == []
+
+
 class TestLineOrder:
     X = "?{ date_trunc('day', ${ref(m).pickup_at}) }"
     Y = "?{ count(${ref(m).id}) }"
@@ -407,7 +436,7 @@ class TestDoublePercent:
     def test_a_kpi_with_a_percent_valueformat_over_a_times_100_metric_is_flagged(self):
         props = {
             "type": "indicator",
-            "value": "?{ ${ref(tip_share)} }",
+            "value": "?{ ${ref(tip_share)} }[0]",
             "number": {"valueformat": ".1%"},
         }
         found = lint.warnings(self.APP, "insights", _insight(props))
@@ -485,12 +514,15 @@ class TestTheWriteCarriesThem:
         assert result["status"] == "draft"
         assert any("reversescale" in w for w in result["warnings"])
 
-    def test_write_table_warns_about_a_percentage_formatted_twice(self, integration_app):
+    def test_write_insight_warns_about_a_percentage_formatted_twice(self, integration_app):
         model = {"name": "shares", "sql": "SELECT x, y * 100.0 / x AS share FROM test_table"}
         call(integration_app, "write_model", {"config": model})
-        column = {"value": '${ref(shares).share} as "Share"', "format": ".1%"}
-        table = {"name": "share_table", "columns": [column]}
-        result = call(integration_app, "write_table", {"config": table})
+        props = {
+            "type": "indicator",
+            "value": "?{ avg(${ref(shares).share}) }[0]",
+            "number": {"valueformat": ".1%"},
+        }
+        result = call(integration_app, "write_insight", {"config": _insight(props)})
         assert any("model `shares` for `share`" in w for w in result["warnings"])
 
     def test_write_input_warns_about_a_bound_that_is_not_a_date(self, integration_app):
