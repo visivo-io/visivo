@@ -302,7 +302,7 @@ def _local_url(app, name):
 
 
 def _save(app, png, name):
-    """Persist the capture and return (capture_id, url), or (None, None).
+    """Persist the capture and return its URL, or ``None``.
 
     A capture that cannot be written is not a failed capture — the model has
     already been handed the image. Only the Agent tab loses out, so this
@@ -312,7 +312,7 @@ def _save(app, png, name):
 
     output_dir = getattr(app, "output_dir", None)
     if not output_dir:
-        return None, None
+        return None
     capture_id = f"{name}-{uuid.uuid4().hex[:8]}"
     path = capture_path(output_dir, capture_id)
     try:
@@ -321,17 +321,57 @@ def _save(app, png, name):
             out.write(png)
     except OSError as error:
         Logger.instance().debug(f"Could not store the agent capture: {error}")
-        return None, None
-    return capture_id, CAPTURE_URL.format(capture_id=capture_id)
+        return None
+    return CAPTURE_URL.format(capture_id=capture_id)
+
+
+def _cloud_target(client, name):
+    """``(url, cookie)`` for a dashboard that lives in core.
+
+    The cookie is the shape the SPA reads (``app/src/models/Session.js``), so
+    the page authenticates its own fetches without the viewer learning
+    anything new.
+    """
+    token, path = client.render_permit(name)
+    if not token or not path:
+        raise ToolError("Core would not say where that dashboard is.")
+    return (
+        f"{client.base_url}{path}",
+        {"name": "__visivo_session", "value": token, "url": client.base_url},
+    )
+
+
+def _store_in_cloud(client, png, name):
+    """Upload the capture and return its URL, or ``None``.
+
+    Signing, uploading and naming the object are `CloudApi.put_screenshot`'s
+    business, not this tool's. Best-effort, like the local path: the model
+    already has the image, so a storage failure costs the Agent tab a
+    thumbnail and nothing else.
+    """
+    try:
+        return client.put_screenshot(png, name)
+    except Exception as error:
+        Logger.instance().debug(f"Could not store the agent capture in cloud: {error}")
+        return None
 
 
 def _screenshot_handler(app, arguments):
     name = _dashboard_or_refuse(app, arguments)
     full_page = (arguments or {}).get("full_page", True)
 
+    # One capture, two call sites. They differ in the URL and whether a cookie
+    # is set, and in nothing else — a fork here would be a cloud agent that
+    # disagreed with the local one about what it was looking at.
+    client = getattr(app, "core_client", None)
+    if client is None:
+        url_to_load, cookie = _local_url(app, name), None
+    else:
+        url_to_load, cookie = _cloud_target(client, name)
+
     settled = wait_for_runs(app)
-    png, width, height, scale = fit(capture(_local_url(app, name), full_page=bool(full_page)))
-    capture_id, url = _save(app, png, name)
+    png, width, height, scale = fit(capture(url_to_load, cookie=cookie, full_page=bool(full_page)))
+    url = _save(app, png, name) if client is None else _store_in_cloud(client, png, name)
 
     facts = {
         "dashboard": name,
