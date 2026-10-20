@@ -58,6 +58,7 @@ GUIDANCE_TOOLS = {
     "score_candidates",
 }
 CLIENT_TIMEOUT_SECONDS = 1500
+RESET_RUN_TIMEOUT_SECONDS = 300
 SETTLE_TIMEOUT_MS = 120_000
 # Charts fetch data and then compute in DuckDB-WASM, and a spinner-free page can
 # also be one whose charts have not mounted yet. Settled = every visual drawn,
@@ -141,6 +142,27 @@ class Serve:
 
     def discard(self):
         return self.http("POST", "/api/commit/discard/", {})
+
+    def reset(self):
+        """Discard every draft, then build the committed project once.
+
+        Run history lives in the serve's memory and a discard leaves it alone,
+        so without the rebuild the newest run the next agent finds with
+        `list_runs` is the previous agent's failure.
+        """
+        self.discard()
+        deadline = time.time() + RESET_RUN_TIMEOUT_SECONDS
+        while time.time() < deadline:
+            status, _ = self.http("POST", "/api/projects/local/run/", {"dag_filter": ""})
+            if status != 409:
+                break
+            time.sleep(2)
+        while time.time() < deadline:
+            _, runs = self.http("GET", "/api/projects/local/run/")
+            if runs and runs[0]["state"] not in ("queued", "running"):
+                return runs[0]["state"]
+            time.sleep(2)
+        raise RuntimeError("The reset run did not finish.")
 
     def snapshot(self):
         objects = {}
@@ -388,7 +410,7 @@ def inspect_dashboards(serve, objects, run_dir):
 
 def run_one(serve, condition, item, model, run_dir, dataset):
     os.makedirs(run_dir, exist_ok=True)
-    serve.discard()
+    serve.reset()
     if condition == "builtin":
         client = run_builtin(serve, item["prompt"], run_dir)
     else:
