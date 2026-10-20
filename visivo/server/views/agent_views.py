@@ -16,7 +16,7 @@ proxy somebody else configured.
 
 import os
 
-from flask import jsonify, request
+from flask import Response, jsonify, request, send_from_directory
 
 from visivo.agent.model_config import AgentNotConfigured, resolve
 from visivo.agent.runner import start
@@ -37,6 +37,27 @@ def register_agent_views(app, flask_app):
     @app.route("/api/projects/<project_id>/agent/", methods=["GET"])
     def list_agent_sessions(project_id=None):
         return jsonify({"sessions": sessions.list()})
+
+    @app.route("/api/agent/captures/<capture_id>.png", methods=["GET"])
+    @app.route("/api/projects/<project_id>/agent/captures/<capture_id>.png", methods=["GET"])
+    def get_agent_capture(capture_id, project_id=None):
+        """A screenshot the agent took, for the Agent tab to show.
+
+        Its own namespace rather than the dashboard thumbnail route: a
+        dashboard has one thumbnail and a session has as many captures as it
+        took, and an agent must never be able to overwrite the real one.
+        """
+        from visivo.agent.screenshot import capture_path
+
+        # `capture_id` comes off the URL, so it decides a path. Flask's default
+        # converter already excludes "/", but a name can carry dots and
+        # ".." would escape the directory.
+        if ".." in capture_id or "/" in capture_id or "\\" in capture_id:
+            return Response(status=404)
+        path = capture_path(flask_app.output_dir, capture_id)
+        if not os.path.exists(path):
+            return Response(status=404)
+        return send_from_directory(os.path.dirname(path), os.path.basename(path))
 
     @app.route("/api/agent/", methods=["POST"])
     @app.route("/api/projects/<project_id>/agent/", methods=["POST"])
