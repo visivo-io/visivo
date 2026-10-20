@@ -26,6 +26,7 @@ result is something the model can read and correct.
 from flask import jsonify, request
 
 from visivo.agent.actions import attributed_to, log as action_log
+from visivo.agent.images import is_image_result
 from visivo.agent.tools import TOOLS, ToolError, call
 
 PROTOCOL_VERSION = "2025-06-18"
@@ -180,7 +181,29 @@ def _call(flask_app, params):
         # Anything the agent could not have anticipated still comes back as a
         # result: a 500 tells it nothing, and the session is worth keeping.
         return _tool_error(f"{type(unexpected).__name__}: {unexpected}")
+    if is_image_result(value):
+        return {"content": _image_content(value), "isError": False}
     return {"content": [_json_content(value)], "isError": False}
+
+
+def _image_content(result):
+    """The facts as JSON, then the caption and the image as content blocks.
+
+    JSON-encoding the ``ToolReturn`` itself would hand the client the PNG bytes
+    as a several-hundred-kilobyte string it rejects as too large to read.
+    """
+    import base64
+
+    from pydantic_ai.messages import BinaryContent
+
+    blocks = [_json_content(result.return_value)]
+    for item in result.content:
+        if isinstance(item, BinaryContent):
+            data = base64.b64encode(item.data).decode("ascii")
+            blocks.append({"type": "image", "data": data, "mimeType": item.media_type})
+        else:
+            blocks.append({"type": "text", "text": str(item)})
+    return blocks
 
 
 def _json_content(value):
