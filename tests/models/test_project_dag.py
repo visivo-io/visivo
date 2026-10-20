@@ -7,6 +7,7 @@ from visivo.models.insight import Insight
 from visivo.models.table import Table
 from visivo.models.chart import Chart
 from tests.factories.model_factories import (
+    InputFactory,
     ChartFactory,
     DefaultsFactory,
     InsightFactory,
@@ -261,3 +262,34 @@ def test_get_descendant_by_name_not_found_from_node():
         dag.get_descendant_by_name("dashboard", from_node=insight)
 
     assert "No descendant found with name 'dashboard'" in str(exc_info.value)
+
+
+def test_a_presentation_edit_asks_for_no_run():
+    """A label is what the widget is called on screen; no query reads it.
+
+    The diff compared whole dumps, so renaming "Cuisine" to "Pick a cuisine"
+    put the input and everything downstream of it into the run filter — for a
+    string that changes no artifact.
+    """
+    existing_project = ProjectFactory(inputs=[InputFactory(name="cuisine-select", label="Cuisine")])
+    new_project = ProjectFactory(
+        inputs=[InputFactory(name="cuisine-select", label="Pick a cuisine")]
+    )
+
+    diff_filter = new_project.dag().get_diff_dag_filter(existing_project, "")
+
+    assert diff_filter == ""
+
+
+def test_an_edit_to_what_an_input_queries_still_asks_for_one():
+    """The guard has to keep catching real edits, or it is worse than nothing."""
+    existing_project = ProjectFactory(
+        inputs=[InputFactory(name="cuisine-select", options=["A", "B"])]
+    )
+    new_project = ProjectFactory(
+        inputs=[InputFactory(name="cuisine-select", options=["A", "B", "C"])]
+    )
+
+    diff_filter = new_project.dag().get_diff_dag_filter(existing_project, "")
+
+    assert "cuisine-select+" in diff_filter
