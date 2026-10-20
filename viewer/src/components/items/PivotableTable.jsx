@@ -51,12 +51,14 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     if (hasDuckDBMode) {
       const cols = pivotColumns.map(col => {
         const name = col.accessorKey || col.id;
+        const normalizedType = inferType(pivotRows, name);
         return {
           name,
           displayName: col.header,
-          normalizedType: inferType(pivotRows, name),
+          normalizedType,
           duckdbType: 'VARCHAR',
           isPivotRow: col.isPivotRow || false,
+          format: columnFormat(col.format, name, col.header, normalizedType, pivotRows),
         };
       });
       return { allRows: pivotRows, dataTableColumns: cols };
@@ -70,11 +72,13 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     const firstRow = data[0];
     const cols = Object.keys(firstRow).map(key => {
       const normalizedType = inferType(data, key);
+      const displayName = reverseMapping[key] || formatColumnHeader(key);
       return {
         name: key,
-        displayName: reverseMapping[key] || formatColumnHeader(key),
+        displayName,
         normalizedType,
         duckdbType: normalizedType === COLUMN_TYPES.NUMBER ? 'DOUBLE' : 'VARCHAR',
+        format: columnFormat(undefined, key, displayName, normalizedType, data),
       };
     });
 
@@ -88,7 +92,10 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     return allRows.map(row =>
       dataTableColumns
         .filter(col => row[col.name] != null)
-        .flatMap(col => [String(row[col.name]), formatCellText(row[col.name], col.normalizedType)])
+        .flatMap(col => [
+          String(row[col.name]),
+          formatCellText(row[col.name], col.normalizedType, col.format),
+        ])
         .join('\n')
         .toLowerCase()
     );
@@ -302,6 +309,23 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     </ItemContainer>
   );
 };
+
+const YEAR_NAME = /(^|[^a-z])year([^a-z]|$)/i;
+
+/**
+ * The d3-format spec a column's cells use: the format of the table entry the
+ * column comes from; else `d` for an integer column named like a year, so 2024
+ * does not print as 2,024.
+ */
+export function columnFormat(explicit, name, header, normalizedType, rows) {
+  if (explicit) return explicit;
+  if (normalizedType !== COLUMN_TYPES.NUMBER) return undefined;
+  const yearNamed = YEAR_NAME.test(String(header)) || YEAR_NAME.test(name);
+  if (yearNamed && rows.every(row => row[name] == null || Number.isInteger(row[name]))) {
+    return 'd';
+  }
+  return undefined;
+}
 
 // The shape processArrowResult gives every DATE / TIMESTAMP value.
 const ARROW_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;

@@ -90,6 +90,18 @@ test('derives the data source from ref strings in columns/rows/values', async ()
   expect(screen.getByText('plain text, 100')).toBeInTheDocument();
 });
 
+test('derives the data source from a formatted entry', async () => {
+  const refTable = {
+    name: 'formatted-table',
+    columns: [{ value: '${ref(my-insight).col_b} as B', format: '$,.0f' }],
+  };
+  render(<Table table={refTable} shouldLoad={true} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(screen.getByTestId('pivotable-table')).toBeInTheDocument();
+  });
+});
+
 test('reads model-backed data from modelJobs when table.data is a model object', async () => {
   useStore.setState({
     insightJobs: {},

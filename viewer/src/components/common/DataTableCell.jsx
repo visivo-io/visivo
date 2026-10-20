@@ -1,6 +1,25 @@
 import React from 'react';
+import { format as d3Format } from 'd3-format';
 import { COLUMN_TYPES } from '../../duckdb/schemaUtils';
 import { stringifyValue } from '../../utils/cellFormatting';
+
+const formatters = new Map();
+
+/**
+ * A d3-format function for `spec`, or null when the spec does not parse.
+ */
+export const numberFormatter = spec => {
+  if (!formatters.has(spec)) {
+    let fn = null;
+    try {
+      fn = d3Format(spec);
+    } catch {
+      fn = null;
+    }
+    formatters.set(spec, fn);
+  }
+  return formatters.get(spec);
+};
 
 /**
  * Convert a numeric epoch value to a Date, detecting the scale automatically.
@@ -45,9 +64,15 @@ const formatTimestamp = date => {
 };
 
 /**
- * The text a cell shows for a non-null value.
+ * The text a cell shows for a non-null value. `format` is the d3-format spec
+ * of the column's table entry, applied to numbers only.
  */
-export const formatCellText = (value, columnType) => {
+export const formatCellText = (value, columnType, format) => {
+  if (format && (typeof value === 'number' || typeof value === 'bigint')) {
+    const fn = numberFormatter(format);
+    if (fn) return fn(Number(value));
+  }
+
   // Handle date/timestamp columns first — values may arrive as epoch numbers
   if (columnType === COLUMN_TYPES.DATE || columnType === COLUMN_TYPES.TIMESTAMP) {
     let date;
@@ -90,11 +115,11 @@ export const formatCellText = (value, columnType) => {
   return str;
 };
 
-const formatValue = (value, columnType) => {
+const formatValue = (value, columnType, format) => {
   if (value === null || value === undefined) {
     return <span className="text-secondary-400 italic">null</span>;
   }
-  return formatCellText(value, columnType);
+  return formatCellText(value, columnType, format);
 };
 
 const getAlignmentClass = columnType => {
@@ -125,7 +150,7 @@ const getTitleText = (value, columnType) => {
   return String(value);
 };
 
-const DataTableCell = ({ value, columnType }) => {
+const DataTableCell = ({ value, columnType, format }) => {
   const isNull = value === null || value === undefined;
 
   return (
@@ -133,7 +158,7 @@ const DataTableCell = ({ value, columnType }) => {
       className={`px-3 py-2 text-sm truncate ${isNull ? 'text-center' : getAlignmentClass(columnType)}`}
       title={isNull ? 'null' : getTitleText(value, columnType)}
     >
-      {formatValue(value, columnType)}
+      {formatValue(value, columnType, format)}
     </div>
   );
 };

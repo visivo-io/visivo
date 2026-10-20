@@ -9,6 +9,7 @@
  * Use `formatRef` for bare format, `formatRefExpression` for context string format.
  * Use `parseRefValue` to extract the name from any format.
  */
+import { fieldExpression } from './tableFields';
 
 // Shared regex patterns for ref string matching
 // Matches ${ref(name).field} globally — captures the field name
@@ -126,16 +127,17 @@ export const extractRefNames = (str) => {
 };
 
 /**
- * Extract all unique ref names from an array of strings.
+ * Extract all unique ref names from an array of strings. A table's formatted
+ * `{ value, format }` entry is read through its `value`.
  *
- * @param {string[]} strings - Array of strings possibly containing ref patterns
+ * @param {Array<string|{value: string}>} strings - Strings possibly containing ref patterns
  * @returns {string[]} Unique ref names found
  */
 export const extractRefNamesFromStrings = (strings) => {
   if (!strings || !Array.isArray(strings)) return [];
   const names = new Set();
   for (const str of strings) {
-    extractRefNames(str).forEach(n => names.add(n));
+    extractRefNames(fieldExpression(str)).forEach(n => names.add(n));
   }
   return [...names];
 };

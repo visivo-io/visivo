@@ -6,6 +6,7 @@ import {
   parseMultiRefValue,
   formatMultiRefValue,
   extractRefNames,
+  extractRefNamesFromStrings,
   unquoteRefName,
 } from './refString';
 
@@ -152,5 +153,18 @@ describe('quoted ref names', () => {
     expect(unquoteRefName("'trips\"")).toBe("'trips\"");
     expect(unquoteRefName("'")).toBe("'");
     expect(unquoteRefName("o'brien")).toBe("o'brien");
+  });
+});
+
+describe('extractRefNamesFromStrings', () => {
+  it('reads a formatted table entry through its value', () => {
+    expect(
+      extractRefNamesFromStrings([
+        '${ref(trips).zone}',
+        { value: 'sum(${ref(zones).n})', format: ',d' },
+        { format: 'd' },
+      ])
+    ).toEqual(['trips', 'zones']);
+    expect(extractRefNamesFromStrings(null)).toEqual([]);
   });
 });

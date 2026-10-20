@@ -16,12 +16,18 @@ import {
   plainHeader,
 } from '../utils/pivotRefResolver';
 import { parsePivotColumnHierarchy } from '../utils/pivotColumnParser';
+import { fieldExpression, fieldFormat } from '../utils/tableFields';
 
 /**
  * Hook that executes a DuckDB PIVOT or column-select query over a source's
  * input-resolved post-query result (insight) or raw parquet table (model).
  *
- * @param {Object} config - { columns, rows, values } from table config
+ * Each returned column carries the d3-format of the config entry it comes
+ * from: a column-select column its `columns` entry, a pivot row column its
+ * `rows` entry, and every pivot value column its `values` entry.
+ *
+ * @param {Object} config - { columns, rows, values } from table config; an entry
+ *   is a string or a formatted `{ value, format }`
  * @param {Object} sourceData - Insight/model data from store (with files, query, props_mapping)
  * @returns {{ rows: Array, columns: Array, pivotMeta: Object|null, isLoading: boolean, error: string|null }}
  */
@@ -76,12 +82,17 @@ export const usePivotData = (config, sourceData) => {
         if (cancelled) return;
 
         const reverseMapping = buildReverseMapping(propsMapping);
+        const fields = {
+          columns: (config.columns || []).map(fieldExpression),
+          rows: (config.rows || []).map(fieldExpression),
+          values: (config.values || []).map(fieldExpression),
+        };
 
         let sql;
         if (isPivotMode) {
-          sql = buildPivotQuery(config, propsMapping, tableName, sourceSql);
+          sql = buildPivotQuery(fields, propsMapping, tableName, sourceSql);
         } else if (isColumnSelectMode) {
-          sql = buildColumnSelectQuery(config.columns, propsMapping, tableName, sourceSql);
+          sql = buildColumnSelectQuery(fields.columns, propsMapping, tableName, sourceSql);
         } else {
           setIsLoading(false);
           return;
@@ -105,19 +116,30 @@ export const usePivotData = (config, sourceData) => {
 
         let pivotColumns;
         if (isPivotMode) {
-          const aggInfo = buildAggInfo(config.values, propsMapping, reverseMapping);
-          const resolvedRowCols = new Set(
-            config.rows.map(row => resolveFieldRef(row, propsMapping))
+          const aggInfo = buildAggInfo(fields.values, propsMapping, reverseMapping);
+          const rowFormats = new Map(
+            fields.rows.map((row, i) => [resolveFieldRef(row, propsMapping), fieldFormat(config.rows[i])])
           );
-          const resolvedPivotCols = config.columns.map(col => resolveFieldRef(col, propsMapping));
+          const resolvedRowCols = new Set(rowFormats.keys());
+          const resolvedPivotCols = fields.columns.map(col => resolveFieldRef(col, propsMapping));
 
+          // DuckDB emits one column per value for each pivot combination, in
+          // `values` order, so a value column's position picks its entry.
+          let valueIndex = 0;
           pivotColumns = resultRows.length > 0
-            ? Object.keys(resultRows[0]).map(key => ({
-                id: key,
-                header: reverseMapping[key] || formatPivotColumnName(key, aggInfo, reverseMapping),
-                accessorKey: key.replace(/\./g, '___'),
-                isPivotRow: resolvedRowCols.has(key),
-              }))
+            ? Object.keys(resultRows[0]).map(key => {
+                const isPivotRow = resolvedRowCols.has(key);
+                const format = isPivotRow
+                  ? rowFormats.get(key)
+                  : fieldFormat(config.values[valueIndex++ % config.values.length]);
+                return {
+                  id: key,
+                  header: reverseMapping[key] || formatPivotColumnName(key, aggInfo, reverseMapping),
+                  accessorKey: key.replace(/\./g, '___'),
+                  isPivotRow,
+                  format,
+                };
+              })
             : [];
 
           const aggregationLabel = aggInfo
@@ -145,13 +167,20 @@ export const usePivotData = (config, sourceData) => {
           // maps its (hashed) result key back to the plain prop name — a hash
           // must never be shown as a header (VIS-1462 T6).
           const aliases = new Set(
-            config.columns.map(col => parseColumnAlias(col).alias).filter(Boolean)
+            fields.columns.map(col => parseColumnAlias(col).alias).filter(Boolean)
+          );
+          const formats = new Map(
+            fields.columns.map((col, i) => {
+              const { ref, alias } = parseColumnAlias(col);
+              return [alias || resolveFieldRef(ref, propsMapping), fieldFormat(config.columns[i])];
+            })
           );
           pivotColumns = resultRows.length > 0
             ? Object.keys(resultRows[0]).map(key => ({
                 id: key,
                 header: aliases.has(key) ? key : plainHeader(key, reverseMapping),
                 accessorKey: key.replace(/\./g, '___'),
+                format: formats.get(key),
               }))
             : [];
           setPivotMeta(null);

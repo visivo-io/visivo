@@ -145,6 +145,24 @@ class TestTableManager:
             manager.save_from_config(config)
         assert manager.get("broken") is None  # not cached
 
+    def test_save_from_config_keeps_formatted_entries(self):
+        manager = TableManager()
+        entry = {"value": "${ref(trips).revenue} as Revenue", "format": "$,.0f"}
+        config = {"name": "formatted", "columns": ["${ref(trips).zone}", entry]}
+
+        manager.save_from_config(config)
+        result = manager.get_table_with_status("formatted")
+
+        assert result["config"]["columns"] == ["${ref(trips).zone}", entry]
+        assert result["child_item_names"] == ["trips"]
+
+    def test_save_from_config_checks_the_sql_of_a_formatted_entry(self):
+        manager = TableManager()
+        entry = {"value": '${ref(i).sex} as ""Sex""', "format": ",d"}
+
+        with pytest.raises(ValueError, match="invalid SQL"):
+            manager.save_from_config({"name": "broken", "columns": [entry]})
+
     def test_extract_from_dag_with_data_ref(self):
         """Test that tables loaded from DAG have correct child_item_names for data refs."""
         insight = InsightFactory.build(name="test_insight")

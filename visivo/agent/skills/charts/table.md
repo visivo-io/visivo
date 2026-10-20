@@ -32,6 +32,7 @@ exploratory dashboard ends with one detail table.
 
 **Valid but wrong**
 - Alias every `columns` entry (`${ref(x).col} as "Label"`); an unaliased header is the raw, or on an insight the hashed, column name.
+- Format a number column by writing its entry as `{value, format}`: `- value: ${ref(x).revenue} as "Revenue ($)"` then `format: "$,.0f"` (d3-format: `$,.0f`, `.1%`, `d`). The same shape works in `rows` and `values`; a format on a pivot value formats every column it produces. Formatting in SQL (`printf`, `round`) turns the column into text or drops trailing zeros, so it sorts and aligns wrong.
 - `rows_per_page` is one of 3, 5, 10, 25, 50, 100, 500, 1000; any other value fails to compile.
 - `data` excludes `columns`/`rows`/`values`; a `data:` table over an insight shows prop paths (X, Y) as headers.
 - `rows` needs `values` and `columns`; every `values` entry must be `agg(...)` or the browser query fails after a clean compile.

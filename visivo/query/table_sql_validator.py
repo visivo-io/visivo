@@ -89,22 +89,28 @@ def _build_pivot_sql(columns, rows, values, table_name: str = "t") -> str:
 
 def validate_table_sql(
     name: str,
-    columns: Optional[List[str]],
-    rows: Optional[List[str]],
-    values: Optional[List[str]],
+    columns: Optional[list],
+    rows: Optional[list],
+    values: Optional[list],
 ) -> Optional[str]:
     """Return an actionable error message if the table's column-select / pivot
-    config compiles to invalid SQL, else ``None``. A plain ``data:`` table (no
-    ``columns``) generates no SQL and is skipped."""
+    config compiles to invalid SQL, else ``None``. Entries are strings or
+    ``FormattedColumn``s, whose ``value`` is checked. A plain ``data:`` table
+    (no ``columns``) generates no SQL and is skipped."""
     if not columns:
         return None
 
     import sqlglot
+    from visivo.models.table import field_value
+
+    columns, rows, values = (
+        [field_value(entry) for entry in entries or []] for entries in (columns, rows, values)
+    )
 
     # Building AND parsing both inside the try: `validate_table_sql` is a public
     # function (also called directly in tests), so a non-str list entry must
     # yield a clean error string rather than a raw exception, even though the
-    # Table model's List[str] coercion guarantees strings on the model path.
+    # Table model guarantees strings or formatted entries on the model path.
     try:
         if rows or values:
             sql = _build_pivot_sql(columns, rows or [], values or [], "t")
