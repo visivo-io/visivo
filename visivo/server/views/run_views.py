@@ -37,12 +37,13 @@ from visivo.server.user_config import AUTOMATIC, get_run_trigger
 # resource→data-mode mapping is easy to find. Mirrors core's per-type DATA_MODE /
 # DATA_PRODUCING (``apps/deploys/models.py``):
 #   * "whole" — SQL/connection/input resources: any config field is data.
-#   * "query" — visualization resources: only query leaves matter. An insight is
-#     data-producing (its ${ref} deps + ?{ } queries feed its job); a chart /
-#     table / markdown / dashboard is NOT — only an inline ?{ } layout query
-#     counts (a ${ } there just reads already-built data), so a color / legend /
-#     layout edit leaves the fingerprint alone, while a ?{ } layout query that
-#     visivo folds into the insight's query does move it.
+#   * "query" — visualization resources: only query leaves matter. An insight or
+#     a table is data-producing (its ${ref} deps feed a build: an insight's job,
+#     or the model parquet a table reads); a chart / markdown / dashboard is
+#     NOT — only an inline ?{ } layout query counts (a ${ } there just reads
+#     already-built data), so a color / legend / layout edit leaves the
+#     fingerprint alone, while a ?{ } layout query that visivo folds into the
+#     insight's query does move it.
 RESOURCE_META = {
     "sources": ("source_manager", "whole", True),
     "models": ("model_manager", "whole", True),
@@ -52,7 +53,7 @@ RESOURCE_META = {
     "inputs": ("input_manager", "whole", True),
     "insights": ("insight_manager", "query", True),
     "charts": ("chart_manager", "query", False),
-    "tables": ("table_manager", "query", False),
+    "tables": ("table_manager", "query", True),
     "markdowns": ("markdown_manager", "query", False),
     "dashboards": ("dashboard_manager", "query", False),
 }

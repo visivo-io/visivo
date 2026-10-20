@@ -1,11 +1,14 @@
 """Tests for the run-on-save machinery: RunManager, the run/logs endpoints,
 the status:"draft" signal, and the debounced request_run trigger."""
 
+import os
 import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+
+from visivo.constants import DEFAULT_RUN_ID
 
 from visivo.server import user_config
 from visivo.server.managers.run_manager import Run, RunManager, RunState
@@ -18,6 +21,7 @@ from visivo.server.jobs import save_run_executor
 from visivo.server.views.run_views import (
     _RESOURCE_ROUTE_RE,
     RESOURCE_META,
+    _resource_fingerprint,
     resource_fingerprint,
     stage_and_maybe_run,
 )
@@ -149,13 +153,13 @@ class TestRunOnSave:
             assert _RESOURCE_ROUTE_RE.match(path) is None, path
 
     def test_resource_meta_modes(self):
-        # whole-mode data resources hash their whole config; the insight is
-        # query-mode + data-producing; the presentation types are query-mode and
-        # NOT data-producing (only an inline ?{ } layout query is data).
+        # whole-mode data resources hash their whole config; the insight and the
+        # table are query-mode + data-producing; the presentation types are
+        # query-mode and NOT data-producing (only an inline ?{ } layout query is data).
         assert RESOURCE_META["models"] == ("model_manager", "whole", True)
         assert RESOURCE_META["insights"] == ("insight_manager", "query", True)
+        assert RESOURCE_META["tables"] == ("table_manager", "query", True)
         assert RESOURCE_META["charts"] == ("chart_manager", "query", False)
-        assert RESOURCE_META["tables"][1:] == ("query", False)
 
     def test_request_run_debounces_and_rebuilds_into_main(self, integration_app):
         # Mock the actual build so the test doesn't depend on the factory project
@@ -508,6 +512,128 @@ class TestDataAffectingGate:
             r = integration_client.delete("/api/charts/c/")
             assert r.status_code < 400
             req.assert_not_called()
+
+
+class TestReadersBuildModelData:
+    """A model writes its parquet only while a table or an interactive insight
+    reads it. Both are data-producing, so a save that changes what they read
+    runs ``+name+``, and the model job decides against the whole project DAG
+    whether to write or drop its parquet."""
+
+    MODEL = {"sql": "select 1 as x, 2 as y", "source": "ref(source)"}
+    STATIC = {"props": {"type": "bar", "x": "?{ ${ref(m).x} }", "y": "?{ ${ref(m).y} }"}}
+    INTERACTIVE = {**STATIC, "interactions": [{"filter": "?{ ${ref(m).x} > ${ref(threshold)} }"}]}
+    THRESHOLD = {"type": "single-select", "options": ["0"]}
+
+    def _parquet(self, app, model="m"):
+        return os.path.join(app.output_dir, DEFAULT_RUN_ID, "models", f"{model}.parquet")
+
+    def _save_and_run(self, app, client, path, body=None, *, method="post"):
+        with patch("visivo.server.views.run_views.request_run") as req:
+            getattr(client, method)(path, json=body)
+        names = [name for call in req.call_args_list for name in call[0][1]]
+        if names:
+            dag_filter = save_run_executor._dag_filter_for(app, names)
+            save_run_executor._execute(app, app.run_manager.create(dag_filter).id, dag_filter)
+        return names
+
+    def test_a_new_table_builds_its_model_data(self, integration_app, integration_client):
+        app, client = integration_app, integration_client
+        self._save_and_run(app, client, "/api/models/m/", self.MODEL)
+        assert not os.path.exists(self._parquet(app))
+
+        ran = self._save_and_run(app, client, "/api/tables/t/", {"columns": ['${ref(m).x} as "X"']})
+
+        assert ran == ["t"]
+        assert os.path.exists(self._parquet(app))
+
+    def test_a_table_moved_to_another_model_builds_that_model(
+        self, integration_app, integration_client
+    ):
+        app, client = integration_app, integration_client
+        self._save_and_run(app, client, "/api/models/m/", self.MODEL)
+        self._save_and_run(app, client, "/api/models/n/", self.MODEL)
+        self._save_and_run(app, client, "/api/tables/t/", {"data": "${ref(m)}"})
+
+        self._save_and_run(app, client, "/api/tables/t/", {"data": "${ref(n)}"})
+
+        assert os.path.exists(self._parquet(app, "n"))
+
+    def test_a_table_edit_that_reads_the_same_data_skips_the_run(
+        self, integration_app, integration_client
+    ):
+        app, client = integration_app, integration_client
+        self._save_and_run(app, client, "/api/models/m/", self.MODEL)
+        self._save_and_run(app, client, "/api/tables/t/", {"data": "${ref(m)}"})
+
+        ran = self._save_and_run(
+            app, client, "/api/tables/t/", {"data": "${ref(m)}", "rows_per_page": 50}
+        )
+
+        assert ran == []
+
+    def test_toggling_interactivity_builds_and_drops_the_model_data(
+        self, integration_app, integration_client
+    ):
+        app, client = integration_app, integration_client
+        self._save_and_run(app, client, "/api/models/m/", self.MODEL)
+        self._save_and_run(app, client, "/api/inputs/threshold/", self.THRESHOLD)
+        self._save_and_run(app, client, "/api/insights/i/", self.STATIC)
+        assert not os.path.exists(self._parquet(app))
+
+        self._save_and_run(app, client, "/api/insights/i/", self.INTERACTIVE)
+        assert os.path.exists(self._parquet(app))
+
+        self._save_and_run(app, client, "/api/insights/i/", self.STATIC)
+        assert not os.path.exists(self._parquet(app))
+
+        self._save_and_run(app, client, "/api/insights/j/", self.INTERACTIVE)
+        assert os.path.exists(self._parquet(app))
+
+    def test_an_input_saved_after_its_insight_builds_the_model_data(
+        self, integration_app, integration_client
+    ):
+        app, client = integration_app, integration_client
+        self._save_and_run(app, client, "/api/models/m/", self.MODEL)
+        self._save_and_run(app, client, "/api/insights/i/", self.INTERACTIVE)
+        assert not os.path.exists(self._parquet(app))
+
+        self._save_and_run(app, client, "/api/inputs/threshold/", self.THRESHOLD)
+
+        assert os.path.exists(self._parquet(app))
+
+
+class TestUnmappedAndFailurePaths:
+    """A type the run loop does not track never stages, and nothing in the
+    run-on-save hooks or the run endpoints can turn a save into a 500."""
+
+    def test_an_unmapped_type_neither_stages_nor_fingerprints(self, integration_app):
+        assert stage_and_maybe_run(integration_app, "explorations", "x", None) is None
+        assert resource_fingerprint(integration_app, "explorations", "x") is None
+
+    def test_a_missing_manager_has_no_fingerprint(self):
+        assert _resource_fingerprint(SimpleNamespace(), "tables", "t") is None
+
+    def test_a_failing_presave_snapshot_does_not_break_the_save(self, integration_client):
+        with patch(
+            "visivo.server.views.run_views._resource_fingerprint", side_effect=RuntimeError("x")
+        ):
+            r = integration_client.post("/api/models/m/", json={"sql": "select 1 as x"})
+        assert r.status_code == 201
+
+    def test_a_failing_run_on_save_does_not_break_the_save(self, integration_client):
+        with patch(
+            "visivo.server.views.run_views.stage_and_maybe_run", side_effect=RuntimeError("x")
+        ):
+            r = integration_client.post("/api/models/m/", json={"sql": "select 1 as x"})
+        assert r.status_code == 201
+
+    def test_the_run_endpoints_report_failures_as_500(self, integration_app, integration_client):
+        with patch.object(integration_app.run_manager, "list", side_effect=RuntimeError("down")):
+            listed = integration_client.get("/api/projects/id/run/")
+            triggered = integration_client.post("/api/projects/id/run/", json={})
+        assert listed.status_code == 500 and listed.get_json() == {"error": "down"}
+        assert triggered.status_code == 500 and triggered.get_json() == {"error": "down"}
 
 
 class TestTriggerMode:

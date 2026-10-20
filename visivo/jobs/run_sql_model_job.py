@@ -34,7 +34,7 @@ from visivo.query.sqlglot_utils import (
 )
 from visivo.query.model_schema_inference import infer_model_columns
 from visivo.constants import DEFAULT_RUN_ID
-from visivo.output_paths import schema_file as schema_file_path
+from visivo.output_paths import model_data_file, schema_file as schema_file_path
 
 
 def _build_and_write_schema(
@@ -267,6 +267,11 @@ def schema_only_action(
 
         # Organize by run_id
         run_output_dir = f"{output_dir}/{run_id}"
+        # Rows from an earlier SQL would outlive this run, and a table saved
+        # later would read them, since only a missing file asks for a build.
+        stale = model_data_file(run_output_dir, sql_model.name)
+        if os.path.exists(stale):
+            os.remove(stale)
         schema_file = schema_file_path(run_output_dir, sql_model.name)
         success_message = format_message_success(
             details=f"Wrote schema for model \033[4m{sql_model.name}\033[0m",
