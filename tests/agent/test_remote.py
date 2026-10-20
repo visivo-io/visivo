@@ -8,6 +8,7 @@ test is our adapter, not requests.
 
 import pytest
 
+from visivo.agent import tools
 from visivo.cloud_api import CloudApi
 from visivo.agent.remote import (
     RemoteProject,
@@ -323,3 +324,57 @@ class TestTheClient:
         project = build("https://app.visivo.io", "t", "p1", session=FakeCore())
 
         assert isinstance(project, RemoteProject)
+
+
+class TestWritingInCloud:
+    """A write in cloud goes THROUGH to core, which stages it and requests the
+    auto-run on its side. There is no local staging to do.
+
+    Observed in a cloud turn: `write_insight failed: 'RemoteProject' object has
+    no attribute 'staged_manager'` — raised AFTER the save had reached core, so
+    the tool reported failure for a write that had landed, the model retried,
+    and the object was written twice.
+    """
+
+    def _cloud_project(self):
+        core = FakeCore({"models": []})
+        return RemoteProject(CloudApi("https://core", "tok", "p1", session=core)), core
+
+    def test_a_write_reaches_core_and_reports_success(self):
+        project, core = self._cloud_project()
+
+        result = tools.call(
+            project,
+            "write_model",
+            {"config": {"name": "notes", "sql": "select 1"}},
+        )
+
+        assert result["name"] == "notes"
+        assert [(type_key, name) for type_key, name, _ in core.saved] == [("models", "notes")]
+
+    def test_it_does_not_report_a_local_change(self):
+        """`change` says what the LOCAL staging did. In cloud that is core's
+        answer to give, and inventing one here would put the top bar into a
+        state this process cannot see."""
+        project, _core = self._cloud_project()
+
+        result = tools.call(
+            project,
+            "write_model",
+            {"config": {"name": "notes", "sql": "select 1"}},
+        )
+
+        assert "change" not in result
+
+    def test_a_local_write_still_stages(self, integration_app):
+        """The guard must not switch local staging off — without it an agent's
+        writes leave the top bar on Deploy and never trigger a run."""
+        assert getattr(integration_app, "staged_manager", None) is not None
+
+        result = tools.call(
+            integration_app,
+            "write_model",
+            {"config": {"name": "staged_notes", "sql": "select 1"}},
+        )
+
+        assert result["name"] == "staged_notes"
