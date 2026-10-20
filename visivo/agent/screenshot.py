@@ -302,7 +302,7 @@ def _local_url(app, name):
 
 
 def _save(app, png, name):
-    """Persist the capture and return (capture_id, url), or (None, None).
+    """Persist the capture and return its URL, or ``None``.
 
     A capture that cannot be written is not a failed capture — the model has
     already been handed the image. Only the Agent tab loses out, so this
@@ -312,7 +312,7 @@ def _save(app, png, name):
 
     output_dir = getattr(app, "output_dir", None)
     if not output_dir:
-        return None, None
+        return None
     capture_id = f"{name}-{uuid.uuid4().hex[:8]}"
     path = capture_path(output_dir, capture_id)
     try:
@@ -321,8 +321,8 @@ def _save(app, png, name):
             out.write(png)
     except OSError as error:
         Logger.instance().debug(f"Could not store the agent capture: {error}")
-        return None, None
-    return capture_id, CAPTURE_URL.format(capture_id=capture_id)
+        return None
+    return CAPTURE_URL.format(capture_id=capture_id)
 
 
 def _cloud_target(client, name):
@@ -342,23 +342,18 @@ def _cloud_target(client, name):
 
 
 def _store_in_cloud(client, png, name):
-    """Upload the capture and return ``(id, url)``, or ``(None, None)``.
+    """Upload the capture and return its URL, or ``None``.
 
-    Best-effort, like the local path: the model already has the image, so a
-    storage failure costs the Agent tab a thumbnail and nothing else.
+    Signing, uploading and naming the object are `CloudApi.put_screenshot`'s
+    business, not this tool's. Best-effort, like the local path: the model
+    already has the image, so a storage failure costs the Agent tab a
+    thumbnail and nothing else.
     """
-    import uuid
-
-    capture_id = f"{name}-{uuid.uuid4().hex[:8]}"
     try:
-        slot = client.capture_upload(f"{capture_id}.png")
-        client.put(slot["upload_url"], png, "image/png")
+        return client.put_screenshot(png, name)
     except Exception as error:
         Logger.instance().debug(f"Could not store the agent capture in cloud: {error}")
-        return None, None
-    # The signed PUT and the readable GET are the same object; the query string
-    # is the signature, which is not ours to hand on.
-    return capture_id, slot["upload_url"].split("?")[0]
+        return None
 
 
 def _screenshot_handler(app, arguments):
@@ -376,9 +371,7 @@ def _screenshot_handler(app, arguments):
 
     settled = wait_for_runs(app)
     png, width, height, scale = fit(capture(url_to_load, cookie=cookie, full_page=bool(full_page)))
-    capture_id, url = (
-        _save(app, png, name) if client is None else _store_in_cloud(client, png, name)
-    )
+    url = _save(app, png, name) if client is None else _store_in_cloud(client, png, name)
 
     facts = {
         "dashboard": name,

@@ -23,9 +23,7 @@ editor's draft path, so an agent's change arrives as an uncommitted edit a
 person reviews. Nothing here can publish.
 """
 
-import requests
-
-from visivo import cloud_api
+from visivo.cloud_api import CloudApi, CloudApiError
 
 from visivo.logger.logger import Logger
 from visivo.server.rename_service import TYPE_TO_MANAGER
@@ -40,147 +38,10 @@ SAVE_TIMEOUT_SECONDS = 30
 PUBLISHED = "published"
 
 
-class RemoteProjectError(Exception):
-    """Core would not answer. The turn cannot run without the project."""
-
-
-def _why(what, url, response):
-    """A failure someone can act on.
-
-    "Could not read sources from core (400)" says a status and nothing about
-    which request produced it — and the interesting part of a 400 is always the
-    URL and what the server said about it. Both go in, because this message is
-    the only thing that reaches whoever is looking at the Agent tab.
-    """
-    detail = ""
-    try:
-        body = response.json()
-        detail = body.get("error") or body.get("detail") or ""
-    except Exception:
-        detail = (response.text or "")[:200]
-    where = url.split("?")[0]
-    query = url.split("?", 1)[1] if "?" in url else "(no query string)"
-    return (
-        f"Could not {what} from core: {response.status_code} at {where} "
-        f"[{query}]{' — ' + str(detail) if detail else ''}"
-    )
-
-
-class CoreClient:
-    """The half-dozen calls an agent session makes against core.
-
-    Deliberately the same endpoints the viewer uses — `/api/<type>/` with a
-    `project_id` — because those already exist, already enforce account scope,
-    and already put a write in the draft tier. An agent-specific write path
-    would be a second way to edit a project.
-    """
-
-    def __init__(self, base_url, token, project_id, session=None, host_header=None):
-        """``base_url`` is what we CONNECT to; ``host_header`` is what core is
-        told it is.
-
-        They differ in-cluster. A pod cannot reach its own cluster's external
-        ingress, so the connection goes to the web Service's DNS name — and
-        core's ALLOWED_HOSTS knows only the public hostname, rejecting anything
-        else with a 400 (``DisallowedHost``, which arrives as an HTML error
-        page rather than anything an agent can read). Sending the public name
-        as ``Host`` satisfies that, and ``X-Forwarded-Proto: https`` stops the
-        http->https redirect bouncing a plain-HTTP call.
-
-        The same pair the runner's own client sends, for the same reason.
-        """
-        self.base_url = str(base_url).rstrip("/")
-        self.project_id = project_id
-        self.session = session or requests.Session()
-        headers = {"Authorization": f"Api-Key {token}"}
-        if host_header:
-            headers["Host"] = host_header
-            headers["X-Forwarded-Proto"] = "https"
-        self.session.headers.update(headers)
-
-    def _url(self, path):
-        """A path from ``visivo.cloud_api``, against this client's host.
-
-        This class knows WHERE core is. What core exposes is `cloud_api`'s to
-        say, because the agent is not the only part of the CLI that calls it
-        and a route spelled out here is a route nothing else can find.
-        """
-        return f"{self.base_url}{path}"
-
-    def list(self, type_key):
-        url = self._url(cloud_api.typed_list(type_key, self.project_id))
-        response = self.session.get(url, timeout=FETCH_TIMEOUT_SECONDS)
-        if response.status_code != 200:
-            raise RemoteProjectError(_why(f"read {type_key}", url, response))
-        return (response.json() or {}).get(type_key) or []
-
-    def render_permit(self, dashboard):
-        """``(token, path)`` for screenshotting ``dashboard`` (VIS-1485).
-
-        The token is short-lived, read-only and account-locked. Not a user
-        JWT: a JWT carries no account, so core's
-        ``get_account_from_request`` would resolve whatever account the page's
-        own fetches asked for. This carries the operation, which locks it the
-        same way the agent's other calls are locked.
-
-        The PATH comes back from core too. Core knows the account slug, the
-        stage and the project name; assembling them here would be three more
-        strings a prompt-injected agent could influence, to build the one URL
-        a credentialed browser then loads. A dashboard core does not have is a
-        404, before any browser starts.
-        """
-        url = self._url(cloud_api.agent_render_token(self.project_id))
-        response = self.session.post(
-            url, json={"dashboard": dashboard}, timeout=SAVE_TIMEOUT_SECONDS
-        )
-        if response.status_code not in (200, 201):
-            raise RemoteProjectError(_why(f"get a render token for '{dashboard}'", url, response))
-        body = response.json() or {}
-        return body.get("token"), body.get("path")
-
-    def capture_upload(self, filename):
-        """``{id, name, upload_url}`` for one screenshot.
-
-        Core picks the object path and signs it, so the runner can neither
-        choose where the bytes land nor reach another account's prefix.
-        """
-        url = self._url(cloud_api.agent_captures(self.project_id))
-        response = self.session.post(
-            url, json=[{"filename": filename}], timeout=SAVE_TIMEOUT_SECONDS
-        )
-        if response.status_code not in (200, 201):
-            raise RemoteProjectError(_why("get an upload URL for a screenshot", url, response))
-        slots = response.json() or []
-        if not slots:
-            raise RemoteProjectError("Core signed no upload URL for the screenshot.")
-        return slots[0]
-
-    def put(self, upload_url, body, content_type):
-        """Bytes straight to storage, not through core."""
-        response = self.session.put(
-            upload_url,
-            data=body,
-            headers={"Content-Type": content_type},
-            timeout=SAVE_TIMEOUT_SECONDS,
-        )
-        if response.status_code not in (200, 201, 204):
-            raise RemoteProjectError(_why("upload the screenshot", upload_url, response))
-
-    def save(self, type_key, name, config):
-        url = self._url(cloud_api.typed_detail(type_key, name, self.project_id))
-        response = self.session.post(url, json=config, timeout=SAVE_TIMEOUT_SECONDS)
-        if response.status_code not in (200, 201):
-            raise RemoteProjectError(_why(f"save {type_key[:-1]} '{name}'", url, response))
-        return response.json()
-
-    def runs(self):
-        response = self.session.get(
-            self._url(cloud_api.project_runs(self.project_id)),
-            timeout=FETCH_TIMEOUT_SECONDS,
-        )
-        if response.status_code != 200:
-            return []
-        return response.json() or []
+# The agent's name for it. `CloudApi` raises `CloudApiError`; everything that
+# already catches `RemoteProjectError` keeps working, because they are the
+# same class.
+RemoteProjectError = CloudApiError
 
 
 class RemoteRunManager:
@@ -261,7 +122,7 @@ def _manager_for(type_key):
 
 def _hydrated(client, type_key):
     manager = _manager_for(type_key)
-    for envelope in client.list(type_key):
+    for envelope in client.objects(type_key):
         config = envelope.get("config") or {}
         name = envelope.get("name")
         if not name:
@@ -291,13 +152,13 @@ def _write_through(manager, client, type_key):
 
     def save(name, obj):
         original_save(name, obj)
-        client.save(type_key, name, obj.model_dump(exclude_none=True, mode="json"))
+        client.save_object(type_key, name, obj.model_dump(exclude_none=True, mode="json"))
 
     manager.save = save
 
 
 def build(base_url, token, project_id, working_dir=None, session=None, host_header=None):
     return RemoteProject(
-        CoreClient(base_url, token, project_id, session=session, host_header=host_header),
+        CloudApi(base_url, token, project_id, session=session, host_header=host_header),
         working_dir=working_dir,
     )

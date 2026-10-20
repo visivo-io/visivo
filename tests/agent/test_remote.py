@@ -8,8 +8,8 @@ test is our adapter, not requests.
 
 import pytest
 
+from visivo.cloud_api import CloudApi
 from visivo.agent.remote import (
-    CoreClient,
     RemoteProject,
     RemoteProjectError,
     build,
@@ -54,7 +54,7 @@ def _envelope(name, config, status="published"):
 
 def _project(rows=None, core=None):
     core = core or FakeCore(rows)
-    return RemoteProject(CoreClient("https://app.visivo.io", "tok", "p1", session=core)), core
+    return RemoteProject(CloudApi("https://app.visivo.io", "tok", "p1", session=core)), core
 
 
 class TestItLooksLikeAProject:
@@ -219,7 +219,7 @@ class TestReachingCoreFromInsideTheCluster:
 
     def test_the_public_name_is_sent_as_host(self):
         core = FakeCore()
-        CoreClient(
+        CloudApi(
             "http://core-web.core.svc.cluster.local",
             "tok",
             "p1",
@@ -233,7 +233,7 @@ class TestReachingCoreFromInsideTheCluster:
         """core redirects http->https; without this a plain-HTTP in-cluster
         call is bounced to a URL the pod cannot reach."""
         core = FakeCore()
-        CoreClient("http://x", "tok", "p1", session=core, host_header="app.visivo.io")
+        CloudApi("http://x", "tok", "p1", session=core, host_header="app.visivo.io")
 
         assert core.headers["X-Forwarded-Proto"] == "https"
 
@@ -241,7 +241,7 @@ class TestReachingCoreFromInsideTheCluster:
         """Out of cluster the connection host IS the public name, and forcing a
         Host header would be a way to get it wrong."""
         core = FakeCore()
-        CoreClient("https://app.visivo.io", "tok", "p1", session=core)
+        CloudApi("https://app.visivo.io", "tok", "p1", session=core)
 
         assert "Host" not in core.headers
         assert "X-Forwarded-Proto" not in core.headers
@@ -256,7 +256,7 @@ class TestReachingCoreFromInsideTheCluster:
 class TestTheClient:
     def test_it_authenticates_the_way_everything_else_does(self):
         core = FakeCore()
-        CoreClient("https://app.visivo.io", "secret-token", "p1", session=core)
+        CloudApi("https://app.visivo.io", "secret-token", "p1", session=core)
 
         assert core.headers["Authorization"] == "Api-Key secret-token"
 
@@ -269,34 +269,27 @@ class TestTheClient:
         endpoints take it in the path — and a call that used the wrong one
         would reach the wrong project or none at all.
         """
-        client = CoreClient("https://app.visivo.io", "t", "p1", session=FakeCore())
+        client = CloudApi("https://app.visivo.io", "t", "p1", session=FakeCore())
 
-        from visivo import cloud_api
+        assert client._typed("/api/models/") == ("https://app.visivo.io/api/models/?project_id=p1")
+        assert client._scoped("/run/") == "https://app.visivo.io/api/projects/p1/run/"
 
-        assert client._url(cloud_api.typed_list("models", "p1")) == (
-            "https://app.visivo.io/api/models/?project_id=p1"
-        )
-        assert client._url(cloud_api.project_runs("p1")) == (
-            "https://app.visivo.io/api/projects/p1/run/"
-        )
-
-    def test_the_client_knows_where_core_is_not_what_it_exposes(self):
-        """The routes belong to `visivo.cloud_api`, because the agent is not
-        the only part of the CLI that calls core — `visivo deploy` does too —
-        and a path spelled out here is a path nothing else can find.
+    def test_no_route_is_written_outside_the_two_builders(self):
+        """So the surface the CLI depends on can be read off one file, and a
+        caller asks for an endpoint rather than spelling one.
 
         Checked against the parsed source rather than the text, so prose about
-        the endpoints stays allowed and only a literal path being BUILT fails.
+        the endpoints stays allowed and only a literal being BUILT fails.
         """
         import ast
         from pathlib import Path
 
-        source = Path(__file__).parents[2] / "visivo" / "agent" / "remote.py"
+        source = Path(__file__).parents[2] / "visivo" / "cloud_api.py"
         tree = ast.parse(source.read_text())
         klass = next(
             node
             for node in ast.walk(tree)
-            if isinstance(node, ast.ClassDef) and node.name == "CoreClient"
+            if isinstance(node, ast.ClassDef) and node.name == "CloudApi"
         )
         docstrings = {
             ast.get_docstring(node, clean=False)
@@ -304,16 +297,27 @@ class TestTheClient:
             if isinstance(node, (ast.ClassDef, ast.FunctionDef))
         }
 
-        built = [
-            node.value
-            for node in ast.walk(klass)
-            if isinstance(node, ast.Constant)
-            and isinstance(node.value, str)
-            and "/api/" in node.value
-            and node.value not in docstrings
-        ]
+        # No exemptions: the builders take a route from the table above them,
+        # so not even they contain one.
+        offenders = []
+        for method in klass.body:
+            if not isinstance(method, ast.FunctionDef):
+                continue
+            for node in ast.walk(method):
+                # Any literal that looks like a path, not just "/api/" ones:
+                # the project-scoped routes are tails like "/agent/captures/"
+                # and an "/api/" check sails straight past them.
+                if (
+                    isinstance(node, ast.Constant)
+                    and isinstance(node.value, str)
+                    and node.value.startswith("/")
+                    # A bare "/" is a separator, not a route (rstrip).
+                    and len(node.value) > 1
+                    and node.value not in docstrings
+                ):
+                    offenders.append(f"{method.name}: {node.value}")
 
-        assert built == [], f"remote.py builds routes instead of importing them: {built}"
+        assert offenders == [], f"a route is spelled in a method instead of the table: {offenders}"
 
     def test_build_is_the_one_entry_point(self):
         project = build("https://app.visivo.io", "t", "p1", session=FakeCore())

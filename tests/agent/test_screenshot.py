@@ -456,7 +456,8 @@ class TestTheCloudPath:
     def _cloud_project(self, dashboard="revenue", permit=("rtok", "/acme/main/proj/revenue")):
         """A RemoteProject whose core answers the screenshot calls."""
         from tests.agent.test_remote import FakeCore, FakeResponse, _envelope
-        from visivo.agent.remote import CoreClient, RemoteProject
+        from visivo.agent.remote import RemoteProject
+        from visivo.cloud_api import CloudApi
 
         class ScreenshotCore(FakeCore):
             def __init__(self):
@@ -482,7 +483,7 @@ class TestTheCloudPath:
 
         core = ScreenshotCore()
         project = RemoteProject(
-            CoreClient("https://core.svc.cluster.local", "tok", "p1", session=core)
+            CloudApi("https://core.svc.cluster.local", "tok", "p1", session=core)
         )
         return project, core
 
