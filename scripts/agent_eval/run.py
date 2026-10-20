@@ -175,6 +175,34 @@ class Serve:
         return objects
 
 
+def stale_viewer_bundle():
+    """Why the serve's built viewer is older than the viewer source, or ``None``.
+
+    The agent's `screenshot_dashboard` loads the page from the serve, which
+    serves the bundle in `visivo/viewers/local`. Releases rebuild it; a
+    checkout does not. The eval renders from the dev server instead, so with a
+    stale bundle the agent and the judge look at two different viewers.
+    """
+    repo = os.path.dirname(os.path.dirname(HERE))
+
+    def git(*command):
+        return subprocess.run(
+            ["git", *command], cwd=repo, capture_output=True, text=True
+        ).stdout.strip()
+
+    if git("status", "--porcelain", "--", "visivo/viewers/local"):
+        return None
+    source = git("log", "-1", "--format=%ct", "--", "viewer/src")
+    built = git("log", "-1", "--format=%ct", "--", "visivo/viewers/local")
+    if not source or not built or int(built) >= int(source):
+        return None
+    return (
+        "visivo/viewers/local is older than the last viewer/src commit, so "
+        "screenshot_dashboard would show the agent an older viewer than the judge "
+        "sees. Run `yarn deploy:local` in viewer/ first, or pass --allow-stale-viewer."
+    )
+
+
 def skills_prompt():
     from visivo.agent import skills
 
@@ -456,7 +484,11 @@ def main():
     parser.add_argument("--model", default="sonnet")
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--allow-stale-viewer", action="store_true")
     args = parser.parse_args()
+    stale = None if args.allow_stale_viewer else stale_viewer_bundle()
+    if stale:
+        sys.exit(stale)
 
     dataset = yaml.safe_load(open(os.path.join(HERE, "datasets", args.dataset, "prompts.yml")))
     suite = dataset["prompts"]

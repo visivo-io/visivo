@@ -27,6 +27,12 @@ The databases are not committed. Build them once:
 
 2. Install the browser for screenshots: `pip install playwright pillow && playwright install chromium`.
 
+3. Build the viewer the serve hands out: `cd viewer && yarn deploy:local`. The
+   agent's `screenshot_dashboard` loads the page from the serve, which serves
+   `visivo/viewers/local`, and only a release rebuilds that. The eval renders
+   from the dev server. `run.py` refuses to start while the bundle is older than
+   the last `viewer/src` commit. Do not commit the rebuilt bundle.
+
 The `mcp` conditions need the `claude` CLI. The `builtin` condition needs a
 model the agent can resolve (`visivo authorize`, or a provider key).
 
