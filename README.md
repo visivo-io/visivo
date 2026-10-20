@@ -46,7 +46,7 @@ Prefer a single binary with no Python? `curl -fsSL https://visivo.sh | bash` ins
   <img src=".github/readme/quickstart-ev-sales.png" alt="The bundled EV Sales example dashboard" width="90%" />
 </p>
 
-Edit the YAML and save. The dev server recompiles, re-runs what changed, and the open tab redraws. No build step.
+Edit the YAML and save. The dev server recompiles and re-runs what changed, and layout and style edits redraw in the open tab without a reload. No build step.
 
 <p align="center">
   <img src=".github/readme/run-on-save.gif" alt="Saving three YAML edits in a row: the chart title changes, the bar chart becomes a line, then the line turns orange, each without a page reload" width="90%" />
