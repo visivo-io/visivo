@@ -16,6 +16,8 @@ from visivo.query.patterns import extract_ref_names
 
 # Plotly's named scales that run dark to light: the highest values come out palest.
 DARK_TO_LIGHT = {"Blues", "Greens", "Greys", "YlGnBu", "YlOrRd"}
+# The one single-hue scale that already runs light to dark, so reversing it inverts it.
+LIGHT_TO_DARK = {"Reds"}
 COLOR_SCALED = {
     "heatmap",
     "contour",
@@ -101,6 +103,11 @@ def _insight(app, config):
         found.append(
             f"`colorscale: {scale}` runs dark to light in Plotly, so the highest values come out "
             "palest. Add `reversescale: true`, or use Reds or Viridis."
+        )
+    if trace in COLOR_SCALED and scale in LIGHT_TO_DARK and props.get("reversescale"):
+        found.append(
+            f"`colorscale: {scale}` already runs light to dark in Plotly, so `reversescale: "
+            "true` makes the highest values palest. Remove `reversescale`."
         )
     if (
         trace in COLOR_SCALED
