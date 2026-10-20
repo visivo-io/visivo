@@ -96,11 +96,20 @@ class CoreClient:
             headers["X-Forwarded-Proto"] = "https"
         self.session.headers.update(headers)
 
-    def _url(self, path):
+    # Core's routes, in one place. Two shapes, because core has two: the
+    # per-type endpoints the viewer uses take the project as a query
+    # parameter, and the agent/run endpoints take it in the path. Both were
+    # being built inline at the call site, which is how a class ends up with
+    # two spellings of the same thing and no way to see the surface it
+    # depends on.
+    def _typed_url(self, path):
         return f"{self.base_url}{path}?project_id={self.project_id}"
 
+    def _project_url(self, path):
+        return f"{self.base_url}/api/projects/{self.project_id}{path}"
+
     def list(self, type_key):
-        url = self._url(f"/api/{type_key}/")
+        url = self._typed_url(f"/api/{type_key}/")
         response = self.session.get(url, timeout=FETCH_TIMEOUT_SECONDS)
         if response.status_code != 200:
             raise RemoteProjectError(_why(f"read {type_key}", url, response))
@@ -121,7 +130,7 @@ class CoreClient:
         a credentialed browser then loads. A dashboard core does not have is a
         404, before any browser starts.
         """
-        url = f"{self.base_url}/api/projects/{self.project_id}/agent/render-token/"
+        url = self._project_url("/agent/render-token/")
         response = self.session.post(
             url, json={"dashboard": dashboard}, timeout=SAVE_TIMEOUT_SECONDS
         )
@@ -136,7 +145,7 @@ class CoreClient:
         Core picks the object path and signs it, so the runner can neither
         choose where the bytes land nor reach another account's prefix.
         """
-        url = f"{self.base_url}/api/projects/{self.project_id}/agent/captures/"
+        url = self._project_url("/agent/captures/")
         response = self.session.post(
             url, json=[{"filename": filename}], timeout=SAVE_TIMEOUT_SECONDS
         )
@@ -159,17 +168,14 @@ class CoreClient:
             raise RemoteProjectError(_why("upload the screenshot", upload_url, response))
 
     def save(self, type_key, name, config):
-        url = self._url(f"/api/{type_key}/{name}/")
+        url = self._typed_url(f"/api/{type_key}/{name}/")
         response = self.session.post(url, json=config, timeout=SAVE_TIMEOUT_SECONDS)
         if response.status_code not in (200, 201):
             raise RemoteProjectError(_why(f"save {type_key[:-1]} '{name}'", url, response))
         return response.json()
 
     def runs(self):
-        response = self.session.get(
-            f"{self.base_url}/api/projects/{self.project_id}/run/",
-            timeout=FETCH_TIMEOUT_SECONDS,
-        )
+        response = self.session.get(self._project_url("/run/"), timeout=FETCH_TIMEOUT_SECONDS)
         if response.status_code != 200:
             return []
         return response.json() or []

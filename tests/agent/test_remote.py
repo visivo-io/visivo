@@ -261,11 +261,31 @@ class TestTheClient:
         assert core.headers["Authorization"] == "Api-Key secret-token"
 
     def test_the_project_is_scoped_on_every_call(self):
-        """Core requires project_id and 404s an account mismatch; forgetting it
-        is a 400 that reads like a bug in the tool."""
+        """Core requires the project and 404s an account mismatch; forgetting
+        it is a 400 that reads like a bug in the tool.
+
+        Both builders, because core has two route shapes — the per-type
+        endpoints take the project as a query parameter, the agent and run
+        endpoints take it in the path — and a call that used the wrong one
+        would reach the wrong project or none at all.
+        """
         client = CoreClient("https://app.visivo.io", "t", "p1", session=FakeCore())
 
-        assert client._url("/api/models/").endswith("?project_id=p1")
+        assert client._typed_url("/api/models/").endswith("?project_id=p1")
+        assert client._project_url("/run/") == "https://app.visivo.io/api/projects/p1/run/"
+
+    def test_every_route_goes_through_a_builder(self):
+        """So the surface this client depends on can be read off one place,
+        rather than being spelled out inline at each call site."""
+        from pathlib import Path
+
+        source = Path(__file__).parents[2] / "visivo" / "agent" / "remote.py"
+        body = source.read_text().split("class CoreClient")[1].split("\nclass ")[0]
+        builders = body.split("def _project_url")[1].split("\n    def ", 1)[1]
+
+        assert (
+            "{self.base_url}" not in builders
+        ), "a route is being built inline instead of through _typed_url/_project_url"
 
     def test_build_is_the_one_entry_point(self):
         project = build("https://app.visivo.io", "t", "p1", session=FakeCore())
