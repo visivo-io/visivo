@@ -24,15 +24,16 @@ of the one message that would have helped.
 
 import requests
 
+from visivo import cloud_api
+
 from visivo.logger.logger import Logger
 from visivo.server.constants import VISIVO_HOST
 from visivo.tokens.token_functions import get_existing_token
 
-# pydantic-ai's OpenAIProvider appends `/chat/completions` to its base_url, so
-# this is the prefix core mounts that path under. No version segment: there is
-# one client and one server, both ours, released together — a version in the
-# path would be ceremony for a compatibility promise nobody is making.
-INFERENCE_PATH = "/api/inference"
+# pydantic-ai's OpenAIProvider appends `/chat/completions` to this. Declared in
+# `visivo.cloud_api` with every other route core exposes, so the CLI's
+# dependency on core's surface can be read off one file.
+INFERENCE_PATH = cloud_api.INFERENCE
 
 # The name is core's to honour — it pins the model server-side so a client
 # cannot choose its own cost — but a model name is required to construct the
@@ -54,7 +55,7 @@ def token(host=None):
 
 
 def capability_url(host=None):
-    return f"{host or VISIVO_HOST}/api/inference/"
+    return f"{host or VISIVO_HOST}{cloud_api.inference_capability()}"
 
 
 def capability(host=None):

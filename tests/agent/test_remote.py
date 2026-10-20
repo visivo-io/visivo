@@ -271,21 +271,49 @@ class TestTheClient:
         """
         client = CoreClient("https://app.visivo.io", "t", "p1", session=FakeCore())
 
-        assert client._typed_url("/api/models/").endswith("?project_id=p1")
-        assert client._project_url("/run/") == "https://app.visivo.io/api/projects/p1/run/"
+        from visivo import cloud_api
 
-    def test_every_route_goes_through_a_builder(self):
-        """So the surface this client depends on can be read off one place,
-        rather than being spelled out inline at each call site."""
+        assert client._url(cloud_api.typed_list("models", "p1")) == (
+            "https://app.visivo.io/api/models/?project_id=p1"
+        )
+        assert client._url(cloud_api.project_runs("p1")) == (
+            "https://app.visivo.io/api/projects/p1/run/"
+        )
+
+    def test_the_client_knows_where_core_is_not_what_it_exposes(self):
+        """The routes belong to `visivo.cloud_api`, because the agent is not
+        the only part of the CLI that calls core — `visivo deploy` does too —
+        and a path spelled out here is a path nothing else can find.
+
+        Checked against the parsed source rather than the text, so prose about
+        the endpoints stays allowed and only a literal path being BUILT fails.
+        """
+        import ast
         from pathlib import Path
 
         source = Path(__file__).parents[2] / "visivo" / "agent" / "remote.py"
-        body = source.read_text().split("class CoreClient")[1].split("\nclass ")[0]
-        builders = body.split("def _project_url")[1].split("\n    def ", 1)[1]
+        tree = ast.parse(source.read_text())
+        klass = next(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ClassDef) and node.name == "CoreClient"
+        )
+        docstrings = {
+            ast.get_docstring(node, clean=False)
+            for node in ast.walk(klass)
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef))
+        }
 
-        assert (
-            "{self.base_url}" not in builders
-        ), "a route is being built inline instead of through _typed_url/_project_url"
+        built = [
+            node.value
+            for node in ast.walk(klass)
+            if isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and "/api/" in node.value
+            and node.value not in docstrings
+        ]
+
+        assert built == [], f"remote.py builds routes instead of importing them: {built}"
 
     def test_build_is_the_one_entry_point(self):
         project = build("https://app.visivo.io", "t", "p1", session=FakeCore())
