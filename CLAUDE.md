@@ -100,6 +100,7 @@ Each CLI command follows a consistent pattern:
 3. **Pydantic models**: Strong typing throughout the Python codebase
 4. **Plugin architecture**: Extensible source and destination connectors
 5. **Dual deployment**: Local development mode vs distribution mode
+6. **One save path for every writer**: The editor's API routes, the agent's tools (built-in and MCP), rename and the CLI all change the same objects. Put a rule about valid data (unique names, required fields, refs that resolve) in the shared save path: `ObjectManager.save` and the managers in `visivo/server/managers/`, or the Pydantic model. Do not put it only in `visivo/agent/tools.py` or in one Flask view. The agent layer may add a hint or a warning on top of the shared error, but it is never the only check. Test the rule through at least two writers.
 
 ## Project Structure
 
