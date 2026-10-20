@@ -135,6 +135,12 @@ dashboards:
   <img src=".github/readme/workspace.png" alt="The Visivo workspace: object sidebar on the left, the dashboard canvas in the middle, an edit panel on the right" width="90%" />
 </p>
 
+Layout is drag and drop: pull a chart from the Library onto a row, grab a selected card by its frame to reorder it, then save the result to the YAML.
+
+<p align="center">
+  <img src=".github/readme/workspace-dnd.gif" alt="On the workspace canvas, the tip_rate_by_borough_chart row is dragged from the Library and dropped at the end of the last dashboard row, where it renders; then the Payment method donut is selected and dragged in front of the Weekly revenue chart in its row" width="90%" />
+</p>
+
 **Push, not pull.** `visivo run` executes the queries wherever you run it, on your laptop or in CI, and writes the results next to the project. `visivo deploy` ships those results, so the hosted viewer never needs a connection to your warehouse.
 
 ## Build with an agent
@@ -164,8 +170,13 @@ The server offers `list_*`, `get_*`, `validate_*` and `write_*` for every projec
 - **Query-backed inputs:** `options: ?{ SELECT DISTINCT region FROM ${ref(sales)} }` fills a dropdown from your data at build time.
 - **Static distribution:** `visivo dist` packages the viewer and the last run's data into a folder you can host on S3, GitHub Pages or any static host.
 - **Visivo Cloud:** `visivo deploy` pushes the project and its data to [app.visivo.io](https://app.visivo.io) under a named stage, with sharing, teams and roles.
-- **Lineage:** the workspace draws the DAG from sources to dashboards so you can see what a change touches.
-- **Responsive dashboards:** rows stack on phones.
+- **Lineage:** every dashboard has a Lineage view that draws its DAG from sources to the dashboard, so you can see what a change touches.
+
+<p align="center">
+  <img src=".github/readme/lineage.png" alt="The Lineage view of the NYC Taxi dashboard: the taxi DuckDB source on the left feeding the trips, zone_ranks and zones models and the borough input, then ten insights, then their ten charts, then the dashboard node on the right" width="90%" />
+</p>
+
+Rows stack on phones, so the same dashboard reads on a 390 px screen.
 
 <p align="center">
   <img src=".github/readme/mobile.png" alt="The same taxi dashboard on a 390 px wide phone viewport, with the input, KPI cards and charts stacked" width="300" />
