@@ -2,6 +2,7 @@ from flask import jsonify, request
 from pydantic import ValidationError
 from visivo.logger.logger import Logger
 from visivo.server.managers.object_manager import ObjectStatus
+from visivo.server.names import NameTakenError
 
 
 def register_tables_views(app, flask_app, output_dir):
@@ -52,6 +53,8 @@ def register_tables_views(app, flask_app, output_dir):
                 ),
                 201 if status == ObjectStatus.NEW else 200,
             )
+        except NameTakenError as e:
+            return jsonify({"error": str(e)}), 409
         except ValidationError as e:
             Logger.instance().debug(f"Table validation failed: {e}")
             first_error = e.errors()[0]

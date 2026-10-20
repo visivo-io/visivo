@@ -36,6 +36,7 @@ from visivo.agent.schema import SchemaSlicer
 from visivo.agent.screenshot import SCREENSHOT_TOOLS
 from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
 from visivo.jobs.run_model_data_job import QueryTimeout
+from visivo.server.names import NameTakenError
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
 
@@ -49,6 +50,10 @@ def _manager(app, type_key):
     if manager is None:
         raise ToolError(f"This server has no manager for '{type_key}'.")
     return manager
+
+
+def _rename_hint(type_key, name):
+    return f"Choose another name, e.g. '{name}_{_singular(type_key)}'."
 
 
 def _name_argument(arguments):
@@ -99,12 +104,17 @@ def _get_handler(type_key):
 def _validate_handler(type_key):
     def handler(app, arguments):
         config = _config_argument(arguments)
+        manager = _manager(app, type_key)
         try:
-            _manager(app, type_key).validate_object(config)
+            obj = manager.validate_object(config)
         except ToolError:
             raise
         except Exception as error:
             return {"valid": False, "error": str(error)}
+        name = config.get("name")
+        clash = manager.name_clash and isinstance(name, str) and manager.name_clash(name, obj)
+        if clash:
+            return {"valid": False, "error": f"{clash} {_rename_hint(type_key, name)}"}
         return {"valid": True}
 
     return handler
@@ -129,7 +139,10 @@ def _write_handler(type_key):
 
         before = resource_fingerprint(app, type_key, name)
         # Into the draft tier, never the filesystem. See the module docstring.
-        manager.save(name, obj)
+        try:
+            manager.save(name, obj)
+        except NameTakenError as error:
+            raise ToolError(f"{error} {_rename_hint(type_key, name)}")
         # A person's edit reaches this through the after_request hook on
         # POST /api/<type>/<name>/. The agent saves in-process, so without this
         # its writes stage nothing (leaving the top bar on Deploy) and never

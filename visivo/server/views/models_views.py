@@ -3,6 +3,7 @@ from pydantic import ValidationError
 from visivo.logger.logger import Logger
 from visivo.server.managers.object_manager import ObjectStatus
 from visivo.server.model_sql_validation import dialect_for_model, validate_model_sql
+from visivo.server.names import NameTakenError
 
 
 def register_models_views(app, flask_app, output_dir):
@@ -61,6 +62,8 @@ def register_models_views(app, flask_app, output_dir):
                 ),
                 201 if status == ObjectStatus.NEW else 200,
             )
+        except NameTakenError as e:
+            return jsonify({"error": str(e)}), 409
         except ValidationError as e:
             Logger.instance().debug(f"Model validation failed: {e}")
             first_error = e.errors()[0]

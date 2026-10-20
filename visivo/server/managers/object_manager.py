@@ -81,6 +81,9 @@ class ObjectManager(ABC, Generic[T]):
         # one", and the commit would write a duplicate instead of renaming.
         self._renames: Dict[str, str] = {}
         self._lock = Lock()
+        # (name, obj) -> why another type holds the name, or None. FlaskApp
+        # installs ``visivo.server.names.name_clash``; a bare manager checks nothing.
+        self.name_clash = None
 
     @property
     def cached_objects(self) -> Dict[str, T]:
@@ -128,7 +131,15 @@ class ObjectManager(ABC, Generic[T]):
         Args:
             name: The unique name/identifier for the object
             obj: The object to save
+
+        Raises:
+            NameTakenError: If an object of another type already holds ``name``
         """
+        reason = self.name_clash(name, obj) if self.name_clash and obj is not None else None
+        if reason:
+            from visivo.server.names import NameTakenError
+
+            raise NameTakenError(reason)
         with self._lock:
             self._cached_objects[name] = obj
 

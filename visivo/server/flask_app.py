@@ -1,4 +1,5 @@
 import os
+from functools import partial
 from flask import Flask
 from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
@@ -21,6 +22,7 @@ from visivo.server.managers.dashboard_manager import DashboardManager
 from visivo.server.managers.project_manager import ProjectManager
 from visivo.server.managers.run_manager import RunManager
 from visivo.server.managers.staged_manager import StagedManager
+from visivo.server.names import name_clash
 
 
 from visivo.server.constants import resolve_host
@@ -106,6 +108,9 @@ class FlaskApp:
 
         self.dashboard_manager = DashboardManager()
         self.dashboard_manager.load(dag)
+
+        for manager in self._all_object_managers():
+            manager.name_clash = partial(name_clash, self, manager)
 
         # Initialize project manager (doesn't use DAG, just stores project and cache dir)
         self.project_manager = ProjectManager(project, output_dir)

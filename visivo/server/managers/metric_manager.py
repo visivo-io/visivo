@@ -51,12 +51,14 @@ class MetricManager(ObjectManager[Metric]):
             if metric.name:
                 self._published_objects[metric.name] = metric
 
-    def save_from_config(self, config: dict) -> Metric:
+    def save_from_config(self, config: dict, parent_model: Optional[str] = None) -> Metric:
         """
         Validate and save metric from configuration dict.
 
         Args:
             config: Dictionary containing metric configuration
+            parent_model: The model this metric is scoped to, if any. Set
+                before the save, because a name's uniqueness depends on it.
 
         Returns:
             The validated Metric object
@@ -65,6 +67,8 @@ class MetricManager(ObjectManager[Metric]):
             ValidationError: If the metric configuration is invalid
         """
         metric = self.validate_object(config)
+        if parent_model:
+            metric.set_parent_name(parent_model)
         self.save(metric.name, metric)
         return metric
 
