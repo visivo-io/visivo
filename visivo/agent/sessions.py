@@ -61,20 +61,67 @@ class Session:
         # reader needs to know who said what.
         self.transcript = []
 
-    def say(self, role, text, actions=None):
+    def say(self, role, text, actions=None, pending=False):
         """Add to what a person reads.
 
         An agent turn carries the tool calls it made, so the answer can be read
         next to the work rather than beside an undated list that may also hold
         an MCP client's.
+
+        ``pending`` marks the entry as a turn still in flight, so the tab can
+        render work in progress rather than a minute of "Thinking…" followed by
+        everything at once.
         """
         entry = {
             "role": role,
             "text": text,
             "at": datetime.now().isoformat(),
             "actions": list(actions or []),
+            "pending": pending,
         }
         self.transcript.append(entry)
+        return entry
+
+    def progress(self, text=None, actions=None):
+        """Update the turn in flight, starting one if there is not one yet.
+
+        UPDATES rather than appends. A second entry per report would render the
+        answer under its own Agent bubble, below a separate list of the work
+        that produced it.
+        """
+        entry = self.in_flight()
+        if entry is None:
+            entry = self.say("agent", text or "", actions=actions, pending=True)
+            return entry
+        if text is not None:
+            entry["text"] = text
+        if actions is not None:
+            entry["actions"] = list(actions)
+        entry["at"] = datetime.now().isoformat()
+        return entry
+
+    def in_flight(self):
+        """The turn being worked on, or ``None``."""
+        if self.transcript and self.transcript[-1].get("pending"):
+            return self.transcript[-1]
+        return None
+
+    def settle(self, text=None, actions=None):
+        """Finish the turn in flight: fold in the final answer and stop
+        calling it pending.
+
+        Called on EVERY exit path, including cancellation. A cancelled turn
+        used to lose its tool calls entirely, because `remember` was the only
+        writer of them and cancellation skips it.
+        """
+        entry = self.in_flight()
+        if entry is None:
+            return None
+        if text:
+            entry["text"] = text
+        if actions is not None:
+            entry["actions"] = list(actions)
+        entry["pending"] = False
         return entry
 
     def to_dict(self, with_transcript=True):
@@ -162,8 +209,35 @@ class SessionManager:
             if session is None:
                 return
             session.history = history
-            if answer:
+            # Settle the entry progress has been filling in. Only when there is
+            # none — a turn that reported nothing — is a fresh one said, so the
+            # answer never lands under a second Agent bubble.
+            if session.settle(answer, actions=actions) is None and answer:
                 session.say("agent", answer, actions=actions)
+
+    def progress(self, session_id, text=None, actions=None):
+        """Report what the turn in flight has done so far.
+
+        Best-effort by construction: a session that has been evicted, or a
+        report that arrives after the turn settled, is dropped rather than
+        raising into the loop. Progress must never be able to fail a turn.
+        """
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None or session.state in FINISHED:
+                return None
+            session.progress(text=text, actions=actions)
+            session.updated_at = datetime.now()
+            return session
+
+    def settle(self, session_id, text=None, actions=None):
+        """Stop calling the turn in flight pending, whatever ended it."""
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None:
+                return None
+            session.settle(text, actions=actions)
+            return session
 
     def active(self):
         with self._lock:

@@ -8,6 +8,8 @@ import {
   startAgentSession,
 } from '../api/agent';
 import AgentToolCalls from './AgentToolCalls';
+import { subscribe } from '../events/eventSource';
+import { AGENT_ACTIVITY } from '../events/topics';
 import AgentAuthorize from './AgentAuthorize';
 import useAuthorization from '../hooks/useAuthorization';
 
@@ -55,6 +57,8 @@ const AgentPrompt = () => {
   const [starting, setStarting] = useState(false);
   const [modelSource, setModelSource] = useState(null);
   const timer = useRef(null);
+  // The running poll's own tick, so a push can run it early.
+  const tick = useRef(null);
   // One idea of "authorized", shared with Deploy (VIS-1377). Until this the
   // tab's answer to a first-time user was the resolver's BYO error.
   const { authorized, host, working: authorizing, message: authMessage, authorize } =
@@ -69,12 +73,22 @@ const AgentPrompt = () => {
       clearInterval(timer.current);
       timer.current = null;
     }
+    tick.current = null;
   }, []);
 
   useEffect(() => stopPolling, [stopPolling]);
 
   // The box sits under the conversation, so bring it into view when the tab
   // opens on one and each time it grows: the latest exchange is just above it.
+  // `serve` pushes `agent_action` the instant a tool call starts or settles.
+  // The session poll is what actually carries the turn's work, so this only
+  // says "now" — with no socket it never fires and the poll is unchanged.
+  useEffect(() => {
+    return subscribe(AGENT_ACTIVITY, () => {
+      tick.current?.();
+    });
+  }, []);
+
   const box = useRef(null);
   const turns = session?.transcript?.length || 0;
   const working = isActive(session);
@@ -125,6 +139,7 @@ const AgentPrompt = () => {
       // Once immediately: a loop that answers in under a second should not
       // look like it is still working for a second.
       check();
+      tick.current = check;
       timer.current = setInterval(check, POLL_MS);
     },
     [stopPolling, projectId, refreshAfterAgentTurn]
@@ -352,11 +367,11 @@ function Transcript({ entries, running }) {
           {/* Above the answer, so a turn reads as ask -> work -> result. An
               answer with no visible work is what made the agent look like it
               had done nothing. */}
-          <AgentToolCalls actions={entry.actions} />
+          <AgentToolCalls actions={entry.actions} open={entry.pending} />
           {entry.text}
         </div>
       ))}
-      {running && (
+      {running && !entries.some(entry => entry.pending) && (
         <div className="px-3 text-sm text-gray-400" data-testid="agent-thinking">
           Thinking…
         </div>

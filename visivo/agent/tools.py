@@ -916,19 +916,25 @@ def call(app, name, arguments=None):
         action_log().record(name, obj=obj, outcome="error", error=message)
         raise ToolError(message)
 
+    # Recorded BEFORE the handler runs, and settled after. `outcome` used to be
+    # written only once a call returned, so a thirty-second query showed
+    # nothing at all while it ran — the tab cannot say "working" about work it
+    # has not been told about.
+    pending = action_log().record(name, obj=obj, outcome="pending")
+
     try:
         result = tool.handler(app, arguments)
     except Exception as error:
         refusal = _as_refusal(name, arguments, error)
-        action_log().record(name, obj=obj, outcome="error", error=str(refusal))
+        action_log().resolve(pending["id"], outcome="error", error=str(refusal))
         raise refusal
 
     # A validate tool answers `{"valid": False}` rather than raising — the
     # config was bad, which the log should say, but the call itself worked.
     if isinstance(result, dict) and result.get("valid") is False:
-        action_log().record(name, obj=obj, outcome="error", error=result.get("error"))
+        action_log().resolve(pending["id"], outcome="error", error=result.get("error"))
     else:
-        action_log().record(name, obj=obj, image_url=_image_url_of(result))
+        action_log().resolve(pending["id"], image_url=_image_url_of(result))
     return _with_attached_skills(name, result)
 
 

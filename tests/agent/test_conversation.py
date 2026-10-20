@@ -626,3 +626,120 @@ class TestAFailedTurnIsNotALostTurn:
         assert finished.state == SessionState.FAILED
         assert finished.error == "This account has used its $30 of free credit."
         assert finished.action == "inference_limit_reached"
+
+
+class TestATurnShowsItsWorkWhileItWorks:
+    """A turn used to say "Thinking…" for a minute and then paste everything
+    at once (VIS-1535). The transcript now fills in as the turn goes.
+    """
+
+    def _slow_model(self, calls=2):
+        """A model that makes `calls` tool calls, talking between them.
+
+        Async, and it awaits: the progress watcher runs in the turn's own event
+        loop, so a model that blocked it would block the reporting this test is
+        about and the test would pass or fail for the wrong reason.
+        """
+        import asyncio
+
+        seen = {"n": 0}
+
+        async def respond(messages, info: AgentInfo):
+            seen["n"] += 1
+            await asyncio.sleep(0.05)
+            if seen["n"] <= calls:
+                return ModelResponse(
+                    parts=[
+                        TextPart(f"step {seen['n']}"),
+                        ToolCallPart("list_sources", {}),
+                    ]
+                )
+            return ModelResponse(parts=[TextPart("All done.")])
+
+        model = FunctionModel(respond)
+        model.seen = seen
+        return model
+
+    def test_the_turn_in_flight_is_marked_pending(self, integration_app, sessions):
+        session = sessions.create("go")
+        sessions.progress(session.id, text="working", actions=[{"id": 1, "tool": "x"}])
+
+        entry = sessions.get(session.id).transcript[-1]
+        assert entry["role"] == "agent"
+        assert entry["pending"] is True
+        assert entry["text"] == "working"
+
+    def test_progress_updates_one_entry_rather_than_appending(self, integration_app, sessions):
+        """Two entries would render the answer under its own Agent bubble,
+        below a separate list of the work that produced it."""
+        session = sessions.create("go")
+
+        sessions.progress(session.id, text="one", actions=[{"id": 1}])
+        sessions.progress(session.id, text="two", actions=[{"id": 1}, {"id": 2}])
+
+        agent_entries = [e for e in sessions.get(session.id).transcript if e["role"] == "agent"]
+        assert len(agent_entries) == 1
+        assert agent_entries[0]["text"] == "two"
+        assert len(agent_entries[0]["actions"]) == 2
+
+    def test_the_answer_settles_the_entry_progress_was_filling(self, integration_app, sessions):
+        session = sessions.create("go")
+        sessions.progress(session.id, text="half a thought", actions=[{"id": 1}])
+
+        sessions.remember(session.id, [], "the answer", actions=[{"id": 1}, {"id": 2}])
+
+        agent_entries = [e for e in sessions.get(session.id).transcript if e["role"] == "agent"]
+        assert len(agent_entries) == 1
+        assert agent_entries[0]["text"] == "the answer"
+        assert agent_entries[0]["pending"] is False
+
+    def test_a_turn_that_reported_nothing_still_gets_its_answer(self, integration_app, sessions):
+        """A turn fast enough to finish before the first report, or one whose
+        progress never arrived."""
+        session = sessions.create("go")
+
+        sessions.remember(session.id, [], "the answer", actions=[])
+
+        assert [e["text"] for e in sessions.get(session.id).transcript] == [
+            "go",
+            "the answer",
+        ]
+
+    def test_progress_after_a_turn_has_finished_is_dropped(self, integration_app, sessions):
+        """A late report must not reopen a settled turn."""
+        session = sessions.create("go")
+        sessions.remember(session.id, [], "the answer", actions=[])
+        sessions.set_state(session.id, SessionState.SUCCEEDED, output="the answer")
+
+        sessions.progress(session.id, text="too late", actions=[{"id": 9}])
+
+        assert [e["text"] for e in sessions.get(session.id).transcript] == [
+            "go",
+            "the answer",
+        ]
+
+    def test_the_work_arrives_before_the_answer_does(self, integration_app, sessions, monkeypatch):
+        """The point of the whole change, end to end: tool calls are on the
+        transcript while the turn is still running."""
+        from visivo.agent import resilience
+
+        # The real interval is tuned to the viewer's 1s poll; a test should not
+        # wait for it.
+        monkeypatch.setattr(resilience, "PROGRESS_INTERVAL_SECONDS", 0.01)
+        seen = []
+        model = self._slow_model(calls=2)
+        session = start(integration_app, "go", model, session_manager=sessions)
+
+        deadline = time.time() + 10
+        while time.time() < deadline:
+            current = sessions.get(session.id)
+            entry = current.transcript[-1] if current.transcript else None
+            if entry and entry.get("pending") and entry["actions"]:
+                seen.append(len(entry["actions"]))
+                break
+            if current.state in (SessionState.SUCCEEDED, SessionState.FAILED):
+                break
+            time.sleep(0.05)
+
+        _settle(sessions, session.id)
+        assert seen, "no tool calls were visible while the turn was running"

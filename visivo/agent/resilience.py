@@ -125,6 +125,54 @@ def _requests_in(messages):
     return sum(1 for message in messages if isinstance(message, ModelResponse))
 
 
+# How often the turn says what it has done. Fast enough that a tool call shows
+# up while it is still the thing happening, slow enough that a turn is not
+# mostly bookkeeping. The viewer polls at 1s, so reporting faster buys nothing.
+PROGRESS_INTERVAL_SECONDS = 0.5
+
+
+def interim_text(messages):
+    """What the agent has said so far, this turn, excluding its final answer.
+
+    Read straight off the list ``capture_run_messages`` is filling: pydantic-ai
+    appends to it as the run proceeds, which is how a failed turn keeps its
+    history. So the thinking-out-loud between tool calls is already here and
+    needs no change to how the loop is driven.
+    """
+    from pydantic_ai.messages import ModelResponse, TextPart
+
+    said = [
+        part.content.strip()
+        for message in messages
+        if isinstance(message, ModelResponse)
+        for part in message.parts
+        if isinstance(part, TextPart) and (part.content or "").strip()
+    ]
+    return "\n\n".join(said)
+
+
+async def _report_until_done(task, captured, report, sleep):
+    """Tell ``report`` what the turn has done, until the turn is done.
+
+    In the turn's own event loop rather than a thread: ``captured`` is a list
+    pydantic-ai appends to from this loop, and a reader in another thread would
+    be sampling it mid-append.
+
+    Every failure is swallowed. Progress is a courtesy over an authoritative
+    final write, and a turn that died because the tab wanted an update would be
+    a poor trade.
+    """
+    while not task.done():
+        try:
+            await sleep(PROGRESS_INTERVAL_SECONDS)
+        except Exception:
+            return
+        try:
+            report(interim_text(list(captured)))
+        except Exception:
+            pass
+
+
 class TurnFailed(Exception):
     """A turn that ran out of attempts, carrying what it had learned.
 
@@ -145,6 +193,7 @@ async def run_turn(
     max_requests=MAX_MODEL_REQUESTS,
     max_tool_calls=MAX_TOOL_CALLS,
     sleep=None,
+    report=None,
 ):
     """Answer ``prompt``, resuming through transient failures.
 
@@ -173,11 +222,23 @@ async def run_turn(
                 # The prompt goes in once. On a resumption it is already in
                 # `messages` as a UserPromptPart, and sending it again would
                 # read to the model as the user repeating themselves.
-                return await agent.run(
-                    prompt if attempt == 0 else None,
-                    message_history=messages,
-                    usage_limits=limits,
+                task = asyncio.ensure_future(
+                    agent.run(
+                        prompt if attempt == 0 else None,
+                        message_history=messages,
+                        usage_limits=limits,
+                    )
                 )
+                watcher = (
+                    asyncio.ensure_future(_report_until_done(task, captured, report, sleep))
+                    if report
+                    else None
+                )
+                try:
+                    return await task
+                finally:
+                    if watcher is not None:
+                        watcher.cancel()
             except Exception as error:
                 # `captured` is the whole conversation, not just this attempt,
                 # so it replaces `messages` rather than extending it.

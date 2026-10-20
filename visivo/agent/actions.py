@@ -91,12 +91,41 @@ class ActionLog:
         self._notify(action)
         return action
 
+    def resolve(self, action_id, *, outcome="ok", error=None, image_url=None):
+        """Settle a call recorded as pending, in place.
+
+        In place rather than appending a second entry: one tool call is one
+        action, and two would double every count the tab shows and every slice
+        ``since`` returns. Listeners fire again, so a push carries the
+        resolution the same way it carried the start.
+
+        An id that is no longer in the log — it fell off the bounded end during
+        a very long call — is dropped rather than raising. The call still
+        happened; only the record of it aged out.
+        """
+        with self._lock:
+            action = next((a for a in self._actions if a["id"] == action_id), None)
+            if action is None:
+                return None
+            action["outcome"] = outcome
+            action["error"] = error
+            action["image_url"] = image_url
+            action["summary"] = _summarise(action["tool"], action["object"], outcome, error)
+        self._notify(action)
+        return action
+
     def _notify(self, action):
         """A listener that fails must not fail the recording — the action
-        really happened, and the log is still readable."""
+        really happened, and the log is still readable.
+
+        Each listener gets its own copy. The entry is mutated in place when a
+        pending call settles, so a listener holding the live dict would find
+        the "started" it was handed had quietly become the "finished" — and a
+        batching listener would send the same object twice.
+        """
         for listener in list(self._listeners):
             try:
-                listener(action)
+                listener(dict(action))
             except Exception:
                 pass
 

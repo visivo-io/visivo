@@ -71,8 +71,22 @@ def _execute(app, manager, session_id, prompt, model):
         # process-wide — an MCP client can be working through the same serve —
         # so a turn reports what it did by slice, never by clearing.
         mark = action_log().marker()
+
         # Set before the task exists: the task copies this context, and so do
         # the threads it runs sync tools in.
+        def report(text):
+            """What the turn has done so far, onto the session the tab polls.
+
+            The actions come from the same `since(mark, session_id)` slice the
+            finished turn uses, so the list a person watches fill in is the
+            list they end up with — not a second one assembled differently.
+            """
+            manager.progress(
+                session_id,
+                text=text,
+                actions=action_log().since(mark, session_id=session_id),
+            )
+
         with attributed_to("agent", session_id):
             task = loop.create_task(
                 run_turn(
@@ -81,6 +95,7 @@ def _execute(app, manager, session_id, prompt, model):
                     history=history,
                     max_requests=MAX_MODEL_REQUESTS,
                     max_tool_calls=MAX_TOOL_CALLS,
+                    report=report,
                 )
             )
 
@@ -94,6 +109,11 @@ def _execute(app, manager, session_id, prompt, model):
         try:
             result = loop.run_until_complete(task)
         except asyncio.CancelledError:
+            # Settle what the turn got through before Stop. `remember` is not
+            # called on this path, and it used to be the only writer of a
+            # turn's tool calls — so a cancelled turn showed none of the work
+            # it had actually done, which reads as though Stop undid it.
+            manager.settle(session_id, actions=action_log().since(mark, session_id=session_id))
             manager.set_state(session_id, SessionState.CANCELLED)
             return
         answer = str(result.output)

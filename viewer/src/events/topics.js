@@ -48,6 +48,20 @@ export const runsFor = (projectId, fetchRuns) => ({
  * 2s: an agent's actions land in bursts while someone is watching the tab, and
  * the tab is only mounted when they are.
  */
+/**
+ * The same event, as a nudge rather than a value (VIS-1535).
+ *
+ * The Agent tab already polls the running session once a second for its
+ * transcript, which is where a turn's work now appears. This says "something
+ * just happened, look now" so the gap is a frame rather than up to a second.
+ *
+ * Deliberately no `poll`: there is nothing to fetch here that the session poll
+ * is not already fetching, and a second interval asking a second endpoint for
+ * the same news is how two sources of truth start. With no socket it simply
+ * never fires, which is the honest answer — the session poll keeps working.
+ */
+export const AGENT_ACTIVITY = { event: 'agent_action' };
+
 export const AGENT_ACTIONS = (fetchAgentActions, projectId) => ({
   // NOT scoped by project, unlike `runsFor` above. `serve_phase` already emits
   // this exact name (VIS-1337), and a socket belongs to one serve process
