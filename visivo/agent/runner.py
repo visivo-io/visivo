@@ -17,7 +17,7 @@ import threading
 from visivo.agent.actions import attributed_to, log as action_log
 from visivo.agent.loop import MAX_MODEL_REQUESTS, MAX_TOOL_CALLS, build_agent
 from visivo.agent import resilience
-from visivo.agent.resilience import TurnFailed, run_turn
+from visivo.agent.resilience import TurnFailed, run_turn, timeline
 from visivo.agent.sessions import SessionManager, SessionState
 from visivo.logger.logger import Logger
 
@@ -74,17 +74,19 @@ def _execute(app, manager, session_id, prompt, model):
 
         # Set before the task exists: the task copies this context, and so do
         # the threads it runs sync tools in.
-        def report(text):
-            """What the turn has done so far, onto the session the tab polls.
+        def report(captured, skip):
+            """What the turn has said and done so far, onto the session the tab
+            polls.
 
             The actions come from the same `since(mark, session_id)` slice the
             finished turn uses, so the list a person watches fill in is the
             list they end up with — not a second one assembled differently.
             """
+            actions = action_log().since(mark, session_id=session_id)
             manager.progress(
                 session_id,
-                text=text,
-                actions=action_log().since(mark, session_id=session_id),
+                items=timeline(captured, actions, skip=skip),
+                actions=actions,
             )
 
         with attributed_to("agent", session_id):

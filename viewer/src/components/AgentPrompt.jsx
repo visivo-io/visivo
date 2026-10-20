@@ -348,6 +348,35 @@ const AgentPrompt = () => {
 };
 
 /** What was said, oldest first — the shape a conversation is read in. */
+/**
+ * What a turn said and did, in the order it happened.
+ *
+ * While the agent is working, the narration between calls is the thing worth
+ * reading — "I see seven tables, let me look at that one", then the call, then
+ * what it made of the answer. Joined into one paragraph above a separate list
+ * of calls, none of it lines up with anything.
+ *
+ * Once the turn is done the shape flips back: the answer is the point and the
+ * work collapses behind it (VIS-1373).
+ */
+function AgentTimeline({ items }) {
+  return (
+    <ol className="space-y-1" data-testid="agent-timeline">
+      {items.map((item, index) =>
+        item.kind === 'text' ? (
+          <li key={index} className="whitespace-pre-wrap" data-testid="agent-timeline-text">
+            {item.text}
+          </li>
+        ) : (
+          <li key={index} data-testid="agent-timeline-action">
+            <AgentToolCalls actions={[item.action]} open />
+          </li>
+        )
+      )}
+    </ol>
+  );
+}
+
 function Transcript({ entries, running }) {
   return (
     <div className="space-y-2" data-testid="agent-transcript">
@@ -367,8 +396,14 @@ function Transcript({ entries, running }) {
           {/* Above the answer, so a turn reads as ask -> work -> result. An
               answer with no visible work is what made the agent look like it
               had done nothing. */}
-          <AgentToolCalls actions={entry.actions} open={entry.pending} />
-          {entry.text}
+          {entry.pending && entry.items?.length ? (
+            <AgentTimeline items={entry.items} />
+          ) : (
+            <>
+              <AgentToolCalls actions={entry.actions} />
+              {entry.text}
+            </>
+          )}
         </div>
       ))}
       {running && !entries.some(entry => entry.pending) && (

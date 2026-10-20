@@ -131,44 +131,66 @@ def _requests_in(messages):
 PROGRESS_INTERVAL_SECONDS = 0.5
 
 
-def interim_text(messages):
-    """What the agent has said so far, this turn, excluding its final answer.
+def timeline(messages, actions, skip=0):
+    """What the turn has said and done, in the order it happened.
 
-    Read straight off the list ``capture_run_messages`` is filling: pydantic-ai
-    appends to it as the run proceeds, which is how a failed turn keeps its
-    history. So the thinking-out-loud between tool calls is already here and
-    needs no change to how the loop is driven.
+    One list, interleaved — not a paragraph of everything said followed by a
+    list of everything done. The agent narrates between calls ("I see seven
+    tables… let me look at that one"), and that narration only means anything
+    next to the call it is about.
+
+    ``skip`` is how many messages this turn STARTED with.
+    ``capture_run_messages`` captures the whole conversation, history and all,
+    so without it a second turn reports the first turn's answer as its own.
+
+    Order comes from the messages, detail from the action log: a
+    ``ToolCallPart`` knows a name and arguments, while the log knows the object
+    it touched, whether it failed, and any capture. They are matched by
+    position, which is exact for the sequential calls the loop actually makes;
+    several calls issued in ONE response could in principle be executed in a
+    different order than they were written, and would then be labelled in the
+    written order.
     """
-    from pydantic_ai.messages import ModelResponse, TextPart
+    from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 
-    said = [
-        part.content.strip()
-        for message in messages
-        if isinstance(message, ModelResponse)
-        for part in message.parts
-        if isinstance(part, TextPart) and (part.content or "").strip()
-    ]
-    return "\n\n".join(said)
+    items = []
+    taken = 0
+    for message in list(messages)[skip:]:
+        if not isinstance(message, ModelResponse):
+            continue
+        for part in message.parts:
+            if isinstance(part, TextPart) and (part.content or "").strip():
+                items.append({"kind": "text", "text": part.content.strip()})
+            elif isinstance(part, ToolCallPart) and taken < len(actions):
+                items.append({"kind": "action", "action": actions[taken]})
+                taken += 1
+    # Calls the log knows about but no captured response explains yet — the
+    # record is written before the handler runs, so it can lead the message.
+    for action in actions[taken:]:
+        items.append({"kind": "action", "action": action})
+    return items
 
 
-async def _report_until_done(task, captured, report, sleep):
+async def _report_until_done(task, captured, report, skip):
     """Tell ``report`` what the turn has done, until the turn is done.
 
     In the turn's own event loop rather than a thread: ``captured`` is a list
     pydantic-ai appends to from this loop, and a reader in another thread would
     be sampling it mid-append.
 
+    Its own ``asyncio.sleep``, deliberately not the injected backoff sleep —
+    they are different concerns, and a test that makes backoff instant would
+    otherwise turn this into a tight loop that starves the very task it is
+    watching.
+
     Every failure is swallowed. Progress is a courtesy over an authoritative
     final write, and a turn that died because the tab wanted an update would be
     a poor trade.
     """
     while not task.done():
+        await asyncio.sleep(PROGRESS_INTERVAL_SECONDS)
         try:
-            await sleep(PROGRESS_INTERVAL_SECONDS)
-        except Exception:
-            return
-        try:
-            report(interim_text(list(captured)))
+            report(list(captured), skip)
         except Exception:
             pass
 
@@ -230,7 +252,7 @@ async def run_turn(
                     )
                 )
                 watcher = (
-                    asyncio.ensure_future(_report_until_done(task, captured, report, sleep))
+                    asyncio.ensure_future(_report_until_done(task, captured, report, len(messages)))
                     if report
                     else None
                 )

@@ -61,7 +61,7 @@ class Session:
         # reader needs to know who said what.
         self.transcript = []
 
-    def say(self, role, text, actions=None, pending=False):
+    def say(self, role, text, actions=None, pending=False, items=None):
         """Add to what a person reads.
 
         An agent turn carries the tool calls it made, so the answer can be read
@@ -78,11 +78,16 @@ class Session:
             "at": datetime.now().isoformat(),
             "actions": list(actions or []),
             "pending": pending,
+            # What the turn said and did, interleaved, while it was working.
+            # `text` is the answer and `actions` the whole list; this is the
+            # order they happened in, which is the only form the narration
+            # between calls makes sense in.
+            "items": list(items or []),
         }
         self.transcript.append(entry)
         return entry
 
-    def progress(self, text=None, actions=None):
+    def progress(self, text=None, actions=None, items=None):
         """Update the turn in flight, starting one if there is not one yet.
 
         UPDATES rather than appends. A second entry per report would render the
@@ -91,12 +96,14 @@ class Session:
         """
         entry = self.in_flight()
         if entry is None:
-            entry = self.say("agent", text or "", actions=actions, pending=True)
+            entry = self.say("agent", text or "", actions=actions, pending=True, items=items)
             return entry
         if text is not None:
             entry["text"] = text
         if actions is not None:
             entry["actions"] = list(actions)
+        if items is not None:
+            entry["items"] = list(items)
         entry["at"] = datetime.now().isoformat()
         return entry
 
@@ -215,7 +222,7 @@ class SessionManager:
             if session.settle(answer, actions=actions) is None and answer:
                 session.say("agent", answer, actions=actions)
 
-    def progress(self, session_id, text=None, actions=None):
+    def progress(self, session_id, text=None, actions=None, items=None):
         """Report what the turn in flight has done so far.
 
         Best-effort by construction: a session that has been evicted, or a
@@ -226,7 +233,7 @@ class SessionManager:
             session = self._sessions.get(session_id)
             if session is None or session.state in FINISHED:
                 return None
-            session.progress(text=text, actions=actions)
+            session.progress(text=text, actions=actions, items=items)
             session.updated_at = datetime.now()
             return session
 

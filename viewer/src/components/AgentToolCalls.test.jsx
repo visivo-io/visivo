@@ -51,3 +51,24 @@ describe('AgentToolCalls while the turn is working', () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+describe('a turn in flight reads as a narrative', () => {
+  // AgentTimeline lives in AgentPrompt; this covers the row it renders per
+  // item, which is a single-action AgentToolCalls held open.
+  it('renders one call per row so narration can sit between them', () => {
+    render(
+      <>
+        <p>Let me see what is here.</p>
+        <AgentToolCalls actions={[{ id: 1, tool: 'list_sources', outcome: 'ok' }]} open />
+        <p>Seven tables. Looking at one.</p>
+        <AgentToolCalls actions={[{ id: 2, tool: 'describe_source', outcome: 'pending' }]} open />
+      </>
+    );
+
+    const rows = screen.getAllByTestId('agent-turn-actions');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveAttribute('open');
+    expect(screen.getByText('list_sources')).toBeInTheDocument();
+    expect(screen.getByTestId('agent-action-pending')).toBeInTheDocument();
+  });
+});
