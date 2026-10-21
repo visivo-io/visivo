@@ -104,7 +104,10 @@ class Session:
             entry["actions"] = list(actions)
         if items is not None:
             entry["items"] = list(items)
-        entry["at"] = datetime.now().isoformat()
+        # `at` is when the turn began, not when it last reported. Rewriting it
+        # made the viewer's key change on every poll, which remounted the whole
+        # entry — closing an opened screenshot and reopening a collapsed group
+        # about once a second.
         return entry
 
     def in_flight(self):

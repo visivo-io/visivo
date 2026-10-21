@@ -449,12 +449,15 @@ export function AgentTimeline({ items }) {
   );
 }
 
-function Transcript({ entries, running }) {
+export function Transcript({ entries, running }) {
   return (
     <div className="space-y-2" data-testid="agent-transcript">
       {entries.map((entry, index) => (
         <div
-          key={`${entry.at}-${index}`}
+          // Position, not content: the transcript only appends, and a key
+          // built from a field the turn updates remounts the entry on every
+          // poll — losing anything the reader had opened or collapsed.
+          key={index}
           className={
             entry.role === 'user'
               ? 'rounded-md bg-gray-100 p-3 text-sm text-gray-900'

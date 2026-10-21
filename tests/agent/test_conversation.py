@@ -781,3 +781,29 @@ class TestAConversationTooLargeToSend:
         from visivo.agent.resilience import is_transient
 
         assert is_transient(self._too_large()) is False
+
+
+class TestTheEntryKeepsItsIdentityWhileItWorks:
+    """The viewer identifies a transcript entry to decide what to re-render.
+    An entry whose fields churn on every report is an entry the viewer treats
+    as new each second — closing a screenshot someone opened and reopening a
+    group they collapsed.
+    """
+
+    def test_the_timestamp_is_when_the_turn_began(self, integration_app, sessions):
+        session = sessions.create("go")
+        sessions.progress(session.id, items=[{"kind": "text", "text": "one"}])
+        began = sessions.get(session.id).transcript[-1]["at"]
+
+        sessions.progress(session.id, items=[{"kind": "text", "text": "two"}])
+
+        assert sessions.get(session.id).transcript[-1]["at"] == began
+
+    def test_settling_does_not_move_it_either(self, integration_app, sessions):
+        session = sessions.create("go")
+        sessions.progress(session.id, items=[{"kind": "text", "text": "one"}])
+        began = sessions.get(session.id).transcript[-1]["at"]
+
+        sessions.remember(session.id, [], "the answer", actions=[])
+
+        assert sessions.get(session.id).transcript[-1]["at"] == began
