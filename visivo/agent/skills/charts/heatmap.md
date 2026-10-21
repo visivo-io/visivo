@@ -33,7 +33,7 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 - Set `layout.xaxis.type: category`/`yaxis.type: category` when the axes are labels, or Plotly spaces them as numbers. Rows are bound by height: Plotly hides every other row label once rows are tighter than about 15 px.
 - Weekday or month names sort alphabetically; sort by the number (`isodow`, `month`) and label with the name.
 - A `split` interaction makes one heatmap per value, all on the same axes and overlapping; never split a heatmap.
-- Pick one theme-neutral `colorscale` (Viridis, or Blues with `reversescale: true`, since Plotly's Blues runs dark to light); a diverging scale needs `zmid` at the meaningful centre.
+- Pick one theme-neutral `colorscale` (Viridis; Reds as is, since it runs light to dark; or Blues, Greens, Greys, YlGnBu or YlOrRd with `reversescale: true`, since those run dark to light in Plotly); a diverging scale needs `zmid` at the meaningful centre.
 
 **Variations**
 - When the grid is small and the exact values matter: `texttemplate: '%{z:,.0f}'` prints each cell's value on it.

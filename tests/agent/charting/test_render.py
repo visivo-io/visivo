@@ -42,12 +42,14 @@ class TestTheRenderedBlock:
             )
         monkeypatch.setattr(render, "SKILLS_DIR", tmp_path)
         monkeypatch.setattr(render, "INTERACTIONS_DIR", tmp_path / "interactions")
+        monkeypatch.setattr(render, "CHARTS_DIR", tmp_path / "charts")
         out = io.StringIO()
 
         assert render.main(out=out) == 0
         for name in render.RENDERERS:
             assert "stale" not in (tmp_path / name).read_text()
         assert (tmp_path / "interactions" / "global_filter.md").exists()
+        assert (tmp_path / "charts" / "heatmap.md").exists()
         assert "rendered" in out.getvalue()
 
 
