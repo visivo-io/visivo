@@ -269,29 +269,8 @@ class TestTheToolOnTheLocalPath:
 
 class TestWaitingForTheData:
     """A draft save triggers a run. Capturing before it settles screenshots
-    spinners however patiently the page is polled."""
-
-    def test_it_waits_while_a_run_is_in_flight(self, integration_app, monkeypatch):
-        from visivo.server.managers.run_manager import RunState
-
-        states = [RunState.RUNNING.value, RunState.RUNNING.value, RunState.SUCCEEDED.value]
-        monkeypatch.setattr(
-            integration_app.run_manager, "list", lambda limit=1: [{"state": states.pop(0)}]
-        )
-        monkeypatch.setattr(screenshot.time, "sleep", lambda _s: None)
-
-        assert screenshot.wait_for_runs(integration_app) is True
-        assert states == []
-
-    def test_a_run_that_never_finishes_does_not_block_forever(self, integration_app, monkeypatch):
-        from visivo.server.managers.run_manager import RunState
-
-        monkeypatch.setattr(
-            integration_app.run_manager, "list", lambda limit=1: [{"state": RunState.RUNNING.value}]
-        )
-        monkeypatch.setattr(screenshot.time, "sleep", lambda _s: None)
-
-        assert screenshot.wait_for_runs(integration_app, timeout=0.05) is False
+    spinners however patiently the page is polled. The waiting itself is
+    `visivo.agent.runs.wait_for_runs` and is tested there."""
 
     def test_an_unsettled_run_is_reported_with_the_image(
         self, integration_app, browser, monkeypatch
