@@ -23,6 +23,9 @@ editor's draft path, so an agent's change arrives as an uncommitted edit a
 person reviews. Nothing here can publish.
 """
 
+import os
+import tempfile
+
 from visivo.cloud_api import CloudApi, CloudApiError
 
 from visivo.logger.logger import Logger
@@ -92,6 +95,32 @@ class RemoteProject:
         # asks "am I in cloud?" without importing this module.
         self.core_client = client
         self._working_dir = working_dir
+        # Somewhere for the tools that take a target directory — profile
+        # caches, and resolving a source that reads a local file. A cloud turn
+        # has no built artifacts on disk, so this starts empty and the tools
+        # that need data say so; what it stops is `AttributeError:
+        # 'RemoteProject' object has no attribute 'output_dir'`, which was
+        # every data tool and every model or insight write.
+        #
+        # Per turn, under the runner's own working dir when it gave us one so
+        # the run's cleanup takes it, otherwise a temp dir.
+        self.output_dir = (
+            os.path.join(working_dir, "target")
+            if working_dir
+            else (tempfile.mkdtemp(prefix="visivo-agent-"))
+        )
+        os.makedirs(self.output_dir, exist_ok=True)
+        # There is no parsed Project in cloud — the objects live in core and
+        # arrive as managers, not as a file this process read. Explicitly None
+        # rather than absent, so the callers that already reach for it
+        # defensively (`getattr(app.project, "defaults", None)`) get a None
+        # they handle instead of an AttributeError they do not.
+        #
+        # The cost is real and worth naming: no project defaults, so a model
+        # whose source is only implied by `defaults.source_name` cannot be
+        # resolved here. That degrades the SQL probe to "not judged", which is
+        # a documented outcome of it, rather than failing the write.
+        self.project = None
         self.run_manager = RemoteRunManager(client)
         self._managers = {}
         for type_key, attribute in TYPE_TO_MANAGER.items():

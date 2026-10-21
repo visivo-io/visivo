@@ -147,7 +147,18 @@ def _write_handler(type_key):
         # POST /api/<type>/<name>/. The agent saves in-process, so without this
         # its writes stage nothing (leaving the top bar on Deploy) and never
         # trigger a run, however run_trigger is set.
-        outcome = stage_and_maybe_run(app, type_key, name, before)
+        #
+        # In cloud there is no local staging to do: the manager wrote THROUGH
+        # to core's per-name endpoint, and core's own handler stages the draft
+        # and requests the auto-run. Calling this there raised
+        # AttributeError('staged_manager') — after the save had already
+        # landed, so every write reported failure, the model retried, and the
+        # object was written twice.
+        outcome = (
+            stage_and_maybe_run(app, type_key, name, before)
+            if getattr(app, "staged_manager", None) is not None
+            else None
+        )
         result = {"name": name, "status": "draft"}
         if outcome:
             result["change"] = outcome

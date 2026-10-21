@@ -577,3 +577,31 @@ class TestTheCloudPath:
 
         assert image_of(cloud) == image_of(local)
         assert set(cloud.return_value) - {"image_url"} == set(local.return_value) - {"image_url"}
+
+
+class TestTheCloudPageLoads:
+    """Core runs with SECURE_SSL_REDIRECT, and in cluster the browser reaches
+    it by the web Service's DNS name over plain HTTP.
+
+    Observed: `Page.goto: Timeout 60000ms exceeded` navigating to
+    `http://core-...-core-web.core.svc.cluster.local/...`. Core answered 301
+    to https://<service>, the browser followed, nothing was listening for TLS
+    there, and the navigation hung until the timeout rather than failing with
+    a status anyone could read.
+    """
+
+    def test_the_cloud_page_declares_the_proxy_protocol(self, browser, page):
+        """SECURE_PROXY_SSL_HEADER trusts exactly this header. CloudApi sends
+        it on its own requests; the browser is a second client."""
+        cookie = {"name": "__visivo_session", "value": "t", "url": "http://core"}
+
+        screenshot.capture("http://core/acme/main/proj/revenue", cookie=cookie)
+
+        page.set_extra_http_headers.assert_called_once_with({"X-Forwarded-Proto": "https"})
+
+    def test_a_local_capture_sends_no_proxy_header(self, browser, page):
+        """`visivo serve` has no redirect to avoid, and claiming https to it
+        would be a lie about the connection."""
+        screenshot.capture("http://127.0.0.1:8000/workspace/dashboard/x")
+
+        assert not page.set_extra_http_headers.called

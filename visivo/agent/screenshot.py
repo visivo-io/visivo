@@ -182,11 +182,26 @@ def _settle(page, url):
     page.wait_for_timeout(PAINT_SETTLE_MS)
 
 
+# What stops core bouncing a plain-HTTP page load into an https redirect.
+#
+# In cluster the browser reaches core by the web Service's DNS name, over
+# plain HTTP. Core runs with SECURE_SSL_REDIRECT, so without this it answers
+# 301 to https://<service>, the browser follows, and nothing is listening for
+# TLS there — so the navigation hangs until Playwright's timeout rather than
+# failing with a status anyone can read.
+#
+# SECURE_PROXY_SSL_HEADER trusts exactly this header. `CloudApi` already sends
+# it on its own requests for the same reason; the browser is a second client
+# that had to be told separately.
+FORWARDED_PROTO = {"X-Forwarded-Proto": "https"}
+
+
 def capture(url, cookie=None, full_page=True):
     """A PNG of ``url``, once it has stopped moving.
 
     ``cookie`` is a Playwright cookie dict, for the cloud path where the page
-    needs a credential. Local serve needs none.
+    needs a credential. Local serve needs none, and gets no proxy header
+    either — `visivo serve` has no redirect to avoid.
     """
     ensure_browser()
     sync_playwright = _playwright()
@@ -198,6 +213,7 @@ def capture(url, cookie=None, full_page=True):
                 page = browser.new_page(viewport=VIEWPORT, device_scale_factor=1)
                 if cookie:
                     page.context.add_cookies([cookie])
+                    page.set_extra_http_headers(FORWARDED_PROTO)
                 _settle(page, url)
                 return page.screenshot(full_page=full_page, timeout=SCREENSHOT_TIMEOUT_MS)
             finally:
