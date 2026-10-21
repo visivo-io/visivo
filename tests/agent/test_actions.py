@@ -239,13 +239,8 @@ class TestListenersSeeRecordings:
             {"config": {"name": "pushed", "content": "# pushed"}},
         )
 
-        # Twice for one call: once when it starts, once when it settles. The
-        # start is the whole point — a listener that only heard about finished
-        # work could not show work in progress.
         assert [a["tool"] for a in pushed] == ["write_markdown", "write_markdown"]
         assert [a["outcome"] for a in pushed] == ["pending", "ok"]
-        # The same action, updated — not two actions, which would double every
-        # count the tab shows.
         assert len({a["id"] for a in pushed}) == 1
 
     def test_the_module_knows_nothing_of_a_socket(self):

@@ -78,22 +78,13 @@ class Session:
             "at": datetime.now().isoformat(),
             "actions": list(actions or []),
             "pending": pending,
-            # What the turn said and did, interleaved, while it was working.
-            # `text` is the answer and `actions` the whole list; this is the
-            # order they happened in, which is the only form the narration
-            # between calls makes sense in.
             "items": list(items or []),
         }
         self.transcript.append(entry)
         return entry
 
     def progress(self, text=None, actions=None, items=None):
-        """Update the turn in flight, starting one if there is not one yet.
-
-        UPDATES rather than appends. A second entry per report would render the
-        answer under its own Agent bubble, below a separate list of the work
-        that produced it.
-        """
+        """Update the turn in flight, starting one if there is not one yet."""
         entry = self.in_flight()
         if entry is None:
             entry = self.say("agent", text or "", actions=actions, pending=True, items=items)
@@ -104,10 +95,6 @@ class Session:
             entry["actions"] = list(actions)
         if items is not None:
             entry["items"] = list(items)
-        # `at` is when the turn began, not when it last reported. Rewriting it
-        # made the viewer's key change on every poll, which remounted the whole
-        # entry — closing an opened screenshot and reopening a collapsed group
-        # about once a second.
         return entry
 
     def in_flight(self):
@@ -117,12 +104,9 @@ class Session:
         return None
 
     def settle(self, text=None, actions=None):
-        """Finish the turn in flight: fold in the final answer and stop
-        calling it pending.
+        """Fold in the final answer and stop calling the turn pending.
 
-        Called on EVERY exit path, including cancellation. A cancelled turn
-        used to lose its tool calls entirely, because `remember` was the only
-        writer of them and cancellation skips it.
+        Called on every exit path, cancellation included.
         """
         entry = self.in_flight()
         if entry is None:
@@ -219,18 +203,14 @@ class SessionManager:
             if session is None:
                 return
             session.history = history
-            # Settle the entry progress has been filling in. Only when there is
-            # none — a turn that reported nothing — is a fresh one said, so the
-            # answer never lands under a second Agent bubble.
             if session.settle(answer, actions=actions) is None and answer:
                 session.say("agent", answer, actions=actions)
 
     def progress(self, session_id, text=None, actions=None, items=None):
         """Report what the turn in flight has done so far.
 
-        Best-effort by construction: a session that has been evicted, or a
-        report that arrives after the turn settled, is dropped rather than
-        raising into the loop. Progress must never be able to fail a turn.
+        Dropped rather than raised if the session is gone or already settled:
+        progress must never be able to fail a turn.
         """
         with self._lock:
             session = self._sessions.get(session_id)

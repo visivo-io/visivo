@@ -372,13 +372,9 @@ class TestAnErrorAddressedToTheUser:
 
 
 class TestWhatATurnReportsAboutItself:
-    """`capture_run_messages` captures the WHOLE conversation, history
-    included. A second turn reported the first turn's answer as its own, so
-    the tab showed the previous reply again under the new turn's tool calls.
-
-    And everything said was joined into one paragraph above a separate list of
-    calls, which is the one shape the narration between calls cannot be read
-    in.
+    """`capture_run_messages` captures the whole conversation, history
+    included, so a turn must report only what it added — interleaved, since
+    narration only means anything next to the call it is about.
     """
 
     def _said(self, text):
@@ -406,7 +402,7 @@ class TestWhatATurnReportsAboutItself:
         assert [item["text"] for item in items] == ["first thing"]
 
     def test_text_and_calls_come_back_interleaved(self):
-        """The point of the shape: narration next to the call it is about."""
+
         from visivo.agent.resilience import timeline
 
         messages = [
@@ -430,7 +426,7 @@ class TestWhatATurnReportsAboutItself:
 
     def test_a_call_the_messages_have_not_explained_yet_still_shows(self):
         """A call is recorded before its handler runs, so the log can lead the
-        captured response. It must not vanish until the response catches up."""
+        captured response."""
         from visivo.agent.resilience import timeline
 
         items = timeline([], [{"id": 1, "tool": "query_source"}], carried=())

@@ -92,16 +92,10 @@ class ActionLog:
         return action
 
     def resolve(self, action_id, *, outcome="ok", error=None, image_url=None):
-        """Settle a call recorded as pending, in place.
+        """Settle a call recorded as pending, in place, and notify again.
 
-        In place rather than appending a second entry: one tool call is one
-        action, and two would double every count the tab shows and every slice
-        ``since`` returns. Listeners fire again, so a push carries the
-        resolution the same way it carried the start.
-
-        An id that is no longer in the log — it fell off the bounded end during
-        a very long call — is dropped rather than raising. The call still
-        happened; only the record of it aged out.
+        An id that has aged off the bounded end of the log is dropped rather
+        than raising.
         """
         with self._lock:
             action = next((a for a in self._actions if a["id"] == action_id), None)

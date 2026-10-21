@@ -629,9 +629,7 @@ class TestAFailedTurnIsNotALostTurn:
 
 
 class TestATurnShowsItsWorkWhileItWorks:
-    """A turn used to say "Thinking…" for a minute and then paste everything
-    at once (VIS-1535). The transcript now fills in as the turn goes.
-    """
+    """The transcript fills in as the turn goes, rather than all at once."""
 
     def _slow_model(self, calls=2):
         """A model that makes `calls` tool calls, talking between them.
@@ -670,8 +668,7 @@ class TestATurnShowsItsWorkWhileItWorks:
         assert entry["text"] == "working"
 
     def test_progress_updates_one_entry_rather_than_appending(self, integration_app, sessions):
-        """Two entries would render the answer under its own Agent bubble,
-        below a separate list of the work that produced it."""
+
         session = sessions.create("go")
 
         sessions.progress(session.id, text="one", actions=[{"id": 1}])
@@ -694,8 +691,7 @@ class TestATurnShowsItsWorkWhileItWorks:
         assert agent_entries[0]["pending"] is False
 
     def test_a_turn_that_reported_nothing_still_gets_its_answer(self, integration_app, sessions):
-        """A turn fast enough to finish before the first report, or one whose
-        progress never arrived."""
+
         session = sessions.create("go")
 
         sessions.remember(session.id, [], "the answer", actions=[])
@@ -706,7 +702,7 @@ class TestATurnShowsItsWorkWhileItWorks:
         ]
 
     def test_progress_after_a_turn_has_finished_is_dropped(self, integration_app, sessions):
-        """A late report must not reopen a settled turn."""
+
         session = sessions.create("go")
         sessions.remember(session.id, [], "the answer", actions=[])
         sessions.set_state(session.id, SessionState.SUCCEEDED, output="the answer")
@@ -719,12 +715,9 @@ class TestATurnShowsItsWorkWhileItWorks:
         ]
 
     def test_the_work_arrives_before_the_answer_does(self, integration_app, sessions, monkeypatch):
-        """The point of the whole change, end to end: tool calls are on the
-        transcript while the turn is still running."""
+
         from visivo.agent import resilience
 
-        # The real interval is tuned to the viewer's 1s poll; a test should not
-        # wait for it.
         monkeypatch.setattr(resilience, "PROGRESS_INTERVAL_SECONDS", 0.01)
         seen = []
         model = self._slow_model(calls=2)
@@ -746,10 +739,7 @@ class TestATurnShowsItsWorkWhileItWorks:
 
 
 class TestAConversationTooLargeToSend:
-    """A long turn died with nginx's HTML 413 page quoted back as though the
-    model had said it — `model_name: google/gemini-2.5-pro` sitting beside a
-    `<title>413 Request Entity Too Large</title>` the model never saw.
-    """
+    """nginx's HTML 413 page is reported as though the model had said it."""
 
     def _too_large(self):
         from pydantic_ai.exceptions import ModelHTTPError
@@ -777,17 +767,15 @@ class TestAConversationTooLargeToSend:
         assert "drafts" in cloud_model.explain(self._too_large())
 
     def test_it_is_not_retried(self):
-        """Sending the same oversized body again fails the same way."""
+
         from visivo.agent.resilience import is_transient
 
         assert is_transient(self._too_large()) is False
 
 
 class TestTheEntryKeepsItsIdentityWhileItWorks:
-    """The viewer identifies a transcript entry to decide what to re-render.
-    An entry whose fields churn on every report is an entry the viewer treats
-    as new each second — closing a screenshot someone opened and reopening a
-    group they collapsed.
+    """The viewer keys a transcript entry on its fields to decide what to
+    re-render, so a field that churns on every report remounts the entry.
     """
 
     def test_the_timestamp_is_when_the_turn_began(self, integration_app, sessions):

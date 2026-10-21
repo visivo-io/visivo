@@ -916,10 +916,7 @@ def call(app, name, arguments=None):
         action_log().record(name, obj=obj, outcome="error", error=message)
         raise ToolError(message)
 
-    # Recorded BEFORE the handler runs, and settled after. `outcome` used to be
-    # written only once a call returned, so a thirty-second query showed
-    # nothing at all while it ran — the tab cannot say "working" about work it
-    # has not been told about.
+    # Recorded before the handler runs so the tab can show a call in progress.
     pending = action_log().record(name, obj=obj, outcome="pending")
 
     try:

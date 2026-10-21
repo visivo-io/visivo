@@ -23,7 +23,6 @@ describe('AgentTimeline', () => {
   });
 
   it('starts a new group after the agent speaks', () => {
-    // The narration is what separates one piece of work from the next.
     render(
       <AgentTimeline
         items={[
@@ -52,8 +51,6 @@ describe('AgentTimeline', () => {
       />
     );
 
-    // The narration sits between the two runs of calls, not above or below
-    // both of them.
     const spoken = screen.getByTestId('agent-timeline-text');
     const [first, second] = screen.getAllByTestId('agent-timeline-group');
 
@@ -62,8 +59,6 @@ describe('AgentTimeline', () => {
   });
 
   it('opens only the group being worked on', () => {
-    // Everything above it is finished, and a turn that leaves every group
-    // open is a wall by its fifth call.
     render(
       <AgentTimeline
         items={[call(1, 'list_models'), text('next'), call(2, 'write_x', 'pending')]}
@@ -76,12 +71,6 @@ describe('AgentTimeline', () => {
   });
 
   it('keeps a group collapsed when the poll brings more work', async () => {
-    // The session is polled every second and each poll delivers a fresh
-    // array. The earlier version put every call in its own disclosure keyed
-    // by array index, so a poll that changed the item count REMOUNTED them —
-    // and a remounted <details> comes back at its initial state. Keying a
-    // group by position (groups only append) plus holding open/closed in
-    // state is what makes a collapse stick.
     const { rerender } = render(
       <AgentTimeline items={[call(1, 'list_models'), call(2, 'profile_model')]} />
     );
@@ -91,7 +80,6 @@ describe('AgentTimeline', () => {
     await userEvent.click(screen.getByText(/2 tool calls/));
     expect(screen.getByTestId('agent-timeline-group')).not.toHaveAttribute('open');
 
-    // The next poll: same group, one more call in it.
     rerender(
       <AgentTimeline
         items={[call(1, 'list_models'), call(2, 'profile_model'), call(3, 'get_model')]}
@@ -102,8 +90,8 @@ describe('AgentTimeline', () => {
   });
 
   it('does not remount a group when a later one appears', () => {
-    // The actual fix. A remounted <details> returns to its initial state, so
-    // whether the component survives a poll IS whether a collapse survives.
+    // A remounted <details> loses its open state, so surviving the poll IS
+    // the collapse sticking.
     const { rerender } = render(<AgentTimeline items={[call(1, 'list_models')]} />);
     const before = screen.getByTestId('agent-timeline-group');
 

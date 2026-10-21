@@ -80,9 +80,7 @@ const AgentPrompt = () => {
 
   // The box sits under the conversation, so bring it into view when the tab
   // opens on one and each time it grows: the latest exchange is just above it.
-  // `serve` pushes `agent_action` the instant a tool call starts or settles.
-  // The session poll is what actually carries the turn's work, so this only
-  // says "now" — with no socket it never fires and the poll is unchanged.
+  // A push only brings the next poll forward; with no socket it never fires.
   useEffect(() => {
     return subscribe(AGENT_ACTIVITY, () => {
       tick.current?.();
@@ -347,18 +345,6 @@ const AgentPrompt = () => {
   );
 };
 
-/** What was said, oldest first — the shape a conversation is read in. */
-/**
- * What a turn said and did, in the order it happened.
- *
- * While the agent is working, the narration between calls is the thing worth
- * reading — "I see seven tables, let me look at that one", then the call, then
- * what it made of the answer. Joined into one paragraph above a separate list
- * of calls, none of it lines up with anything.
- *
- * Once the turn is done the shape flips back: the answer is the point and the
- * work collapses behind it (VIS-1373).
- */
 /** Runs of consecutive calls become one group; text stays between them. */
 function group(items) {
   const groups = [];
@@ -378,10 +364,7 @@ function group(items) {
 /**
  * One run of calls, collapsible on its own.
  *
- * Open/closed is state, not a prop. A remounted `<details>` comes back at its
- * initial state, and the earlier version put every call in its own disclosure
- * keyed by array index — so a poll that changed the item count remounted them
- * and undid whatever had been collapsed.
+ * Open/closed is state, not a prop: a remounted `<details>` loses it.
  */
 function ToolGroup({ actions, startOpen }) {
   const [open, setOpen] = useState(startOpen);
@@ -412,15 +395,7 @@ function ToolGroup({ actions, startOpen }) {
   );
 }
 
-/**
- * A turn as it happens: what it said, and the calls it made, in order.
- *
- * Only the group being worked on starts open. The ones above it are finished,
- * and a turn that leaves every group expanded is a wall by its fifth call.
- *
- * Once the turn is done this is not used at all: the answer is the point and
- * the whole turn's work collapses behind one disclosure (VIS-1373).
- */
+/** A turn as it happens: what it said and the calls it made, in order. */
 export function AgentTimeline({ items }) {
   const groups = group(items);
   return (
@@ -449,14 +424,12 @@ export function AgentTimeline({ items }) {
   );
 }
 
+/** What was said, oldest first — the shape a conversation is read in. */
 export function Transcript({ entries, running }) {
   return (
     <div className="space-y-2" data-testid="agent-transcript">
       {entries.map((entry, index) => (
         <div
-          // Position, not content: the transcript only appends, and a key
-          // built from a field the turn updates remounts the entry on every
-          // poll — losing anything the reader had opened or collapsed.
           key={index}
           className={
             entry.role === 'user'

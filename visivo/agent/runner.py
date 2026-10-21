@@ -75,13 +75,7 @@ def _execute(app, manager, session_id, prompt, model):
         # Set before the task exists: the task copies this context, and so do
         # the threads it runs sync tools in.
         def report(captured, carried):
-            """What the turn has said and done so far, onto the session the tab
-            polls.
-
-            The actions come from the same `since(mark, session_id)` slice the
-            finished turn uses, so the list a person watches fill in is the
-            list they end up with — not a second one assembled differently.
-            """
+            """What the turn has said and done so far, onto the session the tab polls."""
             actions = action_log().since(mark, session_id=session_id)
             manager.progress(
                 session_id,
@@ -111,10 +105,8 @@ def _execute(app, manager, session_id, prompt, model):
         try:
             result = loop.run_until_complete(task)
         except asyncio.CancelledError:
-            # Settle what the turn got through before Stop. `remember` is not
-            # called on this path, and it used to be the only writer of a
-            # turn's tool calls — so a cancelled turn showed none of the work
-            # it had actually done, which reads as though Stop undid it.
+            # `remember` is not called on this path, so Stop would otherwise
+            # drop the work the turn got through.
             manager.settle(session_id, actions=action_log().since(mark, session_id=session_id))
             manager.set_state(session_id, SessionState.CANCELLED)
             return

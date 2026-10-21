@@ -125,34 +125,17 @@ def _requests_in(messages):
     return sum(1 for message in messages if isinstance(message, ModelResponse))
 
 
-# How often the turn says what it has done. Fast enough that a tool call shows
-# up while it is still the thing happening, slow enough that a turn is not
-# mostly bookkeeping. The viewer polls at 1s, so reporting faster buys nothing.
+# The viewer polls at 1s, so reporting faster buys nothing.
 PROGRESS_INTERVAL_SECONDS = 0.5
 
 
 def timeline(messages, actions, carried=()):
-    """What the turn has said and done, in the order it happened.
+    """What the turn has said and done, interleaved, in the order it happened.
 
-    One list, interleaved — not a paragraph of everything said followed by a
-    list of everything done. The agent narrates between calls ("I see seven
-    tables… let me look at that one"), and that narration only means anything
-    next to the call it is about.
-
-    ``carried`` is the history this turn started with.
-    ``capture_run_messages`` captures the whole conversation, history and all,
-    so without this a second turn reports the first turn's answer as its own.
-    Matched by identity rather than counted off the front: the same objects are
-    handed to ``message_history``, and a count would depend on exactly when
-    pydantic-ai materialises them.
-
-    Order comes from the messages, detail from the action log: a
-    ``ToolCallPart`` knows a name and arguments, while the log knows the object
-    it touched, whether it failed, and any capture. They are matched by
-    position, which is exact for the sequential calls the loop actually makes;
-    several calls issued in ONE response could in principle be executed in a
-    different order than they were written, and would then be labelled in the
-    written order.
+    ``carried`` is the history this turn started with, excluded by identity
+    because ``capture_run_messages`` captures the whole conversation. Actions
+    are matched to tool calls by position, so several calls issued in one
+    response are labelled in written rather than executed order.
     """
     from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 
@@ -168,8 +151,7 @@ def timeline(messages, actions, carried=()):
             elif isinstance(part, ToolCallPart) and taken < len(actions):
                 items.append({"kind": "action", "action": actions[taken]})
                 taken += 1
-    # Calls the log knows about but no captured response explains yet — the
-    # record is written before the handler runs, so it can lead the message.
+    # A call is recorded before its handler runs, so the log can lead the messages.
     for action in actions[taken:]:
         items.append({"kind": "action", "action": action})
     return items
@@ -178,18 +160,9 @@ def timeline(messages, actions, carried=()):
 async def _report_until_done(task, captured, report, carried):
     """Tell ``report`` what the turn has done, until the turn is done.
 
-    In the turn's own event loop rather than a thread: ``captured`` is a list
-    pydantic-ai appends to from this loop, and a reader in another thread would
-    be sampling it mid-append.
-
-    Its own ``asyncio.sleep``, deliberately not the injected backoff sleep —
-    they are different concerns, and a test that makes backoff instant would
-    otherwise turn this into a tight loop that starves the very task it is
-    watching.
-
-    Every failure is swallowed. Progress is a courtesy over an authoritative
-    final write, and a turn that died because the tab wanted an update would be
-    a poor trade.
+    Runs in the turn's own event loop, since ``captured`` is appended to from
+    it. Sleeps on ``asyncio.sleep`` and not the injected backoff sleep, which a
+    test may make instant — that would starve the task being watched.
     """
     while not task.done():
         await asyncio.sleep(PROGRESS_INTERVAL_SECONDS)

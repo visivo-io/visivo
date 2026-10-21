@@ -7,8 +7,6 @@ describe('AgentToolCalls while the turn is working', () => {
   const done = { id: 2, tool: 'list_sources', outcome: 'ok' };
 
   it('marks a call that has started but not finished', () => {
-    // `outcome` used to be written only when a call returned, so a long query
-    // showed nothing at all while it ran.
     render(<AgentToolCalls actions={[pending]} />);
 
     expect(screen.getByTestId('agent-action-pending')).toBeInTheDocument();
@@ -27,7 +25,6 @@ describe('AgentToolCalls while the turn is working', () => {
   });
 
   it('counts the calls it has so far', () => {
-    // The summary counts up as they arrive rather than appearing at the end.
     render(<AgentToolCalls actions={[done, pending]} />);
 
     expect(screen.getByText(/2 tool calls/)).toBeInTheDocument();
@@ -47,8 +44,6 @@ describe('AgentToolCalls while the turn is working', () => {
 });
 
 describe('a turn in flight reads as a narrative', () => {
-  // AgentTimeline lives in AgentPrompt; this covers the row it renders per
-  // item, which is a single-action AgentToolCalls held open.
   it('renders one call per row so narration can sit between them', () => {
     render(
       <>
@@ -59,8 +54,6 @@ describe('a turn in flight reads as a narrative', () => {
       </>
     );
 
-    // Bare rows, not a disclosure each: "1 tool call" five times over, in
-    // five boxes, is not a narrative.
     expect(screen.queryAllByTestId('agent-turn-actions')).toHaveLength(0);
     expect(screen.getAllByTestId('agent-turn-action')).toHaveLength(2);
     expect(screen.getByText('list_sources')).toBeInTheDocument();
