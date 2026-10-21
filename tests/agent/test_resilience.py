@@ -369,3 +369,71 @@ class TestAnErrorAddressedToTheUser:
         from visivo.agent.resilience import explain
 
         assert explain(_overloaded()) is None
+
+
+class TestWhatATurnReportsAboutItself:
+    """`capture_run_messages` captures the whole conversation, history
+    included, so a turn must report only what it added — interleaved, since
+    narration only means anything next to the call it is about.
+    """
+
+    def _said(self, text):
+        return ModelResponse(parts=[TextPart(text)])
+
+    def _called(self, tool, text=None):
+        parts = [TextPart(text)] if text else []
+        return ModelResponse(parts=[*parts, ToolCallPart(tool, {})])
+
+    def test_an_earlier_turns_answer_is_not_reported_as_this_ones(self):
+        from visivo.agent.resilience import timeline
+
+        history = [self._said("an answer from the turn before")]
+        now = [*history, self._said("what I am saying now")]
+
+        items = timeline(now, [], carried=history)
+
+        assert [item["text"] for item in items] == ["what I am saying now"]
+
+    def test_with_no_history_everything_said_is_this_turn(self):
+        from visivo.agent.resilience import timeline
+
+        items = timeline([self._said("first thing")], [], carried=())
+
+        assert [item["text"] for item in items] == ["first thing"]
+
+    def test_text_and_calls_come_back_interleaved(self):
+
+        from visivo.agent.resilience import timeline
+
+        messages = [
+            self._called("list_sources", text="Let me see what is here."),
+            self._called("describe_source", text="Seven tables. Looking at one."),
+            self._said("Here is what I found."),
+        ]
+        actions = [{"id": 1, "tool": "list_sources"}, {"id": 2, "tool": "describe_source"}]
+
+        items = timeline(messages, actions, carried=())
+
+        assert [
+            item["text"] if item["kind"] == "text" else item["action"]["tool"] for item in items
+        ] == [
+            "Let me see what is here.",
+            "list_sources",
+            "Seven tables. Looking at one.",
+            "describe_source",
+            "Here is what I found.",
+        ]
+
+    def test_a_call_the_messages_have_not_explained_yet_still_shows(self):
+        """A call is recorded before its handler runs, so the log can lead the
+        captured response."""
+        from visivo.agent.resilience import timeline
+
+        items = timeline([], [{"id": 1, "tool": "query_source"}], carried=())
+
+        assert [item["action"]["tool"] for item in items] == ["query_source"]
+
+    def test_a_turn_that_has_said_nothing_reports_nothing(self):
+        from visivo.agent.resilience import timeline
+
+        assert timeline([], [], carried=()) == []

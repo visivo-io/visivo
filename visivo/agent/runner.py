@@ -17,7 +17,7 @@ import threading
 from visivo.agent.actions import attributed_to, log as action_log
 from visivo.agent.loop import MAX_MODEL_REQUESTS, MAX_TOOL_CALLS, build_agent
 from visivo.agent import resilience
-from visivo.agent.resilience import TurnFailed, run_turn
+from visivo.agent.resilience import TurnFailed, run_turn, timeline
 from visivo.agent.sessions import SessionManager, SessionState
 from visivo.logger.logger import Logger
 
@@ -71,8 +71,18 @@ def _execute(app, manager, session_id, prompt, model):
         # process-wide — an MCP client can be working through the same serve —
         # so a turn reports what it did by slice, never by clearing.
         mark = action_log().marker()
+
         # Set before the task exists: the task copies this context, and so do
         # the threads it runs sync tools in.
+        def report(captured, carried):
+            """What the turn has said and done so far, onto the session the tab polls."""
+            actions = action_log().since(mark, session_id=session_id)
+            manager.progress(
+                session_id,
+                items=timeline(captured, actions, carried=carried),
+                actions=actions,
+            )
+
         with attributed_to("agent", session_id):
             task = loop.create_task(
                 run_turn(
@@ -81,6 +91,7 @@ def _execute(app, manager, session_id, prompt, model):
                     history=history,
                     max_requests=MAX_MODEL_REQUESTS,
                     max_tool_calls=MAX_TOOL_CALLS,
+                    report=report,
                 )
             )
 
@@ -94,6 +105,9 @@ def _execute(app, manager, session_id, prompt, model):
         try:
             result = loop.run_until_complete(task)
         except asyncio.CancelledError:
+            # `remember` is not called on this path, so Stop would otherwise
+            # drop the work the turn got through.
+            manager.settle(session_id, actions=action_log().since(mark, session_id=session_id))
             manager.set_state(session_id, SessionState.CANCELLED)
             return
         answer = str(result.output)

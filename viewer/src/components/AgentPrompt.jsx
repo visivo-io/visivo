@@ -7,7 +7,9 @@ import {
   listAgentSessions,
   startAgentSession,
 } from '../api/agent';
-import AgentToolCalls from './AgentToolCalls';
+import AgentToolCalls, { ActionRow } from './AgentToolCalls';
+import { subscribe } from '../events/eventSource';
+import { AGENT_ACTIVITY } from '../events/topics';
 import AgentAuthorize from './AgentAuthorize';
 import useAuthorization from '../hooks/useAuthorization';
 
@@ -55,6 +57,8 @@ const AgentPrompt = () => {
   const [starting, setStarting] = useState(false);
   const [modelSource, setModelSource] = useState(null);
   const timer = useRef(null);
+  // The running poll's own tick, so a push can run it early.
+  const tick = useRef(null);
   // One idea of "authorized", shared with Deploy (VIS-1377). Until this the
   // tab's answer to a first-time user was the resolver's BYO error.
   const { authorized, host, working: authorizing, message: authMessage, authorize } =
@@ -69,12 +73,20 @@ const AgentPrompt = () => {
       clearInterval(timer.current);
       timer.current = null;
     }
+    tick.current = null;
   }, []);
 
   useEffect(() => stopPolling, [stopPolling]);
 
   // The box sits under the conversation, so bring it into view when the tab
   // opens on one and each time it grows: the latest exchange is just above it.
+  // A push only brings the next poll forward; with no socket it never fires.
+  useEffect(() => {
+    return subscribe(AGENT_ACTIVITY, () => {
+      tick.current?.();
+    });
+  }, []);
+
   const box = useRef(null);
   const turns = session?.transcript?.length || 0;
   const working = isActive(session);
@@ -125,6 +137,7 @@ const AgentPrompt = () => {
       // Once immediately: a loop that answers in under a second should not
       // look like it is still working for a second.
       check();
+      tick.current = check;
       timer.current = setInterval(check, POLL_MS);
     },
     [stopPolling, projectId, refreshAfterAgentTurn]
@@ -332,13 +345,92 @@ const AgentPrompt = () => {
   );
 };
 
+/** Runs of consecutive calls become one group; text stays between them. */
+function group(items) {
+  const groups = [];
+  for (const item of items) {
+    const last = groups[groups.length - 1];
+    if (item.kind === 'text') {
+      groups.push({ kind: 'text', text: item.text });
+    } else if (last?.kind === 'actions') {
+      last.actions.push(item.action);
+    } else {
+      groups.push({ kind: 'actions', actions: [item.action] });
+    }
+  }
+  return groups;
+}
+
+/**
+ * One run of calls, collapsible on its own.
+ *
+ * Open/closed is state, not a prop: a remounted `<details>` loses it.
+ */
+function ToolGroup({ actions, startOpen }) {
+  const [open, setOpen] = useState(startOpen);
+  const failed = actions.filter(action => action.outcome === 'error').length;
+  const running = actions.filter(action => action.outcome === 'pending').length;
+  return (
+    <details
+      className="my-1 rounded border border-gray-200 bg-white"
+      open={open}
+      onToggle={event => setOpen(event.currentTarget.open)}
+      data-testid="agent-timeline-group"
+    >
+      <summary className="cursor-pointer select-none px-2 py-1 text-xs text-gray-500 hover:text-gray-700">
+        {actions.length} tool call{actions.length === 1 ? '' : 's'}
+        {running > 0 && (
+          <span className="ml-2 text-gray-400" data-testid="agent-timeline-running">
+            working…
+          </span>
+        )}
+        {failed > 0 && <span className="ml-2 text-highlight-700">{failed} failed</span>}
+      </summary>
+      <ul className="border-t border-gray-100">
+        {actions.map((action, index) => (
+          <ActionRow key={action.id ?? index} action={action} />
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+/** A turn as it happens: what it said and the calls it made, in order. */
+export function AgentTimeline({ items }) {
+  const groups = group(items);
+  return (
+    <div className="space-y-1" data-testid="agent-timeline">
+      {/* Keyed by position, namespaced by kind: groups only ever append, so a
+          group already on screen keeps its component — and therefore whether
+          it was collapsed. */}
+      {groups.map((entry, index) =>
+        entry.kind === 'text' ? (
+          <p
+            key={`text-${index}`}
+            className="whitespace-pre-wrap"
+            data-testid="agent-timeline-text"
+          >
+            {entry.text}
+          </p>
+        ) : (
+          <ToolGroup
+            key={`actions-${index}`}
+            actions={entry.actions}
+            startOpen={index === groups.length - 1}
+          />
+        )
+      )}
+    </div>
+  );
+}
+
 /** What was said, oldest first — the shape a conversation is read in. */
-function Transcript({ entries, running }) {
+export function Transcript({ entries, running }) {
   return (
     <div className="space-y-2" data-testid="agent-transcript">
       {entries.map((entry, index) => (
         <div
-          key={`${entry.at}-${index}`}
+          key={index}
           className={
             entry.role === 'user'
               ? 'rounded-md bg-gray-100 p-3 text-sm text-gray-900'
@@ -352,11 +444,17 @@ function Transcript({ entries, running }) {
           {/* Above the answer, so a turn reads as ask -> work -> result. An
               answer with no visible work is what made the agent look like it
               had done nothing. */}
-          <AgentToolCalls actions={entry.actions} />
-          {entry.text}
+          {entry.pending && entry.items?.length ? (
+            <AgentTimeline items={entry.items} />
+          ) : (
+            <>
+              <AgentToolCalls actions={entry.actions} />
+              {entry.text}
+            </>
+          )}
         </div>
       ))}
-      {running && (
+      {running && !entries.some(entry => entry.pending) && (
         <div className="px-3 text-sm text-gray-400" data-testid="agent-thinking">
           Thinking…
         </div>

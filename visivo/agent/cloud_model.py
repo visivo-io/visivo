@@ -229,6 +229,14 @@ def explain(error, host=None, model=None):
         # Repeating that here would be a second copy to keep in step.
         return _body(error).get("error") or "This account has reached its spend limit."
 
+    if status == 413:
+        # nginx, not the model: an HTML error page the request never got past,
+        # reported with the model's name beside it.
+        return (
+            "This conversation has grown too large to send. Start a new one to "
+            "carry on — the work so far is already saved as drafts."
+        )
+
     if status not in (404, 503):
         return None
 

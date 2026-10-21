@@ -626,3 +626,172 @@ class TestAFailedTurnIsNotALostTurn:
         assert finished.state == SessionState.FAILED
         assert finished.error == "This account has used its $30 of free credit."
         assert finished.action == "inference_limit_reached"
+
+
+class TestATurnShowsItsWorkWhileItWorks:
+    """The transcript fills in as the turn goes, rather than all at once."""
+
+    def _slow_model(self, calls=2):
+        """A model that makes `calls` tool calls, talking between them.
+
+        Async, and it awaits: the progress watcher runs in the turn's own event
+        loop, so a model that blocked it would block the reporting this test is
+        about and the test would pass or fail for the wrong reason.
+        """
+        import asyncio
+
+        seen = {"n": 0}
+
+        async def respond(messages, info: AgentInfo):
+            seen["n"] += 1
+            await asyncio.sleep(0.05)
+            if seen["n"] <= calls:
+                return ModelResponse(
+                    parts=[
+                        TextPart(f"step {seen['n']}"),
+                        ToolCallPart("list_sources", {}),
+                    ]
+                )
+            return ModelResponse(parts=[TextPart("All done.")])
+
+        model = FunctionModel(respond)
+        model.seen = seen
+        return model
+
+    def test_the_turn_in_flight_is_marked_pending(self, integration_app, sessions):
+        session = sessions.create("go")
+        sessions.progress(session.id, text="working", actions=[{"id": 1, "tool": "x"}])
+
+        entry = sessions.get(session.id).transcript[-1]
+        assert entry["role"] == "agent"
+        assert entry["pending"] is True
+        assert entry["text"] == "working"
+
+    def test_progress_updates_one_entry_rather_than_appending(self, integration_app, sessions):
+
+        session = sessions.create("go")
+
+        sessions.progress(session.id, text="one", actions=[{"id": 1}])
+        sessions.progress(session.id, text="two", actions=[{"id": 1}, {"id": 2}])
+
+        agent_entries = [e for e in sessions.get(session.id).transcript if e["role"] == "agent"]
+        assert len(agent_entries) == 1
+        assert agent_entries[0]["text"] == "two"
+        assert len(agent_entries[0]["actions"]) == 2
+
+    def test_the_answer_settles_the_entry_progress_was_filling(self, integration_app, sessions):
+        session = sessions.create("go")
+        sessions.progress(session.id, text="half a thought", actions=[{"id": 1}])
+
+        sessions.remember(session.id, [], "the answer", actions=[{"id": 1}, {"id": 2}])
+
+        agent_entries = [e for e in sessions.get(session.id).transcript if e["role"] == "agent"]
+        assert len(agent_entries) == 1
+        assert agent_entries[0]["text"] == "the answer"
+        assert agent_entries[0]["pending"] is False
+
+    def test_a_turn_that_reported_nothing_still_gets_its_answer(self, integration_app, sessions):
+
+        session = sessions.create("go")
+
+        sessions.remember(session.id, [], "the answer", actions=[])
+
+        assert [e["text"] for e in sessions.get(session.id).transcript] == [
+            "go",
+            "the answer",
+        ]
+
+    def test_progress_after_a_turn_has_finished_is_dropped(self, integration_app, sessions):
+
+        session = sessions.create("go")
+        sessions.remember(session.id, [], "the answer", actions=[])
+        sessions.set_state(session.id, SessionState.SUCCEEDED, output="the answer")
+
+        sessions.progress(session.id, text="too late", actions=[{"id": 9}])
+
+        assert [e["text"] for e in sessions.get(session.id).transcript] == [
+            "go",
+            "the answer",
+        ]
+
+    def test_the_work_arrives_before_the_answer_does(self, integration_app, sessions, monkeypatch):
+
+        from visivo.agent import resilience
+
+        monkeypatch.setattr(resilience, "PROGRESS_INTERVAL_SECONDS", 0.01)
+        seen = []
+        model = self._slow_model(calls=2)
+        session = start(integration_app, "go", model, session_manager=sessions)
+
+        deadline = time.time() + 10
+        while time.time() < deadline:
+            current = sessions.get(session.id)
+            entry = current.transcript[-1] if current.transcript else None
+            if entry and entry.get("pending") and entry["actions"]:
+                seen.append(len(entry["actions"]))
+                break
+            if current.state in (SessionState.SUCCEEDED, SessionState.FAILED):
+                break
+            time.sleep(0.05)
+
+        _settle(sessions, session.id)
+        assert seen, "no tool calls were visible while the turn was running"
+
+
+class TestAConversationTooLargeToSend:
+    """nginx's HTML 413 page is reported as though the model had said it."""
+
+    def _too_large(self):
+        from pydantic_ai.exceptions import ModelHTTPError
+
+        return ModelHTTPError(
+            status_code=413,
+            model_name="google/gemini-2.5-pro",
+            body="<html><head><title>413 Request Entity Too Large</title></head></html>",
+        )
+
+    def test_it_says_what_happened_without_the_html(self):
+        from visivo.agent import cloud_model
+
+        message = cloud_model.explain(self._too_large())
+
+        assert "too large" in message
+        assert "<html>" not in message
+        assert "gemini" not in message.lower()
+
+    def test_it_says_the_work_is_not_lost(self):
+        """Every change the turn made is already a draft, and the next
+        sentence a person reads should not leave them wondering."""
+        from visivo.agent import cloud_model
+
+        assert "drafts" in cloud_model.explain(self._too_large())
+
+    def test_it_is_not_retried(self):
+
+        from visivo.agent.resilience import is_transient
+
+        assert is_transient(self._too_large()) is False
+
+
+class TestTheEntryKeepsItsIdentityWhileItWorks:
+    """The viewer keys a transcript entry on its fields to decide what to
+    re-render, so a field that churns on every report remounts the entry.
+    """
+
+    def test_the_timestamp_is_when_the_turn_began(self, integration_app, sessions):
+        session = sessions.create("go")
+        sessions.progress(session.id, items=[{"kind": "text", "text": "one"}])
+        began = sessions.get(session.id).transcript[-1]["at"]
+
+        sessions.progress(session.id, items=[{"kind": "text", "text": "two"}])
+
+        assert sessions.get(session.id).transcript[-1]["at"] == began
+
+    def test_settling_does_not_move_it_either(self, integration_app, sessions):
+        session = sessions.create("go")
+        sessions.progress(session.id, items=[{"kind": "text", "text": "one"}])
+        began = sessions.get(session.id).transcript[-1]["at"]
+
+        sessions.remember(session.id, [], "the answer", actions=[])
+
+        assert sessions.get(session.id).transcript[-1]["at"] == began

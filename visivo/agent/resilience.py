@@ -125,6 +125,53 @@ def _requests_in(messages):
     return sum(1 for message in messages if isinstance(message, ModelResponse))
 
 
+# The viewer polls at 1s, so reporting faster buys nothing.
+PROGRESS_INTERVAL_SECONDS = 0.5
+
+
+def timeline(messages, actions, carried=()):
+    """What the turn has said and done, interleaved, in the order it happened.
+
+    ``carried`` is the history this turn started with, excluded by identity
+    because ``capture_run_messages`` captures the whole conversation. Actions
+    are matched to tool calls by position, so several calls issued in one
+    response are labelled in written rather than executed order.
+    """
+    from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
+
+    items = []
+    taken = 0
+    before = {id(message) for message in carried}
+    for message in [m for m in messages if id(m) not in before]:
+        if not isinstance(message, ModelResponse):
+            continue
+        for part in message.parts:
+            if isinstance(part, TextPart) and (part.content or "").strip():
+                items.append({"kind": "text", "text": part.content.strip()})
+            elif isinstance(part, ToolCallPart) and taken < len(actions):
+                items.append({"kind": "action", "action": actions[taken]})
+                taken += 1
+    # A call is recorded before its handler runs, so the log can lead the messages.
+    for action in actions[taken:]:
+        items.append({"kind": "action", "action": action})
+    return items
+
+
+async def _report_until_done(task, captured, report, carried):
+    """Tell ``report`` what the turn has done, until the turn is done.
+
+    Runs in the turn's own event loop, since ``captured`` is appended to from
+    it. Sleeps on ``asyncio.sleep`` and not the injected backoff sleep, which a
+    test may make instant — that would starve the task being watched.
+    """
+    while not task.done():
+        await asyncio.sleep(PROGRESS_INTERVAL_SECONDS)
+        try:
+            report(list(captured), carried)
+        except Exception:
+            pass
+
+
 class TurnFailed(Exception):
     """A turn that ran out of attempts, carrying what it had learned.
 
@@ -145,6 +192,7 @@ async def run_turn(
     max_requests=MAX_MODEL_REQUESTS,
     max_tool_calls=MAX_TOOL_CALLS,
     sleep=None,
+    report=None,
 ):
     """Answer ``prompt``, resuming through transient failures.
 
@@ -173,11 +221,25 @@ async def run_turn(
                 # The prompt goes in once. On a resumption it is already in
                 # `messages` as a UserPromptPart, and sending it again would
                 # read to the model as the user repeating themselves.
-                return await agent.run(
-                    prompt if attempt == 0 else None,
-                    message_history=messages,
-                    usage_limits=limits,
+                task = asyncio.ensure_future(
+                    agent.run(
+                        prompt if attempt == 0 else None,
+                        message_history=messages,
+                        usage_limits=limits,
+                    )
                 )
+                watcher = (
+                    asyncio.ensure_future(
+                        _report_until_done(task, captured, report, tuple(messages))
+                    )
+                    if report
+                    else None
+                )
+                try:
+                    return await task
+                finally:
+                    if watcher is not None:
+                        watcher.cancel()
             except Exception as error:
                 # `captured` is the whole conversation, not just this attempt,
                 # so it replaces `messages` rather than extending it.

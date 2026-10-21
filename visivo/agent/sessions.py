@@ -61,20 +61,61 @@ class Session:
         # reader needs to know who said what.
         self.transcript = []
 
-    def say(self, role, text, actions=None):
+    def say(self, role, text, actions=None, pending=False, items=None):
         """Add to what a person reads.
 
         An agent turn carries the tool calls it made, so the answer can be read
         next to the work rather than beside an undated list that may also hold
         an MCP client's.
+
+        ``pending`` marks the entry as a turn still in flight, so the tab can
+        render work in progress rather than a minute of "Thinking…" followed by
+        everything at once.
         """
         entry = {
             "role": role,
             "text": text,
             "at": datetime.now().isoformat(),
             "actions": list(actions or []),
+            "pending": pending,
+            "items": list(items or []),
         }
         self.transcript.append(entry)
+        return entry
+
+    def progress(self, text=None, actions=None, items=None):
+        """Update the turn in flight, starting one if there is not one yet."""
+        entry = self.in_flight()
+        if entry is None:
+            entry = self.say("agent", text or "", actions=actions, pending=True, items=items)
+            return entry
+        if text is not None:
+            entry["text"] = text
+        if actions is not None:
+            entry["actions"] = list(actions)
+        if items is not None:
+            entry["items"] = list(items)
+        return entry
+
+    def in_flight(self):
+        """The turn being worked on, or ``None``."""
+        if self.transcript and self.transcript[-1].get("pending"):
+            return self.transcript[-1]
+        return None
+
+    def settle(self, text=None, actions=None):
+        """Fold in the final answer and stop calling the turn pending.
+
+        Called on every exit path, cancellation included.
+        """
+        entry = self.in_flight()
+        if entry is None:
+            return None
+        if text:
+            entry["text"] = text
+        if actions is not None:
+            entry["actions"] = list(actions)
+        entry["pending"] = False
         return entry
 
     def to_dict(self, with_transcript=True):
@@ -162,8 +203,31 @@ class SessionManager:
             if session is None:
                 return
             session.history = history
-            if answer:
+            if session.settle(answer, actions=actions) is None and answer:
                 session.say("agent", answer, actions=actions)
+
+    def progress(self, session_id, text=None, actions=None, items=None):
+        """Report what the turn in flight has done so far.
+
+        Dropped rather than raised if the session is gone or already settled:
+        progress must never be able to fail a turn.
+        """
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None or session.state in FINISHED:
+                return None
+            session.progress(text=text, actions=actions, items=items)
+            session.updated_at = datetime.now()
+            return session
+
+    def settle(self, session_id, text=None, actions=None):
+        """Stop calling the turn in flight pending, whatever ended it."""
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None:
+                return None
+            session.settle(text, actions=actions)
+            return session
 
     def active(self):
         with self._lock:

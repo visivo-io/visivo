@@ -239,7 +239,9 @@ class TestListenersSeeRecordings:
             {"config": {"name": "pushed", "content": "# pushed"}},
         )
 
-        assert [a["tool"] for a in pushed] == ["write_markdown"]
+        assert [a["tool"] for a in pushed] == ["write_markdown", "write_markdown"]
+        assert [a["outcome"] for a in pushed] == ["pending", "ok"]
+        assert len({a["id"] for a in pushed}) == 1
 
     def test_the_module_knows_nothing_of_a_socket(self):
         """The seam exists so the recording layer stays importable without

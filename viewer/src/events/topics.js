@@ -48,6 +48,15 @@ export const runsFor = (projectId, fetchRuns) => ({
  * 2s: an agent's actions land in bursts while someone is watching the tab, and
  * the tab is only mounted when they are.
  */
+/**
+ * The same event as a nudge rather than a value: the Agent tab's session poll
+ * already carries the transcript, so this only says "look now".
+ *
+ * Deliberately no `poll` — a second interval fetching the same news is how two
+ * sources of truth start. With no socket it never fires and the poll stands.
+ */
+export const AGENT_ACTIVITY = { event: 'agent_action' };
+
 export const AGENT_ACTIONS = (fetchAgentActions, projectId) => ({
   // NOT scoped by project, unlike `runsFor` above. `serve_phase` already emits
   // this exact name (VIS-1337), and a socket belongs to one serve process
