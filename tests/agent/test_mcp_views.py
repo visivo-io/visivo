@@ -163,6 +163,53 @@ class TestCalling:
         assert len(_tool_text(result)) / 1024 < 10
 
 
+class TestAnImageResult:
+    """`screenshot_dashboard` returns a `ToolReturn`. Over MCP the image has to
+    arrive as an image block the client renders, not as the encoded object."""
+
+    PNG = b"\x89PNG\r\n\x1a\n-not-a-real-png"
+
+    @pytest.fixture
+    def image_tool(self, monkeypatch):
+        from visivo.agent.images import image_result
+        from visivo.server.views import mcp_views
+
+        monkeypatch.setattr(
+            mcp_views,
+            "call",
+            lambda app, name, arguments: image_result(
+                self.PNG, "The dashboard as rendered.", dashboard="overview", width=1280
+            ),
+        )
+
+    def test_the_image_is_an_image_block(self, integration_client, image_tool):
+        import base64
+
+        result = _result(
+            _rpc(
+                integration_client, "tools/call", {"name": "screenshot_dashboard", "arguments": {}}
+            )
+        )
+
+        images = [block for block in result["content"] if block["type"] == "image"]
+        assert result["isError"] is False
+        assert len(images) == 1
+        assert images[0]["mimeType"] == "image/png"
+        assert base64.b64decode(images[0]["data"]) == self.PNG
+
+    def test_the_facts_and_the_caption_stay_text(self, integration_client, image_tool):
+        result = _result(
+            _rpc(
+                integration_client, "tools/call", {"name": "screenshot_dashboard", "arguments": {}}
+            )
+        )
+
+        texts = [block["text"] for block in result["content"] if block["type"] == "text"]
+        assert json.loads(texts[0]) == {"dashboard": "overview", "width": 1280}
+        assert "The dashboard as rendered." in texts
+        assert not any("ToolReturn" in text or "PNG" in text for text in texts)
+
+
 class TestWhenSomethingIsWrong:
     """A refusal is a tool RESULT, not a JSON-RPC error. A JSON-RPC error ends
     the call; an error result is something the model can read and correct."""
