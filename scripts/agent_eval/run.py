@@ -58,6 +58,7 @@ GUIDANCE_TOOLS = {
     "score_candidates",
 }
 CLIENT_TIMEOUT_SECONDS = 1500
+RESET_RUN_TIMEOUT_SECONDS = 300
 SETTLE_TIMEOUT_MS = 120_000
 # Charts fetch data and then compute in DuckDB-WASM, and a spinner-free page can
 # also be one whose charts have not mounted yet. Settled = every visual drawn,
@@ -142,6 +143,27 @@ class Serve:
     def discard(self):
         return self.http("POST", "/api/commit/discard/", {})
 
+    def reset(self):
+        """Discard every draft, then build the committed project once.
+
+        Run history lives in the serve's memory and a discard leaves it alone,
+        so without the rebuild the newest run the next agent finds with
+        `list_runs` is the previous agent's failure.
+        """
+        self.discard()
+        deadline = time.time() + RESET_RUN_TIMEOUT_SECONDS
+        while time.time() < deadline:
+            status, _ = self.http("POST", "/api/projects/local/run/", {"dag_filter": ""})
+            if status != 409:
+                break
+            time.sleep(2)
+        while time.time() < deadline:
+            _, runs = self.http("GET", "/api/projects/local/run/")
+            if runs and runs[0]["state"] not in ("queued", "running"):
+                return runs[0]["state"]
+            time.sleep(2)
+        raise RuntimeError("The reset run did not finish.")
+
     def snapshot(self):
         objects = {}
         for type_key in OBJECT_TYPES:
@@ -151,6 +173,34 @@ class Serve:
                 item["name"]: item for item in items if isinstance(item, dict) and item.get("name")
             }
         return objects
+
+
+def stale_viewer_bundle():
+    """Why the serve's built viewer is older than the viewer source, or ``None``.
+
+    The agent's `screenshot_dashboard` loads the page from the serve, which
+    serves the bundle in `visivo/viewers/local`. Releases rebuild it; a
+    checkout does not. The eval renders from the dev server instead, so with a
+    stale bundle the agent and the judge look at two different viewers.
+    """
+    repo = os.path.dirname(os.path.dirname(HERE))
+
+    def git(*command):
+        return subprocess.run(
+            ["git", *command], cwd=repo, capture_output=True, text=True
+        ).stdout.strip()
+
+    if git("status", "--porcelain", "--", "visivo/viewers/local"):
+        return None
+    source = git("log", "-1", "--format=%ct", "--", "viewer/src")
+    built = git("log", "-1", "--format=%ct", "--", "visivo/viewers/local")
+    if not source or not built or int(built) >= int(source):
+        return None
+    return (
+        "visivo/viewers/local is older than the last viewer/src commit, so "
+        "screenshot_dashboard would show the agent an older viewer than the judge "
+        "sees. Run `yarn deploy:local` in viewer/ first, or pass --allow-stale-viewer."
+    )
 
 
 def skills_prompt():
@@ -388,7 +438,7 @@ def inspect_dashboards(serve, objects, run_dir):
 
 def run_one(serve, condition, item, model, run_dir, dataset):
     os.makedirs(run_dir, exist_ok=True)
-    serve.discard()
+    serve.reset()
     if condition == "builtin":
         client = run_builtin(serve, item["prompt"], run_dir)
     else:
@@ -434,7 +484,11 @@ def main():
     parser.add_argument("--model", default="sonnet")
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--allow-stale-viewer", action="store_true")
     args = parser.parse_args()
+    stale = None if args.allow_stale_viewer else stale_viewer_bundle()
+    if stale:
+        sys.exit(stale)
 
     dataset = yaml.safe_load(open(os.path.join(HERE, "datasets", args.dataset, "prompts.yml")))
     suite = dataset["prompts"]
