@@ -26,11 +26,20 @@ class TestColorScales:
         found = lint.warnings(APP, "insights", _insight(props))
         assert len(found) == 1 and "reversescale: true" in found[0]
 
+    def test_a_reversed_light_to_dark_scale_is_flagged(self):
+        """The eval agent "fixed" a pale-high YlOrRd heatmap with Reds plus
+        `reversescale: true`, which turned it pale-high again."""
+        props = {"type": "heatmap", "colorscale": "Reds", "reversescale": True}
+        props["colorbar"] = {"title": {"text": "Trips"}}
+        found = lint.warnings(APP, "insights", _insight(props))
+        assert len(found) == 1 and "Remove `reversescale`" in found[0]
+
     def test_reversed_or_light_to_dark_scales_and_other_traces_pass(self):
         titled = {"colorbar": {"title": {"text": "Trips"}}}
         for props in (
             {"type": "heatmap", "colorscale": "Blues", "reversescale": True, **titled},
             {"type": "heatmap", "colorscale": "Viridis", **titled},
+            {"type": "heatmap", "colorscale": "Reds", **titled},
             {"type": "bar", "colorscale": "YlOrRd"},
         ):
             assert lint.warnings(APP, "insights", _insight(props)) == []

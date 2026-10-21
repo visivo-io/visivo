@@ -56,7 +56,7 @@ gotchas:
   - "Set `layout.xaxis.type: category`/`yaxis.type: category` when the axes are labels, or Plotly spaces them as numbers. Rows are bound by height: Plotly hides every other row label once rows are tighter than about 15 px."
   - "Weekday or month names sort alphabetically; sort by the number (`isodow`, `month`) and label with the name."
   - "A `split` interaction makes one heatmap per value, all on the same axes and overlapping; never split a heatmap."
-  - "Pick one theme-neutral `colorscale` (Viridis, or Blues with `reversescale: true`, since Plotly's Blues runs dark to light); a diverging scale needs `zmid` at the meaningful centre."
+  - "Pick one theme-neutral `colorscale` (Viridis; Reds as is, since it runs light to dark; or Blues, Greens, Greys, YlGnBu or YlOrRd with `reversescale: true`, since those run dark to light in Plotly); a diverging scale needs `zmid` at the meaningful centre."
 pairings: [detail_table_below, kpi_strip_above]
 layout: {height: medium, width_share: 1.0, row_role: breakdown}
 order_axes: [x, y]
