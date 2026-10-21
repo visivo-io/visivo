@@ -359,23 +359,93 @@ const AgentPrompt = () => {
  * Once the turn is done the shape flips back: the answer is the point and the
  * work collapses behind it (VIS-1373).
  */
-function AgentTimeline({ items }) {
+/** Runs of consecutive calls become one group; text stays between them. */
+function group(items) {
+  const groups = [];
+  for (const item of items) {
+    const last = groups[groups.length - 1];
+    if (item.kind === 'text') {
+      groups.push({ kind: 'text', text: item.text });
+    } else if (last?.kind === 'actions') {
+      last.actions.push(item.action);
+    } else {
+      groups.push({ kind: 'actions', actions: [item.action] });
+    }
+  }
+  return groups;
+}
+
+/**
+ * One run of calls, collapsible on its own.
+ *
+ * Open/closed is state, not a prop. A remounted `<details>` comes back at its
+ * initial state, and the earlier version put every call in its own disclosure
+ * keyed by array index — so a poll that changed the item count remounted them
+ * and undid whatever had been collapsed.
+ */
+function ToolGroup({ actions, startOpen }) {
+  const [open, setOpen] = useState(startOpen);
+  const failed = actions.filter(action => action.outcome === 'error').length;
+  const running = actions.filter(action => action.outcome === 'pending').length;
   return (
-    <ol className="space-y-1" data-testid="agent-timeline">
-      {items.map((item, index) =>
-        item.kind === 'text' ? (
-          <li key={index} className="whitespace-pre-wrap" data-testid="agent-timeline-text">
-            {item.text}
-          </li>
+    <details
+      className="my-1 rounded border border-gray-200 bg-white"
+      open={open}
+      onToggle={event => setOpen(event.currentTarget.open)}
+      data-testid="agent-timeline-group"
+    >
+      <summary className="cursor-pointer select-none px-2 py-1 text-xs text-gray-500 hover:text-gray-700">
+        {actions.length} tool call{actions.length === 1 ? '' : 's'}
+        {running > 0 && (
+          <span className="ml-2 text-gray-400" data-testid="agent-timeline-running">
+            working…
+          </span>
+        )}
+        {failed > 0 && <span className="ml-2 text-highlight-700">{failed} failed</span>}
+      </summary>
+      <ul className="border-t border-gray-100">
+        {actions.map((action, index) => (
+          <ActionRow key={action.id ?? index} action={action} />
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+/**
+ * A turn as it happens: what it said, and the calls it made, in order.
+ *
+ * Only the group being worked on starts open. The ones above it are finished,
+ * and a turn that leaves every group expanded is a wall by its fifth call.
+ *
+ * Once the turn is done this is not used at all: the answer is the point and
+ * the whole turn's work collapses behind one disclosure (VIS-1373).
+ */
+export function AgentTimeline({ items }) {
+  const groups = group(items);
+  return (
+    <div className="space-y-1" data-testid="agent-timeline">
+      {/* Keyed by position, namespaced by kind: groups only ever append, so a
+          group already on screen keeps its component — and therefore whether
+          it was collapsed. */}
+      {groups.map((entry, index) =>
+        entry.kind === 'text' ? (
+          <p
+            key={`text-${index}`}
+            className="whitespace-pre-wrap"
+            data-testid="agent-timeline-text"
+          >
+            {entry.text}
+          </p>
         ) : (
-          // A bare row, not a disclosure. One `<details>` per call read as
-          // "1 tool call" five times over, each in its own box — and its
-          // `open` was a controlled attribute, so the poll a second later
-          // reopened anything that had been collapsed.
-          <ActionRow key={index} action={item.action} />
+          <ToolGroup
+            key={`actions-${index}`}
+            actions={entry.actions}
+            startOpen={index === groups.length - 1}
+          />
         )
       )}
-    </ol>
+    </div>
   );
 }
 

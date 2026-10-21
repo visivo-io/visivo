@@ -74,7 +74,7 @@ def _execute(app, manager, session_id, prompt, model):
 
         # Set before the task exists: the task copies this context, and so do
         # the threads it runs sync tools in.
-        def report(captured, skip):
+        def report(captured, carried):
             """What the turn has said and done so far, onto the session the tab
             polls.
 
@@ -85,7 +85,7 @@ def _execute(app, manager, session_id, prompt, model):
             actions = action_log().since(mark, session_id=session_id)
             manager.progress(
                 session_id,
-                items=timeline(captured, actions, skip=skip),
+                items=timeline(captured, actions, carried=carried),
                 actions=actions,
             )
 

@@ -394,14 +394,14 @@ class TestWhatATurnReportsAboutItself:
         history = [self._said("an answer from the turn before")]
         now = [*history, self._said("what I am saying now")]
 
-        items = timeline(now, [], skip=len(history))
+        items = timeline(now, [], carried=history)
 
         assert [item["text"] for item in items] == ["what I am saying now"]
 
     def test_with_no_history_everything_said_is_this_turn(self):
         from visivo.agent.resilience import timeline
 
-        items = timeline([self._said("first thing")], [], skip=0)
+        items = timeline([self._said("first thing")], [], carried=())
 
         assert [item["text"] for item in items] == ["first thing"]
 
@@ -416,7 +416,7 @@ class TestWhatATurnReportsAboutItself:
         ]
         actions = [{"id": 1, "tool": "list_sources"}, {"id": 2, "tool": "describe_source"}]
 
-        items = timeline(messages, actions, skip=0)
+        items = timeline(messages, actions, carried=())
 
         assert [
             item["text"] if item["kind"] == "text" else item["action"]["tool"] for item in items
@@ -433,11 +433,11 @@ class TestWhatATurnReportsAboutItself:
         captured response. It must not vanish until the response catches up."""
         from visivo.agent.resilience import timeline
 
-        items = timeline([], [{"id": 1, "tool": "query_source"}], skip=0)
+        items = timeline([], [{"id": 1, "tool": "query_source"}], carried=())
 
         assert [item["action"]["tool"] for item in items] == ["query_source"]
 
     def test_a_turn_that_has_said_nothing_reports_nothing(self):
         from visivo.agent.resilience import timeline
 
-        assert timeline([], [], skip=0) == []
+        assert timeline([], [], carried=()) == []

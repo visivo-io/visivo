@@ -131,7 +131,7 @@ def _requests_in(messages):
 PROGRESS_INTERVAL_SECONDS = 0.5
 
 
-def timeline(messages, actions, skip=0):
+def timeline(messages, actions, carried=()):
     """What the turn has said and done, in the order it happened.
 
     One list, interleaved — not a paragraph of everything said followed by a
@@ -139,9 +139,12 @@ def timeline(messages, actions, skip=0):
     tables… let me look at that one"), and that narration only means anything
     next to the call it is about.
 
-    ``skip`` is how many messages this turn STARTED with.
+    ``carried`` is the history this turn started with.
     ``capture_run_messages`` captures the whole conversation, history and all,
-    so without it a second turn reports the first turn's answer as its own.
+    so without this a second turn reports the first turn's answer as its own.
+    Matched by identity rather than counted off the front: the same objects are
+    handed to ``message_history``, and a count would depend on exactly when
+    pydantic-ai materialises them.
 
     Order comes from the messages, detail from the action log: a
     ``ToolCallPart`` knows a name and arguments, while the log knows the object
@@ -155,7 +158,8 @@ def timeline(messages, actions, skip=0):
 
     items = []
     taken = 0
-    for message in list(messages)[skip:]:
+    before = {id(message) for message in carried}
+    for message in [m for m in messages if id(m) not in before]:
         if not isinstance(message, ModelResponse):
             continue
         for part in message.parts:
@@ -171,7 +175,7 @@ def timeline(messages, actions, skip=0):
     return items
 
 
-async def _report_until_done(task, captured, report, skip):
+async def _report_until_done(task, captured, report, carried):
     """Tell ``report`` what the turn has done, until the turn is done.
 
     In the turn's own event loop rather than a thread: ``captured`` is a list
@@ -190,7 +194,7 @@ async def _report_until_done(task, captured, report, skip):
     while not task.done():
         await asyncio.sleep(PROGRESS_INTERVAL_SECONDS)
         try:
-            report(list(captured), skip)
+            report(list(captured), carried)
         except Exception:
             pass
 
@@ -252,7 +256,9 @@ async def run_turn(
                     )
                 )
                 watcher = (
-                    asyncio.ensure_future(_report_until_done(task, captured, report, len(messages)))
+                    asyncio.ensure_future(
+                        _report_until_done(task, captured, report, tuple(messages))
+                    )
                     if report
                     else None
                 )
