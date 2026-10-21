@@ -1,0 +1,310 @@
+# The dashboard on the README. taxi.duckdb is not committed; build it with
+# `bash scripts/agent_eval/datasets/taxi/seed.sh` and copy it here.
+name: nyc-taxi
+
+defaults:
+  source_name: taxi
+
+sources:
+  - name: taxi
+    type: duckdb
+    database: taxi.duckdb
+
+models:
+  - name: trips
+    sql: |
+      SELECT
+        t.tpep_pickup_datetime AS pickup_at,
+        CAST(date_trunc('week', t.tpep_pickup_datetime) AS DATE) AS pickup_week,
+        hour(t.tpep_pickup_datetime) AS pickup_hour,
+        dayname(t.tpep_pickup_datetime) AS pickup_weekday,
+        isodow(t.tpep_pickup_datetime) AS pickup_weekday_num,
+        z.Borough AS borough,
+        z.Zone AS pickup_zone,
+        t.PULocationID AS pickup_location_id,
+        t.passenger_count,
+        t.trip_distance,
+        t.fare_amount,
+        t.tip_amount,
+        t.total_amount,
+        CASE t.payment_type WHEN 1 THEN 'Credit card' WHEN 2 THEN 'Cash' ELSE 'Other' END AS payment_method
+      FROM yellow_trips t
+      LEFT JOIN taxi_zones z ON z.LocationID = t.PULocationID
+      WHERE t.total_amount > 0 AND t.trip_distance > 0 AND t.fare_amount > 0
+    metrics:
+      - name: trip_count
+        expression: COUNT(*)
+        description: Number of trips
+      - name: revenue
+        expression: SUM(total_amount)
+        description: Total amount paid, including tips, tolls and surcharges
+      - name: avg_fare
+        expression: AVG(fare_amount)
+      - name: tip_rate
+        expression: SUM(tip_amount) / SUM(fare_amount)
+        description: Tips as a share of metered fares
+      - name: avg_distance
+        expression: AVG(trip_distance)
+    dimensions:
+      - name: day_type
+        expression: CASE WHEN isodow(pickup_at) IN (6, 7) THEN 'Weekend' ELSE 'Weekday' END
+
+  - name: zones
+    sql: SELECT LocationID AS location_id, Borough AS borough, Zone AS zone, service_zone FROM taxi_zones
+
+  - name: zone_ranks
+    sql: |
+      SELECT
+        z.Borough AS borough,
+        z.Zone AS pickup_zone,
+        COUNT(*) AS trips,
+        SUM(t.total_amount) AS revenue,
+        DENSE_RANK() OVER (PARTITION BY z.Borough ORDER BY COUNT(*) DESC) AS rank_in_borough
+      FROM yellow_trips t
+      JOIN taxi_zones z ON z.LocationID = t.PULocationID
+      WHERE t.total_amount > 0
+      GROUP BY 1, 2
+
+relations:
+  - name: trips_to_zones
+    condition: ${ref(trips).pickup_location_id} = ${ref(zones).location_id}
+
+metrics:
+  - name: revenue_per_trip
+    expression: ${ref(trips).revenue} / ${ref(trips).trip_count}
+
+inputs:
+  - name: borough
+    label: Pickup borough
+    type: single-select
+    options: ?{ SELECT DISTINCT borough FROM ${ref(trips)} WHERE borough IS NOT NULL AND borough NOT IN ('N/A', 'Unknown') ORDER BY 1 }
+    display:
+      type: dropdown
+      default:
+        value: Manhattan
+
+insights:
+  - name: kpi_trips
+    props:
+      type: indicator
+      mode: number
+      number:
+        font:
+          size: 40
+        valueformat: ","
+      value: ?{ ${ref(trips).trip_count} }[0]
+    interactions:
+      - filter: ?{ ${ref(trips).borough} = '${ref(borough).value}' }
+
+  - name: kpi_revenue
+    props:
+      type: indicator
+      mode: number
+      number:
+        font:
+          size: 40
+        valueformat: "$.3s"
+      value: ?{ ${ref(trips).revenue} }[0]
+    interactions:
+      - filter: ?{ ${ref(trips).borough} = '${ref(borough).value}' }
+
+  - name: kpi_avg_fare
+    props:
+      type: indicator
+      mode: number
+      number:
+        font:
+          size: 40
+        valueformat: "$.2f"
+      value: ?{ ${ref(trips).avg_fare} }[0]
+    interactions:
+      - filter: ?{ ${ref(trips).borough} = '${ref(borough).value}' }
+
+  - name: kpi_tip_rate
+    props:
+      type: indicator
+      mode: number
+      number:
+        font:
+          size: 40
+        valueformat: ".1%"
+      value: ?{ ${ref(trips).tip_rate} }[0]
+    interactions:
+      - filter: ?{ ${ref(trips).borough} = '${ref(borough).value}' }
+
+  - name: revenue_by_week
+    props:
+      type: scatter
+      mode: lines+markers
+      x: ?{ ${ref(trips).pickup_week} }
+      y: ?{ ${ref(trips).revenue} }
+      line:
+        color: "#0a9396"
+        width: 3
+      marker:
+        color: "#0a9396"
+        size: 8
+    interactions:
+      - filter: ?{ ${ref(trips).borough} = '${ref(borough).value}' }
+      - sort: ?{ ${ref(trips).pickup_week} ASC }
+
+  - name: trips_by_hour
+    props:
+      type: bar
+      x: ?{ ${ref(trips).pickup_hour} }
+      y: ?{ ${ref(trips).trip_count} }
+      marker:
+        color: ?{ CASE ${ref(trips).day_type} WHEN 'Weekend' THEN '#d25946' ELSE '#0a9396' END }
+    interactions:
+      - filter: ?{ ${ref(trips).borough} = '${ref(borough).value}' }
+      - split: ?{ ${ref(trips).day_type} }
+      - sort: ?{ ${ref(trips).pickup_hour} ASC }
+
+  - name: payment_split
+    props:
+      type: pie
+      hole: 0.5
+      labels: ?{ ${ref(trips).payment_method} }
+      values: ?{ ${ref(trips).trip_count} }
+      marker:
+        colors: ?{ CASE ${ref(trips).payment_method} WHEN 'Credit card' THEN '#0a9396' WHEN 'Cash' THEN '#d25946' ELSE '#5b4bab' END }
+    interactions:
+      - filter: ?{ ${ref(trips).borough} = '${ref(borough).value}' }
+
+  - name: top_zones
+    props:
+      type: bar
+      orientation: h
+      y: ?{ ${ref(zone_ranks).pickup_zone} }
+      x: ?{ SUM(${ref(zone_ranks).trips}) }
+    interactions:
+      - filter: ?{ ${ref(zone_ranks).borough} = '${ref(borough).value}' AND ${ref(zone_ranks).rank_in_borough} <= 10 }
+      - sort: ?{ SUM(${ref(zone_ranks).trips}) ASC }
+
+  - name: avg_fare_by_borough
+    props:
+      type: bar
+      x: ?{ ${ref(zones).borough} }
+      y: ?{ ${ref(trips).avg_fare} }
+      marker:
+        color: "#5b4bab"
+    interactions:
+      - filter: ?{ ${ref(zones).borough} NOT IN ('N/A', 'Unknown', 'EWR') }
+      - sort: ?{ ${ref(trips).avg_fare} DESC }
+
+  - name: tip_rate_by_borough
+    props:
+      type: bar
+      x: ?{ ${ref(zones).borough} }
+      y: ?{ ${ref(trips).tip_rate} }
+      marker:
+        color: "#d25946"
+    interactions:
+      - filter: ?{ ${ref(zones).borough} NOT IN ('N/A', 'Unknown', 'EWR') }
+      - sort: ?{ ${ref(trips).tip_rate} DESC }
+
+charts:
+  - name: kpi_trips_chart
+    insights:
+      - ${ref(kpi_trips)}
+    layout:
+      title:
+        text: Trips
+  - name: kpi_revenue_chart
+    insights:
+      - ${ref(kpi_revenue)}
+    layout:
+      title:
+        text: Revenue
+  - name: kpi_avg_fare_chart
+    insights:
+      - ${ref(kpi_avg_fare)}
+    layout:
+      title:
+        text: Average fare
+  - name: kpi_tip_rate_chart
+    insights:
+      - ${ref(kpi_tip_rate)}
+    layout:
+      title:
+        text: Tip rate
+  - name: revenue_by_week_chart
+    insights:
+      - ${ref(revenue_by_week)}
+    layout:
+      title:
+        text: Weekly revenue
+      yaxis:
+        tickprefix: "$"
+  - name: trips_by_hour_chart
+    insights:
+      - ${ref(trips_by_hour)}
+    layout:
+      title:
+        text: Trips by hour of day
+      barmode: group
+      xaxis:
+        title:
+          text: Hour
+  - name: payment_split_chart
+    insights:
+      - ${ref(payment_split)}
+    layout:
+      title:
+        text: Payment method
+  - name: top_zones_chart
+    insights:
+      - ${ref(top_zones)}
+    layout:
+      title:
+        text: Top 10 pickup zones
+  - name: avg_fare_by_borough_chart
+    insights:
+      - ${ref(avg_fare_by_borough)}
+    layout:
+      title:
+        text: Average fare by pickup borough (joined through the relation)
+      yaxis:
+        tickprefix: "$"
+  - name: tip_rate_by_borough_chart
+    insights:
+      - ${ref(tip_rate_by_borough)}
+    layout:
+      title:
+        text: Tip rate by pickup borough
+      yaxis:
+        tickformat: ".0%"
+
+dashboards:
+  - name: NYC Taxi
+    rows:
+      - height: compact
+        items:
+          - width: 3
+            markdown:
+              content: |
+                # NYC yellow cab trips, Q1 2024
+                150,000 sampled trips from the NYC TLC public dataset. Pick a borough and the charts re-filter in the browser.
+          - width: 1
+            input: ${ref(borough)}
+      - height: 180
+        items:
+          - chart: ${ref(kpi_trips_chart)}
+          - chart: ${ref(kpi_revenue_chart)}
+          - chart: ${ref(kpi_avg_fare_chart)}
+          - chart: ${ref(kpi_tip_rate_chart)}
+      - height: medium
+        items:
+          - width: 2
+            chart: ${ref(revenue_by_week_chart)}
+          - width: 1
+            chart: ${ref(payment_split_chart)}
+      - height: medium
+        items:
+          - chart: ${ref(trips_by_hour_chart)}
+          - chart: ${ref(top_zones_chart)}
+      - height: medium
+        items:
+          - chart: ${ref(avg_fare_by_borough_chart)}
+          - chart: ${ref(tip_rate_by_borough_chart)}
+
