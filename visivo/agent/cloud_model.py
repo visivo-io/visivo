@@ -229,6 +229,15 @@ def explain(error, host=None, model=None):
         # Repeating that here would be a second copy to keep in step.
         return _body(error).get("error") or "This account has reached its spend limit."
 
+    if status == 413:
+        # nginx, not the model — the request never reached it. The body is an
+        # HTML error page, and `model_name: google/gemini-2.5-pro` sits beside
+        # it looking like Gemini said so.
+        return (
+            "This conversation has grown too large to send. Start a new one to "
+            "carry on — the work so far is already saved as drafts."
+        )
+
     if status not in (404, 503):
         return None
 

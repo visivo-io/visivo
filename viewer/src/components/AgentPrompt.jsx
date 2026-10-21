@@ -7,7 +7,7 @@ import {
   listAgentSessions,
   startAgentSession,
 } from '../api/agent';
-import AgentToolCalls from './AgentToolCalls';
+import AgentToolCalls, { ActionRow } from './AgentToolCalls';
 import { subscribe } from '../events/eventSource';
 import { AGENT_ACTIVITY } from '../events/topics';
 import AgentAuthorize from './AgentAuthorize';
@@ -368,9 +368,11 @@ function AgentTimeline({ items }) {
             {item.text}
           </li>
         ) : (
-          <li key={index} data-testid="agent-timeline-action">
-            <AgentToolCalls actions={[item.action]} open />
-          </li>
+          // A bare row, not a disclosure. One `<details>` per call read as
+          // "1 tool call" five times over, each in its own box — and its
+          // `open` was a controlled attribute, so the poll a second later
+          // reopened anything that had been collapsed.
+          <ActionRow key={index} action={item.action} />
         )
       )}
     </ol>

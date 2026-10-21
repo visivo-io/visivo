@@ -743,3 +743,41 @@ class TestATurnShowsItsWorkWhileItWorks:
 
         _settle(sessions, session.id)
         assert seen, "no tool calls were visible while the turn was running"
+
+
+class TestAConversationTooLargeToSend:
+    """A long turn died with nginx's HTML 413 page quoted back as though the
+    model had said it — `model_name: google/gemini-2.5-pro` sitting beside a
+    `<title>413 Request Entity Too Large</title>` the model never saw.
+    """
+
+    def _too_large(self):
+        from pydantic_ai.exceptions import ModelHTTPError
+
+        return ModelHTTPError(
+            status_code=413,
+            model_name="google/gemini-2.5-pro",
+            body="<html><head><title>413 Request Entity Too Large</title></head></html>",
+        )
+
+    def test_it_says_what_happened_without_the_html(self):
+        from visivo.agent import cloud_model
+
+        message = cloud_model.explain(self._too_large())
+
+        assert "too large" in message
+        assert "<html>" not in message
+        assert "gemini" not in message.lower()
+
+    def test_it_says_the_work_is_not_lost(self):
+        """Every change the turn made is already a draft, and the next
+        sentence a person reads should not leave them wondering."""
+        from visivo.agent import cloud_model
+
+        assert "drafts" in cloud_model.explain(self._too_large())
+
+    def test_it_is_not_retried(self):
+        """Sending the same oversized body again fails the same way."""
+        from visivo.agent.resilience import is_transient
+
+        assert is_transient(self._too_large()) is False

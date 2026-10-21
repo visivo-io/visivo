@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import AgentToolCalls from './AgentToolCalls';
+import AgentToolCalls, { ActionRow } from './AgentToolCalls';
 
 describe('AgentToolCalls while the turn is working', () => {
   const pending = { id: 1, tool: 'query_source', outcome: 'pending' };
@@ -33,12 +33,6 @@ describe('AgentToolCalls while the turn is working', () => {
     expect(screen.getByText(/2 tool calls/)).toBeInTheDocument();
   });
 
-  it('opens while the turn is working, so the work needs no click', () => {
-    render(<AgentToolCalls actions={[pending]} open />);
-
-    expect(screen.getByTestId('agent-turn-actions')).toHaveAttribute('open');
-  });
-
   it('stays collapsed once the turn is done, so the answer is the point', () => {
     render(<AgentToolCalls actions={[done]} />);
 
@@ -59,15 +53,16 @@ describe('a turn in flight reads as a narrative', () => {
     render(
       <>
         <p>Let me see what is here.</p>
-        <AgentToolCalls actions={[{ id: 1, tool: 'list_sources', outcome: 'ok' }]} open />
+        <ActionRow action={{ id: 1, tool: 'list_sources', outcome: 'ok' }} />
         <p>Seven tables. Looking at one.</p>
-        <AgentToolCalls actions={[{ id: 2, tool: 'describe_source', outcome: 'pending' }]} open />
+        <ActionRow action={{ id: 2, tool: 'describe_source', outcome: 'pending' }} />
       </>
     );
 
-    const rows = screen.getAllByTestId('agent-turn-actions');
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveAttribute('open');
+    // Bare rows, not a disclosure each: "1 tool call" five times over, in
+    // five boxes, is not a narrative.
+    expect(screen.queryAllByTestId('agent-turn-actions')).toHaveLength(0);
+    expect(screen.getAllByTestId('agent-turn-action')).toHaveLength(2);
     expect(screen.getByText('list_sources')).toBeInTheDocument();
     expect(screen.getByTestId('agent-action-pending')).toBeInTheDocument();
   });
