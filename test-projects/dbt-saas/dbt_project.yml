@@ -1,0 +1,10 @@
+name: saas_analytics
+version: "1.0.0"
+profile: saas_analytics
+model-paths: ["models"]
+models:
+  saas_analytics:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

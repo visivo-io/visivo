@@ -1,0 +1,8 @@
+saas_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: saas.duckdb
+      schema: analytics
+      threads: 4
