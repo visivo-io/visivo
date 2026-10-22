@@ -136,6 +136,15 @@ describe('CanvasSelectionOverlay (VIS-768)', () => {
     expect(layer.className).toContain('pointer-events-none');
   });
 
+  test('mounts without a canvas root and paints no ring', () => {
+    render(<CanvasSelectionOverlay rootRef={{ current: null }} />);
+    act(() => {
+      useStore.getState().setWorkspaceOutlineSelectedKey('row.0.item.0');
+    });
+    expect(screen.getByTestId('canvas-overlay-layer')).toBeInTheDocument();
+    expect(screen.queryByTestId('canvas-overlay-selected-item')).not.toBeInTheDocument();
+  });
+
   test('clicking an item writes row.N.item.M to the workspace selection', () => {
     render(<Harness />);
     measureFakeDom();
@@ -353,6 +362,91 @@ describe('CanvasSelectionOverlay (VIS-768)', () => {
       measureNestedDom();
       dispatch(fireEvent.click, screen.getByTestId('nested-row-2-0-0'));
       expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2.item.0.row.0');
+    });
+  });
+
+  describe('ring follows layout changes (VIS-1533)', () => {
+    const COL_PX = 80;
+    const weekly = { width: 8, chart: 'weekly' };
+    const payment = { width: 4, chart: 'payment' };
+
+    const stubSlot = (el, items, index) => {
+      if (!el) return;
+      const left = items.slice(0, index).reduce((sum, it) => sum + it.width * COL_PX, 0);
+      stubRect(el, { top: 0, left, width: items[index].width * COL_PX, height: 200 });
+    };
+
+    const StoreHarness = () => {
+      const rootRef = useRef(null);
+      const dashboards = useStore(s => s.dashboards);
+      const items = dashboards[0].config.rows[0].items;
+      return (
+        <div ref={rootRef}>
+          <div data-canvas-path="row.0">
+            {items.map((item, i) => (
+              <div
+                key={`item-${i}`}
+                ref={el => stubSlot(el, items, i)}
+                data-testid={`card-${item.chart}`}
+                data-canvas-path={`row.0.item.${i}`}
+              >
+                {item.chart}
+              </div>
+            ))}
+          </div>
+          <CanvasSelectionOverlay rootRef={rootRef} />
+        </div>
+      );
+    };
+
+    const renderSelected = (selectedKey, rowItems) => {
+      act(() => {
+        useStore.setState({
+          dashboards: [{ name: 'd1', config: { name: 'd1', rows: [{ items: rowItems }] } }],
+          workspaceActiveObject: { type: 'dashboard', name: 'd1' },
+        });
+      });
+      render(<StoreHarness />);
+      act(() => {
+        useStore.getState().setWorkspaceOutlineSelectedKey(selectedKey);
+      });
+    };
+    const commit = rowItems =>
+      act(() => {
+        useStore
+          .getState()
+          .updateDashboardConfigOptimistic('d1', { name: 'd1', rows: [{ items: rowItems }] });
+      });
+    const ringBox = () => {
+      const ring = screen.getByTestId('canvas-overlay-selected-item');
+      return {
+        left: ring.style.left,
+        width: ring.style.width,
+      };
+    };
+    const cardBox = name => {
+      const rect = screen.getByTestId(`card-${name}`).getBoundingClientRect();
+      return { left: `${rect.left}px`, width: `${rect.width}px` };
+    };
+
+    test('after a drag reorder the ring sits on the moved card, not its old box', () => {
+      renderSelected('row.0.item.1', [weekly, payment]);
+      expect(ringBox()).toEqual({ left: '640px', width: '320px' });
+
+      commit([payment, weekly]);
+
+      expect(ringBox()).toEqual(cardBox('payment'));
+      expect(ringBox()).toEqual({ left: '0px', width: '320px' });
+    });
+
+    test('a config change that moves the selected card without changing its key re-measures the ring', () => {
+      renderSelected('row.0.item.1', [weekly, payment]);
+      expect(ringBox()).toEqual({ left: '640px', width: '320px' });
+
+      commit([{ ...weekly, width: 6 }, payment]);
+
+      expect(ringBox()).toEqual(cardBox('payment'));
+      expect(ringBox()).toEqual({ left: '480px', width: '320px' });
     });
   });
 

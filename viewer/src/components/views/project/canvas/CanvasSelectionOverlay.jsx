@@ -102,6 +102,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
   // This overlay is the single hover source (it already resolves the target);
   // sharing the key keeps the grip reveal aligned 1:1 with the hover ring.
   const setHoverKey = useStore(s => s.setWorkspaceCanvasHoverKey);
+  const dashboards = useStore(s => s.dashboards);
 
   // Hovered + selected box geometry, measured from the live Dashboard DOM.
   const [hoverBox, setHoverBox] = useState(null); // { rect, kind }
@@ -130,11 +131,11 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
     setSelectedBox(rect ? { kind: kindForKey(selectedKey), rect } : null);
   }, [rootRef, selectedKey]);
 
-  // Recompute selection geometry whenever the key changes or the canvas
-  // re-lays-out (resize / scroll / DOM mutation as charts finish loading).
+  // A config edit (reorder, move, resize) re-lays-out the cards without
+  // resizing the root, so the ring re-measures on every dashboards change too.
   useLayoutEffect(() => {
     recomputeSelectedBox();
-  }, [recomputeSelectedBox]);
+  }, [recomputeSelectedBox, dashboards]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -148,13 +149,8 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
       setHoverKey(null);
     };
 
-    // ResizeObserver on the root catches canvas-width changes (and charts
-    // finishing load, which resize their slots). We deliberately do NOT use a
-    // MutationObserver here: the overlay paints its own ring <div>s inside the
-    // same positioned root, so a subtree MutationObserver would observe its own
-    // mutations and self-trigger a reflow loop. Selection geometry recomputes
-    // on `selectedKey` change (layout effect) and on resize, which covers the
-    // states D-2 owns.
+    // No subtree MutationObserver: the overlay paints its rings inside the same
+    // root, so it would observe its own mutations and loop.
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onReflow) : null;
     if (ro) ro.observe(root);
     window.addEventListener('resize', onReflow);
