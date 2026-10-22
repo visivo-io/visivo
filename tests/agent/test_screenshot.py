@@ -308,6 +308,47 @@ class TestWhenThereIsNoBrowser:
         with pytest.raises(screenshot.BrowserUnavailable, match=r"visivo\[screenshot\]"):
             screenshot._playwright()
 
+    def test_a_missing_pillow_says_how_to_get_it_too(self, monkeypatch):
+        """The cloud runner shipped Playwright but not Pillow, so a capture
+        got all the way through a browser launch and a full-page screenshot
+        and then died on `No module named 'PIL'`."""
+        import builtins
+
+        real_import = builtins.__import__
+
+        def no_pillow(name, *args, **kwargs):
+            if name == "PIL" or name.startswith("PIL."):
+                raise ImportError("No module named 'PIL'")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", no_pillow)
+
+        with pytest.raises(screenshot.BrowserUnavailable, match=r"visivo\[screenshot\]"):
+            screenshot._pillow()
+
+    def test_a_missing_package_is_found_before_a_browser_is_launched(
+        self, integration_app, monkeypatch
+    ):
+        """Spending a launch and a capture on a turn that cannot finish is the
+        expensive way to learn the image is wrong."""
+        launched = []
+        monkeypatch.setattr(screenshot, "capture", lambda *a, **kw: launched.append(1) or b"png")
+        monkeypatch.setattr(
+            screenshot,
+            "_pillow",
+            lambda: (_ for _ in ()).throw(screenshot.BrowserUnavailable("no pillow")),
+        )
+        name = [
+            d.name
+            for d in integration_app.dashboard_manager.get_all_objects_list()
+            if getattr(d, "name", None)
+        ][0]
+
+        with pytest.raises(ToolError):
+            call(integration_app, "screenshot_dashboard", {"name": name})
+
+        assert launched == []
+
     def test_a_missing_browser_is_installed_once(self, monkeypatch):
         """The 260MB download blocks the first call. Doing it per call would
         make every capture a minute long."""

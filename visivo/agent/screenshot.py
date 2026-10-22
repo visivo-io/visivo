@@ -92,6 +92,18 @@ def _playwright():
         )
 
 
+def _pillow():
+    try:
+        from PIL import Image
+
+        return Image
+    except ImportError:
+        raise BrowserUnavailable(
+            "Screenshots need Pillow to downscale the capture, and it is not "
+            "installed. Install it with: pip install 'visivo[screenshot]'"
+        )
+
+
 _installed = threading.Event()
 
 
@@ -233,9 +245,9 @@ def fit(png):
     and a 1280x1568 one both cost 1806 tokens (VIS-1482). Capturing small buys
     nothing.
     """
-    from PIL import Image
     from io import BytesIO
 
+    Image = _pillow()
     image = Image.open(BytesIO(png))
     width, height = image.size
     longest = max(width, height)
@@ -362,6 +374,11 @@ def _screenshot_handler(app, arguments):
         url_to_load, cookie = _local_url(app, name), None
     else:
         url_to_load, cookie = _cloud_target(client, name)
+
+    # Both halves of the screenshot extra, before a browser launch and a
+    # full-page capture are spent on a turn that cannot finish.
+    _playwright()
+    _pillow()
 
     settled = wait_for_runs(app)
     png, width, height, scale = fit(capture(url_to_load, cookie=cookie, full_page=bool(full_page)))
