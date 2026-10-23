@@ -80,6 +80,7 @@
   "legendgrouptitle.font.weight": "other",
   "legendgrouptitle.text": "encoding",
   "legendrank": "other",
+  "legendranksrc": "other",
   "legendsrc": "other",
   "legendwidth": "style",
   "marker.colors": "encoding",
