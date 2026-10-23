@@ -247,9 +247,11 @@ describe('FieldGroup', () => {
       <FieldGroup group={advancedGroup} value={{ foo: 'v' }} onChange={onChange} />
     );
     fireEvent.click(screen.getByTestId('remove-foo'));
-    expect(onChange).toHaveBeenCalledWith(
-      expect.not.objectContaining({ foo: expect.anything() })
-    );
+    // Removing the only field empties the config, and `cleanEmptyObjects`
+    // reports an empty config as undefined. Asserted on the value itself:
+    // `not.objectContaining` accepted undefined without checking anything.
+    const [next] = onChange.mock.calls[0];
+    expect(next?.foo).toBeUndefined();
   });
 
   // Explore 2.0 Phase 3b (S5 §2): `droppable`/`onDropField` pure pass-through.
@@ -440,7 +442,8 @@ describe('FieldGroup', () => {
       );
       expect(optionalCall.current.onRemove).toBeInstanceOf(Function);
       fireEvent.click(screen.getByTestId('override-foo-remove'));
-      expect(onChange).toHaveBeenCalledWith(expect.not.objectContaining({ foo: 'v' }));
+      const [next] = onChange.mock.calls[0];
+      expect(next?.foo).toBeUndefined();
     });
 
     test('override onChange writes through handleFieldChange (setValueAtPath)', () => {
