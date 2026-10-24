@@ -69,6 +69,9 @@ charts:
     layout:
       title:
         text: "EV units sold by quarter"
+      yaxis:
+        title:
+          text: "Units sold"
 
   - name: units_by_region_chart
     insights:
@@ -76,6 +79,9 @@ charts:
     layout:
       title:
         text: "Units sold by region (cumulative)"
+      yaxis:
+        title:
+          text: "Units sold"
 
   - name: powertrain_split_chart
     insights:
@@ -93,7 +99,7 @@ dashboards:
               content: |
                 # EV Sales
 
-                US, Europe, and APAC electric vehicle adoption from 2022 to 2024
+                North America, Europe, and APAC electric vehicle adoption from 2022 to 2024
                 broken out by region, powertrain, and quarter.
       - height: small
         items:
