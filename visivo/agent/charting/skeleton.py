@@ -636,6 +636,23 @@ def _mark_other(example, member, request, cuts, other):
             interactions.insert(first_sort, {"sort": rank})
 
 
+def _set_units(example, member, request):
+    """The example's unit literal (`number.suffix: " rides"`) belongs to the
+    example's data. It becomes the first request metric's own unit when that
+    has one and goes otherwise."""
+    insight = _main(example, member)
+    number = (insight or {}).get("props", {}).get("number")
+    if not isinstance(number, dict) or "suffix" not in number:
+        return
+    unit = next((m.unit for m in request.metrics[:1] if m.unit), None)
+    if unit:
+        number["suffix"] = unit if unit.startswith("%") else f" {unit.strip()}"
+    else:
+        del number["suffix"]
+    if not number:
+        del insight["props"]["number"]
+
+
 def _validate(skeleton):
     for insight in skeleton["insights"]:
         Insight(**insight)
@@ -699,6 +716,7 @@ def chart_skeleton(member, request, props=None, cuts=(), other=None, kind=None, 
         if cuts and other:
             _mark_other(adapted.example, member, request, cuts, other)
         _trim_labels(adapted, member, repaired.counts)
+        _set_units(adapted.example, member, request)
         if adapted.clips:
             caps = ", ".join(f"{c.replace('_', ' ')} {cap}" for c, cap in adapted.clips.items())
             title += f" (capped at the p99: {caps})"
