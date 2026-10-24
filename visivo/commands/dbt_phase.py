@@ -120,16 +120,12 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         dbt = None
 
     if dbt and dbt.enabled:
-        dbt_root = working_dir
-        if dbt.dbt_project_yml_location:
-            dbt_root = f"{working_dir}/{dbt.dbt_project_yml_location}"
+        dbt_root = dbt.dbt_project_dir(working_dir)
         dbt_project_file = f"{dbt_root}/dbt_project.yml"
         if not os.path.exists(dbt_project_file):
             raise click.ClickException(f"dbt_project.yml file not found at '{dbt_project_file}'")
 
-        profiles_file = f"{working_dir}/profiles.yml"
-        if dbt.profiles_yml_location:
-            profiles_file = f"{working_dir}/{dbt.profiles_yml_location}/profiles.yml"
+        profiles_file = dbt.profiles_file(working_dir)
 
         if not os.path.exists(profiles_file):
             raise click.ClickException(f"profiles.yml file not found at '{profiles_file}'")

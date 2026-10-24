@@ -13,7 +13,16 @@ from tests.factories.model_factories import DbtFactory, ProjectFactory
 runner = CliRunner()
 
 
-def setup_dbt(project, working_dir, project_settings=None, manifest_dir="target"):
+def setup_dbt(
+    project,
+    working_dir,
+    project_settings=None,
+    manifest_dir="target",
+    dbt_dir=None,
+    profiles_dir=None,
+):
+    dbt_dir = dbt_dir or working_dir
+    profiles_dir = profiles_dir or working_dir
     temp_yml_file(
         dict=json.loads(project.model_dump_json()),
         name=PROJECT_FILE_NAME,
@@ -40,7 +49,7 @@ def setup_dbt(project, working_dir, project_settings=None, manifest_dir="target"
             }
         },
         name="profiles.yml",
-        output_dir=working_dir,
+        output_dir=profiles_dir,
     )
     temp_yml_file(
         dict=(
@@ -49,7 +58,7 @@ def setup_dbt(project, working_dir, project_settings=None, manifest_dir="target"
             else project_settings
         ),
         name="dbt_project.yml",
-        output_dir=working_dir,
+        output_dir=dbt_dir,
     )
 
     temp_file(
@@ -65,8 +74,43 @@ def setup_dbt(project, working_dir, project_settings=None, manifest_dir="target"
             }
         ),
         name="manifest.json",
-        output_dir=f"{working_dir}/{manifest_dir}",
+        output_dir=f"{dbt_dir}/{manifest_dir}",
     )
+
+
+@pytest.mark.parametrize("project_location", ["dbt", "dbt/dbt_project.yml", "dbt/"])
+@pytest.mark.parametrize("profiles_location", [None, "conf", "conf/profiles.yml"])
+def test_dbt_locations_accept_a_directory_or_a_file_path(project_location, profiles_location):
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    project = ProjectFactory(
+        dbt=DbtFactory(
+            dbt_project_yml_location=project_location, profiles_yml_location=profiles_location
+        )
+    )
+    setup_dbt(
+        project,
+        working_dir,
+        dbt_dir=f"{working_dir}/dbt",
+        profiles_dir=f"{working_dir}/conf" if profiles_location else working_dir,
+    )
+
+    dbt_phase(working_dir=working_dir, output_dir=output_dir, dbt_profile=None, dbt_target=None)
+
+    with open(f"{output_dir}/dbt.yml", "r") as file:
+        dbt_content = yaml.safe_load(file)
+    assert dbt_content["models"][0]["source"] == "ref(profile_name_target_name)"
+
+
+def test_dbt_project_in_the_working_directory_by_file_name():
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory(dbt_project_yml_location="dbt_project.yml"))
+    setup_dbt(project, working_dir)
+
+    dbt_phase(working_dir=working_dir, output_dir=output_dir, dbt_profile=None, dbt_target=None)
+
+    assert os.path.exists(f"{output_dir}/dbt.yml")
 
 
 def test_dbt_with_defaults():
