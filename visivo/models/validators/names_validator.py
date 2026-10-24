@@ -7,6 +7,14 @@ if TYPE_CHECKING:
     from visivo.models.project import Project
 
 
+def scoped_alias_collision(alias: str, model_name: str) -> str:
+    return (
+        f"Metric/dimension name '{alias}' in model '{model_name}' "
+        f"collides with a project-level name; a model-scoped alias "
+        f"must not shadow a global name (rename one)."
+    )
+
+
 class NamesValidator(BaseProjectValidator):
     """Validates that names are unique within their scope."""
 
@@ -37,9 +45,5 @@ class NamesValidator(BaseProjectValidator):
         for model_name, aliases in model_scoped.items():
             for alias in aliases:
                 if alias in global_names:
-                    raise ValueError(
-                        f"Metric/dimension name '{alias}' in model '{model_name}' "
-                        f"collides with a project-level name; a model-scoped alias "
-                        f"must not shadow a global name (rename one)."
-                    )
+                    raise ValueError(scoped_alias_collision(alias, model_name))
         return project
