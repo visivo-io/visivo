@@ -199,8 +199,8 @@ def find_non_aggregated_expressions(expr: exp.Expression, dialect: str = None) -
         parent = column.parent
 
         while parent:
-            # Check if parent is an aggregate function (all inherit from exp.AggFunc)
-            if isinstance(parent, exp.AggFunc):
+            # FILTER (WHERE ...) is only valid on an aggregate, so its predicate is aggregated too
+            if isinstance(parent, (exp.AggFunc, exp.Filter)):
                 is_aggregated = True
                 break
             parent = parent.parent
