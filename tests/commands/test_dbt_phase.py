@@ -71,13 +71,14 @@ def test_dbt_with_defaults():
     project = ProjectFactory(dbt=DbtFactory())
     setup_dbt(project, working_dir)
 
-    dbt_phase(
+    ran = dbt_phase(
         working_dir=working_dir,
         output_dir=output_dir,
         dbt_profile=None,
         dbt_target=None,
     )
 
+    assert ran is True
     assert os.path.exists(f"{output_dir}/dbt.yml")
     with open(f"{output_dir}/dbt.yml", "r") as file:
         dbt_content = yaml.safe_load(file)
@@ -245,3 +246,43 @@ def test_dbt_with_unsupported_source_type():
             exc_info.value.message
             == f"Target type 'unsupported' is not supported.  Only ['postgresql', 'mysql', 'sqlite', 'snowflake'] are supported."
         )
+
+
+def test_dbt_phase_reports_it_did_not_run_without_an_enabled_block():
+    for dbt_config in (None, DbtFactory(enabled=False)):
+        output_dir = temp_folder()
+        working_dir = temp_folder()
+        project = ProjectFactory(dbt=dbt_config)
+        temp_yml_file(
+            dict=json.loads(project.model_dump_json(exclude_none=True)),
+            name=PROJECT_FILE_NAME,
+            output_dir=working_dir,
+        )
+
+        ran = dbt_phase(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            dbt_profile=None,
+            dbt_target=None,
+        )
+
+        assert ran is False
+        assert not os.path.exists(f"{output_dir}/dbt.yml")
+
+
+@pytest.mark.parametrize("missing", ["dbt_project.yml", "profiles.yml"])
+def test_dbt_phase_raises_when_a_dbt_file_is_missing(missing):
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    setup_dbt(ProjectFactory(dbt=DbtFactory()), working_dir)
+    os.remove(f"{working_dir}/{missing}")
+
+    with pytest.raises(click.ClickException) as exc_info:
+        dbt_phase(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            dbt_profile=None,
+            dbt_target=None,
+        )
+
+    assert exc_info.value.message == f"{missing} file not found at '{working_dir}/{missing}'"

@@ -104,6 +104,7 @@ def _generate_models(manifest, dbt_profile, dbt_target, dbt_prefix):
 
 
 def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
+    """Write the dbt sources and models file. Returns False when no enabled `dbt:` block exists."""
     from visivo.logger.logger import Logger
     from visivo.parsers.parser_factory import ParserFactory
     from visivo.discovery.discover import Discover
@@ -186,5 +187,7 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         Logger.instance().debug(
             f"dbt base visivo sources written to {relative_output_file}: {sources_written}"
         )
-    else:
-        Logger.instance().debug(f"dbt is not enabled.")
+        return True
+
+    Logger.instance().debug("dbt is not enabled.")
+    return False
