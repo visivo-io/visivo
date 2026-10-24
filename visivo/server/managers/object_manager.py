@@ -61,6 +61,10 @@ class ObjectStatus(str, Enum):
     RENAMED = "renamed"  # Cached under a new name; the published object holds the old one
 
 
+class SaveRefusedError(ValueError):
+    """A save of an object the project would reject at commit."""
+
+
 class ObjectManager(ABC, Generic[T]):
     """
     Abstract base class for managing draft/cached objects alongside published objects.
@@ -124,6 +128,11 @@ class ObjectManager(ABC, Generic[T]):
         """
         raise NotImplementedError
 
+    def save_error(self, obj: T) -> Optional[str]:
+        """Why ``obj`` must not be saved, or ``None``. Managers override this
+        for rules the project enforces at commit, so every writer refuses early."""
+        return None
+
     def save(self, name: str, obj: T) -> None:
         """
         Save object to cache (draft state).
@@ -134,7 +143,11 @@ class ObjectManager(ABC, Generic[T]):
 
         Raises:
             NameTakenError: If an object of another type already holds ``name``
+            SaveRefusedError: If ``save_error`` rejects the object
         """
+        refusal = self.save_error(obj) if obj is not None else None
+        if refusal:
+            raise SaveRefusedError(refusal)
         reason = self.name_clash(name, obj) if self.name_clash and obj is not None else None
         if reason:
             from visivo.server.names import NameTakenError
