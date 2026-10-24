@@ -285,6 +285,14 @@ describe('SourceEditForm — test connection', () => {
     expect(screen.getByText(text)).toBeInTheDocument();
   });
 
+  test('lets a long connection error wrap inside the panel', () => {
+    const longPath = '/very/long/' + 'directory/'.repeat(30) + 'file.csv';
+    mockState.connectionStatus = { s1: { status: 'failed', error: longPath } };
+    renderForm({ source: publishedSqlite, isCreate: false });
+    const el = screen.getByText(/Connection failed:/);
+    expect(el).toHaveClass('min-w-0', 'break-words');
+  });
+
   test('disables Test Connection while a test is in flight', () => {
     mockState.connectionStatus = { s1: { status: 'testing' } };
     renderForm({ source: publishedSqlite, isCreate: false });

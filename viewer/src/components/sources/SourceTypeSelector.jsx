@@ -29,6 +29,7 @@ const SourceTypeSelector = ({ value, onChange, disabled = false }) => {
         options={SOURCE_TYPES}
         onChange={v => onChange(v || '')}
         disabled={disabled}
+        isSearchable
       />
       <label className="absolute text-sm text-gray-500 -top-2 left-2 bg-white px-1 z-10">
         Source Type
