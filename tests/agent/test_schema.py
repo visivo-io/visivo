@@ -254,3 +254,15 @@ class TestInlineOnlyFieldsStayInline:
         item = slicer.for_type("dashboards")["$defs"]["Item"]["properties"]["input"]
 
         assert "A reference to an existing SingleSelectInput" in json.dumps(item)
+
+
+class TestInsightSchemaMatchesTheModel:
+    def test_insight_schema_lists_no_layout_the_model_rejects(self, integration_app):
+        properties = call(integration_app, "get_schema", {"type": "insights"})["$defs"]["Insight"][
+            "properties"
+        ]
+        assert "layout" not in properties
+
+        config = {"name": "i", "props": {"type": "bar"}, "layout": {"title": "x"}}
+        with pytest.raises(ToolError, match="Extra inputs are not permitted"):
+            call(integration_app, "write_insight", {"config": config})
