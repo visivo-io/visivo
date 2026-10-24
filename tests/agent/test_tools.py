@@ -360,3 +360,42 @@ class TestEveryFailureIsARefusal:
         with pytest.raises(ToolError) as raised:
             call(integration_app, "get_theme", {})
         assert raised.value is refusal
+
+
+class TestProjectLevelFieldsMustReferenceAModel:
+    """A project-level metric or dimension with no `${ref()}` is refused where
+    it is written, not at commit, where it blocked every pending change."""
+
+    @pytest.mark.parametrize("kind", ["metric", "dimension"])
+    def test_write_refuses_and_stages_nothing(self, integration_app, kind):
+        config = {"name": "mrr_total", "expression": "SUM(mrr)"}
+        with pytest.raises(ToolError, match="must reference at least one model"):
+            call(integration_app, f"write_{kind}", {"config": config})
+        manager = getattr(integration_app, f"{kind}_manager")
+        assert manager.get("mrr_total") is None
+
+    @pytest.mark.parametrize("kind", ["metric", "dimension"])
+    def test_validate_reports_it(self, integration_app, kind):
+        config = {"name": "mrr_total", "expression": "SUM(mrr)"}
+        result = call(integration_app, f"validate_{kind}", {"config": config})
+        assert result["valid"] is False
+        assert "must reference at least one model" in result["error"]
+
+    def test_a_ref_is_accepted(self, integration_app):
+        config = {"name": "mrr_total", "expression": "SUM(${ref(trips).mrr})"}
+        assert call(integration_app, "validate_metric", {"config": config}) == {"valid": True}
+        assert call(integration_app, "write_metric", {"config": config})["status"] == "draft"
+
+    def test_the_http_save_refuses_it_too(self, integration_client, integration_app):
+        response = integration_client.post(
+            "/api/metrics/mrr_total/", json={"expression": "SUM(mrr)"}
+        )
+        assert response.status_code == 400
+        assert "must reference at least one model" in response.get_json()["error"]
+        assert integration_app.metric_manager.get("mrr_total") is None
+
+    def test_a_nested_field_needs_no_ref(self, integration_client, integration_app):
+        response = integration_client.post(
+            "/api/metrics/n/", json={"expression": "count(*)", "parentModel": "trips"}
+        )
+        assert response.status_code in (200, 201)

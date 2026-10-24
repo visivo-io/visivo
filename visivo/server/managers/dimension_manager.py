@@ -5,6 +5,7 @@ from pydantic import TypeAdapter, ValidationError
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.dimension import Dimension
+from visivo.models.validators import standalone_field_ref_error
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
@@ -21,6 +22,12 @@ class DimensionManager(ObjectManager[Dimension]):
     def __init__(self):
         super().__init__()
         self._dimension_adapter = TypeAdapter(Dimension)
+
+    def save_error(self, obj: Dimension) -> Optional[str]:
+        """A project-level dimension must name a model; a nested one is tied by nesting."""
+        if getattr(obj, "_parent_name", None):
+            return None
+        return standalone_field_ref_error(obj.expression, "dimension", obj.name)
 
     def validate_object(self, obj_data: dict) -> Dimension:
         """

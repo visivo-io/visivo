@@ -36,6 +36,7 @@ from visivo.agent.schema import SchemaSlicer
 from visivo.agent.screenshot import SCREENSHOT_TOOLS
 from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
 from visivo.jobs.run_model_data_job import QueryTimeout
+from visivo.server.managers.object_manager import SaveRefusedError
 from visivo.server.names import NameTakenError
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
@@ -115,6 +116,9 @@ def _validate_handler(type_key):
         clash = manager.name_clash and isinstance(name, str) and manager.name_clash(name, obj)
         if clash:
             return {"valid": False, "error": f"{clash} {_rename_hint(type_key, name)}"}
+        refusal = manager.save_error(obj)
+        if refusal:
+            return {"valid": False, "error": refusal}
         return {"valid": True}
 
     return handler
@@ -143,6 +147,8 @@ def _write_handler(type_key):
             manager.save(name, obj)
         except NameTakenError as error:
             raise ToolError(f"{error} {_rename_hint(type_key, name)}")
+        except SaveRefusedError as error:
+            raise ToolError(f"Invalid {_singular(type_key)}: {error}")
         # A person's edit reaches this through the after_request hook on
         # POST /api/<type>/<name>/. The agent saves in-process, so without this
         # its writes stage nothing (leaving the top bar on Deploy) and never

@@ -12,7 +12,7 @@ import pytest
 from unittest.mock import Mock
 from flask import Flask
 
-from visivo.server.managers.object_manager import ObjectStatus
+from visivo.server.managers.object_manager import ObjectStatus, SaveRefusedError
 from visivo.models.defaults import Defaults
 from visivo.server.views.charts_views import register_charts_views
 from visivo.server.views.relations_views import register_relations_views
@@ -241,14 +241,12 @@ class TestModelScopedResourceViews:
         """
         client, fa = _client(register)
         mgr = getattr(fa, mgr_attr)
-        mgr.save_from_config.return_value = Mock()
-        mgr.get_status.return_value = ObjectStatus.NEW
+        mgr.save_from_config.side_effect = SaveRefusedError("must reference at least one model")
 
         resp = client.post(f"/api/{key}/d/", json={"expression": "count(*)"})
 
         assert resp.status_code == 400
         assert "must reference at least one model" in resp.get_json()["error"]
-        mgr.save_from_config.assert_not_called()
 
     def test_save_allows_a_MODEL_SCOPED_field_that_references_nothing(
         self, key, register, mgr_attr, get_all, get_one

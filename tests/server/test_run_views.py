@@ -701,8 +701,16 @@ class TestTriggerMode:
     "type_key,manager_class,factory",
     [
         ("models", ModelManager, SqlModelFactory),
-        ("metrics", MetricManager, MetricFactory),
-        ("dimensions", DimensionManager, DimensionFactory),
+        (
+            "metrics",
+            MetricManager,
+            lambda **kw: MetricFactory(expression="SUM(${ref(orders).amount})", **kw),
+        ),
+        (
+            "dimensions",
+            DimensionManager,
+            lambda **kw: DimensionFactory(expression="${ref(orders).created_at}", **kw),
+        ),
         ("insights", InsightManager, InsightFactory),
     ],
 )
