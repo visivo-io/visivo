@@ -107,8 +107,8 @@ REF_PROPERTY_PATTERN = rf"^{REF_FUNCTION_PATTERN}$"
 
 # Property path pattern: optional dots, brackets, digits, word chars
 # Captures: property_path (the property path after ref())
-# Examples: .id, [0], .list[0].property, or empty string
-PROPERTY_PATH_PATTERN = r"(?P<property_path>[\.\d\w\[\]]*?)"
+# Examples: .id, [0], [:-10], .list[0].property, or empty string
+PROPERTY_PATH_PATTERN = r"(?P<property_path>[\.\d\w\[\]:\-]*?)"
 
 # Core pattern for ${ref(model).field} or ${ref('model').field} or ${ref('model')[0]}
 # Composed of: ${ + REF_FUNCTION + PROPERTY_PATH + }
@@ -150,7 +150,7 @@ INLINE_PATH_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]]+?)\s*}}"
 
 # General context string value pattern: ${anything}
 # Used for equality and hashing in ContextString class
-CONTEXT_STRING_VALUE_PATTERN = rf"\${{\s*([{NAME_REGEX}\.\[\]\)\()]+?)\s*}}"
+CONTEXT_STRING_VALUE_PATTERN = rf"\${{\s*([{NAME_REGEX}\.\[\]:\)\()]+?)\s*}}"
 
 
 # ============================================================================

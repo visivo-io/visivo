@@ -53,6 +53,18 @@ class Test(NamedModel, ParentModel):
     )
 
     @model_validator(mode="before")
+    def check_assertion_wrappers(cls, values):
+        for index, assertion in enumerate(values.get("assertions") or []):
+            text = str(assertion).strip()
+            if not (text.startswith(">{") and text.endswith("}")):
+                location = f" in {values['file_path']}" if values.get("file_path") else ""
+                raise ValueError(
+                    f"Test '{values.get('name')}'{location}: assertion {index + 1} must be "
+                    f"wrapped as '>{{ ... }}' and quoted in YAML, got: {text}"
+                )
+        return values
+
+    @model_validator(mode="before")
     def rename_if(cls, values):
         if "if_" in values:
             values["if"] = values["if_"]

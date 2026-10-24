@@ -4,7 +4,7 @@ from visivo.models.base.context_string import ContextString
 from visivo.models.test_run import TestRun
 from visivo.parsers.evaluator import evaluate_expression
 
-INLINE_CONTEXT_STRING_REGEX = r"\${\s*[\(a-zA-Z0-9\s'\"\-_\\.\]\[)]+?\s*}"
+INLINE_CONTEXT_STRING_REGEX = r"\${\s*[\(a-zA-Z0-9\s'\"\-_\\.\]\[):]+?\s*}"
 EVAL_STRING_REGEX = r"^>{(.*)}$"
 
 """
@@ -44,6 +44,13 @@ class EvalString:
         return list(filter(None, map(lambda c: c.get_path(), self.get_context_strings())))
 
     def evaluate(self, dag: Any, project: Any, output_dir: str, test_run: TestRun = None) -> Any:
+        return self.__run(dag, project, output_dir, test_run, explain=False)
+
+    def explain(self, dag: Any, project: Any, output_dir: str, test_run: TestRun = None) -> str:
+        """Returns the values the expression compared, for failure messages."""
+        return self.__run(dag, project, output_dir, test_run, explain=True)
+
+    def __run(self, dag, project, output_dir, test_run, explain):
         expression = re.match(EVAL_STRING_REGEX, self.value.strip()).group(1).strip()
         expression = self.__replace_context_strings(expression=expression, dag=dag)
         return evaluate_expression(
@@ -51,6 +58,7 @@ class EvalString:
             project=project,
             output_dir=output_dir,
             test_run=test_run,
+            explain=explain,
         )
 
     def __replace_context_strings(self, expression: str, dag: Any) -> str:
@@ -59,10 +67,7 @@ class EvalString:
             if context_string.get_reference() is not None:
                 item = context_string.get_item(dag=dag)
 
-                path = item.path
-                props_path = context_string.get_ref_props_path()
-                if props_path is not None:
-                    path = path + props_path
+                path = item.path + (context_string.get_ref_props_path() or "")
                 expression = expression.replace(context_string.value, path)
             else:
                 expression = expression.replace(context_string.value, context_string.get_path())
