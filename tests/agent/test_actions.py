@@ -412,12 +412,24 @@ class TestModelProbe:
     """A model write runs its SQL once on the source, so a model that cannot
     build says so at the write instead of through charts that never load."""
 
+    @staticmethod
+    def _source(app):
+        return f"ref({app.project.sources[0].name})"
+
     def test_sql_that_runs_carries_no_warning(self, integration_app):
-        config = {"name": "probe-ok", "sql": "select 1 as n"}
+        config = {
+            "name": "probe-ok",
+            "sql": "select 1 as n",
+            "source": self._source(integration_app),
+        }
         assert "warnings" not in call(integration_app, "write_model", {"config": config})
 
     def test_sql_the_source_rejects_comes_back_with_its_error(self, integration_app):
-        config = {"name": "probe-bad", "sql": "select * from no_such_table"}
+        config = {
+            "name": "probe-bad",
+            "sql": "select * from no_such_table",
+            "source": self._source(integration_app),
+        }
         result = call(integration_app, "write_model", {"config": config})
         assert result["status"] == "draft"
         [warning] = result["warnings"]

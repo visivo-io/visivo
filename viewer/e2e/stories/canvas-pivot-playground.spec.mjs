@@ -56,12 +56,12 @@ test.describe('Table pivot playground — Build lens (VIS-1008)', () => {
     await expect(page.getByTestId('workspace-middle-table-preview')).toBeVisible({
       timeout: WAIT,
     });
-    // Read-only canvas → the lock pill is present, no dirty indicator.
-    await expect(page.getByTestId('canvas-readonly-pill')).toBeVisible({ timeout: WAIT });
+    // Read-only canvas of an object the right rail edits → no pill, no dirty indicator.
+    await expect(page.getByTestId('canvas-readonly-pill')).toHaveCount(0);
     await expect(page.getByTestId('canvas-dirty-indicator')).toHaveCount(0);
 
-    // Flip to the Build lens — the pivot playground mounts; the read-only pill is
-    // replaced by the editable dirty indicator (initially clean / "Saved").
+    // Flip to the Build lens — the pivot playground mounts with the editable
+    // dirty indicator (initially clean / "Saved").
     await page.getByTestId('workspace-lens-picker-option-build').click();
     await expect(page.getByTestId('pivot-playground')).toBeVisible({ timeout: WAIT });
     await expect(page.getByTestId('canvas-readonly-pill')).toHaveCount(0);
@@ -88,13 +88,14 @@ test.describe('Table pivot playground — Build lens (VIS-1008)', () => {
     await page.screenshot({ path: `${SCREENS}/vis1008-01-pivot-build-seeded.png` });
 
     // Flip back to the Canvas (preview) lens — the read-only TablePreview body
-    // returns and the read-only pill comes back.
+    // returns and the dirty indicator goes.
     await page.getByTestId('workspace-lens-picker-option-preview').click();
     await expect(page.getByTestId('workspace-middle-table-preview')).toBeVisible({
       timeout: WAIT,
     });
     await expect(page.getByTestId('pivot-playground')).toHaveCount(0);
-    await expect(page.getByTestId('canvas-readonly-pill')).toBeVisible({ timeout: WAIT });
+    await expect(page.getByTestId('canvas-dirty-indicator')).toHaveCount(0);
+    await expect(page.getByTestId('canvas-readonly-pill')).toHaveCount(0);
 
     expect(errors).toEqual([]);
   });
