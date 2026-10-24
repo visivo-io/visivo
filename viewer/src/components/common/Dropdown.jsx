@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 /**
@@ -39,6 +39,21 @@ export default function Dropdown({
     setOpen(value);
     if (onToggle) onToggle(value);
   };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = e => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      if (onToggle) onToggle(false);
+      const focusable = triggerRef.current?.querySelector(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable) focusable.focus();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open, onToggle]);
 
   const reposition = useCallback(() => {
     const el = triggerRef.current;
@@ -84,7 +99,11 @@ export default function Dropdown({
 
       {open && !portal && (
         <>
-          <div onClick={() => set(false)} style={{ position: 'fixed', inset: 0, zIndex: 80 }} />
+          <div
+            data-testid="dropdown-backdrop"
+            onClick={() => set(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 80 }}
+          />
           <div
             onClick={e => e.stopPropagation()}
             style={{
@@ -107,7 +126,11 @@ export default function Dropdown({
         typeof document !== 'undefined' &&
         createPortal(
           <>
-            <div onClick={() => set(false)} style={{ position: 'fixed', inset: 0, zIndex: 80 }} />
+            <div
+            data-testid="dropdown-backdrop"
+            onClick={() => set(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 80 }}
+          />
             <div onClick={e => e.stopPropagation()} style={{ ...fixedPos, ...panelBoxStyle }}>
               {panelContent}
             </div>
