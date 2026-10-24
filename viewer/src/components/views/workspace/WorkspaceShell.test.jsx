@@ -15,7 +15,7 @@
  */
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
-import WorkspaceShell, { computeAutoCollapse, CENTER_MIN_WIDTH, RAIL_COLLAPSED_WIDTH } from './WorkspaceShell';
+import WorkspaceShell, { computeAutoCollapse, centerMinWidthCss, CENTER_MIN_WIDTH, RAIL_COLLAPSED_WIDTH } from './WorkspaceShell';
 import useStore from '../../../stores/store';
 
 jest.mock('./TabStrip', () => () => <div data-testid="tab-strip-mock" />);
@@ -111,7 +111,12 @@ describe('WorkspaceShell (integration — mocked children)', () => {
   test('the canvas holds a real min-width regardless of viewport', () => {
     render(<WorkspaceShell />);
     const middle = screen.getByTestId('workspace-middle-container');
-    expect(middle.style.minWidth).toBe(`${CENTER_MIN_WIDTH}px`);
+    expect(middle.style.minWidth).toBe(centerMinWidthCss(360));
+  });
+
+  test('the canvas minimum never exceeds the room beside the right rail', () => {
+    expect(centerMinWidthCss(48)).toBe(`min(${CENTER_MIN_WIDTH}px, calc(100% - 58px))`);
+    expect(centerMinWidthCss(360)).toBe(`min(${CENTER_MIN_WIDTH}px, calc(100% - 370px))`);
   });
 
   test('at a wide viewport, both rails render at their configured width — no collapse', () => {
