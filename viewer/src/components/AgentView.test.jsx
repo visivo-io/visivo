@@ -197,3 +197,18 @@ describe('where its data comes from', () => {
     expect(subscribe).not.toHaveBeenCalled();
   });
 });
+
+describe('use your own agent panel', () => {
+  test('is on the page even with no external calls', async () => {
+    renderView();
+    await waitFor(() => expect(fetchAgentActions).toHaveBeenCalled());
+    expect(screen.getByRole('region', { name: 'Use your own agent' })).toBeInTheDocument();
+  });
+
+  test('is left out of a build with no server', async () => {
+    canDeliver.mockReturnValue(false);
+    renderView();
+    await screen.findByTestId('agent-prompt');
+    expect(screen.queryByRole('region', { name: 'Use your own agent' })).not.toBeInTheDocument();
+  });
+});

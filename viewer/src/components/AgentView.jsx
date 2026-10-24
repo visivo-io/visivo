@@ -5,6 +5,7 @@ import { fetchAgentActions } from '../api/agent';
 import { subscribe, canDeliver } from '../events/eventSource';
 import { AGENT_ACTIONS } from '../events/topics';
 import AgentToolCalls from './AgentToolCalls';
+import AgentOwnClient from './AgentOwnClient';
 
 /**
  * The Agent tab: any calls an external MCP client made, then the conversation
@@ -86,6 +87,7 @@ const AgentView = () => {
       )}
       {external.length > 0 && <ExternalCalls actions={external} />}
       <AgentPrompt />
+      {canDeliver(topic) && <AgentOwnClient />}
     </div>
   );
 };
