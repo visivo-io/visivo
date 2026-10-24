@@ -21,6 +21,8 @@ from visivo.query.sqlglot_utils import (
     get_sqlglot_dialect,
     normalize_identifier_for_dialect,
     parse_expression,
+    replace_template_patterns_with_placeholders,
+    sort_expression_error,
 )
 from sqlglot import exp
 from visivo.logger.logger import Logger
@@ -284,38 +286,9 @@ class FieldResolver:
         Returns:
             Tuple of (text with placeholders, dict mapping placeholders to original patterns)
         """
-        placeholders = {}
-        result = []
-        i = 0
-        counter = 0
+        return replace_template_patterns_with_placeholders(text)
 
-        while i < len(text):
-            if text[i : i + 2] == "${":
-                # Find matching closing brace
-                start = i
-                depth = 0
-                while i < len(text):
-                    if text[i] == "{":
-                        depth += 1
-                    elif text[i] == "}":
-                        depth -= 1
-                        if depth == 0:
-                            break
-                    i += 1
-
-                original = text[start : i + 1]
-                placeholder = f"__PH{counter}__"
-                placeholders[placeholder] = original
-                result.append(placeholder)
-                counter += 1
-                i += 1
-            else:
-                result.append(text[i])
-                i += 1
-
-        return "".join(result), placeholders
-
-    def resolve_sort(self, expression: str) -> str:
+    def resolve_sort(self, expression: str, strict: bool = False) -> str:
         """
         Resolve a sort expression, preserving ASC/DESC modifiers.
 
@@ -327,11 +300,19 @@ class FieldResolver:
 
         Args:
             expression: Sort expression that may end with ASC/DESC
+            strict: Raise ``ValueError`` when the expression does not parse, instead of
+                dropping its modifiers. Set for a sort the user wrote; a derived default
+                sort may carry an alias that only the fallback strips.
 
         Returns:
             Resolved expression with ASC/DESC preserved
         """
         from sqlglot import parse_one
+
+        if strict:
+            error = sort_expression_error(expression, get_sqlglot_dialect(self.native_dialect))
+            if error:
+                raise ValueError(error)
 
         # If no refs to resolve, return as-is
         if "${" not in expression:

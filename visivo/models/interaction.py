@@ -1,11 +1,12 @@
 from typing import Optional, Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from re import Match
 from visivo.models.base.query_string import QueryString
 from visivo.models.inputs import Input
 from visivo.models.base.project_dag import ProjectDag
 from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN_COMPILED
+from visivo.query.sqlglot_utils import sort_expression_error
 
 
 # TODO: This should really be a discriminated single selection between a filter, split and sort class rather than this composite object
@@ -51,6 +52,15 @@ class InsightInteraction(BaseModel):
         None,
         description="Column or expression to sort rows by; append `ASC` or `DESC` to control direction.",
     )
+
+    @field_validator("sort")
+    @classmethod
+    def sort_must_parse(cls, value):
+        if value is not None:
+            error = sort_expression_error(value.get_value())
+            if error:
+                raise ValueError(error)
+        return value
 
     @property
     def field_values(self) -> Dict[str, str]:
