@@ -237,7 +237,7 @@ class MetricValidator:
                 # Check if parent is any aggregate function
                 # This covers ALL SQLGlot aggregate types including:
                 # Sum, Count, Avg, Min, Max, StddevPop, StddevSamp, VariancePop, etc.
-                if isinstance(parent, exp.AggFunc):
+                if isinstance(parent, (exp.AggFunc, exp.Filter)):
                     return True
                 parent = parent.parent
             return False
