@@ -397,7 +397,7 @@ class TestInputUniformFormat:
             interactions=[
                 # HAVING clause with input
                 InsightInteraction(
-                    filter="?{SUM(${ref(orders).amount}) > ${ref(min_total).value}}", aggregate=True
+                    filter="?{SUM(${ref(orders).amount}) > ${ref(min_total).value}}"
                 ),
             ],
         )

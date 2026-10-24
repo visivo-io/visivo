@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 
+from visivo.models.base.base_model import BaseModel
 from visivo.models.interaction import InsightInteraction
 from visivo.models.base.query_string import QueryString
 from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
@@ -126,4 +127,5 @@ def test_no_help_string_advertises_date_desc(help_entries):
 
 
 def test_help_covers_exactly_the_fields_the_model_declares(help_entries):
-    assert set(help_entries) == set(InsightInteraction.model_fields)
+    declared = set(InsightInteraction.model_fields) - set(BaseModel.model_fields)
+    assert set(help_entries) == declared
