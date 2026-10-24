@@ -201,7 +201,8 @@ def _validate_handler(type_key):
             manager.check_save(name, obj)
         except SaveRefusedError as error:
             return {"valid": False, "error": _refusal_text(type_key, name, error)}
-        return {"valid": True}
+        warnings = manager.warnings_for(obj)
+        return {"valid": True, "warnings": warnings} if warnings else {"valid": True}
 
     return handler
 
