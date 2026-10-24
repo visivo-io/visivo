@@ -28,7 +28,7 @@ from typing import List
 import polars as pl
 
 
-def write_dicts_to_parquet(data: List[dict], path: str) -> None:
+def write_dicts_to_parquet(data: List[dict], path: str, columns: List[str] = None) -> None:
     """Write a list-of-dicts to parquet at ``path``.
 
     The implementation is robust to two issues that affected the prior
@@ -45,7 +45,15 @@ def write_dicts_to_parquet(data: List[dict], path: str) -> None:
         data: list of row dicts (typically the output of
             ``Source.read_sql``).
         path: absolute or relative path to the destination parquet file.
+        columns: the query's column names. Row dicts carry no names when
+            there are no rows, and a parquet with no columns is not a table
+            DuckDB can read, so an empty result is written with these
+            columns (typed NULL) instead.
     """
+    if not data and columns:
+        pl.DataFrame(schema={name: pl.Null for name in columns}).write_parquet(path)
+        return
+
     df = pl.DataFrame(data, infer_schema_length=None)
 
     decimal_cols = [name for name, dtype in df.schema.items() if isinstance(dtype, pl.Decimal)]
