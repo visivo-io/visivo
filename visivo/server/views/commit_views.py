@@ -706,6 +706,7 @@ def _build_child_info(
         ObjectStatus.RENAMED: "Renamed",
     }
     writer_status = status_map.get(status, "Unchanged")
+    full_config = None
 
     # Detect a model-scoped metric/dimension via the PrivateAttr set in the
     # save endpoint. PrivateAttrs survive on the Pydantic instance.
@@ -729,7 +730,11 @@ def _build_child_info(
         else:
             file_path = project_file_path
             new_file_path = project_file_path
-        config = location_free_dump(obj, mode="json", exclude_none=True) if obj else {}
+        config = (
+            location_free_dump(obj, mode="json", exclude_none=True, exclude_defaults=True)
+            if obj
+            else {}
+        )
     elif status == ObjectStatus.DELETED:
         # Deleted objects use path from published version
         file_path = _get_file_path(published_obj, project_file_path)
@@ -740,7 +745,12 @@ def _build_child_info(
         # which for a rename was resolved under the OLD name.
         file_path = _get_file_path(published_obj, project_file_path)
         new_file_path = file_path
-        config = location_free_dump(obj, mode="json", exclude_none=True) if obj else {}
+        config = (
+            location_free_dump(obj, mode="json", exclude_none=True, exclude_defaults=True)
+            if obj
+            else {}
+        )
+        full_config = location_free_dump(obj, mode="json", exclude_none=True) if obj else {}
 
     info = {
         "status": writer_status,
@@ -749,6 +759,8 @@ def _build_child_info(
         "type_key": type_key,
         "config": config,
     }
+    if full_config:
+        info["full_config"] = full_config
     if status == ObjectStatus.RENAMED and old_name:
         # The writer finds the object in YAML under this, and writes `config`
         # (which carries the new name) over it.
