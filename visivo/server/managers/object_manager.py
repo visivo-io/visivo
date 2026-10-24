@@ -113,6 +113,10 @@ class ObjectManager(ABC, Generic[T]):
         """
         raise NotImplementedError
 
+    def warnings_for(self, obj: T) -> List[str]:
+        """Non-blocking problems with a valid object. Empty unless a manager overrides it."""
+        return []
+
     @abstractmethod
     def extract_from_dag(self, dag) -> None:
         """

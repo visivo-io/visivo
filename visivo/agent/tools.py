@@ -115,7 +115,8 @@ def _validate_handler(type_key):
         clash = manager.name_clash and isinstance(name, str) and manager.name_clash(name, obj)
         if clash:
             return {"valid": False, "error": f"{clash} {_rename_hint(type_key, name)}"}
-        return {"valid": True}
+        warnings = manager.warnings_for(obj)
+        return {"valid": True, "warnings": warnings} if warnings else {"valid": True}
 
     return handler
 
