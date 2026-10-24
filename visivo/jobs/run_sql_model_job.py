@@ -200,7 +200,9 @@ def model_query_and_schema_action(
 
     try:
         # Build and write schema
-        _build_and_write_schema(sql_model, source, output_dir, run_id, schema_cache)
+        query_result_schema = _build_and_write_schema(
+            sql_model, source, output_dir, run_id, schema_cache
+        )
 
         parquet_path = write_query_to_parquet(
             source=source,
@@ -208,6 +210,7 @@ def model_query_and_schema_action(
             output_dir=output_dir,
             name=sql_model.name,
             run_id=run_id,
+            columns=list(query_result_schema.get(sql_model.name_hash(), {})),
         )
 
         success_message = format_message_success(

@@ -74,6 +74,7 @@ def write_parquet_from_data(
     output_dir: str,
     name: str,
     run_id: str = DEFAULT_RUN_ID,
+    columns: list = None,
 ) -> str:
     """Write row data to a parquet file.
 
@@ -82,6 +83,7 @@ def write_parquet_from_data(
         output_dir: Base output directory
         name: Clean model name (used as the parquet filename)
         run_id: Run ID for organizing output files
+        columns: Column names to keep when ``data`` has no rows
 
     Returns:
         Path to the written parquet file
@@ -93,7 +95,7 @@ def write_parquet_from_data(
     models_directory = f"{output_dir}/{run_id}/models"
     os.makedirs(models_directory, exist_ok=True)
     parquet_path = f"{models_directory}/{name}.parquet"
-    write_dicts_to_parquet(data, parquet_path)
+    write_dicts_to_parquet(data, parquet_path, columns=columns)
     return parquet_path
 
 
@@ -103,6 +105,7 @@ def write_query_to_parquet(
     output_dir: str,
     name: str,
     run_id: str = DEFAULT_RUN_ID,
+    columns: list = None,
 ) -> str:
     """Execute SQL query and write results to parquet.
 
@@ -112,6 +115,7 @@ def write_query_to_parquet(
         output_dir: Base output directory
         name: Clean model name (used as the parquet filename)
         run_id: Run ID for organizing output files
+        columns: Column names to keep when the query returns no rows
 
     Returns:
         Path to the written parquet file
@@ -120,7 +124,7 @@ def write_query_to_parquet(
         Exception if query execution or file writing fails
     """
     data = source.read_sql(sql)
-    return write_parquet_from_data(data, output_dir, name, run_id)
+    return write_parquet_from_data(data, output_dir, name, run_id, columns=columns)
 
 
 def execute_and_get_result(
@@ -152,7 +156,7 @@ def execute_and_get_result(
     columns = list(data[0].keys()) if data else []
 
     if output_dir and name:
-        write_parquet_from_data(data, output_dir, name, run_id)
+        write_parquet_from_data(data, output_dir, name, run_id, columns=columns)
 
     truncated = max_rows is not None and len(data) > max_rows
     rows = data[:max_rows] if truncated else data
