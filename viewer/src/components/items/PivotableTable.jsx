@@ -24,6 +24,21 @@ import { mkConfig, generateCsv } from 'export-to-csv';
 import { ROWS_PER_PAGE_OPTIONS } from './rowsPerPageOptions';
 import { buildReverseMapping, formatColumnHeader } from '../../utils/pivotRefResolver';
 
+const isDateColumn = type => type === COLUMN_TYPES.DATE || type === COLUMN_TYPES.TIMESTAMP;
+
+export const csvRowsFor = (rows, columns) =>
+  rows.map(row => {
+    const out = { ...row };
+    columns.forEach(({ name, normalizedType }) => {
+      const value = row[name];
+      if (value === null || value === undefined) out[name] = '';
+      else if (isDateColumn(normalizedType) || typeof value === 'object') {
+        out[name] = formatCellText(value, normalizedType);
+      } else if (typeof value === 'bigint') out[name] = value.toString();
+    });
+    return out;
+  });
+
 const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   const { tokens: themeTokens } = useDashboardTheme();
   const pivotToolbarTheme = createDashboardMuiTheme(themeTokens);
@@ -168,7 +183,7 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   });
 
   const handleExportData = useCallback(() => {
-    const csv = generateCsv(csvConfig)(allRows);
+    const csv = generateCsv(csvConfig)(csvRowsFor(allRows, dataTableColumns));
     const csvBlob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(csvBlob);
     const link = document.createElement('a');
@@ -177,7 +192,7 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [allRows, table.name, csvConfig]);
+  }, [allRows, dataTableColumns, table.name, csvConfig]);
 
   const rowColumnIds = useMemo(() => {
     if (!isPivotMode) return null;

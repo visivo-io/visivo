@@ -46,10 +46,11 @@ export function processInputRefsInProps(props, inputs) {
       // For more complex templates with embedded refs (e.g., "prefix_${input.value}_suffix")
       // Use regex replacement
       let hasMatch = false;
-      const replaced = value.replace(inputRefRegex({ global: true }), (fullMatch, ...groups) => {
+      const replaced = value.replace(inputRefRegex({ global: true }), (...match) => {
+        const fullMatch = match[0];
         hasMatch = true;
-        const inputName = matchName(groups);
-        const accessor = groups[2];
+        const inputName = matchName(match);
+        const accessor = match[3];
         const input = inputs[inputName];
         if (input && input[accessor] !== undefined) {
           return String(input[accessor]);

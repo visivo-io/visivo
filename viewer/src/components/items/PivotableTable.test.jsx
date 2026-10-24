@@ -1,7 +1,7 @@
 /* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import { render, screen, fireEvent } from '@testing-library/react';
 import selectEvent from 'react-select-event';
-import PivotableTable from './PivotableTable';
+import PivotableTable, { csvRowsFor } from './PivotableTable';
 import * as DuckDBContext from '../../contexts/DuckDBContext';
 
 jest.mock('../../contexts/DuckDBContext');
@@ -468,6 +468,74 @@ describe('PivotableTable', () => {
     expect(link).toBeDefined();
     expect(link.getAttribute('download')).toBe('test-table.csv');
     appendSpy.mockRestore();
+  });
+
+  describe('CSV content', () => {
+    const exportedCsv = sourceData => {
+      const OriginalBlob = global.Blob;
+      const parts = [];
+      global.Blob = function (blobParts) {
+        parts.push(...blobParts);
+        return new OriginalBlob(blobParts);
+      };
+      render(
+        <PivotableTable
+          table={{ name: 'csv-table', rows_per_page: 50 }}
+          sourceData={sourceData}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'DownloadCsv' }));
+      global.Blob = OriginalBlob;
+      return parts.join('');
+    };
+
+    it('writes empty cells as empty text, not the word null', () => {
+      const csv = exportedCsv({
+        data: [
+          { name: 'Alice', score: 1 },
+          { name: null, score: null },
+        ],
+        props_mapping: {},
+        files: [],
+      });
+      expect(csv).not.toContain('null');
+      expect(csv.split('\r\n')[2]).toBe('"",""');
+    });
+
+    it('writes date columns as displayed rather than as raw timestamps', () => {
+      const csv = exportedCsv({
+        data: [{ day: '2024-03-05T00:00:00.000Z', n: 1234.5 }],
+        props_mapping: {},
+        files: [],
+      });
+      expect(csv).toContain('2024-03-05');
+      expect(csv).not.toContain('T00:00:00.000Z');
+      expect(csv).toContain('1234.5');
+    });
+
+    it('keeps the BOM so Excel reads UTF-8', () => {
+      const csv = exportedCsv(mockInsightData);
+      expect(csv.charCodeAt(0)).toBe(0xfeff);
+    });
+  });
+
+  describe('csvRowsFor', () => {
+    it('stringifies bigint and object values and leaves other values alone', () => {
+      const rows = csvRowsFor(
+        [{ big: 12n, obj: { a: 1 }, text: 'x', flag: true, gone: undefined }],
+        [
+          { name: 'big', normalizedType: 'number' },
+          { name: 'obj', normalizedType: 'string' },
+          { name: 'text', normalizedType: 'string' },
+          { name: 'flag', normalizedType: 'boolean' },
+          { name: 'gone', normalizedType: 'string' },
+        ]
+      );
+      expect(rows[0]).toEqual({ big: '12', obj: '{"a":1}', text: 'x', flag: true, gone: '' });
+    });
   });
 
   it('applies gradient cell backgrounds when format_cells is configured', () => {

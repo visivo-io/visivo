@@ -3,7 +3,11 @@ import Plot from 'react-plotly.js';
 import React, { useState, useMemo, useImperativeHandle, useEffect, useRef } from 'react';
 import { ItemContainer } from './ItemContainer';
 import { itemNameToSlug } from './utils';
-import { chartDataFromInsightData } from '../../models/Insight';
+import {
+  chartDataFromInsightData,
+  extractInputDependenciesFromProps,
+  processInputRefsInProps,
+} from '../../models/Insight';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 import { useDashboardTheme } from '../../theme/DashboardThemeContext';
@@ -31,6 +35,21 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
             }
           }
         }
+      }
+      return result;
+    })
+  );
+
+  const layoutInputNames = useMemo(
+    () => (chart.layout ? extractInputDependenciesFromProps({ layout: chart.layout }) : []),
+    [chart.layout]
+  );
+
+  const layoutInputs = useStore(
+    useShallow(state => {
+      const result = {};
+      for (const inputName of layoutInputNames) {
+        if (state.inputJobs?.[inputName]) result[inputName] = state.inputJobs[inputName];
       }
       return result;
     })
@@ -133,7 +152,7 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
   const { plotlyTemplateFor } = useDashboardTheme();
 
   const layoutRef = useMemo(() => {
-    const l = structuredClone(chart.layout ? chart.layout : {});
+    const l = structuredClone(processInputRefsInProps(chart.layout || {}, layoutInputs));
 
     if (!l.template) {
       l.template = plotlyTemplateFor(selectedPlotData);
@@ -157,7 +176,15 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     }
 
     return l;
-  }, [chart.layout, chart.name, hideToolbar, plotlyTemplateFor, selectedPlotData, seriesOrder]);
+  }, [
+    chart.layout,
+    layoutInputs,
+    chart.name,
+    hideToolbar,
+    plotlyTemplateFor,
+    selectedPlotData,
+    seriesOrder,
+  ]);
 
   const plotLayout = useMemo(() => {
     const layout = { ...layoutRef };
