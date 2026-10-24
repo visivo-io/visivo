@@ -1,9 +1,13 @@
 import os
+from types import SimpleNamespace
+
 import pytest
 from tests.factories.model_factories import (
     ItemFactory,
     ProjectFactory,
     RowFactory,
+    SourceFactory,
+    SqlModelFactory,
 )
 from tests.support.utils import temp_folder
 from visivo.agent.actions import log
@@ -232,6 +236,143 @@ def test_on_project_change_clean_session_emits_without_dropping(
     on_project_change()
 
     emit_spy.assert_called_with("project_changed", {"drafts_dropped": False})
+
+
+def _project_with_model(sql="select * from test_table", database="tmp/test.sqlite"):
+    return ProjectFactory(
+        sources=[SourceFactory(database=database)],
+        models=[SqlModelFactory(name="orders", sql=sql)],
+    )
+
+
+def _serve(project, output_dir, server_url, working_dir="."):
+    os.makedirs(output_dir, exist_ok=True)
+    return serve_phase(
+        output_dir=output_dir,
+        working_dir=working_dir,
+        default_source=None,
+        dag_filter=None,
+        threads=1,
+        skip_compile=True,
+        project=project,
+        server_url=server_url,
+    )
+
+
+def _skip_run(mocker):
+    return mocker.patch(
+        "visivo.commands.serve_phase.run_phase",
+        side_effect=lambda **kwargs: SimpleNamespace(project=kwargs["project"]),
+    )
+
+
+def _draft_model_sql(client, sql):
+    config = client.get("/api/models/orders/").get_json()["config"]
+    config["sql"] = sql
+    assert client.post("/api/models/orders/", json=config).status_code == 200
+    assert client.get("/api/commit/pending/").get_json()["count"] == 1
+
+
+def test_on_project_change_drops_a_model_draft_when_the_model_sql_is_hand_edited(
+    output_dir, server_url, mocker
+):
+    """VIS-1562. The served-project comparison dropped top-level models, so a hand
+    edit to a drafted model's sql kept the draft and the next commit overwrote it."""
+    server, on_project_change, _ = _serve(_project_with_model(), output_dir, server_url)
+    emit_spy = mocker.patch.object(server.socketio, "emit")
+    client = server.app.test_client()
+    _draft_model_sql(client, "select 1 as draft_column")
+
+    hand_edited = _project_with_model(sql="select * from test_table where hand_edit = 1")
+    mocker.patch("visivo.commands.serve_phase.compile_phase", return_value=hand_edited)
+    _skip_run(mocker)
+
+    on_project_change()
+
+    assert client.get("/api/commit/pending/").get_json()["count"] == 0
+    emit_spy.assert_called_with("project_changed", {"drafts_dropped": True})
+    served = client.get("/api/models/orders/").get_json()["config"]
+    assert served["sql"] == "select * from test_table where hand_edit = 1"
+
+
+def test_on_project_change_drops_drafts_when_a_source_is_hand_edited(
+    output_dir, server_url, mocker
+):
+    server, on_project_change, _ = _serve(_project_with_model(), output_dir, server_url)
+    emit_spy = mocker.patch.object(server.socketio, "emit")
+    client = server.app.test_client()
+    _draft_model_sql(client, "select 1 as draft_column")
+
+    hand_edited = _project_with_model(database="tmp/hand_edited.sqlite")
+    mocker.patch("visivo.commands.serve_phase.compile_phase", return_value=hand_edited)
+    _skip_run(mocker)
+
+    on_project_change()
+
+    assert client.get("/api/commit/pending/").get_json()["count"] == 0
+    emit_spy.assert_called_with("project_changed", {"drafts_dropped": True})
+
+
+def test_on_project_change_noop_recompile_preserves_a_model_draft(output_dir, server_url, mocker):
+    server, on_project_change, _ = _serve(_project_with_model(), output_dir, server_url)
+    emit_spy = mocker.patch.object(server.socketio, "emit")
+    client = server.app.test_client()
+    _draft_model_sql(client, "select 1 as draft_column")
+
+    mocker.patch("visivo.commands.serve_phase.compile_phase", return_value=_project_with_model())
+
+    on_project_change()
+
+    assert client.get("/api/commit/pending/").get_json()["count"] == 1
+    emit_spy.assert_called_with("project_changed", {"drafts_dropped": False})
+
+
+PROJECT_YAML = """name: hand-edit-project
+sources:
+  - name: source
+    type: sqlite
+    database: tmp/test.sqlite
+models:
+  - name: orders
+    sql: {sql}
+    source: ref(source)
+dashboards:
+  - name: dashboard
+    rows:
+      - items:
+          - markdown: hello
+"""
+
+
+def test_commit_after_a_hand_edit_to_a_drafted_model_keeps_the_hand_edit(
+    output_dir, server_url, mocker
+):
+    """VIS-1562 end to end: draft a model, hand-edit its sql in the YAML while
+    serve runs, then commit. The YAML on disk must keep the hand edit."""
+    from visivo.commands.compile_phase import compile_phase
+
+    working_dir = temp_folder()
+    os.makedirs(working_dir, exist_ok=True)
+    project_file = os.path.join(working_dir, "project.visivo.yml")
+    with open(project_file, "w") as f:
+        f.write(PROJECT_YAML.format(sql="select * from test_table"))
+    project = compile_phase(default_source=None, working_dir=working_dir, output_dir=output_dir)
+
+    server, on_project_change, _ = _serve(project, output_dir, server_url, working_dir)
+    client = server.app.test_client()
+    _draft_model_sql(client, "select 1 as draft_column")
+
+    with open(project_file, "w") as f:
+        f.write(PROJECT_YAML.format(sql="select * from test_table where hand_edit = 1"))
+    _skip_run(mocker)
+    on_project_change()
+
+    client.post("/api/commit/")
+
+    with open(project_file) as f:
+        on_disk = f.read()
+    assert "where hand_edit = 1" in on_disk
+    assert "draft_column" not in on_disk
 
 
 def test_a_recorded_agent_action_is_pushed_over_the_socket(

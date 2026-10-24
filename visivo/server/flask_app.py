@@ -45,6 +45,7 @@ class FlaskApp:
         self._project_json = (
             Serializer(project=project).dereference().model_dump_json(exclude_none=True)
         )
+        self._served_project_dump = project.model_dump_json(exclude_none=True, warnings=False)
         self._project = project
 
         self._working_dir = working_dir
@@ -166,12 +167,12 @@ class FlaskApp:
         Used by the watcher recompile to tell a genuine external YAML edit
         (which drops drafts, last-write-wins) apart from a no-op save/touch that
         recompiles to the same project (drafts must be preserved). Compares the
-        dereferenced serialized form, matching how ``_project_json`` is built.
+        full project dump, because the dereferenced ``_project_json`` empties the
+        top-level models and sources and would miss an edit to them.
         """
-        candidate_json = (
-            Serializer(project=project).dereference().model_dump_json(exclude_none=True)
+        return (
+            project.model_dump_json(exclude_none=True, warnings=False) == self._served_project_dump
         )
-        return candidate_json == self._project_json
 
     @property
     def project(self):
@@ -183,6 +184,7 @@ class FlaskApp:
         self._project_json = (
             Serializer(project=value).dereference().model_dump_json(exclude_none=True)
         )
+        self._served_project_dump = value.model_dump_json(exclude_none=True, warnings=False)
         self._project = value
         # Reload object managers with new project DAG (preserves cached objects)
         dag = value.dag()
