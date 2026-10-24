@@ -15,6 +15,7 @@ from visivo.jobs.job import (
 from visivo.models.diagnostic import Diagnostic, DiagnosticLocation, DiagnosticPhase
 from visivo.jobs.run_model_data_job import write_query_to_parquet
 from visivo.jobs.utils import get_source_for_model
+from visivo.models.validators.models_have_sources_validator import missing_source_message
 from visivo.models.base.project_dag import ProjectDag
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.insight import Insight
@@ -58,6 +59,12 @@ def _build_and_write_schema(
     """
     from visivo.logger.logger import Logger
 
+    if source is None:
+        if not sql_model.source:
+            raise click.ClickException(missing_source_message(sql_model.name))
+        raise click.ClickException(
+            f"Model '{sql_model.name}' names source {sql_model.source}, which does not resolve."
+        )
     sqlglot_dialect = source.get_sqlglot_dialect()
     model_hash = sql_model.name_hash()
     sql = sql_model.sql

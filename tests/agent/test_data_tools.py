@@ -2,6 +2,7 @@
 the UI's route calls, is bounded, and labels what it returns as data."""
 
 import json
+import os
 
 import pytest
 
@@ -987,3 +988,67 @@ class TestInsightProbe:
 
         monkeypatch.setattr(draft_insight, "execute_and_get_result", slow)
         assert "warnings" not in self._write(integration_app)
+
+
+class TestSetupMistakesAreWarnedAtWriteTime:
+    """A model with nothing to run on, or a DuckDB path with no file behind it,
+    used to pass the write and fail later, far from the cause."""
+
+    MODEL = {"name": "orphan", "sql": "select 1 as x"}
+    NO_SOURCE = "Model 'orphan' has no source and the project has no defaults.source_name"
+
+    def test_a_model_with_no_source_and_no_default(self, integration_app):
+        result = call(integration_app, "write_model", {"config": self.MODEL})
+
+        assert any(self.NO_SOURCE in w for w in result["warnings"])
+
+    def test_a_default_source_silences_it(self, integration_app):
+        from visivo.models.defaults import Defaults
+
+        integration_app.project.defaults = Defaults(source_name=_source(integration_app).name)
+
+        result = call(integration_app, "write_model", {"config": self.MODEL})
+
+        assert not any(self.NO_SOURCE in w for w in result.get("warnings", []))
+
+    def test_a_model_source_silences_it(self, integration_app):
+        config = {**self.MODEL, "source": f"ref({_source(integration_app).name})"}
+
+        result = call(integration_app, "write_model", {"config": config})
+
+        assert not any(self.NO_SOURCE in w for w in result.get("warnings", []))
+
+    def _duckdb(self, database):
+        return {"name": "ducks", "type": "duckdb", "database": database}
+
+    def test_a_duckdb_file_that_does_not_exist(self, integration_app, tmp_path):
+        missing = tmp_path / "nope.duckdb"
+
+        result = call(integration_app, "write_source", {"config": self._duckdb(str(missing))})
+
+        (warning,) = [w for w in result["warnings"] if "DuckDB file" in w]
+        assert f"DuckDB file '{missing}' does not exist" in warning
+        assert not missing.exists()
+
+    def test_a_relative_path_is_looked_for_in_the_project(self, integration_app):
+        result = call(integration_app, "write_source", {"config": self._duckdb("data/nope.db")})
+
+        (warning,) = [w for w in result["warnings"] if "DuckDB file" in w]
+        assert os.path.join(integration_app._working_dir, "data/nope.db") in warning
+
+    def test_an_existing_duckdb_file_or_memory_is_fine(self, integration_app, tmp_path):
+        existing = tmp_path / "real.duckdb"
+        existing.write_bytes(b"")
+        for database in (str(existing), ":memory:"):
+            result = call(integration_app, "write_source", {"config": self._duckdb(database)})
+            assert not any("DuckDB file" in w for w in result.get("warnings", []))
+
+    def test_describe_source_warns_instead_of_creating_the_file(self, integration_app, tmp_path):
+        missing = tmp_path / "nope.duckdb"
+        call(integration_app, "write_source", {"config": self._duckdb(str(missing))})
+
+        result = call(integration_app, "describe_source", {"name": "ducks"})
+
+        assert result["tables"] == []
+        assert f"DuckDB file '{missing}' does not exist" in result["warnings"][0]
+        assert not missing.exists()

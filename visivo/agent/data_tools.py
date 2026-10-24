@@ -7,6 +7,8 @@ bytes because they land in a model's context.
 """
 
 import json
+import os
+from pathlib import Path
 
 import sqlglot
 from sqlglot import exp
@@ -17,6 +19,9 @@ from visivo.jobs.run_model_data_job import (
     QueryTimeout,
     execute_and_get_result,
 )
+from visivo.models.models.sql_model import SqlModel
+from visivo.models.sources.duckdb_source import DuckdbSource
+from visivo.models.validators.models_have_sources_validator import missing_source_message
 from visivo.query.patterns import extract_ref_names
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.services.draft_insight import (
@@ -170,6 +175,35 @@ def _default_source(app):
         return find_source(app, name)
     sources = app.source_manager.get_all_objects_list()
     return sources[0] if len(sources) == 1 else None
+
+
+def missing_duckdb_file_warning(app, source):
+    """A warning when ``source`` is a DuckDB file that does not exist, or ``None``.
+    DuckDB creates an empty database on first write, so nothing fails loudly."""
+    database = getattr(source, "database", None)
+    if not isinstance(source, DuckdbSource) or not database or database == ":memory:":
+        return None
+    path = Path(database)
+    if not path.is_absolute():
+        path = Path(getattr(app, "_working_dir", None) or os.getcwd()) / path
+    if path.exists():
+        return None
+    return (
+        f"DuckDB file '{database}' does not exist (looked for {path}). DuckDB would create "
+        "an empty database there, so the source has no tables. Point `database` at the "
+        "existing file."
+    )
+
+
+def sourceless_model_warning(app, model):
+    """The run's error for a SQL model that names no source in a project with no
+    ``defaults.source_name``, or ``None``. The run does not fall back to the
+    project's only source, so neither does this."""
+    if not isinstance(model, SqlModel) or model.source:
+        return None
+    if getattr(getattr(app.project, "defaults", None), "source_name", None):
+        return None
+    return missing_source_message(model.name)
 
 
 def probe_model_sql(app, model):
@@ -493,6 +527,15 @@ def _stored_schema(app, source):
 
 def _describe_source_handler(app, arguments):
     source = _source_argument(app, arguments, key="name")
+    missing = missing_duckdb_file_warning(app, source)
+    if missing:
+        return {
+            "source": source.name,
+            "type": source.type,
+            "total_tables": 0,
+            "tables": [],
+            "warnings": [missing],
+        }
     stored, run_id = _stored_schema(app, source)
     wanted = (arguments or {}).get("table")
     tables = stored.get("tables") or {}
