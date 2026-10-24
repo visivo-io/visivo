@@ -31,7 +31,13 @@ import RenameImpactDialog from '../workspace/RenameImpactDialog';
  * - onNavigateToEmbedded: Callback(type, object) to navigate to embedded objects
  */
 const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded, onDirtyChange }) => {
-  const { deleteChart, checkCommitStatus, insights: storeInsights, fetchInsights } = useStore();
+  const {
+    deleteChart,
+    checkCommitStatus,
+    insights: storeInsights,
+    fetchInsights,
+    createWorkspaceObject,
+  } = useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -39,11 +45,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
   const [insights, setInsights] = useState([]);
   const [layoutValues, setLayoutValues] = useState({});
 
-  // VIS-1224: "New blank insight" (the Add Insight menu) branches a blank
-  // EMBEDDED insight on the chart; staged entries merge into the save and count
-  // toward dirty. (The chart no longer edits insight props inline — that's the
-  // insight's own edit panel.)
-  const [stagedEmbedded, setStagedEmbedded] = useState([]);
+  const [creatingInsight, setCreatingInsight] = useState(false);
 
   // UI state
   const [errors, setErrors] = useState({});
@@ -142,7 +144,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chart, isCreate]);
 
-  const dirty = isDirtyAgainst({ name, insights, layoutValues }) || stagedEmbedded.length > 0;
+  const dirty = isDirtyAgainst({ name, insights, layoutValues });
 
   // Report upward so the tab strip's unsaved dot and its guarded close reflect
   // real edits (VIS-1133) — the rail clears it on unmount.
@@ -158,7 +160,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
       newErrors.name = nameError;
     }
 
-    if (insights.length === 0 && embeddedInsights.length === 0 && stagedEmbedded.length === 0) {
+    if (insights.length === 0 && embeddedInsights.length === 0) {
       newErrors.data = 'At least one insight is required';
     }
 
@@ -208,9 +210,6 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
       rebuiltInsights.push(refInsights[refIdx]);
     }
 
-    // VIS-1224: append any "New blank insight" the Add-Insight menu staged.
-    stagedEmbedded.forEach(embedded => rebuiltInsights.push(embedded));
-
     if (rebuiltInsights.length > 0) {
       config.insights = rebuiltInsights;
     }
@@ -247,23 +246,27 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     }
   };
 
-  // Insight management (VIS-1224: add via the AddInsightMenu dropdown — pick an
-  // existing project insight, or branch a New blank embedded insight).
   const addExistingInsight = insightName => {
-    if (!insightName || insights.includes(insightName)) return;
-    setInsights([...insights, insightName]);
+    if (!insightName) return;
+    setInsights(current => (current.includes(insightName) ? current : [...current, insightName]));
   };
 
-  const addBlankInsight = () => {
-    setStagedEmbedded([...stagedEmbedded, { props: { type: 'scatter' } }]);
+  // A chart's insights must each carry a name, so a blank one is drafted as its
+  // own named insight (the Library's "+ New" path) and referenced by the chart.
+  const addBlankInsight = async () => {
+    setCreatingInsight(true);
+    setSaveError(null);
+    const result = await createWorkspaceObject('insight');
+    setCreatingInsight(false);
+    if (result?.success) {
+      addExistingInsight(result.name);
+    } else {
+      setSaveError(result?.error || 'Failed to create insight');
+    }
   };
 
   const removeInsight = index => {
     setInsights(insights.filter((_, i) => i !== index));
-  };
-
-  const removeStagedEmbedded = index => {
-    setStagedEmbedded(stagedEmbedded.filter((_, i) => i !== index));
   };
 
   return (
@@ -314,7 +317,8 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
                   <button
                     type="button"
                     data-testid="chart-add-insight"
-                    className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
+                    disabled={creatingInsight}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors disabled:opacity-50"
                   >
                     <AddIcon fontSize="small" />
                     Add Insight
@@ -332,7 +336,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
               </Dropdown>
             </div>
 
-            {insights.length === 0 && embeddedInsights.length === 0 && stagedEmbedded.length === 0 ? (
+            {insights.length === 0 && embeddedInsights.length === 0 ? (
               <p className="text-sm text-gray-500 italic">
                 No insights yet. Use “Add Insight” to add one.
               </p>
@@ -351,23 +355,6 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
                       as="div"
                       tooltip={`Insight: ${insight}`}
                       onRemove={() => removeInsight(index)}
-                      className="flex-1 min-w-0"
-                    />
-                  </div>
-                ))}
-                {stagedEmbedded.map((_, index) => (
-                  <div
-                    key={`staged-${index}`}
-                    className="flex items-center gap-2"
-                    data-testid={`staged-insight-row-${index}`}
-                  >
-                    <EmbeddedPill
-                      objectType="insight"
-                      label="New insight (blank)"
-                      size="md"
-                      as="div"
-                      tooltip="A new blank embedded insight — saved with the chart"
-                      onRemove={() => removeStagedEmbedded(index)}
                       className="flex-1 min-w-0"
                     />
                   </div>
@@ -489,7 +476,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
             <Button
               type="button"
               onClick={handleSave}
-              disabled={saving || (isEditMode && !dirty)}
+              disabled={saving || creatingInsight || (isEditMode && !dirty)}
               className="text-sm"
             >
               {saving ? (
