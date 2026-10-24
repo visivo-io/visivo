@@ -152,6 +152,16 @@ class TestValidating:
         assert result == {"valid": True}
         assert "unsaved" not in integration_app.markdown_manager.cached_objects
 
+    def test_literal_template_syntax_validates_with_a_warning(self, integration_app):
+        result = call(
+            integration_app,
+            "validate_markdown",
+            {"config": {"name": "unsaved", "content": "Total ${ref(orders).total}"}},
+        )
+
+        assert result["valid"] is True
+        assert "render literally" in result["warnings"][0]
+
     def test_a_bad_one_reports_rather_than_raises(self, integration_app):
         """The agent can act on a reason; it cannot act on a traceback."""
         result = call(integration_app, "validate_markdown", {"config": {"name": "bad"}})

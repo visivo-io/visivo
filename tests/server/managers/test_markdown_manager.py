@@ -109,3 +109,28 @@ class TestMarkdownManager:
         assert markdown is not None
         assert markdown.name is None
         assert markdown.content == "Inline content"
+
+
+class TestLiteralTemplateWarnings:
+    def _validate(self, content):
+        return MarkdownManager().validate_config({"name": "note", "content": content})
+
+    def test_plain_content_has_no_warnings(self):
+        result = self._validate("# Title\n\nSome ${ dollars } and { braces }.")
+        assert result["valid"] is True
+        assert "warnings" not in result
+
+    def test_double_brace_template_warns_but_stays_valid(self):
+        result = self._validate("Revenue is {{ revenue }} today")
+        assert result["valid"] is True
+        assert "{{ revenue }}" in result["warnings"][0]
+        assert "render literally" in result["warnings"][0]
+
+    def test_ref_template_warns_but_stays_valid(self):
+        result = self._validate("Total: ${ref(orders).total}")
+        assert result["valid"] is True
+        assert "${ref(orders).total}" in result["warnings"][0]
+
+    def test_a_repeated_template_is_named_once(self):
+        result = self._validate("{{ x }} and {{ x }}")
+        assert result["warnings"][0].count("{{ x }}") == 1

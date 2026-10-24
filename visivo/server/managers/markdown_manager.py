@@ -1,3 +1,4 @@
+import re
 from typing import Any, Dict, List, Optional
 
 from pydantic import TypeAdapter, ValidationError
@@ -6,6 +7,8 @@ from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.markdown import Markdown
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
+
+_LITERAL_TEMPLATE = re.compile(r"\{\{.*?\}\}|\$\{\s*ref\(.*?\)[^}]*\}", re.DOTALL)
 
 
 class MarkdownManager(ObjectManager[Markdown]):
@@ -35,6 +38,17 @@ class MarkdownManager(ObjectManager[Markdown]):
             ValidationError: If the markdown configuration is invalid
         """
         return self._markdown_adapter.validate_python(obj_data)
+
+    def warnings_for(self, obj: Markdown) -> List[str]:
+        """Markdown content is rendered as written; template syntax is not evaluated."""
+        found = _LITERAL_TEMPLATE.findall(obj.content or "")
+        if not found:
+            return []
+        shown = ", ".join(f"`{text}`" for text in dict.fromkeys(found))
+        return [
+            f"Markdown content is not templated, so {shown} will render literally. "
+            "Write the value into the text instead."
+        ]
 
     def extract_from_dag(self, dag) -> None:
         """
@@ -137,10 +151,14 @@ class MarkdownManager(ObjectManager[Markdown]):
         """
         try:
             markdown = self.validate_object(config)
-            return {
+            result = {
                 "valid": True,
                 "name": markdown.name,
             }
+            warnings = self.warnings_for(markdown)
+            if warnings:
+                result["warnings"] = warnings
+            return result
         except ValidationError as e:
             first_error = e.errors()[0]
             return {
