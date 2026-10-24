@@ -2,14 +2,23 @@
 Base class for sources that use DuckDB as their underlying engine.
 """
 
-from typing import Dict, List, Any, Optional, ClassVar, Set
+from typing import Dict, List, Any, Optional, ClassVar, Set, Tuple
 from abc import abstractmethod
 import duckdb
 import click
 from visivo.models.sources.source import Source
 from visivo.logger.logger import Logger
+from sqlglot import exp
 from sqlglot.schema import MappingSchema
 from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
+
+_VISIBLE_SCHEMA_FILTER = """(
+    table_schema = 'main'
+    OR (
+        table_catalog = current_database()
+        AND table_schema NOT IN ('information_schema', 'pg_catalog')
+    )
+)"""
 
 
 class BaseDuckdbSource(Source):
@@ -130,8 +139,13 @@ class BaseDuckdbSource(Source):
                     "metadata": {"source_type": self.type, "total_tables": 0, "total_columns": 0},
                 }
 
-                for table_name in available_tables:
-                    table_info = self._extract_table_schema_from_duckdb(connection, table_name)
+                nested = any(schema != "main" for schema, _ in available_tables)
+                if nested:
+                    result["metadata"]["default_schema"] = "main"
+
+                for table in available_tables:
+                    table_name = self._table_key(table)
+                    table_info = self._extract_table_schema_from_duckdb(connection, table)
                     if table_info:
                         result["tables"][table_name] = table_info
 
@@ -142,8 +156,16 @@ class BaseDuckdbSource(Source):
                                 columns_dict[col_name] = col_info["sqlglot_datatype"]
 
                         if columns_dict:
+                            sqlglot_name = (
+                                exp.Table(
+                                    this=exp.to_identifier(table[1]),
+                                    db=exp.to_identifier(table[0]),
+                                )
+                                if nested
+                                else table_name
+                            )
                             try:
-                                result["sqlglot_schema"].add_table(table_name, columns_dict)
+                                result["sqlglot_schema"].add_table(sqlglot_name, columns_dict)
                             except Exception as e:
                                 Logger.instance().debug(
                                     f"Failed to add table '{table_name}' to SQLGlot schema: {e}"
@@ -190,37 +212,40 @@ class BaseDuckdbSource(Source):
 
     def _get_available_tables_from_duckdb(
         self, connection, table_names: List[str] = None
-    ) -> List[str]:
-        """Get list of tables/views available in the DuckDB connection."""
+    ) -> List[Tuple[str, str]]:
+        """Get ``(schema, table)`` pairs for tables/views available in the DuckDB connection.
+
+        Tables outside ``main`` are included so models that read a non-default schema
+        (``select * from analytics.fct_mrr``) have known columns. ``table_names`` matches
+        either the bare table name or ``schema.table``.
+        """
         try:
             # Query both tables and views from DuckDB's information schema
             # CSV and Excel sources create views, not tables
             # Exclude DuckDB system tables/views (they start with 'duckdb_', 'sqlite_', or 'pragma_')
-            tables_result = connection.execute("""
-                SELECT table_name, 'table' as object_type
-                FROM information_schema.tables
-                WHERE table_schema = 'main'
+            tables_result = connection.execute(f"""
+                SELECT table_schema, table_name FROM (
+                    SELECT table_schema, table_name, table_catalog
+                    FROM information_schema.tables
+                    UNION ALL
+                    SELECT table_schema, table_name, table_catalog
+                    FROM information_schema.views
+                )
+                WHERE {_VISIBLE_SCHEMA_FILTER}
                 AND table_name NOT LIKE 'duckdb_%'
                 AND table_name NOT LIKE 'sqlite_%'
                 AND table_name NOT LIKE 'pragma_%'
-                UNION ALL
-                SELECT table_name, 'view' as object_type
-                FROM information_schema.views
-                WHERE table_schema = 'main'
-                AND table_name NOT LIKE 'duckdb_%'
-                AND table_name NOT LIKE 'sqlite_%'
-                AND table_name NOT LIKE 'pragma_%'
-                ORDER BY table_name
+                ORDER BY table_schema != 'main', table_schema, table_name
             """)
 
-            all_tables = [row[0] for row in tables_result.fetchall()]
+            all_tables = [(row[0], row[1]) for row in tables_result.fetchall()]
 
             # Debug logging to help diagnose issues
             Logger.instance().debug(f"Found tables/views in DuckDB: {all_tables}")
 
             # Filter to requested tables if specified
             if table_names:
-                filtered_tables = [t for t in all_tables if t in table_names]
+                filtered_tables = [t for t in all_tables if self._matches(t, table_names)]
                 Logger.instance().debug(f"Filtered to requested tables: {filtered_tables}")
                 return filtered_tables
 
@@ -230,34 +255,49 @@ class BaseDuckdbSource(Source):
             Logger.instance().error(f"Error getting tables from DuckDB: {e}")
             # Fallback: try to get just tables if views query fails
             try:
-                result = connection.execute("""
-                    SELECT table_name
+                result = connection.execute(f"""
+                    SELECT table_schema, table_name, table_catalog
                     FROM information_schema.tables
-                    WHERE table_schema = 'main'
+                    WHERE {_VISIBLE_SCHEMA_FILTER}
                     AND table_name NOT LIKE 'duckdb_%'
                     AND table_name NOT LIKE 'sqlite_%'
                     AND table_name NOT LIKE 'pragma_%'
-                    ORDER BY table_name
+                    ORDER BY table_schema != 'main', table_schema, table_name
                 """)
-                fallback_tables = [row[0] for row in result.fetchall()]
+                fallback_tables = [(row[0], row[1]) for row in result.fetchall()]
                 Logger.instance().debug(f"Fallback found tables: {fallback_tables}")
 
                 if table_names:
-                    return [t for t in fallback_tables if t in table_names]
+                    return [t for t in fallback_tables if self._matches(t, table_names)]
                 return fallback_tables
             except Exception as e2:
                 Logger.instance().debug(f"Fallback query also failed: {e2}")
                 return []
 
+    @staticmethod
+    def _matches(table: Tuple[str, str], table_names: List[str]) -> bool:
+        schema, name = table
+        return name in table_names or f"{schema}.{name}" in table_names
+
+    @staticmethod
+    def _table_key(table: Tuple[str, str]) -> str:
+        """Key used in schema output: bare for ``main``, ``schema.table`` otherwise."""
+        schema, name = table
+        return name if schema == "main" else f"{schema}.{name}"
+
+    @staticmethod
+    def _quote_table(schema: str, name: str) -> str:
+        return ".".join('"' + part.replace('"', '""') + '"' for part in (schema, name))
+
     def _extract_table_schema_from_duckdb(
-        self, connection, table_name: str
+        self, connection, table: Tuple[str, str]
     ) -> Optional[Dict[str, Any]]:
         """Extract schema information for a single table using DuckDB's DESCRIBE."""
         try:
             # Use DuckDB's DESCRIBE to get column information
             # Quote the table name to handle special characters like hyphens
-            quoted_table_name = f'"{table_name}"'
-            result = connection.execute(f"DESCRIBE {quoted_table_name}")
+            schema_name, table_name = table
+            result = connection.execute(f"DESCRIBE {self._quote_table(schema_name, table_name)}")
             columns_info = result.fetchall()
 
             if not columns_info:
@@ -333,8 +373,9 @@ class BaseDuckdbSource(Source):
     ) -> List[Dict[str, Any]]:
         """Use DESCRIBE, similar to existing _extract_table_schema_from_duckdb()."""
         with self.connect(read_only=True) as connection:
-            quoted_table = f'"{table_name}"'
-            result = connection.execute(f"DESCRIBE {quoted_table}")
+            result = connection.execute(
+                f"DESCRIBE {self._quote_table(schema_name or 'main', table_name)}"
+            )
             return [
                 {"name": row[0], "type": row[1], "nullable": row[2] == "YES"}
                 for row in result.fetchall()
