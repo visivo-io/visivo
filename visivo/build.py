@@ -65,13 +65,23 @@ def build():
         "visivo/schema/*.json:visivo/schema",
         "--add-data",
         "visivo/viewers/*:visivo/viewers",
+        # What the viewer fetches from /api/schema. Written by
+        # `poetry run write-schema-json` into a directory nothing else here
+        # covers, so leaving it out ships a binary whose schema endpoint 404s.
+        "--add-data",
+        "visivo/src/*.json:visivo/src",
         # Data the analyser cannot find by following imports: the policy is read
         # as JSON and the skills as markdown, so neither is referenced by a
         # module the build can trace.
         "--add-data",
         "visivo/models/dashboards/template_policy.json:visivo/models/dashboards",
+        # Whole directories, not a `*.md` glob: a subdirectory under skills/ is
+        # a namespace (`charts/line`, `interactions/top_n`), and a glob matches
+        # only the top level — it was shipping 16 skills of 48.
         "--add-data",
-        "visivo/agent/skills/*.md:visivo/agent/skills",
+        "visivo/agent/skills:visivo/agent/skills",
+        "--add-data",
+        "visivo/agent/charting/rules:visivo/agent/charting/rules",
     ]
 
     if debug_mode:
