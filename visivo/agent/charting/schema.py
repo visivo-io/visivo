@@ -43,6 +43,15 @@ CARDINALITY_BUCKETS: Tuple[Tuple[CardinalityBucket, int], ...] = (
 )
 
 
+BUCKET_REPRESENTATIVES: Dict[str, int] = {
+    "one": 1,
+    "few": 4,
+    "some": 14,
+    "many": 50,
+    "high": 500,
+}
+
+
 def bucket_for(cardinality):
     """``few`` for 2–7 distinct values, ``some`` for 8–20, and so on."""
     for name, upper in CARDINALITY_BUCKETS:
@@ -160,6 +169,33 @@ class ShapeCard(_Strict):
 
     def axis_points(self):
         return self.time_span_points or self.cardinality
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_bucket_names(cls, data):
+        """``cardinality`` is a distinct-value count, but a bucket name
+        (``few``, ``some``...) is accepted for it, or given alone as
+        ``cardinality_bucket``, and stands for a representative count."""
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        buckets = ", ".join(BUCKET_REPRESENTATIVES)
+        value = data.get("cardinality")
+        if isinstance(value, str) and value.strip().lower() in BUCKET_REPRESENTATIVES:
+            bucket = value.strip().lower()
+            data["cardinality"] = BUCKET_REPRESENTATIVES[bucket]
+            data.setdefault("cardinality_bucket", bucket)
+        elif isinstance(value, str):
+            try:
+                int(value)
+            except ValueError:
+                raise ValueError(
+                    f"cardinality must be a whole number (the distinct-value count) "
+                    f"or one of {buckets}; got {value!r}"
+                )
+        elif value is None and data.get("cardinality_bucket") in BUCKET_REPRESENTATIVES:
+            data["cardinality"] = BUCKET_REPRESENTATIVES[data["cardinality_bucket"]]
+        return data
 
     @model_validator(mode="after")
     def _derive_bucket(self):

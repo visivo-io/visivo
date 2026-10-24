@@ -15,7 +15,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from visivo.agent.charting.rules import load_insight_design, load_interactivity
 from visivo.agent.charting.schema import ShapeCard
@@ -258,6 +258,16 @@ class _Builder:
         return wired, unwired
 
 
+def _plain_card_error(raw, error):
+    problems = []
+    for item in error.errors():
+        field = ".".join(str(part) for part in item["loc"]) or "card"
+        message = item["msg"].removeprefix("Value error, ")
+        problems.append(f"{field}: {message}")
+    column = raw.get("column", "?")
+    return f"card for column {column!r} is invalid ({'; '.join(problems)})"
+
+
 def _parse_cards(cards):
     parsed = []
     for raw in cards:
@@ -266,7 +276,10 @@ def _parse_cards(cards):
             continue
         if not isinstance(raw, dict) or "model" not in raw:
             raise InputsError("each card needs a 'model' alongside its shape-card fields")
-        parsed.append(InputCard(**raw))
+        try:
+            parsed.append(InputCard(**raw))
+        except ValidationError as error:
+            raise InputsError(_plain_card_error(raw, error))
     return parsed
 
 
