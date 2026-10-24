@@ -137,7 +137,7 @@ describe('renaming through the edit form', () => {
     });
   });
 
-  test('a changed name opens the impact dialog instead of saving', async () => {
+  test('a changed name saves under the current name, then opens the impact dialog', async () => {
     await renderEdit();
 
     fireEvent.change(screen.getByLabelText(/Metric Name/), { target: { value: 'purchases' } });
@@ -147,8 +147,39 @@ describe('renaming through the edit form', () => {
     expect(renameApi.fetchRenameImpact).toHaveBeenCalledWith('metrics', 'orders', 'purchases', {
       projectId: 'proj-1',
     });
-    // The ordinary save path must not also fire.
-    expect(mockSaveNow).not.toHaveBeenCalled();
+    expect(mockSaveNow).toHaveBeenCalledWith(expect.objectContaining({ name: 'orders' }));
+  });
+
+  test('a Save that renames and edits the expression keeps the expression', async () => {
+    await renderEdit();
+
+    fireEvent.change(screen.getByLabelText(/Metric Name/), { target: { value: 'purchases' } });
+    fireEvent.change(screen.getByLabelText('Expression'), {
+      target: { value: 'sum(${ref(x).b})' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByTestId('rename-impact-dialog');
+    fireEvent.click(screen.getByTestId('rename-impact-confirm'));
+
+    await waitFor(() => expect(renameApi.renameResource).toHaveBeenCalled());
+    expect(mockSaveNow).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'orders', expression: 'sum(${ref(x).b})' })
+    );
+    expect(mockSaveNow.mock.invocationCallOrder[0]).toBeLessThan(
+      renameApi.renameResource.mock.invocationCallOrder[0]
+    );
+  });
+
+  test('a failed field save stops the rename', async () => {
+    mockSaveNow.mockResolvedValue({ success: false, error: 'boom' });
+    await renderEdit();
+
+    fireEvent.change(screen.getByLabelText(/Metric Name/), { target: { value: 'purchases' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockSaveNow).toHaveBeenCalled());
+    expect(renameApi.fetchRenameImpact).not.toHaveBeenCalled();
+    expect(renameApi.renameResource).not.toHaveBeenCalled();
   });
 
   test('an unchanged name saves normally', async () => {

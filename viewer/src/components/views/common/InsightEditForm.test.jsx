@@ -27,6 +27,13 @@ import selectEvent from 'react-select-event';
 import InsightEditForm from './InsightEditForm';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { INTERACTION_HELP, interactionHelpText } from '../../../schemas/interactionHelp';
+import { fetchRenameImpact, renameResource } from '../../../api/rename';
+
+jest.mock('../../../api/rename', () => ({
+  ...jest.requireActual('../../../api/rename'),
+  fetchRenameImpact: jest.fn(),
+  renameResource: jest.fn(),
+}));
 
 // TracePropsEditor stub: echo ownerName + props.type, and expose buttons that
 // drive onChange so we can assert the parent persists the edited props.
@@ -719,5 +726,36 @@ describe('InsightEditForm blocks Save on invalid trace props (VIS-993)', () => {
     fireEvent.click(screen.getByTestId('tpe-report-valid'));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe('InsightEditForm — a Save that renames and edits (VIS-1538)', () => {
+  test('saves the edited description under the current name, then renames', async () => {
+    fetchRenameImpact.mockResolvedValue({
+      target: { type: 'insights', name: 'rev', new_name: 'revenue', status: 'published' },
+      references: [],
+    });
+    renameResource.mockResolvedValue({ renamed: true, references: [] });
+    seed({
+      fetchInsights: jest.fn(async () => {}),
+      closeWorkspaceTab: jest.fn(),
+      openWorkspaceTab: jest.fn(),
+    });
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ insight: publishedInsight, isCreate: false, onSave });
+
+    setName('revenue');
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Edited' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(await screen.findByTestId('rename-impact-confirm'));
+
+    await waitFor(() =>
+      expect(renameResource).toHaveBeenCalledWith('insights', 'rev', 'revenue', expect.anything())
+    );
+    expect(onSave).toHaveBeenCalledWith(
+      'insight',
+      'rev',
+      expect.objectContaining({ name: 'rev', description: 'Edited' })
+    );
   });
 });

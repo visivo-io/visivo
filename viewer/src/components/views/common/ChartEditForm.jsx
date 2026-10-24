@@ -166,27 +166,13 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
-
-    // A changed name in edit mode is a RENAME — its own server operation,
-
-    // confirmed first, because every `${ref()}` to this object moves with it.
-
-    if (isEditMode && rename.nameChanged) {
-
-      rename.start();
-
-      return;
-
-    }
-    if (!validateForm()) return;
-
+  const persist = async nameToSave => {
     setSaving(true);
     setSaveError(null);
 
     // Build config object
     const config = {
-      name,
+      name: nameToSave,
     };
 
     // Combine ref insights with embedded insights, preserving the original
@@ -222,13 +208,24 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     }
 
     // Call unified save - parent handles routing and panel close
-    const result = await onSave('chart', name, config);
+    const result = await onSave('chart', nameToSave, config);
 
     setSaving(false);
 
     if (!result?.success) {
       setSaveError(result?.error || 'Failed to save chart');
+      return false;
     }
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+    if (isEditMode && rename.nameChanged) {
+      await rename.start(() => persist(chart.name));
+      return;
+    }
+    await persist(name);
   };
 
   const handleDelete = async () => {

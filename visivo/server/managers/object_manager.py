@@ -332,6 +332,7 @@ class ObjectManager(ABC, Generic[T]):
         """Clear all cached objects (e.g., after successful publish)."""
         with self._lock:
             self._cached_objects.clear()
+            self._renames.clear()
 
     def has_unpublished_changes(self) -> bool:
         """

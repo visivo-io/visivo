@@ -256,6 +256,17 @@ class TestObjectManager:
 
         assert len(manager.cached_objects) == 0
 
+    def test_clear_cache_forgets_draft_renames(self):
+        """A rename record outliving its draft would send the next commit to
+        look for a name the YAML no longer holds."""
+        manager = ConcreteObjectManager()
+        manager.save("purchases", {"name": "purchases"})
+        manager.record_rename("orders", "purchases")
+
+        manager.clear_cache()
+
+        assert manager.renames == {}
+
     def test_clear_cache_preserves_published(self):
         """Test that clear_cache() does not affect published objects."""
         manager = ConcreteObjectManager()

@@ -18,6 +18,13 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import selectEvent from 'react-select-event';
 import TableEditForm from './TableEditForm';
 import useStore, { ObjectStatus } from '../../../stores/store';
+import { fetchRenameImpact, renameResource } from '../../../api/rename';
+
+jest.mock('../../../api/rename', () => ({
+  ...jest.requireActual('../../../api/rename'),
+  fetchRenameImpact: jest.fn(),
+  renameResource: jest.fn(),
+}));
 
 // The pivot RefListField editors are exercised by their own tests — keep this
 // file focused on the form logic (matches editForms.smoke.test.jsx).
@@ -489,5 +496,46 @@ describe('TableEditForm — delete flow', () => {
 
     expect(screen.queryByRole('button', { name: 'Confirm Delete' })).not.toBeInTheDocument();
     expect(deleteTable).not.toHaveBeenCalled();
+  });
+});
+
+describe('TableEditForm — a Save that renames and edits (VIS-1538)', () => {
+  test('saves the edited rows-per-page under the current name, then renames', async () => {
+    fetchRenameImpact.mockResolvedValue({
+      target: { type: 'tables', name: 't1', new_name: 't2', status: 'published' },
+      references: [],
+    });
+    renameResource.mockResolvedValue({ renamed: true, references: [] });
+    seed({
+      insights: [{ name: 'rev_insight' }],
+      closeWorkspaceTab: jest.fn(),
+      openWorkspaceTab: jest.fn(),
+      fetchTables: jest.fn(),
+    });
+    const onSave = jest.fn(async () => ({ success: true }));
+    renderForm({
+      table: {
+        name: 't1',
+        status: ObjectStatus.PUBLISHED,
+        // eslint-disable-next-line no-template-curly-in-string
+        config: { name: 't1', data: '${ref(rev_insight)}', rows_per_page: 100 },
+      },
+      isCreate: false,
+      onSave,
+    });
+
+    fireEvent.change(screen.getByLabelText(/Table Name/), { target: { value: 't2' } });
+    await makeDirty('50');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(await screen.findByTestId('rename-impact-confirm'));
+
+    await waitFor(() =>
+      expect(renameResource).toHaveBeenCalledWith('tables', 't1', 't2', expect.anything())
+    );
+    expect(onSave).toHaveBeenCalledWith(
+      'table',
+      't1',
+      expect.objectContaining({ name: 't1', rows_per_page: 50, data: 'ref(rev_insight)' })
+    );
   });
 });
