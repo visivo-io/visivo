@@ -89,6 +89,36 @@ class TestFindInput:
         assert res.find_input(_app(), "region") is None
 
 
+class TestListSources:
+    def test_drafts_are_listed_and_deleted_sources_are_not(self):
+        from visivo.server.managers.source_manager import SourceManager
+
+        published = DuckdbSourceFactory(name="wh")
+        draft = DuckdbSourceFactory(name="draft_wh")
+        manager = SourceManager()
+        manager._published_objects = {"wh": published, "gone": DuckdbSourceFactory(name="gone")}
+        manager.save("draft_wh", draft)
+        manager.mark_for_deletion("gone")
+        app = Mock()
+        app.source_manager = manager
+
+        assert sorted(s.name for s in res.list_sources(app)) == ["draft_wh", "wh"]
+
+    def test_falls_back_to_the_committed_project(self):
+        committed = DuckdbSourceFactory(name="wh")
+        app = Mock(spec=["project"])
+        app.project.sources = [committed]
+
+        assert res.list_sources(app) == [committed]
+
+    def test_a_manager_that_raises_falls_back_to_the_committed_project(self):
+        committed = DuckdbSourceFactory(name="wh")
+        app = _app(committed_sources=[committed])
+        app.source_manager.get_sources_list.side_effect = RuntimeError("boom")
+
+        assert res.list_sources(app) == [committed]
+
+
 class TestFindObject:
     def test_the_three_wrappers_share_one_walk(self):
         source = DuckdbSourceFactory(name="wh")
