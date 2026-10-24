@@ -16,6 +16,8 @@ import {
 } from '../utils/expressionCodec';
 
 const INTERACTION_DEF = projectSchema.$defs.InsightInteraction;
+// Fields every Visivo BaseModel inherits; they are parser bookkeeping, not interaction types.
+const BASE_MODEL_FIELDS = ['path'];
 
 /**
  * Pull the three `- <field>: ?{ ... }` lines out of the InsightInteraction
@@ -33,7 +35,10 @@ function examplesFromDocstring(description) {
 
 describe('interactionHelp is derived from the model, not hand-written', () => {
   it('covers exactly the fields InsightInteraction declares', () => {
-    expect(INTERACTION_TYPES).toEqual(Object.keys(INTERACTION_DEF.properties));
+    const declared = Object.keys(INTERACTION_DEF.properties).filter(
+      field => !BASE_MODEL_FIELDS.includes(field)
+    );
+    expect(INTERACTION_TYPES).toEqual(declared);
   });
 
   it.each(INTERACTION_TYPES)(
