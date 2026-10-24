@@ -268,3 +268,64 @@ class TestCachedMappingSchemaProviderDialect:
         # Standard types should parse without dialect
         assert isinstance(schema["users"]["id"], exp.DataType)
         assert isinstance(schema["users"]["name"], exp.DataType)
+
+
+class TestCachedMappingSchemaProviderDatabases:
+    """A ``{database: {schema: {table}}}`` schema, which DuckDB sources store."""
+
+    STORED = {
+        "sqlglot_schema": {
+            "saas": {
+                "main": {"orders": {"id": "INT"}, "users": {"id": "INT"}},
+                "analytics": {"fct_mrr": {"mrr": "DOUBLE", "month": "DATE"}},
+            },
+            "other": {"main": {"orders": {"x": "INT"}}},
+        },
+        "metadata": {"database": "saas"},
+    }
+
+    def test_full_schema_keeps_three_levels(self):
+        provider = CachedMappingSchemaProvider(self.STORED)
+
+        schema = provider.get_full_schema()
+
+        assert provider.is_nested
+        assert provider.default_catalog == "saas"
+        assert provider.default_schema is None
+        assert isinstance(schema["saas"]["analytics"]["fct_mrr"]["mrr"], exp.DataType)
+        assert provider.table_count == 4
+        assert provider.column_count == 5
+
+    def test_filter_keeps_every_path_to_a_requested_table(self):
+        provider = CachedMappingSchemaProvider(self.STORED)
+
+        filtered = provider.get_filtered_schema({"orders"}, schema_names={"other"})
+
+        assert filtered == {
+            "saas": {"main": {"orders": provider.get_full_schema()["saas"]["main"]["orders"]}},
+            "other": {"main": {"orders": provider.get_full_schema()["other"]["main"]["orders"]}},
+        }
+
+    def test_filter_skips_unrequested_tables(self):
+        provider = CachedMappingSchemaProvider(self.STORED)
+
+        assert provider.get_filtered_schema({"fct_mrr"}) == {
+            "saas": {
+                "analytics": {"fct_mrr": provider.get_full_schema()["saas"]["analytics"]["fct_mrr"]}
+            }
+        }
+
+    def test_malformed_entries_are_skipped(self):
+        provider = CachedMappingSchemaProvider(
+            {
+                "sqlglot_schema": {
+                    "saas": {"main": {"orders": {"id": "INT"}, "bad": "x"}, "junk": 1},
+                    "skip": "x",
+                },
+                "metadata": {},
+            }
+        )
+
+        assert provider.get_full_schema() == {
+            "saas": {"main": {"orders": {"id": exp.DataType.build("INT")}}}
+        }

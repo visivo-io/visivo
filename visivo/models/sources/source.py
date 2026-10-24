@@ -36,6 +36,15 @@ class Source(ABC, NamedModel):
         """
         raise NotImplementedError(f"No get_schema method implemented for {self.type}")
 
+    def get_default_context(self) -> Dict[str, str]:
+        """The ``catalog`` and ``schema`` that unqualified table names resolve against.
+
+        Read when a model's columns are inferred, not when the schema is stored, so
+        changing it never requires a new schema file. An empty dict means the stored
+        schema's own metadata decides.
+        """
+        return {}
+
     @abstractmethod
     def description(self):
         """Return a description of this source for logging and error messages."""

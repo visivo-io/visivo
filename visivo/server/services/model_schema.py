@@ -1,7 +1,7 @@
 """A model's output columns, inferred from its SQL and its source's cached schema."""
 
 from visivo.models.models.sql_model import SqlModel
-from visivo.query.model_schema_inference import infer_model_columns
+from visivo.query.model_schema_inference import infer_model_columns, source_default_context
 from visivo.query.schema_aggregator import SchemaAggregator
 
 UNKNOWN_TYPE = "UNKNOWN"
@@ -25,6 +25,7 @@ def infer_columns(output_dir, *, sql, source, model_hash=None):
         model_hash=model_hash,
         stored_source_schema=stored,
         strict=False,
+        source_context=source_default_context(source),
     )
     columns = {
         name: str(dtype) if dtype is not None else UNKNOWN_TYPE
