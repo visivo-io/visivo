@@ -181,7 +181,7 @@ class TestOnProjectChangeErrorHandling:
         mocker.patch("visivo.commands.serve_phase.compile_phase", return_value=compiled)
         mocker.patch(
             "visivo.commands.serve_phase.run_phase",
-            return_value=mocker.Mock(project=compiled),
+            return_value=mocker.Mock(project=compiled, failed_job_results=[]),
         )
 
         on_project_change(one_shot=True)
