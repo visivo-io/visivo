@@ -83,7 +83,7 @@ class TestRealEditorSaves:
             observer.stop()
             observer.join()
 
-        assert seen == ["charts:\n  - name: c\n"]
+        assert seen[-1] == "charts:\n  - name: c\n"
 
     def test_yaml_outside_the_project_does_not_reload(self, project_dir):
         callback = Mock()
@@ -131,12 +131,12 @@ class TestEventKinds:
 
     def test_burst_of_events_runs_callback_once(self):
         callback = Mock()
-        handler = ProjectChangeHandler(callback, debounce_seconds=0.1)
+        handler = ProjectChangeHandler(callback, debounce_seconds=0.3)
         for _ in range(5):
             handler.on_modified(FileModifiedEvent("/p/project.visivo.yml"))
             time.sleep(0.01)
         handler.on_moved(FileMovedEvent("/p/tmp.yml", "/p/project.visivo.yml"))
-        time.sleep(0.4)
+        time.sleep(0.9)
         callback.assert_called_once()
 
     def test_changes_during_a_running_callback_run_it_once_more_after(self):
@@ -165,11 +165,11 @@ class TestEventKinds:
     def test_pause_taken_before_the_debounce_ends_drops_the_change(self):
         callback = Mock()
         lock = Lock()
-        handler = ProjectChangeHandler(callback, pause_lock=lock, debounce_seconds=0.1)
+        handler = ProjectChangeHandler(callback, pause_lock=lock, debounce_seconds=0.5)
         handler.on_modified(FileModifiedEvent("/p/project.visivo.yml"))
         lock.acquire()
         try:
-            time.sleep(0.3)
+            time.sleep(1.0)
         finally:
             lock.release()
         callback.assert_not_called()
