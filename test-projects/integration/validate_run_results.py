@@ -170,7 +170,11 @@ class VisivoRunValidator:
     def _validate_duckdb_schema(self, schema_data, source_name) -> bool:
         """Validate DuckDB-specific schema expectations."""
         # Expected DuckDB schema structure for integration test
-        expected_table_names = {"data", "second_test_table", "test_table"}
+        expected_table_names = {
+            "test.main.data",
+            "test.main.second_test_table",
+            "test.main.test_table",
+        }
         expected_tables = 3
         expected_columns = 6
 
