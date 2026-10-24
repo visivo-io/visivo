@@ -231,6 +231,22 @@ describe('commitStore (VIS-806)', () => {
       expect(emitFirstPublishTelemetry).not.toHaveBeenCalled();
     });
 
+    test('surfaces the message of a Flask 500 that answers {error}', async () => {
+      useStore.setState({ pendingCount: 2, hasUncommittedChanges: true });
+      branchingApi.commitDraft.mockResolvedValue({
+        status: 500,
+        body: { error: 'duplicate key "models" in project.visivo.yml' },
+      });
+
+      const result = await useStore.getState().commitChanges();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('duplicate key "models" in project.visivo.yml');
+      const state = useStore.getState();
+      expect(state.commitError).toBe('duplicate key "models" in project.visivo.yml');
+      expect(state.pendingCount).toBe(2);
+    });
+
     test('refuses without an active project', async () => {
       useStore.setState({ project: null });
 
