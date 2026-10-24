@@ -3,11 +3,21 @@ agent's tools, a rename) goes through ``ObjectManager.save``, which refuses a
 name another type holds, so the draft tier never holds a project that the
 parse would reject."""
 
+import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 
+from tests.factories.model_factories import (
+    MetricFactory,
+    ProjectFactory,
+    SourceFactory,
+    SqlModelFactory,
+)
+from visivo.agent.tools import ToolError, call
+from visivo.commands.utils import create_file_database
+from visivo.server.flask_app import FlaskApp
 from visivo.server.managers.chart_manager import ChartManager
 from visivo.server.names import NameTakenError, name_clash
 
@@ -110,3 +120,118 @@ class TestTheCheckItself:
         own = ChartManager()
         app = SimpleNamespace(chart_manager=own)
         assert name_clash(app, own, "x", object()) is None
+
+
+SCOPE_ERROR = (
+    "Metric/dimension name 'total_units' in model 'subs' collides with a project-level name"
+)
+SUBS_SQL = "select 1 as units"
+
+
+def _subs_model(**fields):
+    return {"name": "subs", "sql": SUBS_SQL, "source": "ref(source)", **fields}
+
+
+@pytest.fixture
+def published_inline_app(output_dir):
+    """A project whose model ``subs`` defines the metric ``total_units`` inline."""
+    abs_output_dir = os.path.abspath(output_dir)
+    source = SourceFactory(database=f"{abs_output_dir}/test.sqlite")
+    model = SqlModelFactory(
+        name="subs",
+        sql=SUBS_SQL,
+        metrics=[MetricFactory(name="total_units", expression="sum(units)")],
+    )
+    project = ProjectFactory(sources=[source], models=[model])
+    create_file_database(url=source.url(), output_dir=abs_output_dir)
+    app = FlaskApp(abs_output_dir, project, working_dir=abs_output_dir)
+    app.app.config["TESTING"] = True
+    return app
+
+
+class TestAProjectLevelFieldMayNotShadowAModelsInlineField:
+    """``NamesValidator`` refuses a model's inline metric or dimension that shares
+    a name with a project-level object. The save path refuses it too, so no writer
+    can stage a draft that commits to a project that does not compile."""
+
+    def test_the_agent_cannot_add_a_project_level_twin_of_a_published_inline_metric(
+        self, published_inline_app
+    ):
+        config = {"name": "total_units", "expression": "sum(${ref(subs).units})"}
+
+        with pytest.raises(ToolError, match=SCOPE_ERROR):
+            call(published_inline_app, "write_metric", {"config": config})
+
+        assert published_inline_app.metric_manager.cached_objects == {}
+
+    def test_the_api_cannot_add_one_either(self, published_inline_app):
+        client = published_inline_app.app.test_client()
+
+        response = _post(
+            client, "metrics", "total_units", {"expression": "sum(${ref(subs).units})"}
+        )
+
+        assert response.status_code == 409
+        assert SCOPE_ERROR in response.get_json()["error"]
+        assert published_inline_app.metric_manager.cached_objects == {}
+
+    def test_validate_reports_it_before_a_write(self, published_inline_app):
+        config = {"name": "total_units", "expression": "sum(${ref(subs).units})"}
+
+        result = call(published_inline_app, "validate_metric", {"config": config})
+
+        assert result["valid"] is False
+        assert SCOPE_ERROR in result["error"]
+
+    def test_the_inline_metric_itself_can_still_be_edited(self, published_inline_app):
+        client = published_inline_app.app.test_client()
+
+        response = _post(
+            client, "metrics", "total_units", {"expression": "max(units)", "parentModel": "subs"}
+        )
+
+        assert response.status_code == 200
+        assert published_inline_app.metric_manager.get("total_units").expression == "max(units)"
+
+    def test_a_model_that_drops_its_inline_metric_frees_the_name(self, published_inline_app):
+        call(published_inline_app, "write_model", {"config": _subs_model()})
+        config = {"name": "total_units", "expression": "sum(${ref(subs).units})"}
+
+        assert call(published_inline_app, "write_metric", {"config": config})["status"] == "draft"
+
+    def test_the_agent_cannot_give_a_draft_model_an_inline_twin_of_a_draft_metric(
+        self, integration_app
+    ):
+        config = {"name": "total_units", "expression": "sum(${ref(subs).units})"}
+        call(integration_app, "write_metric", {"config": config})
+        model = _subs_model(metrics=[{"name": "total_units", "expression": "sum(units)"}])
+
+        with pytest.raises(ToolError, match=SCOPE_ERROR):
+            call(integration_app, "write_model", {"config": model})
+
+        assert integration_app.model_manager.get("subs") is None
+
+    def test_nor_can_the_api(self, integration_app, integration_client):
+        config = {"name": "total_units", "expression": "sum(${ref(subs).units})"}
+        call(integration_app, "write_metric", {"config": config})
+        model = _subs_model(metrics=[{"name": "total_units", "expression": "sum(units)"}])
+
+        response = _post(integration_client, "models", "subs", model)
+
+        assert response.status_code == 409
+        assert SCOPE_ERROR in response.get_json()["error"]
+
+    def test_a_metric_cannot_take_the_name_of_a_draft_models_inline_metric(self, integration_app):
+        model = _subs_model(metrics=[{"name": "total_units", "expression": "sum(units)"}])
+        call(integration_app, "write_model", {"config": model})
+        config = {"name": "total_units", "expression": "sum(${ref(subs).units})"}
+
+        with pytest.raises(ToolError, match=SCOPE_ERROR):
+            call(integration_app, "write_metric", {"config": config})
+
+    def test_an_insight_cannot_take_it_either(self, integration_app):
+        model = _subs_model(metrics=[{"name": "total_units", "expression": "sum(units)"}])
+        call(integration_app, "write_model", {"config": model})
+
+        with pytest.raises(ToolError, match=SCOPE_ERROR):
+            call(integration_app, "write_insight", {"config": {"name": "total_units", **INSIGHT}})
