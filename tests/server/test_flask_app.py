@@ -535,3 +535,45 @@ def test_deploys_follow_the_host_this_serve_is_bound_to(output_dir):
     assert mock_get.call_args.args[0].startswith("https://app.development.visivo.io")
     # And the token looked up is the one for THAT deployment, not production's.
     assert token.call_args.kwargs["host"] == "https://app.development.visivo.io"
+
+
+def test_load_example_resets_served_project_before_change_handler(output_dir, monkeypatch):
+    """VIS-1582: the change handler diffs the compiled project against the served one.
+
+    Loading an example parses it into the served project first. If the served
+    project is not then reset, the handler compares the example with itself,
+    sees no change and never builds the insights.
+    """
+    flask_app = FlaskApp(os.path.abspath(output_dir), ProjectFactory())
+    flask_app.app.config["TESTING"] = True
+    seen = {}
+
+    def on_project_change():
+        seen["same_as_example"] = flask_app.matches_served_project(example)
+
+    example = ProjectFactory(name="example_project")
+    flask_app.hot_reload_server = MagicMock()
+    flask_app.hot_reload_server.on_project_change.side_effect = on_project_change
+    parser = MagicMock()
+    parser.parse.return_value = example
+    monkeypatch.setattr(
+        "visivo.commands.init_phase.load_example_project", lambda *a, **k: "project.visivo.yml"
+    )
+    monkeypatch.setattr(
+        "visivo.server.views.project_views.Discover",
+        lambda **kwargs: MagicMock(project_file="project.visivo.yml", files=[]),
+    )
+    monkeypatch.setattr(
+        "visivo.server.views.project_views.ParserFactory",
+        lambda: MagicMock(build=lambda **kwargs: parser),
+    )
+
+    response = flask_app.app.test_client().post(
+        "/api/project/load_example/",
+        data=json.dumps({"project_name": "demo", "project_dir": output_dir}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    flask_app.hot_reload_server.on_project_change.assert_called_once()
+    assert seen["same_as_example"] is False
