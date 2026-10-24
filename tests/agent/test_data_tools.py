@@ -987,3 +987,90 @@ class TestInsightProbe:
 
         monkeypatch.setattr(draft_insight, "execute_and_get_result", slow)
         assert "warnings" not in self._write(integration_app)
+
+
+class TestInputProbe:
+    """An input write runs the queries that fill its widget, so an options
+    query that fails says so at the write instead of leaving an empty
+    dropdown."""
+
+    @pytest.fixture(autouse=True)
+    def model(self, integration_app):
+        source = _source(integration_app).name
+        config = {
+            "name": "orders_q",
+            "sql": "SELECT x, y FROM test_table",
+            "source": f"ref({source})",
+        }
+        call(integration_app, "write_model", {"config": config})
+
+    def _write(self, app, options, **extra):
+        config = {"name": "pick_x", "type": "single-select", "options": options, **extra}
+        return call(app, "write_input", {"config": config})
+
+    def test_an_options_query_that_runs_carries_no_warning(self, integration_app):
+        result = self._write(integration_app, "?{ SELECT DISTINCT x FROM ${ref(orders_q)} }")
+
+        assert "warnings" not in result
+
+    def test_an_options_query_that_fails_comes_back_with_its_error(self, integration_app):
+        result = self._write(integration_app, "?{ SELECT DISTINCT nope FROM ${ref(orders_q)} }")
+
+        [failure, fix] = result["warnings"]
+        assert failure.startswith("The input's query fails (`options`: ")
+        assert "nope" in failure
+        assert "write the input again" in fix
+        assert result["status"] == "draft"
+
+    def test_static_options_have_nothing_to_probe(self, integration_app):
+        obj = integration_app.input_manager.validate_object(
+            {"name": "pick_x", "type": "single-select", "options": ["a", "b"]}
+        )
+
+        assert data_tools.probe_input(integration_app, obj) == []
+
+    def test_a_timeout_is_not_judged(self, integration_app, monkeypatch):
+        import visivo.jobs.run_input_job as run_input_job
+        from visivo.jobs.run_model_data_job import QueryTimeout
+
+        def slow(*args, **kwargs):
+            raise QueryTimeout("slow")
+
+        monkeypatch.setattr(run_input_job, "execute_and_get_result", slow)
+
+        assert "warnings" not in self._write(
+            integration_app, "?{ SELECT DISTINCT x FROM ${ref(orders_q)} }"
+        )
+
+
+class TestPreviewInsightInputHint:
+    def test_a_query_based_input_with_no_options_yet_points_at_input_values(self, integration_app):
+        source = _source(integration_app).name
+        model = {
+            "name": "orders_q",
+            "sql": "SELECT x, y FROM test_table",
+            "source": f"ref({source})",
+        }
+        call(integration_app, "write_model", {"config": model})
+        call(
+            integration_app,
+            "write_input",
+            {
+                "config": {
+                    "name": "min_x",
+                    "type": "single-select",
+                    "options": "?{ SELECT DISTINCT x FROM ${ref(orders_q)} }",
+                }
+            },
+        )
+        config = {
+            "name": "by_x",
+            "props": {"type": "bar", "x": "?{${ref(orders_q).x}}", "y": "?{${ref(orders_q).y}}"},
+            "interactions": [{"filter": "?{${ref(orders_q).x} > ${ref(min_x).value}}"}],
+        }
+
+        with pytest.raises(ToolError) as refused:
+            call(integration_app, "preview_insight", {"config": config})
+
+        assert "Query-based input options not yet available" in str(refused.value)
+        assert "pass 'input_values'" in str(refused.value)
