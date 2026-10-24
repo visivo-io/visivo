@@ -3,7 +3,7 @@
 Tests let you **quickly** validate the data behind your insights and assert invariants across your project.
 
 !!! note
-    Tests are run with the `visivo test` command (_[docs](../reference/cli.md#test)_).
+    Tests are run with the `visivo test` command (_[docs](../reference/cli.md#test)_). Tests read the insight data that `visivo run` wrote to `target/`, so run `visivo run` first and again whenever your data or insights change.
 
 A test is any boolean Python expression that can read insight data through the `${ref(...)}` context. Insight prop arrays come back as numpy arrays, so numpy is available out of the box.
 

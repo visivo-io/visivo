@@ -10,8 +10,7 @@ from tests.factories.model_factories import (
 
 from visivo.testing.runner import Runner
 from tests.support.utils import temp_folder
-import json
-import os
+from tests.support.insight_output import write_insight_output
 
 
 def test_TestQueryStringFactory_errors(capsys):
@@ -35,12 +34,11 @@ def test_TestQueryStringFactory_errors(capsys):
     )
 
     output_dir = temp_folder()
-    folders = f"{output_dir}/two_test_insight"
-    data = {"two_test_insight": {"props.x": [1, 2, 3, 4, 5, 6], "props.y": [1, 1, 2, 3, 5, 8]}}
-    os.makedirs(folders, exist_ok=True)
-    json_file = open(f"{folders}/data.json", "w")
-    json_file.write(json.dumps(data))
-    json_file.close()
+    write_insight_output(
+        output_dir,
+        "two_test_insight",
+        {"props.x": [1, 2, 3, 4, 5, 6], "props.y": [1, 1, 2, 3, 5, 8]},
+    )
 
     alert = AlertFactory()
     project = ProjectFactory(insights=[insight], dashboards=[DashboardFactory()], alerts=[alert])
@@ -59,6 +57,23 @@ def test_TestQueryStringFactory_errors(capsys):
         dag=dag,
     ).run()
     captured = capsys.readouterr()
-    assert "project.tests[0]: >{ sum( ${ ref(two_test_insight).props.x } ) == 1 }" in captured.out
+    assert (
+        "project.tests[0]: >{ sum( ${ ref(two_test_insight).props.x } ) == 1 } (actual: 21 == 1)"
+        in captured.out
+    )
     assert "project.tests[1]:" not in captured.out
     assert project.alerts[0].destinations[0].called
+
+
+def test_runner_reports_error_when_run_output_is_missing(capsys):
+    insight = Insight(name="no_output", props={"type": "scatter", "x": "?{x}", "y": "?{y}"})
+    test = Test(name="t", assertions=[">{ sum( ${ ref(no_output).props.x } ) == 1 }"])
+    test.path = "project.tests[0]"
+    project = Project(
+        **ProjectFactory(insights=[insight], dashboards=[DashboardFactory()]).model_dump()
+    )
+
+    Runner(tests=[test], project=project, output_dir=temp_folder(), dag=project.dag()).run()
+
+    captured = capsys.readouterr()
+    assert "Run `visivo run` before `visivo test`" in captured.out
