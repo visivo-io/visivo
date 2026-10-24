@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import Chart from './Chart';
 import { withProviders } from '../../utils/test-utils';
 import { BUILTIN_THEMES } from '../../theme/builtinThemes';
@@ -610,5 +610,42 @@ describe('Chart — a container resize reaches Plotly (M28)', () => {
       await waitFor(() => expect(capturedData).not.toBeNull());
       expect(capturedData.map(trace => trace.name)).toEqual(['New accounts', 'Churned accounts']);
     });
+  });
+
+  describe('input refs in layout strings', () => {
+    /* eslint-disable no-template-curly-in-string */
+    const titleLayout = () => ({
+      yaxis: { title: { text: '${ref(metric_pick).value}' } },
+      title: { text: 'Sales by ${ref(metric_pick).value} / ${metric_pick.value} (${ref(missing).value})' },
+    });
+
+    test('resolves an input ref in a layout title to the current value', async () => {
+      chart.layout = titleLayout();
+      useStore.setState({ inputJobs: { metric_pick: { value: 'revenue' } } });
+      render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+      await waitFor(() => expect(capturedLayout).not.toBeNull());
+      expect(capturedLayout.yaxis.title.text).toBe('revenue');
+      expect(capturedLayout.title.text).toBe('Sales by revenue / revenue (${ref(missing).value})');
+    });
+
+    test('updates the title when the input changes', async () => {
+      chart.layout = titleLayout();
+      useStore.setState({ inputJobs: { metric_pick: { value: 'revenue' } } });
+      render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+      await waitFor(() => expect(capturedLayout.yaxis.title.text).toBe('revenue'));
+      act(() => {
+        useStore.setState({ inputJobs: { metric_pick: { value: 'profit' } } });
+      });
+      await waitFor(() => expect(capturedLayout.yaxis.title.text).toBe('profit'));
+    });
+
+    test('does not mutate the authored layout', async () => {
+      chart.layout = titleLayout();
+      useStore.setState({ inputJobs: { metric_pick: { value: 'revenue' } } });
+      render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+      await waitFor(() => expect(capturedLayout).not.toBeNull());
+      expect(chart.layout.yaxis.title.text).toBe('${ref(metric_pick).value}');
+    });
+    /* eslint-enable no-template-curly-in-string */
   });
 });
