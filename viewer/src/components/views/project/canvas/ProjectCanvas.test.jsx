@@ -71,6 +71,8 @@ jest.mock('./BrokenRefCard', () => {
   return { __esModule: true, default: MockCard };
 });
 
+const flushPromises = () => act(() => Promise.resolve());
+
 describe('ProjectCanvas (VIS-767 / VIS-768)', () => {
   test('renders Dashboard', () => {
     renderWithRouter(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
@@ -147,10 +149,11 @@ describe('ProjectCanvas — broken-ref repair wiring (VIS-792 / L-1)', () => {
     mockBrokenRefArgs = { type: 'chart', name: 'ghost', itemPath: 'row.0.item.0' };
     useStore.setState({
       dashboards: [SALES],
-      openCreateChartModal: jest.fn(),
-      openCreateTableModal: jest.fn(),
-      openCreateMarkdownModal: jest.fn(),
-      openCreateInputModal: jest.fn(),
+      createWorkspaceObject: jest
+        .fn()
+        .mockImplementation(async type => ({ success: true, name: `new-${type}`, type })),
+      openWorkspaceTab: jest.fn(),
+      showWorkspaceToast: jest.fn(),
     });
   });
 
@@ -227,37 +230,56 @@ describe('ProjectCanvas — broken-ref repair wiring (VIS-792 / L-1)', () => {
     expect(commit).not.toHaveBeenCalled();
   });
 
-  test.each([
-    ['chart', 'openCreateChartModal'],
-    ['table', 'openCreateTableModal'],
-    ['markdown', 'openCreateMarkdownModal'],
-    ['input', 'openCreateInputModal'],
-  ])('Create-new %s routes to its create modal + fires inline_create_used', (kind, storeFn) => {
-    renderCanvas();
-    fireEvent.click(screen.getByTestId(`mock-create-${kind}`));
-    expect(useStore.getState()[storeFn]).toHaveBeenCalledTimes(1);
-    const evt = events.find(e => e.eventName === 'inline_create_used');
-    expect(evt.payload).toEqual({ source: 'broken_ref', kind });
-  });
+  test.each(['chart', 'table', 'markdown', 'input'])(
+    'Create-new %s drafts the object, fills the broken slot and opens it',
+    async kind => {
+      renderCanvas();
+      fireEvent.click(screen.getByTestId(`mock-create-${kind}`));
+    await flushPromises();
+      expect(useStore.getState().createWorkspaceObject).toHaveBeenCalledWith(kind);
+      expect(commit).toHaveBeenCalledTimes(1);
+      const [name, nextConfig, meta] = commit.mock.calls[0];
+      expect(name).toBe('sales');
+      expect(meta).toEqual({ kind: 'picker_insert' });
+      expect(nextConfig.rows[0].items[0]).toEqual({ width: 6, [kind]: `ref(new-${kind})` });
+      expect(useStore.getState().openWorkspaceTab).toHaveBeenCalledWith({
+        id: `${kind}:new-${kind}`,
+        type: kind,
+        name: `new-${kind}`,
+      });
+      expect(events.find(e => e.eventName === 'inline_create_used').payload).toEqual({
+        source: 'broken_ref',
+        kind,
+      });
+    }
+  );
 
-  test('Create-new with an unknown type opens no modal (still telemeters the intent)', () => {
+  test('Create-new with an unknown type creates nothing', async () => {
     renderCanvas();
     fireEvent.click(screen.getByTestId('mock-create-unknown'));
-    ['openCreateChartModal', 'openCreateTableModal', 'openCreateMarkdownModal', 'openCreateInputModal'].forEach(
-      fn => expect(useStore.getState()[fn]).not.toHaveBeenCalled()
-    );
-    expect(events.find(e => e.eventName === 'inline_create_used')?.payload).toEqual({
-      source: 'broken_ref',
-      kind: 'mystery',
-    });
+    await flushPromises();
+    expect(useStore.getState().createWorkspaceObject).not.toHaveBeenCalled();
+    expect(commit).not.toHaveBeenCalled();
   });
 
-  test('Create-new tolerates a store without the create-modal actions', () => {
-    useStore.setState({ openCreateChartModal: undefined });
+  test('a failed create toasts the reason and changes nothing', async () => {
+    useStore.setState({
+      createWorkspaceObject: jest.fn().mockResolvedValue({ success: false, error: 'nope' }),
+    });
     renderCanvas();
     fireEvent.click(screen.getByTestId('mock-create-chart'));
-    // No crash; the intent is still recorded.
-    expect(events.find(e => e.eventName === 'inline_create_used')).toBeTruthy();
+    await flushPromises();
+    expect(useStore.getState().showWorkspaceToast).toHaveBeenCalledWith('nope');
+    expect(commit).not.toHaveBeenCalled();
+    expect(useStore.getState().openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('Create-new tolerates a store without createWorkspaceObject', async () => {
+    useStore.setState({ createWorkspaceObject: undefined });
+    renderCanvas();
+    fireEvent.click(screen.getByTestId('mock-create-chart'));
+    await flushPromises();
+    expect(commit).not.toHaveBeenCalled();
   });
 
   test('a template dashboard renders as a read-only preview with no editing layers', () => {
@@ -332,7 +354,10 @@ describe('ProjectCanvas — empty-slot click-to-pick (W5 / Track L)', () => {
       inputs: [],
       insights: [{ name: 'rev-insight' }],
       saveChart: jest.fn().mockResolvedValue({ success: true }),
-      openCreateChartModal: jest.fn(),
+      createWorkspaceObject: jest
+        .fn()
+        .mockResolvedValue({ success: true, name: 'new-chart', type: 'chart' }),
+      openWorkspaceTab: jest.fn(),
     });
   });
 
@@ -443,16 +468,26 @@ describe('ProjectCanvas — empty-slot click-to-pick (W5 / Track L)', () => {
     expect(useStore.getState().saveChart).not.toHaveBeenCalled();
   });
 
-  test('Create-new from the picker routes to the chart create modal with source picker', () => {
+  test('Create-new from the picker creates a chart, places it in the clicked slot and opens it', async () => {
     renderCanvas();
     openPicker();
     fireEvent.click(screen.getByTestId('reference-picker-create'));
-    expect(useStore.getState().openCreateChartModal).toHaveBeenCalledTimes(1);
+    await flushPromises();
+    expect(useStore.getState().createWorkspaceObject).toHaveBeenCalledWith('chart');
+    expect(commit).toHaveBeenCalledTimes(1);
+    const [name, nextConfig, meta] = commit.mock.calls[0];
+    expect(name).toBe('sales');
+    expect(meta).toEqual({ kind: 'picker_insert' });
+    expect(JSON.stringify(nextConfig)).toContain('ref(new-chart)');
+    expect(useStore.getState().openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'chart:new-chart',
+      type: 'chart',
+      name: 'new-chart',
+    });
     expect(events.find(e => e.eventName === 'inline_create_used')?.payload).toEqual({
       source: 'picker',
       kind: 'chart',
     });
-    // The picker closed so the create modal isn't stacked under it.
     expect(screen.queryByTestId('reference-picker')).not.toBeInTheDocument();
   });
 });
