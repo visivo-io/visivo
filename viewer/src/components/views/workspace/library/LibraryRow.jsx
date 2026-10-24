@@ -289,6 +289,7 @@ const LibraryRow = ({
   onContextAction,
   canAddToExploration = false,
   testId,
+  showOwnerModel = false,
   // Optional disclosure contract, used by `LibrarySourceRow` for the source →
   // table → column drill-down. `expandable` is explicit rather than inferred
   // from `children` because `children` are deliberately falsy while collapsed
@@ -317,7 +318,7 @@ const LibraryRow = ({
   // which is exactly what the pre-Phase-3a payload looked like for those
   // types — no behavior change there.
   const drag = useDraggable({
-    id: `library:${obj.type}:${obj.name}`,
+    id: `library:${obj.type}:${obj.name}${showOwnerModel ? `@${obj.parentModel}` : ''}`,
     data: {
       source: 'library',
       type: obj.type,
@@ -474,6 +475,15 @@ const LibraryRow = ({
         <span className={`min-w-0 flex-1 truncate ${selected ? 'font-medium' : ''}`}>
           {obj.name}
         </span>
+        {showOwnerModel && obj.parentModel && (
+          <span
+            data-testid={`${tid}-owner-model`}
+            title={`Defined inside model ${obj.parentModel}`}
+            className="max-w-[40%] shrink-0 truncate rounded bg-gray-100 px-1 text-[10px] text-gray-500"
+          >
+            in {obj.parentModel}
+          </span>
+        )}
         <div
           className={[
             'flex shrink-0 items-center gap-0.5 transition-opacity',

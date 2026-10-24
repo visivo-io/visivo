@@ -184,7 +184,6 @@ export function useLibraryData() {
     // something the user has to infer.
     const allDimensions = withParentModel(dimensions, 'dimension');
     const allMetrics = withParentModel(metrics, 'metric');
-    const unscoped = list => list.filter(f => !f.parentModel);
 
     const nestedFieldsByModel = {};
     [...allDimensions, ...allMetrics].forEach(field => {
@@ -205,8 +204,8 @@ export function useLibraryData() {
       dataLayer: {
         source: sourceRows,
         model: modelRows,
-        dimension: unscoped(allDimensions),
-        metric: unscoped(allMetrics),
+        dimension: allDimensions,
+        metric: allMetrics,
         relation: mapRows(relations, 'relation'),
         insight: mapRows(insights, 'insight'),
       },
