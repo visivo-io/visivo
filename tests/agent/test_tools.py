@@ -207,7 +207,12 @@ class TestNamesAreUniqueAcrossTypes:
 
         chart = {"name": "trips_by_day_chart", "insights": ["${ref(trips_by_day)}"]}
         assert call(integration_app, "write_chart", {"config": chart})["status"] == "draft"
-        assert call(integration_app, "validate_chart", {"config": chart}) == {"valid": True}
+        validated = call(integration_app, "validate_chart", {"config": chart})
+        assert validated["valid"] is True
+        assert (
+            validated["warnings"]
+            == call(integration_app, "write_chart", {"config": chart})["warnings"]
+        )
 
 
 class TestTheCallingContract:
