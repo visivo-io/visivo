@@ -1,7 +1,8 @@
 from typing import Optional, Dict
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from re import Match
+from visivo.models.base.base_model import BaseModel
 from visivo.models.base.query_string import QueryString
 from visivo.models.inputs import Input
 from visivo.models.base.project_dag import ProjectDag
