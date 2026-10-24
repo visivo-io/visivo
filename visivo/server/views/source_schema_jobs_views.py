@@ -16,6 +16,7 @@ from visivo.logger.logger import Logger
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.managers.preview_run_manager import PreviewRunManager, RunStatus
 from visivo.server.jobs.source_schema_job_executor import execute_source_schema_job
+from visivo.server.source_resolution import find_source, list_sources
 from visivo.server.views.schema_path_safety import is_safe_path_segment
 
 
@@ -47,7 +48,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
         try:
             sources = []
 
-            for source in flask_app.project.sources or []:
+            for source in list_sources(flask_app):
                 cached, _ = SchemaAggregator.load_source_schema_with_fallback(
                     source.name, output_dir
                 )
@@ -104,7 +105,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
 
             Logger.instance().info(f"Processing schema generation for source: {source_name}")
 
-            source = flask_app.project.find_source(source_name)
+            source = find_source(flask_app, source_name)
             if source is None:
                 return (
                     jsonify({"message": f"Source '{source_name}' not found in project"}),

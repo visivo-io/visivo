@@ -1,28 +1,23 @@
 /**
- * useExplorerWorkbenchInit — Phase 3a regression coverage (VIS-1053).
+ * useExplorerWorkbenchInit — the Explore 2.0 workbench's init effects.
  *
- * `explorerSources` used to be populated only as a side effect of
- * `ExplorerLeftPanel`'s nested `SourceBrowser` mounting. Phase 3a's DnD
- * unification removed `ExplorerLeftPanel` from `ExplorationWorkbench`
- * entirely, which silently starved `explorerSources` to `[]` forever in the
- * new surface — no query ever auto-created (the auto-create-model-tab effect
- * gates on `explorerSources.length > 0`), and every e2e test that created a
- * fresh exploration timed out waiting for `explorerActiveModelName`. This
- * hook now fetches sources itself so both hosts get them regardless of
- * whether a browse-panel component is mounted.
+ * `explorerSources` is derived from the Library's `sources` list, so drafts
+ * (saved, not committed) are selectable in the Explorer (VIS-1550).
  */
 import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import useStore from '../../stores/store';
 import useExplorerWorkbenchInit from './useExplorerWorkbenchInit';
-import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
 
-jest.mock('../../api/sourceSchemaJobs', () => ({
-  fetchSourceSchemaJobs: jest.fn(),
-}));
+const librarySource = (name, status = 'published', type = 'duckdb') => ({
+  name,
+  status,
+  config: { name, type },
+});
 
 const resetStore = () => {
   useStore.setState({
+    sources: [],
     explorerModelTabs: [],
     explorerModelStates: {},
     explorerSources: [],
@@ -46,34 +41,58 @@ describe('useExplorerWorkbenchInit', () => {
     resetStore();
   });
 
-  test('fetches explorerSources on mount when empty', async () => {
-    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'local-duckdb' }]);
+  test('lists draft sources next to committed ones, and leaves out deleted ones', async () => {
+    useStore.setState({
+      sources: [
+        librarySource('warehouse'),
+        librarySource('draft_db', 'new'),
+        librarySource('gone', 'deleted'),
+      ],
+    });
+
     renderHook(() => useExplorerWorkbenchInit());
 
-    await waitFor(() => expect(fetchSourceSchemaJobs).toHaveBeenCalledTimes(1));
     await waitFor(() =>
-      expect(useStore.getState().explorerSources).toEqual([{ source_name: 'local-duckdb' }])
+      expect(useStore.getState().explorerSources).toEqual([
+        { source_name: 'warehouse', source_type: 'duckdb' },
+        { source_name: 'draft_db', source_type: 'duckdb' },
+      ])
     );
   });
 
-  test('does NOT re-fetch when explorerSources is already populated', () => {
-    useStore.setState({ explorerSources: [{ source_name: 'already-loaded' }] });
+  test('a source saved after the workbench mounted becomes selectable', async () => {
+    useStore.setState({ sources: [librarySource('warehouse')] });
     renderHook(() => useExplorerWorkbenchInit());
-    expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
+    await waitFor(() => expect(useStore.getState().explorerSources).toHaveLength(1));
+
+    act(() => {
+      useStore.setState({ sources: [librarySource('warehouse'), librarySource('draft_db', 'new')] });
+    });
+
+    await waitFor(() =>
+      expect(useStore.getState().explorerSources.map(s => s.source_name)).toEqual([
+        'warehouse',
+        'draft_db',
+      ])
+    );
   });
 
-  test('a fetch failure is swallowed (best-effort, mirrors SourceBrowser)', async () => {
-    fetchSourceSchemaJobs.mockRejectedValue(new Error('boom'));
-    expect(() => renderHook(() => useExplorerWorkbenchInit())).not.toThrow();
-    await waitFor(() => expect(fetchSourceSchemaJobs).toHaveBeenCalled());
+  test('an identical source list does not replace explorerSources', async () => {
+    useStore.setState({ sources: [librarySource('warehouse')] });
+    renderHook(() => useExplorerWorkbenchInit());
+    await waitFor(() => expect(useStore.getState().explorerSources).toHaveLength(1));
+    const first = useStore.getState().explorerSources;
+
+    act(() => {
+      useStore.setState({ sources: [librarySource('warehouse')] });
+    });
+
+    expect(useStore.getState().explorerSources).toBe(first);
   });
 
-  // The actual regression: sources arriving must unblock the pre-existing
-  // auto-create-model-tab effect.
-  test('once sources arrive, auto-creates a model tab (the fixed end-to-end path)', async () => {
-    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'local-duckdb' }]);
+  test('once sources arrive, auto-creates a model tab', async () => {
     const createModelTab = jest.fn();
-    useStore.setState({ createModelTab });
+    useStore.setState({ createModelTab, sources: [librarySource('local-duckdb')] });
 
     renderHook(() => useExplorerWorkbenchInit());
 
@@ -82,9 +101,12 @@ describe('useExplorerWorkbenchInit', () => {
   });
 
   test('does not create a model tab if one already exists, even once sources arrive', async () => {
-    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'local-duckdb' }]);
     const createModelTab = jest.fn();
-    useStore.setState({ createModelTab, explorerModelTabs: ['existing_q'] });
+    useStore.setState({
+      createModelTab,
+      explorerModelTabs: ['existing_q'],
+      sources: [librarySource('local-duckdb')],
+    });
 
     renderHook(() => useExplorerWorkbenchInit());
 
@@ -92,19 +114,92 @@ describe('useExplorerWorkbenchInit', () => {
     expect(createModelTab).not.toHaveBeenCalled();
   });
 
-  // VIS-1228: opening a fresh exploration while sources are ALREADY cached (a
-  // second+ exploration in a session) used to seed TWO queries (`model` +
-  // `model_2`). The auto-create-model-tab layout effect had no idempotency
-  // guard, so StrictMode's double-invoked setup — both runs seeing the same
-  // stale closure `modelTabs.length === 0` — called `createModelTab()` twice.
+  // VIS-1228: StrictMode double-invokes the layout effect's setup; it must
+  // still create only one tab.
   test('does not double-create a model tab under StrictMode when sources are present at mount', async () => {
     const createModelTab = jest.fn(() => 'model');
-    useStore.setState({ createModelTab, explorerSources: [{ source_name: 'local-duckdb' }] });
+    useStore.setState({
+      createModelTab,
+      sources: [librarySource('local-duckdb')],
+      explorerSources: [{ source_name: 'local-duckdb', source_type: 'duckdb' }],
+    });
 
     renderHook(() => useExplorerWorkbenchInit(), { wrapper: React.StrictMode });
 
     await waitFor(() => expect(createModelTab).toHaveBeenCalled());
     expect(createModelTab).toHaveBeenCalledTimes(1);
+  });
+});
+
+// VIS-1550: "Explore" from the Semantic Layer seeds a query tab before the
+// Explorer has loaded `defaults`, so a model with no `source:` got none.
+describe('useExplorerWorkbenchInit — unset sources resolve once defaults load', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resetStore();
+  });
+
+  const seed = modelStates =>
+    useStore.setState({
+      explorerModelTabs: Object.keys(modelStates),
+      explorerModelStates: modelStates,
+      sources: [librarySource('first'), librarySource('second')],
+    });
+
+  test('a seeded tab with no source gets the project default once defaults arrive', async () => {
+    const applyResolvedDefaultSource = jest.fn();
+    useStore.setState({ applyResolvedDefaultSource });
+    seed({ query_1: { sourceName: null, sql: 'select 1' } });
+
+    renderHook(() => useExplorerWorkbenchInit());
+    expect(applyResolvedDefaultSource).not.toHaveBeenCalled();
+
+    act(() => {
+      useStore.setState({ defaults: { source_name: 'second' } });
+    });
+
+    await waitFor(() =>
+      expect(applyResolvedDefaultSource).toHaveBeenCalledWith('query_1', 'second')
+    );
+  });
+
+  test('with no project default it falls back to the first source, like a new tab', async () => {
+    const applyResolvedDefaultSource = jest.fn();
+    useStore.setState({ applyResolvedDefaultSource, defaults: {} });
+    seed({ query_1: { sourceName: null } });
+
+    renderHook(() => useExplorerWorkbenchInit());
+
+    await waitFor(() =>
+      expect(applyResolvedDefaultSource).toHaveBeenCalledWith('query_1', 'first')
+    );
+  });
+
+  test('tabs that already have a source, or whose source the user cleared, are left alone', async () => {
+    const applyResolvedDefaultSource = jest.fn();
+    useStore.setState({ applyResolvedDefaultSource, defaults: { source_name: 'second' } });
+    seed({
+      bound: { sourceName: 'first' },
+      cleared: { sourceName: null, sourceEdited: true },
+    });
+
+    renderHook(() => useExplorerWorkbenchInit());
+
+    await waitFor(() => expect(useStore.getState().explorerSources).toHaveLength(2));
+    expect(applyResolvedDefaultSource).not.toHaveBeenCalled();
+  });
+
+  test('nothing to resolve to means nothing is applied', async () => {
+    const applyResolvedDefaultSource = jest.fn();
+    useStore.setState({ applyResolvedDefaultSource, defaults: {} });
+    useStore.setState({
+      explorerModelTabs: ['query_1'],
+      explorerModelStates: { query_1: { sourceName: null } },
+    });
+
+    renderHook(() => useExplorerWorkbenchInit());
+
+    expect(applyResolvedDefaultSource).not.toHaveBeenCalled();
   });
 });
 
@@ -121,10 +216,14 @@ describe('useExplorerWorkbenchInit — VIS-1082 default-source rebind', () => {
   });
 
   test('rebinds the auto-created tab once defaults arrive AFTER it was created', async () => {
-    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'local-duckdb' }]);
     const createModelTab = jest.fn(() => 'model');
     const applyResolvedDefaultSource = jest.fn();
-    useStore.setState({ createModelTab, applyResolvedDefaultSource, defaults: null });
+    useStore.setState({
+      createModelTab,
+      applyResolvedDefaultSource,
+      defaults: null,
+      sources: [librarySource('local-duckdb')],
+    });
 
     renderHook(() => useExplorerWorkbenchInit());
 
@@ -144,13 +243,13 @@ describe('useExplorerWorkbenchInit — VIS-1082 default-source rebind', () => {
   });
 
   test('does NOT rebind when defaults had already arrived before the tab was created', async () => {
-    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: 'local-duckdb' }]);
     const createModelTab = jest.fn(() => 'model');
     const applyResolvedDefaultSource = jest.fn();
     useStore.setState({
       createModelTab,
       applyResolvedDefaultSource,
       defaults: { source_name: 'already-correct' },
+      sources: [librarySource('local-duckdb')],
     });
 
     renderHook(() => useExplorerWorkbenchInit());

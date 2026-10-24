@@ -43,6 +43,18 @@ def find_source(flask_app, source_name):
     return find_object(flask_app, "source_manager", "sources", source_name)
 
 
+def list_sources(flask_app):
+    """Every source the editor sees: drafts included, sources marked for deletion left out."""
+    manager = getattr(flask_app, "source_manager", None)
+    lister = getattr(manager, "get_sources_list", None)
+    if callable(lister):
+        try:
+            return list(lister())
+        except Exception:
+            pass
+    return list(getattr(getattr(flask_app, "project", None), "sources", None) or [])
+
+
 def find_model(flask_app, model_name):
     return find_object(flask_app, "model_manager", "models", model_name)
 
