@@ -3,7 +3,7 @@ from visivo.commands.compile_phase import compile_phase
 from visivo.logger.logger import Logger
 
 from visivo.agent.actions import log as action_log
-from visivo.server.hot_reload_server import HotReloadServer
+from visivo.server.hot_reload_server import HotReloadServer, project_file_matcher
 from visivo.server.flask_app import FlaskApp
 from visivo.commands.run_phase import run_phase
 from visivo.server.jobs.save_run_executor import record_failed_run
@@ -185,6 +185,7 @@ def serve_phase(
         on_project_change=on_project_change,
         watch_path=working_dir,
         ignore_patterns=ignore_patterns,
+        is_project_file=project_file_matcher(working_dir, output_dir),
     )
 
     # Pass the server reference to the Flask app so it can control the file watcher

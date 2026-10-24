@@ -92,7 +92,10 @@ class TestHotReloadServer:
 
             # Create a ProjectChangeHandler with the server's pause lock
             handler = ProjectChangeHandler(
-                callback=callback, ignore_patterns=[], pause_lock=server.pause_lock
+                callback=callback,
+                ignore_patterns=[],
+                pause_lock=server.pause_lock,
+                debounce_seconds=0.01,
             )
 
             # Create a mock event for a YAML file
@@ -116,9 +119,6 @@ class TestHotReloadServer:
 
             # Resume the file watcher
             server.resume_file_watcher()
-
-            # Reset last_event_time to avoid debounce
-            handler.last_event_time = 0
 
             # Now callback should be called again
             handler.on_modified(event)
@@ -147,7 +147,10 @@ class TestHotReloadServer:
 
             # Create a handler to test
             handler = ProjectChangeHandler(
-                callback=on_project_change, ignore_patterns=[], pause_lock=server.pause_lock
+                callback=on_project_change,
+                ignore_patterns=[],
+                pause_lock=server.pause_lock,
+                debounce_seconds=0.01,
             )
 
             # 3. Try to trigger the handler (should be ignored due to pause)
@@ -165,7 +168,6 @@ class TestHotReloadServer:
             server.resume_file_watcher()
 
             # 5. Now file changes should trigger the callback
-            handler.last_event_time = 0  # Reset debounce
             handler.on_modified(event)
             time.sleep(0.1)
 

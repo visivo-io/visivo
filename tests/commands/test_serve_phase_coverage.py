@@ -188,3 +188,16 @@ class TestOnProjectChangeErrorHandling:
 
         with open(f"{output_dir}/error.json") as fp:
             assert json.load(fp) == {}
+
+
+class TestWatcherScope:
+    def test_watcher_only_reloads_for_files_the_project_includes(
+        self, project_with_data, output_dir, server_url, tmp_path
+    ):
+        (tmp_path / "project.visivo.yml").write_text("name: p\nincludes:\n  - path: models.yml\n")
+        (tmp_path / "models.yml").write_text("models: []\n")
+        server, _, _ = _serve(project_with_data, output_dir, server_url, working_dir=str(tmp_path))
+
+        assert server.is_project_file(str(tmp_path / "project.visivo.yml"))
+        assert server.is_project_file(str(tmp_path / "models.yml"))
+        assert not server.is_project_file(str(tmp_path / "tmp.yml"))
