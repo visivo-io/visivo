@@ -43,9 +43,10 @@ export function flattenSourceTables(entry) {
   databases.forEach(db => {
     const dbName = db?.name ?? null;
 
-    const pushTable = (table, schemaName) => {
+    const pushTable = (table, parentSchema) => {
       if (!table || table.name == null) return;
       const columns = Array.isArray(table.columns) ? table.columns.map(normalizeColumn) : [];
+      const schemaName = table.schema ?? parentSchema;
       out.push({
         id: erdNodeId(dbName, schemaName, table.name),
         database: dbName,

@@ -22,6 +22,7 @@ class CachedMappingSchemaProvider:
 
     Attributes:
         default_schema: Default schema name for unqualified table references
+        default_catalog: Database the stored schema was introspected from
     """
 
     def __init__(self, stored_schema: Dict[str, Any], dialect: Optional[str] = None):
@@ -34,11 +35,15 @@ class CachedMappingSchemaProvider:
         """
         self._flat_schema: Dict[str, Dict[str, exp.DataType]] = {}
         self._nested_schema: Dict[str, Dict[str, Dict[str, exp.DataType]]] = {}
+        self._catalog_schema: Dict[str, Dict[str, Dict[str, Dict[str, exp.DataType]]]] = {}
         self._is_nested: bool = False
+        self._has_catalogs: bool = False
         self._dialect = dialect
 
         # Extract default schema from metadata
-        self.default_schema: Optional[str] = stored_schema.get("metadata", {}).get("default_schema")
+        metadata = stored_schema.get("metadata", {})
+        self.default_schema: Optional[str] = metadata.get("default_schema")
+        self.default_catalog: Optional[str] = metadata.get("database")
 
         # Build index from stored schema
         self._build_index(stored_schema)
@@ -71,10 +76,20 @@ class CachedMappingSchemaProvider:
         # Check if nested by examining first value's values
         sample_val = next(iter(first_value.values()), None) if first_value else None
 
-        if isinstance(sample_val, dict):
+        sample_leaf = (
+            next(iter(sample_val.values()), None) if isinstance(sample_val, dict) else None
+        )
+
+        if isinstance(sample_leaf, dict):
+            self._has_catalogs = True
+            self._is_nested = True
+            for catalog, schemas in sqlglot_schema_data.items():
+                if isinstance(schemas, dict):
+                    self._catalog_schema[catalog] = self._build_nested_index(schemas)
+        elif isinstance(sample_val, dict):
             # Nested structure: {schema_name: {table_name: {col_name: type_str}}}
             self._is_nested = True
-            self._build_nested_index(sqlglot_schema_data)
+            self._nested_schema = self._build_nested_index(sqlglot_schema_data)
         else:
             # Flat structure: {table_name: {col_name: type_str}}
             self._is_nested = False
@@ -99,23 +114,25 @@ class CachedMappingSchemaProvider:
                     )
                     self._flat_schema[table_name][col_name] = exp.DataType.build("VARCHAR")
 
-    def _build_nested_index(self, schema_data: Dict[str, Dict[str, Dict[str, str]]]) -> None:
+    def _build_nested_index(
+        self, schema_data: Dict[str, Dict[str, Dict[str, str]]]
+    ) -> Dict[str, Dict[str, Dict[str, exp.DataType]]]:
         """Build index for nested schema structure."""
+        index: Dict[str, Dict[str, Dict[str, exp.DataType]]] = {}
         for schema_name, tables in schema_data.items():
             if not isinstance(tables, dict):
                 continue
 
-            if schema_name not in self._nested_schema:
-                self._nested_schema[schema_name] = {}
+            index.setdefault(schema_name, {})
 
             for table_name, columns in tables.items():
                 if not isinstance(columns, dict):
                     continue
 
-                self._nested_schema[schema_name][table_name] = {}
+                index[schema_name][table_name] = {}
                 for col_name, col_type_str in columns.items():
                     try:
-                        self._nested_schema[schema_name][table_name][col_name] = exp.DataType.build(
+                        index[schema_name][table_name][col_name] = exp.DataType.build(
                             col_type_str, dialect=self._dialect
                         )
                     except Exception as e:
@@ -123,9 +140,8 @@ class CachedMappingSchemaProvider:
                             f"Error parsing type '{col_type_str}' for "
                             f"{schema_name}.{table_name}.{col_name}, using VARCHAR: {e}"
                         )
-                        self._nested_schema[schema_name][table_name][col_name] = exp.DataType.build(
-                            "VARCHAR"
-                        )
+                        index[schema_name][table_name][col_name] = exp.DataType.build("VARCHAR")
+        return index
 
     def get_filtered_schema(
         self, tables: Set[str], schema_names: Optional[Set[str]] = None
@@ -145,10 +161,28 @@ class CachedMappingSchemaProvider:
             - Flat: {table: {col: DataType}}
             - Nested: {schema: {table: {col: DataType}}}
         """
+        if self._has_catalogs:
+            return self._get_filtered_catalog_schema(tables)
         if self._is_nested:
             return self._get_filtered_nested_schema(tables, schema_names)
         else:
             return self._get_filtered_flat_schema(tables)
+
+    def _get_filtered_catalog_schema(self, tables: Set[str]) -> Dict[str, Any]:
+        """Every ``{database: {schema: {table}}}`` path whose table is requested.
+
+        Schema names in the query are not used to filter: with databases attached,
+        ``x.t`` can name a database rather than a schema.
+        """
+        result: Dict[str, Any] = {}
+        for catalog, schemas in self._catalog_schema.items():
+            for schema_name, schema_tables in schemas.items():
+                for table_name in tables:
+                    if table_name in schema_tables:
+                        result.setdefault(catalog, {}).setdefault(schema_name, {})[table_name] = (
+                            schema_tables[table_name]
+                        )
+        return result
 
     def _get_filtered_flat_schema(self, tables: Set[str]) -> Dict[str, Dict[str, exp.DataType]]:
         """Get filtered schema for flat structure."""
@@ -195,6 +229,8 @@ class CachedMappingSchemaProvider:
         Returns:
             Complete schema dict with pre-built DataType objects
         """
+        if self._has_catalogs:
+            return self._catalog_schema
         if self._is_nested:
             return self._nested_schema
         else:
@@ -208,6 +244,8 @@ class CachedMappingSchemaProvider:
     @property
     def table_count(self) -> int:
         """Total number of tables in the schema."""
+        if self._has_catalogs:
+            return sum(len(t) for s in self._catalog_schema.values() for t in s.values())
         if self._is_nested:
             return sum(len(tables) for tables in self._nested_schema.values())
         else:
@@ -217,7 +255,12 @@ class CachedMappingSchemaProvider:
     def column_count(self) -> int:
         """Total number of columns across all tables."""
         count = 0
-        if self._is_nested:
+        if self._has_catalogs:
+            for schemas in self._catalog_schema.values():
+                for tables in schemas.values():
+                    for columns in tables.values():
+                        count += len(columns)
+        elif self._is_nested:
             for tables in self._nested_schema.values():
                 for columns in tables.values():
                     count += len(columns)

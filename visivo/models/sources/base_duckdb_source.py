@@ -12,13 +12,19 @@ from sqlglot import exp
 from sqlglot.schema import MappingSchema
 from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
 
-_VISIBLE_SCHEMA_FILTER = """(
-    table_schema = 'main'
-    OR (
-        table_catalog = current_database()
-        AND table_schema NOT IN ('information_schema', 'pg_catalog')
-    )
-)"""
+_SYSTEM_CATALOGS = "('system', 'temp')"
+_SYSTEM_SCHEMAS = "('information_schema', 'pg_catalog')"
+
+_VISIBLE_TABLE_FILTER = f"""table_catalog NOT IN {_SYSTEM_CATALOGS}
+    AND table_schema NOT IN {_SYSTEM_SCHEMAS}
+    AND table_name NOT LIKE 'duckdb_%'
+    AND table_name NOT LIKE 'sqlite_%'
+    AND table_name NOT LIKE 'pragma_%'"""
+
+_TABLE_ORDER = (
+    "table_catalog != current_database(), table_catalog, "
+    "table_schema != 'main', table_schema, table_name"
+)
 
 
 class BaseDuckdbSource(Source):
@@ -108,82 +114,65 @@ class BaseDuckdbSource(Source):
         except Exception:
             return False
 
-    def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
-        """
-        Build SQLGlot schema using DuckDB's introspection capabilities.
+    def get_default_context(self) -> Dict[str, str]:
+        """Unqualified names resolve in the configured ``db_schema``, else ``main``.
 
-        This method uses DuckDB's built-in schema introspection to discover
-        table and column information, then converts it to SQLGlot format.
+        The catalog comes from the stored schema's ``metadata.database``, which is the
+        name DuckDB gave this source's database when it was introspected.
+        """
+        schema = self.get_db_schema() if hasattr(self, "get_db_schema") else None
+        return {"schema": schema or "main"}
+
+    def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
+        """Introspect every table and view, keyed by its full ``database.schema.table`` path.
+
+        Every attached database and every non-system schema is included, ``main`` too,
+        and the SQLGlot schema is always nested ``{database: {schema: {table: ...}}}``.
+        Which database and schema an unqualified name means is not stored here: the
+        reader passes the source's default context (``get_default_context``) to SQLGlot.
         """
         try:
-            # Get available tables from DuckDB
             with self.connect(read_only=True) as connection:
-                # Get all tables/views available
+                database = connection.execute("SELECT current_database()").fetchone()[0]
                 available_tables = self._get_available_tables_from_duckdb(connection, table_names)
 
-                if not available_tables:
-                    return {
-                        "tables": {},
-                        "sqlglot_schema": MappingSchema(),
-                        "metadata": {
-                            "total_tables": 0,
-                            "total_columns": 0,
-                            "source_type": self.type,
-                        },
-                    }
-
-                # Build schema for each table
                 result = {
                     "tables": {},
                     "sqlglot_schema": MappingSchema(),
-                    "metadata": {"source_type": self.type, "total_tables": 0, "total_columns": 0},
+                    "metadata": {
+                        "source_type": self.type,
+                        "database": database,
+                        "total_tables": 0,
+                        "total_columns": 0,
+                    },
                 }
 
-                nested = any(schema != "main" for schema, _ in available_tables)
-                if nested:
-                    result["metadata"]["default_schema"] = "main"
-
                 for table in available_tables:
-                    table_name = self._table_key(table)
+                    table_key = self._table_key(table)
                     table_info = self._extract_table_schema_from_duckdb(connection, table)
-                    if table_info:
-                        result["tables"][table_name] = table_info
+                    if not table_info:
+                        continue
+                    result["tables"][table_key] = table_info
 
-                        # Add to SQLGlot schema
-                        columns_dict = {}
-                        for col_name, col_info in table_info["columns"].items():
-                            if "sqlglot_datatype" in col_info:
-                                columns_dict[col_name] = col_info["sqlglot_datatype"]
+                    columns_dict = {
+                        col_name: col_info["sqlglot_datatype"]
+                        for col_name, col_info in table_info["columns"].items()
+                    }
+                    catalog, schema, name = table
+                    try:
+                        result["sqlglot_schema"].add_table(
+                            exp.Table(
+                                this=exp.to_identifier(name),
+                                db=exp.to_identifier(schema),
+                                catalog=exp.to_identifier(catalog),
+                            ),
+                            columns_dict,
+                        )
+                    except Exception as e:
+                        Logger.instance().debug(
+                            f"Failed to add table '{table_key}' to SQLGlot schema: {e}"
+                        )
 
-                        if columns_dict:
-                            sqlglot_name = (
-                                exp.Table(
-                                    this=exp.to_identifier(table[1]),
-                                    db=exp.to_identifier(table[0]),
-                                )
-                                if nested
-                                else table_name
-                            )
-                            try:
-                                result["sqlglot_schema"].add_table(sqlglot_name, columns_dict)
-                            except Exception as e:
-                                Logger.instance().debug(
-                                    f"Failed to add table '{table_name}' to SQLGlot schema: {e}"
-                                )
-                                # Try with quoted identifier
-                                try:
-                                    quoted_name = f'"{table_name}"'
-                                    result["sqlglot_schema"].add_table(quoted_name, columns_dict)
-                                    Logger.instance().debug(
-                                        f"Successfully added quoted table '{quoted_name}' to SQLGlot schema"
-                                    )
-                                except Exception as e2:
-                                    Logger.instance().debug(
-                                        f"Failed to add quoted table '{quoted_name}' to SQLGlot schema: {e2}"
-                                    )
-                                    # Continue without adding to SQLGlot schema, but keep the table info
-
-                # Update metadata
                 result["metadata"]["total_tables"] = len(result["tables"])
                 result["metadata"]["total_columns"] = sum(
                     len(table_info["columns"]) for table_info in result["tables"].values()
@@ -212,92 +201,67 @@ class BaseDuckdbSource(Source):
 
     def _get_available_tables_from_duckdb(
         self, connection, table_names: List[str] = None
-    ) -> List[Tuple[str, str]]:
-        """Get ``(schema, table)`` pairs for tables/views available in the DuckDB connection.
+    ) -> List[Tuple[str, str, str]]:
+        """``(database, schema, table)`` for every table and view outside the system catalogs.
 
-        Tables outside ``main`` are included so models that read a non-default schema
-        (``select * from analytics.fct_mrr``) have known columns. ``table_names`` matches
-        either the bare table name or ``schema.table``.
+        ``table_names`` matches a bare table name, ``schema.table`` or the full path.
         """
+        # CSV and Excel sources create views, not tables, so both are listed.
         try:
-            # Query both tables and views from DuckDB's information schema
-            # CSV and Excel sources create views, not tables
-            # Exclude DuckDB system tables/views (they start with 'duckdb_', 'sqlite_', or 'pragma_')
             tables_result = connection.execute(f"""
-                SELECT table_schema, table_name FROM (
-                    SELECT table_schema, table_name, table_catalog
+                SELECT table_catalog, table_schema, table_name FROM (
+                    SELECT table_catalog, table_schema, table_name
                     FROM information_schema.tables
                     UNION ALL
-                    SELECT table_schema, table_name, table_catalog
+                    SELECT table_catalog, table_schema, table_name
                     FROM information_schema.views
                 )
-                WHERE {_VISIBLE_SCHEMA_FILTER}
-                AND table_name NOT LIKE 'duckdb_%'
-                AND table_name NOT LIKE 'sqlite_%'
-                AND table_name NOT LIKE 'pragma_%'
-                ORDER BY table_schema != 'main', table_schema, table_name
+                WHERE {_VISIBLE_TABLE_FILTER}
+                ORDER BY {_TABLE_ORDER}
             """)
-
-            all_tables = [(row[0], row[1]) for row in tables_result.fetchall()]
-
-            # Debug logging to help diagnose issues
+            all_tables = [tuple(row) for row in tables_result.fetchall()]
             Logger.instance().debug(f"Found tables/views in DuckDB: {all_tables}")
-
-            # Filter to requested tables if specified
-            if table_names:
-                filtered_tables = [t for t in all_tables if self._matches(t, table_names)]
-                Logger.instance().debug(f"Filtered to requested tables: {filtered_tables}")
-                return filtered_tables
-
-            return all_tables
-
         except Exception as e:
             Logger.instance().error(f"Error getting tables from DuckDB: {e}")
-            # Fallback: try to get just tables if views query fails
             try:
                 result = connection.execute(f"""
-                    SELECT table_schema, table_name, table_catalog
+                    SELECT table_catalog, table_schema, table_name
                     FROM information_schema.tables
-                    WHERE {_VISIBLE_SCHEMA_FILTER}
-                    AND table_name NOT LIKE 'duckdb_%'
-                    AND table_name NOT LIKE 'sqlite_%'
-                    AND table_name NOT LIKE 'pragma_%'
-                    ORDER BY table_schema != 'main', table_schema, table_name
+                    WHERE {_VISIBLE_TABLE_FILTER}
+                    ORDER BY {_TABLE_ORDER}
                 """)
-                fallback_tables = [(row[0], row[1]) for row in result.fetchall()]
-                Logger.instance().debug(f"Fallback found tables: {fallback_tables}")
-
-                if table_names:
-                    return [t for t in fallback_tables if self._matches(t, table_names)]
-                return fallback_tables
+                all_tables = [tuple(row) for row in result.fetchall()]
+                Logger.instance().debug(f"Fallback found tables: {all_tables}")
             except Exception as e2:
                 Logger.instance().debug(f"Fallback query also failed: {e2}")
                 return []
 
-    @staticmethod
-    def _matches(table: Tuple[str, str], table_names: List[str]) -> bool:
-        schema, name = table
-        return name in table_names or f"{schema}.{name}" in table_names
+        if table_names:
+            return [t for t in all_tables if self._matches(t, table_names)]
+        return all_tables
 
     @staticmethod
-    def _table_key(table: Tuple[str, str]) -> str:
-        """Key used in schema output: bare for ``main``, ``schema.table`` otherwise."""
-        schema, name = table
-        return name if schema == "main" else f"{schema}.{name}"
+    def _matches(table: Tuple[str, str, str], table_names: List[str]) -> bool:
+        catalog, schema, name = table
+        return bool(
+            {name, f"{schema}.{name}", f"{catalog}.{schema}.{name}"}.intersection(table_names)
+        )
 
     @staticmethod
-    def _quote_table(schema: str, name: str) -> str:
-        return ".".join('"' + part.replace('"', '""') + '"' for part in (schema, name))
+    def _table_key(table: Tuple[str, ...]) -> str:
+        return ".".join(table)
+
+    @staticmethod
+    def _quote_table(*parts: str) -> str:
+        return ".".join('"' + part.replace('"', '""') + '"' for part in parts)
 
     def _extract_table_schema_from_duckdb(
-        self, connection, table: Tuple[str, str]
+        self, connection, table: Tuple[str, str, str]
     ) -> Optional[Dict[str, Any]]:
         """Extract schema information for a single table using DuckDB's DESCRIBE."""
+        catalog, schema_name, table_name = table
         try:
-            # Use DuckDB's DESCRIBE to get column information
-            # Quote the table name to handle special characters like hyphens
-            schema_name, table_name = table
-            result = connection.execute(f"DESCRIBE {self._quote_table(schema_name, table_name)}")
+            result = connection.execute(f"DESCRIBE {self._quote_table(*table)}")
             columns_info = result.fetchall()
 
             if not columns_info:
@@ -306,7 +270,12 @@ class BaseDuckdbSource(Source):
             # Process columns - DuckDB DESCRIBE returns: column_name, column_type, null, key, default, extra
             table_schema = {
                 "columns": {},
-                "metadata": {"table_name": table_name, "column_count": len(columns_info)},
+                "metadata": {
+                    "database": catalog,
+                    "schema": schema_name,
+                    "table_name": table_name,
+                    "column_count": len(columns_info),
+                },
             }
 
             for col_info in columns_info:
@@ -391,8 +360,8 @@ class BaseDuckdbSource(Source):
         """Preview data using existing read_sql()."""
         # Clamp limit to valid range
         limit = min(max(limit, 1), 1000)
-        quoted_table = f'"{table_name}"'
-        rows = self.read_sql(f"SELECT * FROM {quoted_table} LIMIT {limit}")
+        parts = (schema_name, table_name) if schema_name else (table_name,)
+        rows = self.read_sql(f"SELECT * FROM {self._quote_table(*parts)} LIMIT {limit}")
         columns = list(rows[0].keys()) if rows else []
         return {"columns": columns, "rows": rows, "row_count": len(rows)}
 

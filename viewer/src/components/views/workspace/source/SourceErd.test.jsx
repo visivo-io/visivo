@@ -201,6 +201,34 @@ describe('SourceErd (VIS-1005)', () => {
     expect(users.data.columns).toHaveLength(1);
   });
 
+  test('a full-path envelope key diagrams under its schema and table name', async () => {
+    const cols = { id: { type: 'INTEGER' } };
+    fetchSourceSchema.mockResolvedValue(
+      envelope({
+        'saas.main.orders': {
+          columns: cols,
+          metadata: { database: 'saas', schema: 'main', table_name: 'orders' },
+        },
+        'saas.analytics.fct_mrr': {
+          columns: cols,
+          metadata: { database: 'saas', schema: 'analytics', table_name: 'fct_mrr' },
+        },
+      })
+    );
+    render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
+
+    expect(await screen.findByTestId('source-erd-node-orders')).toBeInTheDocument();
+    const [nodes] = computeLayout.mock.calls.at(-1);
+    const mrr = nodes.find(n => n.data.table === 'fct_mrr');
+    expect(mrr.data.schema).toBe('analytics');
+
+    fireEvent.contextMenu(
+      screen.getByTestId(`rf-node-wrapper-source-erd::${SRC}::analytics::fct_mrr`),
+      { clientX: 10, clientY: 10 }
+    );
+    expect(screen.getByTestId('erd-table-ctx-menu')).toHaveTextContent('analytics.fct_mrr');
+  });
+
   test('falls back to a simple grid layout when dagre throws', async () => {
     computeLayout.mockImplementation(() => {
       throw new Error('dagre exploded');

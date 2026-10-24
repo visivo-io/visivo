@@ -139,6 +139,15 @@ class DuckdbSource(ServerSource, BaseDuckdbSource):
             Logger.instance().debug(f"Error setting up DuckDB connection: {e}")
             # Don't raise here as connection might still be usable
 
+        # Queries must resolve unqualified names where inference does (get_default_context).
+        db_schema = self.get_db_schema()
+        if db_schema:
+            quoted = db_schema.replace("'", "''")
+            try:
+                connection.execute(f"SET schema = '{quoted}'")
+            except Exception as e:
+                Logger.instance().debug(f"Could not set schema '{db_schema}': {e}")
+
     def get_connection_dialect(self):
         return "duckdb"
 
@@ -194,24 +203,31 @@ class DuckdbSource(ServerSource, BaseDuckdbSource):
         conn.close()
 
     def introspect(self):
-        """
-        Legacy introspection method for backward compatibility with tests.
-
-        This method returns metadata in the old format expected by existing tests.
-        For new code, use get_schema() instead which returns SQLGlot-compatible schema data.
-        """
-        schema_data = self.get_schema()
-
-        # Convert our new schema format to the old metadata format expected by tests
-        tables_list = []
-        for table_name, table_info in schema_data.get("tables", {}).items():
-            table_entry = {"name": table_name, "columns": {}}
-            for col_name, col_info in table_info.get("columns", {}).items():
-                table_entry["columns"][col_name] = col_info.get("type", "UNKNOWN")
-            tables_list.append(table_entry)
+        """Legacy ``{databases: [{name, schemas: [{name, tables}]}]}`` view of ``get_schema()``."""
+        databases = {}
+        for table_info in self.get_schema().get("tables", {}).values():
+            meta = table_info.get("metadata", {})
+            schemas = databases.setdefault(meta.get("database"), {})
+            schemas.setdefault(meta.get("schema"), []).append(
+                {
+                    "name": meta.get("table_name"),
+                    "columns": {
+                        col_name: col_info.get("type", "UNKNOWN")
+                        for col_name, col_info in table_info.get("columns", {}).items()
+                    },
+                }
+            )
 
         return {
             "name": self.name,
             "type": self.type,
-            "databases": [{"name": "main", "tables": tables_list}],
+            "databases": [
+                {
+                    "name": database,
+                    "schemas": [
+                        {"name": schema, "tables": tables} for schema, tables in schemas.items()
+                    ],
+                }
+                for database, schemas in databases.items()
+            ],
         }
