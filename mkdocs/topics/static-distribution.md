@@ -143,7 +143,7 @@ data:
 
     What the bundle does **not** contain: credentials for sources defined at the top
     level of your project — the normal pattern. A model's `source: ${ref(my_db)}` ships
-    as that unresolved string, and `${ env_var(...) }` templates ship unresolved too;
+    as that unresolved string, and `${env.NAME}` references ship unresolved too;
     connection details are only used while `visivo run` executes the queries. One
     caveat: a source defined **inline inside a model** is embedded in the bundle's JSON
     along with the model — so define sources at the top level and keep secrets in

@@ -78,7 +78,7 @@ class RedshiftSource(ServerSource):
 
         connection_params = {
             "host": self.host,
-            "port": self.port or 5439,
+            "port": self.get_port() or 5439,
             "database": self.database,
             "user": self.username,
         }
