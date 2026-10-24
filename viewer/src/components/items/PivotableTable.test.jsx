@@ -470,6 +470,155 @@ describe('PivotableTable', () => {
     appendSpy.mockRestore();
   });
 
+  describe('CSV export headers (VIS-1622)', () => {
+    const readBlob = blob =>
+      new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsText(blob);
+      });
+
+    const exportCsv = async () => {
+      const spy = jest.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:csv');
+      fireEvent.click(screen.getByRole('button', { name: 'DownloadCsv' }));
+      const blob = spy.mock.calls[0][0];
+      spy.mockRestore();
+      const text = await readBlob(blob);
+      return text.replace(/^\uFEFF/, '').split('\r\n');
+    };
+
+    it('writes the same readable headers the grid shows for a data: insight table', async () => {
+      render(
+        <PivotableTable
+          table={{ name: 'insight-table', data: '${ref(rev-insight)}' }}
+          sourceData={{
+            data: [
+              { mwohwccuenqqyny: 'North', medzqprtzikdonh: 10 },
+              { mwohwccuenqqyny: 'South', medzqprtzikdonh: 20 },
+            ],
+            props_mapping: { 'props.x': 'mwohwccuenqqyny', 'props.y': 'medzqprtzikdonh' },
+            files: [],
+          }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      const lines = await exportCsv();
+      expect(lines[0]).toBe('"X","Y"');
+      expect(lines[1]).toBe('"North",10');
+      expect(lines[2]).toBe('"South",20');
+      expect(lines.join('\n')).not.toMatch(/mwohwccuenqqyny|medzqprtzikdonh/);
+    });
+
+    it('strips the hash suffix from unmapped keys in the CSV header', async () => {
+      render(
+        <PivotableTable
+          table={{ name: 'model-table' }}
+          sourceData={{ data: [{ total_revenue_hash_abc123: 5 }], props_mapping: {}, files: [] }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      const lines = await exportCsv();
+      expect(lines[0]).toBe('"Total Revenue"');
+      expect(lines[1]).toBe('5');
+    });
+
+    it('keeps real column names in the CSV for a table on a model', async () => {
+      render(
+        <PivotableTable
+          table={{ name: 'model-table', data: '${ref(daily_metrics)}' }}
+          sourceData={{ data: [{ day_num: 1, category: 'A' }], files: [] }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      expect(screen.getByText('Day Num')).toBeInTheDocument();
+      const lines = await exportCsv();
+      expect(lines[0]).toBe('"day_num","category"');
+      expect(lines[1]).toBe('1,"A"');
+    });
+
+    it('keeps aliases and maps unaliased hashed keys in column-select mode', async () => {
+      mockPivotReturn = {
+        ...mockPivotReturn,
+        rows: [{ Region: 'North', col_b: 10 }],
+        columns: [
+          { accessorKey: 'Region', header: 'Region' },
+          { accessorKey: 'col_b', header: 'Revenue' },
+        ],
+      };
+      render(
+        <PivotableTable
+          table={{
+            name: 'select-table',
+            columns: ['${ref(rev-insight).name} as Region', '${ref(rev-insight).revenue}'],
+          }}
+          sourceData={mockInsightData}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      const lines = await exportCsv();
+      expect(lines[0]).toBe('"Region","Revenue"');
+      expect(lines[1]).toBe('"North",10');
+    });
+
+    it('de-hashes composite pivot keys so each value column keeps its aggregate', async () => {
+      mockPivotReturn = {
+        ...mockPivotReturn,
+        rows: [
+          { col_a: 'Alice', 'North_sum(col_b)': 10, 'North_avg(col_b)': 5 },
+        ],
+        columns: [
+          { accessorKey: 'col_a', header: 'Name', isPivotRow: true },
+          { accessorKey: 'North_sum(col_b)', header: 'North' },
+          { accessorKey: 'North_avg(col_b)', header: 'North' },
+        ],
+      };
+      render(
+        <PivotableTable
+          table={{
+            name: 'pivot-table',
+            columns: ['${ref(rev-insight).region}'],
+            rows: ['${ref(rev-insight).name}'],
+            values: ['sum(${ref(rev-insight).revenue})'],
+          }}
+          sourceData={mockInsightData}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      const lines = await exportCsv();
+      expect(lines[0]).toBe('"Name","North_sum(Revenue)","North_avg(Revenue)"');
+      expect(lines[1]).toBe('"Alice",10,5');
+    });
+
+    it('disables the download when the table has no columns', () => {
+      render(
+        <PivotableTable
+          table={{ name: 'empty-table' }}
+          sourceData={{ data: [], props_mapping: {}, files: [] }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: 'DownloadCsv' })).toBeDisabled();
+    });
+  });
+
   it('applies gradient cell backgrounds when format_cells is configured', () => {
     render(
       <PivotableTable
