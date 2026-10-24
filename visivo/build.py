@@ -82,6 +82,10 @@ def build():
         "visivo/agent/skills:visivo/agent/skills",
         "--add-data",
         "visivo/agent/charting/rules:visivo/agent/charting/rules",
+        # `visivo init --example` and the onboarding "Use a sample" flow copy
+        # these projects (yml, csv, duckdb) out of the package at run time.
+        "--add-data",
+        "visivo/templates/samples:visivo/templates/samples",
     ]
 
     if debug_mode:
