@@ -83,11 +83,35 @@ def _dump(obj):
 # --- the generated per-type tools ------------------------------------------
 
 
+_INLINE_ON_MODELS = ("metrics", "dimensions")
+
+
 def _list_handler(type_key):
     def handler(app, arguments):
-        return [_dump(obj) for obj in _manager(app, type_key).get_all_objects_list()]
+        objects = _manager(app, type_key).get_all_objects_list()
+        if type_key not in _INLINE_ON_MODELS:
+            return [_dump(obj) for obj in objects]
+        return _with_inline_children(app, type_key, objects)
 
     return handler
+
+
+def _with_inline_children(app, type_key, objects):
+    """Project-level objects plus those defined inside models, each inline one
+    tagged with its ``model``. A draft model replaces its published children."""
+    drafted = _manager(app, "models").cached_objects
+    listed = []
+    for obj in objects:
+        if obj is None:
+            continue
+        parent = getattr(obj, "_parent_name", None)
+        if parent in drafted:
+            continue
+        listed.append(_dump(obj) | ({"model": parent} if parent else {}))
+    for model_name, model in drafted.items():
+        for child in getattr(model, type_key, None) or []:
+            listed.append(_dump(child) | {"model": model_name})
+    return listed
 
 
 def _get_handler(type_key):

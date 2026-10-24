@@ -141,6 +141,88 @@ class TestReading:
         assert call(integration_app, "get_markdown", {"name": "agent-note"})["content"] == "# hello"
 
 
+class TestInlineMetricsAndDimensions:
+    """Metrics and dimensions written inside a model belong in the list tools,
+    tagged with the model, or an agent that just wrote them cannot find them."""
+
+    @pytest.fixture
+    def app_with_inline(self, output_dir):
+        from tests.factories.model_factories import (
+            DimensionFactory,
+            MetricFactory,
+            ProjectFactory,
+            SourceFactory,
+            SqlModelFactory,
+        )
+        from visivo.commands.utils import create_file_database
+        from visivo.server.flask_app import FlaskApp
+
+        abs_output_dir = os.path.abspath(output_dir)
+        source = SourceFactory(database=f"{abs_output_dir}/test.sqlite")
+        model = SqlModelFactory(
+            name="orders",
+            metrics=[MetricFactory(name="revenue")],
+            dimensions=[DimensionFactory(name="order_month")],
+        )
+        project = ProjectFactory(
+            sources=[source],
+            models=[model],
+            metrics=[MetricFactory(name="global_total", expression="SUM(${ref(orders).x})")],
+        )
+        create_file_database(url=source.url(), output_dir=abs_output_dir)
+        return FlaskApp(abs_output_dir, project, working_dir=abs_output_dir)
+
+    def _write_model(self, app, metrics, dimensions):
+        config = {
+            "name": "agent_orders",
+            "sql": "select 1 as amount",
+            "source": "ref(source)",
+            "metrics": metrics,
+            "dimensions": dimensions,
+        }
+        call(app, "write_model", {"config": config})
+
+    def test_a_written_models_children_are_listed_with_the_model(self, integration_app):
+        self._write_model(
+            integration_app,
+            [{"name": "total_amount", "expression": "SUM(amount)"}],
+            [{"name": "amount_band", "expression": "amount > 0"}],
+        )
+
+        metrics = call(integration_app, "list_metrics", {})
+        dimensions = call(integration_app, "list_dimensions", {})
+
+        assert [(m["name"], m["model"]) for m in metrics] == [("total_amount", "agent_orders")]
+        assert [(d["name"], d["model"]) for d in dimensions] == [("amount_band", "agent_orders")]
+
+    def test_published_inline_children_carry_their_model(self, app_with_inline):
+        metrics = {m["name"]: m for m in call(app_with_inline, "list_metrics", {})}
+        dimensions = call(app_with_inline, "list_dimensions", {})
+
+        assert metrics["revenue"]["model"] == "orders"
+        assert "model" not in metrics["global_total"]
+        assert [(d["name"], d["model"]) for d in dimensions] == [("order_month", "orders")]
+
+    def test_a_draft_model_replaces_its_published_children(self, app_with_inline):
+        orders = app_with_inline.model_manager.get("orders")
+        config = orders.model_dump(exclude_none=True, mode="json")
+        config["metrics"] = [{"name": "order_count", "expression": "COUNT(*)"}]
+        config["dimensions"] = []
+        call(app_with_inline, "write_model", {"config": config})
+
+        names = sorted(m["name"] for m in call(app_with_inline, "list_metrics", {}))
+
+        assert names == ["global_total", "order_count"]
+        assert call(app_with_inline, "list_dimensions", {}) == []
+
+    def test_a_deleted_metric_is_not_listed(self, app_with_inline):
+        app_with_inline.metric_manager.mark_for_deletion("global_total")
+
+        names = [m["name"] for m in call(app_with_inline, "list_metrics", {})]
+
+        assert names == ["revenue"]
+
+
 class TestValidating:
     def test_a_good_config_validates_without_saving(self, integration_app):
         result = call(
