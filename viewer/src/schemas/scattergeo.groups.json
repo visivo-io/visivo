@@ -162,6 +162,8 @@
   "marker.line.coloraxis": "style",
   "marker.line.colorscale": "style",
   "marker.line.colorsrc": "style",
+  "marker.line.dash": "style",
+  "marker.line.dashsrc": "style",
   "marker.line.reversescale": "other",
   "marker.line.width": "style",
   "marker.line.widthsrc": "style",
