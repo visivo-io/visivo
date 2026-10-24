@@ -48,7 +48,6 @@ def generate_schema():
 
     layout_schema = json.loads(files("visivo.schema").joinpath("layout.schema.json").read_text())
     project_schema["$defs"]["Layout"] = layout_schema
-    project_schema["$defs"]["Insight"]["properties"]["layout"] = {"$ref": "#/$defs/Layout"}
 
     # Move nested $defs to top level
     defs_to_add = {}
