@@ -157,7 +157,10 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         if not dbt_target:
             dbt_target = profiles[dbt_profile]["target"]
 
-        manifest_file = f"{dbt_root}/{dbt_project['target-path']}/manifest.json"
+        target_path = (
+            os.environ.get("DBT_TARGET_PATH") or dbt_project.get("target-path") or "target"
+        )
+        manifest_file = os.path.join(dbt_root, target_path, "manifest.json")
         if not os.path.exists(manifest_file):
             raise click.ClickException(
                 f"Manifest file not found at '{manifest_file}'. You might need to 'dbt compile'."
