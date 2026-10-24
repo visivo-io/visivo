@@ -200,3 +200,44 @@ class TestUnaliasedColumnsFailTheRun:
 
         with pytest.raises(click.ClickException):
             _build_and_write_schema(model, source, temp_folder())
+
+
+class TestModelWithNoRows:
+    """A model whose query returns no rows still writes a readable parquet."""
+
+    def _run(self, tmpdir, sql):
+        import duckdb
+        from tests.factories.model_factories import DuckdbSourceFactory
+        from visivo.jobs.run_sql_model_job import model_query_and_schema_action
+
+        database = str(tmpdir.join("db.duckdb"))
+        connection = duckdb.connect(database)
+        connection.execute("CREATE TABLE sales (powertrain VARCHAR, units INTEGER)")
+        connection.close()
+        source = DuckdbSourceFactory(database=database)
+        model = SqlModel(name="empty", sql=sql, source=f"ref({source.name})")
+        project = Project(name="p", sources=[source], models=[model], dashboards=[])
+        result = model_query_and_schema_action(model, project.dag(), str(tmpdir))
+        return result, f"{tmpdir}/main/models/empty.parquet"
+
+    def test_the_parquet_keeps_the_query_columns(self, tmpdir):
+        import duckdb
+
+        result, path = self._run(
+            tmpdir, "SELECT powertrain, units FROM sales WHERE units > 1000 AND units < 0"
+        )
+
+        assert result.success is True, result.message
+        table = duckdb.sql(f"SELECT * FROM read_parquet('{path}')")
+        assert table.columns == ["powertrain", "units"]
+        assert table.fetchall() == []
+
+    def test_a_query_over_the_empty_model_returns_no_rows_not_a_catalog_error(self, tmpdir):
+        import duckdb
+
+        _, path = self._run(tmpdir, "SELECT powertrain, units FROM sales")
+
+        rows = duckdb.sql(
+            f"SELECT powertrain, sum(units) FROM read_parquet('{path}') GROUP BY powertrain"
+        ).fetchall()
+        assert rows == []
