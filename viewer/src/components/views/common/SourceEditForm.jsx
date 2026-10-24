@@ -337,7 +337,9 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
               {currentConnectionStatus.status === 'failed' && (
                 <>
                   <ErrorOutlineIcon fontSize="small" />
-                  <span>Connection failed: {currentConnectionStatus.error}</span>
+                  <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                    Connection failed: {currentConnectionStatus.error}
+                  </span>
                 </>
               )}
             </div>

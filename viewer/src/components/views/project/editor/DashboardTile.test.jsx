@@ -92,6 +92,15 @@ describe('DashboardTile', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('uses the singular for one item', () => {
+    render(
+      <DndContext>
+        <DashboardTile tile={{ name: 'd', tags: [], itemCount: 1 }} />
+      </DndContext>
+    );
+    expect(screen.getByText('1 item')).toBeInTheDocument();
+  });
+
   test('renders a sensible footer label when item count is unknown', () => {
     render(
       <DndContext>

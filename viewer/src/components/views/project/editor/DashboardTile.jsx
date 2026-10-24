@@ -105,7 +105,7 @@ const DashboardTile = ({ tile, selected = false, onSelect, onOpenInNewTab }) => 
       )}
 
       <div className="mt-auto flex items-center justify-between text-[10px] text-gray-500">
-        <span>{tile.itemCount != null ? `${tile.itemCount} items` : 'dashboard'}</span>
+        <span>{tile.itemCount != null ? `${tile.itemCount} ${tile.itemCount === 1 ? 'item' : 'items'}` : 'dashboard'}</span>
         {tile.updatedAt && <span className="truncate">{tile.updatedAt}</span>}
       </div>
 
