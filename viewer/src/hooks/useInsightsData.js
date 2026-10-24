@@ -195,6 +195,19 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
 };
 
 /**
+ * Store entry for an insight the server has no built output for. `data: null`
+ * keeps consumers that wait for real data waiting; `missing` lets a chart stop
+ * its spinner and say why.
+ */
+const missingInsightEntry = name => ({
+  name,
+  data: null,
+  missing: true,
+  error: null,
+  pendingInputs: null,
+});
+
+/**
  * Hook for loading and managing insights data
  *
  * Orchestrates the complete insight loading pipeline:
@@ -313,8 +326,7 @@ export const useInsightsData = (
     if (!stableInsightNames.length) return {};
     if (!fetchInsights) return {};
 
-    const insights = await fetchInsights(projectId, stableInsightNames, runId);
-    if (!insights?.length) return {};
+    const insights = (await fetchInsights(projectId, stableInsightNames, runId)) || [];
 
     // Get FRESH inputs from store (not closure value) to avoid race condition
     const freshInputs = useStore.getState().inputJobs || {};
@@ -340,6 +352,10 @@ export const useInsightsData = (
         };
       }
     });
+
+    for (const name of stableInsightNames) {
+      if (!mergedData[name]) mergedData[name] = missingInsightEntry(name);
+    }
 
     return mergedData;
   }, [db, projectId, stableInsightNames, fetchInsights, runId, isPreviewMode, cacheKey]);
@@ -391,6 +407,19 @@ export const useInsightsData = (
 
     setInsightJobs(prefixed);
   }, [data, setInsightJobs, storeKeyPrefix]);
+
+  // A failed fetch (the server answers 404 when none of the names has built
+  // output) writes nothing above, so mark the names that have no entry yet.
+  useEffect(() => {
+    if (!error || !stableInsightNames.length) return;
+    const current = useStore.getState().insightJobs || {};
+    const missing = {};
+    for (const name of stableInsightNames) {
+      const key = storeKeyPrefix + name;
+      if (!current[key]) missing[key] = missingInsightEntry(name);
+    }
+    if (Object.keys(missing).length) setInsightJobs(missing);
+  }, [error, stableInsightNames, storeKeyPrefix, setInsightJobs]);
 
   const returnValue = {
     insights: storeInsightData || {},

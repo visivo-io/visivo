@@ -5,7 +5,7 @@ only its static props and the viewer renders the trace from them."""
 import json
 import os
 
-from tests.factories.model_factories import SourceFactory
+from tests.factories.model_factories import DuckdbSourceFactory, SourceFactory
 from tests.support.utils import temp_folder
 from visivo.jobs.run_insight_job import action, job, static_action
 from visivo.jobs.filtered_runner import FilteredRunner
@@ -235,3 +235,50 @@ def test_static_action_write_failure_is_not_labelled_a_broken_reference(tmpdir):
     result = static_action(insight, dag, str(tmpdir))
     assert result.success is False
     assert result.diagnostic.code == "unexpected_error"
+
+
+def test_an_insight_whose_filter_matches_no_rows_writes_an_empty_table(tmpdir):
+    """A zero-row result keeps its columns, so the viewer loads an empty table
+    instead of failing on a parquet with no columns."""
+    import duckdb
+    from visivo.models.interaction import InsightInteraction
+
+    database = str(tmpdir.join("db.duckdb"))
+    duckdb.connect(database).close()
+    source = DuckdbSourceFactory(database=database)
+    model = SqlModel(
+        name="sales", sql="SELECT 'BEV' AS powertrain, 3 AS units", source=f"ref({source.name})"
+    )
+    insight = Insight(
+        name="split",
+        props=InsightProps(
+            type="pie", labels="?{${ref(sales).powertrain}}", values="?{sum(${ref(sales).units})}"
+        ),
+        interactions=[InsightInteraction(filter="?{${ref(sales).powertrain} = 'bev'}")],
+    )
+    project = Project(name="p", sources=[source], models=[model], insights=[insight], dashboards=[])
+    tmpdir.mkdir("main").mkdir("schemas").join("sales.json").write(
+        json.dumps({model.name_hash(): {"powertrain": "VARCHAR", "units": "INTEGER"}})
+    )
+
+    result = action(insight, project.dag(), str(tmpdir))
+
+    assert result.success is True, result.message
+    artifact = _read_artifact(str(tmpdir), "split")
+    table = duckdb.sql(
+        f"SELECT * FROM read_parquet('{artifact['files'][0]['signed_data_file_url']}')"
+    )
+    assert sorted(table.columns) == sorted(artifact["props_mapping"].values())
+    assert table.fetchall() == []
+
+
+def test_selected_column_names_reads_the_aliases():
+    from visivo.jobs.run_insight_job import _selected_column_names
+
+    assert _selected_column_names('SELECT a AS x, "b" AS y FROM t', "duckdb") == ["x", "y"]
+
+
+def test_selected_column_names_is_none_for_a_star_select():
+    from visivo.jobs.run_insight_job import _selected_column_names
+
+    assert _selected_column_names("SELECT * FROM t", "duckdb") is None

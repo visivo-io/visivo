@@ -85,7 +85,13 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
             # name_hash stays in the metadata as the DuckDB table identifier;
             # the file on disk uses the clean name for storage consistency.
             parquet_path = f"{insights_directory}/{insight.name}.parquet"
-            write_dicts_to_parquet(data, parquet_path)
+            write_dicts_to_parquet(
+                data,
+                parquet_path,
+                columns=_selected_column_names(
+                    insight_query_info.pre_query, source.get_sqlglot_dialect()
+                ),
+            )
             files = [{"name_hash": insight.name_hash(), "signed_data_file_url": parquet_path}]
         else:
             models = insight.get_all_dependent_models(dag=dag)
@@ -188,6 +194,13 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
             error_details=error_details,
             diagnostic=diagnostic,
         )
+
+
+def _selected_column_names(sql, dialect):
+    from sqlglot import parse_one
+
+    names = parse_one(sql, dialect=dialect).named_selects
+    return None if "*" in names else names
 
 
 def _write_insight_json(

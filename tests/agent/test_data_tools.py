@@ -785,6 +785,19 @@ class TestPreviewInsight:
 
         assert result["row_count"] == 6 and result["models"] == ["orders_q"]
 
+    def test_rows_carry_no_warning(self, integration_app, model):
+        result = call(integration_app, "preview_insight", {"config": self._config()})
+
+        assert "warnings" not in result
+
+    def test_zero_rows_carry_a_warning(self, integration_app, model):
+        config = self._config(interactions=[{"filter": "?{${ref(orders_q).x} > 1000}"}])
+
+        result = call(integration_app, "preview_insight", {"config": config})
+
+        assert result["row_count"] == 0
+        assert "returned 0 rows" in result["warnings"][0]
+
     def test_a_saved_insight_previews_by_name(self, integration_app, model):
         call(integration_app, "write_insight", {"config": self._config(name="saved")})
 
