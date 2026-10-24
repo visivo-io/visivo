@@ -383,3 +383,62 @@ def test_editing_a_dashboard_inline_chart_can_be_committed(fresh_app, fresh_proj
 
     assert response.status_code == 200, response.data
     assert "Committed inline" in open(os.path.join(fresh_project, "project.visivo.yml")).read()
+
+
+def _changed_lines(before, after):
+    import difflib
+
+    return [
+        line
+        for line in difflib.unified_diff(before.splitlines(), after.splitlines(), lineterm="", n=0)
+        if line[:1] in "+-" and not line.startswith(("+++", "---"))
+    ]
+
+
+def _edit_and_commit(app, project_dir, segment, name, edit):
+    client = app.app.test_client()
+    project_yaml = os.path.join(project_dir, "project.visivo.yml")
+    before = open(project_yaml).read()
+
+    config = json.loads(client.get(f"/api/{segment}/{name}/").data)["config"]
+    edit(config)
+    assert client.post(f"/api/{segment}/{name}/", json=config).status_code == 200
+    response = client.post("/api/commit/", json={})
+    assert response.status_code == 200, response.data
+    assert json.loads(response.data)["published_count"] == 1
+
+    return _changed_lines(before, open(project_yaml).read())
+
+
+def test_a_one_field_dashboard_commit_touches_only_that_field(fresh_app, fresh_project):
+    changed = _edit_and_commit(
+        fresh_app,
+        fresh_project,
+        "dashboards",
+        "simple-dashboard",
+        lambda config: config["rows"][0].__setitem__("height", "large"),
+    )
+    assert sorted(line[0] for line in changed) == ["+", "-"], "\n".join(changed)
+    assert all("height" in line for line in changed), "\n".join(changed)
+
+
+def test_a_one_field_source_commit_touches_only_that_field(fresh_app, fresh_project):
+    changed = _edit_and_commit(
+        fresh_app,
+        fresh_project,
+        "sources",
+        "local-postgres",
+        lambda config: config.__setitem__("port", 5435),
+    )
+    assert changed == ["-    port: 5434", "+    port: 5435"]
+
+
+def test_a_one_field_input_commit_leaves_the_expression_alone(fresh_app, fresh_project):
+    changed = _edit_and_commit(
+        fresh_app,
+        fresh_project,
+        "inputs",
+        "min_x_value",
+        lambda config: config.__setitem__("label", "Lowest X"),
+    )
+    assert changed == ['-    label: "Min X Value (Query Dropdown)"', '+    label: "Lowest X"']

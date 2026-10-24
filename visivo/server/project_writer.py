@@ -24,25 +24,74 @@ class SubDiff(dict):
     pass
 
 
-def diff(old_dict, new_dict):
+class ListDiff(dict):
+    """Per-index edits to a list, plus the length it should end up with."""
+
+    def __init__(self, edits, items, length):
+        super().__init__(edits)
+        self.items_ = items
+        self.length = length
+
+
+def _diff_list(old_list, new_list, full_list):
+    edits = {}
+    for index in range(min(len(old_list), len(new_list))):
+        old_item, new_item = old_list[index], new_list[index]
+        full_item = full_list[index] if full_list and index < len(full_list) else None
+        if old_item == new_item:
+            continue
+        if isinstance(old_item, dict) and isinstance(new_item, dict):
+            sub = diff(old_item, new_item, full_item)
+            if sub:
+                edits[index] = SubDiff(sub)
+        elif isinstance(old_item, list) and isinstance(new_item, list):
+            edits[index] = _diff_list(old_item, new_item, full_item)
+        else:
+            edits[index] = new_item
+    appended = list(new_list[len(old_list) :])
+    return ListDiff(edits, appended, len(new_list))
+
+
+def diff(old_dict, new_dict, full_dict=None):
+    """Edits that turn ``old_dict`` into ``new_dict``.
+
+    ``full_dict`` is the same object dumped with its defaults. A key the new
+    config leaves out is only a deletion when the full dump does not hold it
+    at the value the file already has: an explicit default is the user's text.
+    """
+    full_dict = full_dict if isinstance(full_dict, dict) else {}
     updates = {}
     for key in new_dict:
         if key not in old_dict:
             updates[key] = new_dict[key]
         elif isinstance(new_dict[key], dict) and isinstance(old_dict[key], dict):
-            sub_diff = diff(old_dict[key], new_dict[key])
+            sub_diff = diff(old_dict[key], new_dict[key], full_dict.get(key))
             if sub_diff:
                 updates[key] = SubDiff(sub_diff)
         elif isinstance(new_dict[key], list) and isinstance(old_dict[key], list):
             if old_dict[key] != new_dict[key]:
-                updates[key] = new_dict[key]
+                updates[key] = _diff_list(old_dict[key], new_dict[key], full_dict.get(key))
         else:
             if old_dict[key] != new_dict[key]:
                 updates[key] = new_dict[key]
     for key in old_dict:
         if key not in new_dict:
+            if key in full_dict and full_dict[key] == old_dict[key]:
+                continue
             updates[key] = DELETE
     return updates
+
+
+def _apply_list_diff(target, list_diff):
+    for index, value in list_diff.items():
+        if isinstance(value, SubDiff) and isinstance(target[index], dict):
+            apply_diff(target[index], value)
+        elif isinstance(value, ListDiff) and isinstance(target[index], list):
+            _apply_list_diff(target[index], value)
+        else:
+            target[index] = value
+    del target[list_diff.length :]
+    target.extend(list_diff.items_)
 
 
 # Apply diff
@@ -56,6 +105,8 @@ def apply_diff(target, diff):
                 apply_diff(target[key], value)
             else:
                 target[key] = value
+        elif isinstance(value, ListDiff):
+            _apply_list_diff(target[key], value)
         else:
             target[key] = value
 
@@ -119,7 +170,7 @@ class ProjectWriter:
             return
         existing = contents.get(key)
         if isinstance(existing, dict):
-            apply_diff(existing, diff(existing, config))
+            apply_diff(existing, diff(existing, config, self._get_full_config(child_name)))
             return
 
         keys = list(contents.keys())
@@ -129,12 +180,13 @@ class ProjectWriter:
 
     def _update(self, child_name: str):
         new_object = self._get_named_child_config(child_name)
+        full_object = self._get_full_config(child_name)
 
         def recurse(current):
             if isinstance(current, dict):
                 for key, value in current.items():
                     if isinstance(value, dict) and value.get("name") == child_name:
-                        diff_result = diff(value, new_object)
+                        diff_result = diff(value, new_object, full_object)
                         apply_diff(value, diff_result)
                         return True
                     elif isinstance(value, (dict, list)):
@@ -143,7 +195,7 @@ class ProjectWriter:
             elif isinstance(current, list):
                 for item in current:
                     if isinstance(item, dict) and item.get("name") == child_name:
-                        diff_result = diff(item, new_object)
+                        diff_result = diff(item, new_object, full_object)
                         apply_diff(item, diff_result)
                         return True
                     elif isinstance(item, (dict, list)):
@@ -238,6 +290,7 @@ class ProjectWriter:
         so those arrive as ordinary `Modified` children and take `_update`.
         """
         new_object = self._get_named_child_config(new_child_name)
+        full_object = self._get_full_config(new_child_name)
 
         def recurse(current):
             if isinstance(current, dict):
@@ -248,7 +301,7 @@ class ProjectWriter:
                 return False
             for value in items:
                 if isinstance(value, dict) and value.get("name") == old_child_name:
-                    diff_result = diff(value, new_object)
+                    diff_result = diff(value, new_object, full_object)
                     apply_diff(value, diff_result)
                     return True
                 if isinstance(value, (dict, list)) and recurse(value):
@@ -257,6 +310,10 @@ class ProjectWriter:
 
         file_path = self.named_children[new_child_name]["file_path"]
         recurse(self.files_to_write[file_path])
+
+    def _get_full_config(self, named_child_name: str):
+        full = self.named_children[named_child_name].get("full_config")
+        return self.__reconstruct_named_child_config(full) if full else None
 
     def _get_named_child_config(self, named_child_name: str) -> dict:
         """
