@@ -53,9 +53,7 @@ def _run(tmp_path, kernel, machine, arm64_flag, assets):
         _stub(bin_dir / "sysctl", f"#!/bin/bash\necho {arm64_flag}\n")
     _stub(bin_dir / "curl", CURL_STUB)
     _stub(bin_dir / "unzip", UNZIP_STUB)
-    release = "\n".join(
-        f'"browser_download_url": "https://example.test/{name}"' for name in assets
-    )
+    release = "\n".join(f'"browser_download_url": "https://example.test/{name}"' for name in assets)
     log = tmp_path / "log"
     env = {
         "PATH": f"{bin_dir}:/usr/bin:/bin",
