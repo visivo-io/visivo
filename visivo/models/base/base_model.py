@@ -95,6 +95,26 @@ StringOrEnvVar = Annotated[
     Discriminator(StringOrEnvVarDiscriminator()),
 ]
 
+
+class IntOrEnvVarDiscriminator:
+    """Discriminates between env var references and literal integers."""
+
+    def __name__(self):
+        return "IntOrEnvVarDiscriminator"
+
+    def __call__(self, value):
+        if isinstance(value, EnvVarString):
+            return "EnvVar"
+        if isinstance(value, str) and re.search(ENV_VAR_CONTEXT_PATTERN, value):
+            return "EnvVar"
+        return "Int"
+
+
+IntOrEnvVar = Annotated[
+    Union[EnvVarStringType, Annotated[int, Tag("Int")]],
+    Discriminator(IntOrEnvVarDiscriminator()),
+]
+
 SecretStrOrEnvVar = Annotated[
     Union[EnvVarStringType, Annotated[SecretStr, Tag("SecretStr")]],
     Discriminator(SecretStrOrEnvVarDiscriminator()),

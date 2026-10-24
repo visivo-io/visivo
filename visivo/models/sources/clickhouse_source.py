@@ -1,6 +1,7 @@
 from typing import Literal, Optional
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from visivo.models.sources.source import ServerSource
+from visivo.models.base.base_model import IntOrEnvVar
 from pydantic import Field
 
 # Import clickhouse_sqlalchemy to register the dialect with SQLAlchemy
@@ -67,7 +68,7 @@ class ClickhouseSource(ServerSource, SqlalchemySource):
     """
 
     type: ClickhouseType
-    port: Optional[int] = Field(
+    port: Optional[IntOrEnvVar] = Field(
         9000, description="The ClickHouse port. Default 9000 for native TCP, use 8123 for HTTP."
     )
     protocol: Optional[Literal["native", "http"]] = Field(
