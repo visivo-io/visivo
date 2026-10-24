@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: fct_mrr
+    description: One row per account per month with recurring revenue.
+    columns:
+      - name: account_id
+        description: The account.
+      - name: month
+        description: First day of the billing month.
+        meta:
+          dimension:
+            type: date
+            time_intervals: [MONTH, QUARTER, YEAR]
+      - name: plan
+        description: The plan the account paid for that month.
+      - name: mrr
+        description: Monthly recurring revenue in USD.
+        meta:
+          metrics:
+            total_mrr:
+              type: sum
+              label: Total MRR
+              format: usd
+            average_mrr:
+              type: average
+              label: Average MRR per account
+      - name: seats
+        meta:
+          metrics:
+            total_seats:
+              type: sum
+  - name: dim_accounts
+    description: One row per account with churn status and activity.
+    columns:
+      - name: account_id
+        tests: [unique, not_null]
+      - name: is_churned
+        description: True when the account has churned.
+        meta:
+          metrics:
+            churned_accounts:
+              type: count_distinct
+              sql: case when ${is_churned} then account_id end
+      - name: industry
+      - name: country

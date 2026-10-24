@@ -1,0 +1,5 @@
+saas.duckdb
+saas.duckdb.wal
+target/
+logs/
+dbt_packages/
