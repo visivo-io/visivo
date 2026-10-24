@@ -112,6 +112,21 @@ class TestNothingReachesTheFilesystem:
 
         assert _project_files(output_dir) == before
 
+    def test_a_project_file_written_in_a_sibling_folder_is_not_ours(self, output_dir):
+        """Parallel test workers share the parent temp directory."""
+        before = _project_files(output_dir)
+        sibling = os.path.join(os.path.dirname(os.path.abspath(output_dir)), "sibling-worker")
+        os.makedirs(sibling, exist_ok=True)
+        stray = os.path.join(sibling, "project.visivo.yml")
+        try:
+            with open(stray, "w") as handle:
+                handle.write("name: other\n")
+
+            assert _project_files(output_dir) == before
+        finally:
+            os.remove(stray)
+            os.rmdir(sibling)
+
 
 class TestReading:
     def test_list_returns_the_published_objects(self, integration_app):
@@ -228,10 +243,11 @@ class TestTheCallingContract:
 
 
 def _project_files(output_dir):
-    """Every project file and its bytes, for a byte-identical comparison."""
-    root = os.path.dirname(os.path.abspath(output_dir))
+    """Every project file and its bytes under the test's own folder, for a
+    byte-identical comparison. Never its parent: that temp directory is shared
+    with other test processes."""
     found = {}
-    for directory, _, names in os.walk(root):
+    for directory, _, names in os.walk(os.path.abspath(output_dir)):
         for name in names:
             if name.endswith((".visivo.yml", ".visivo.yaml")):
                 path = os.path.join(directory, name)
