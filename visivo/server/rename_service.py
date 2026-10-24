@@ -198,7 +198,12 @@ def rename_object(flask_app, *, type_key, old_name, new_name):
     config = _config_of(target)
     config["name"] = new_name
     manager.save_from_config(config)
-    manager.record_rename(old_name, new_name)
+    # Only an object with a published name has a YAML entry for the commit to
+    # rename; a draft is just re-keyed. Either way the old name's draft now
+    # lives under the new name, so it must not be committed as well.
+    if old_name in manager.published_objects or manager.renamed_from(old_name):
+        manager.record_rename(old_name, new_name)
+    manager.delete_from_cache(old_name)
 
     for reference in impact["references"]:
         other_manager = getattr(flask_app, TYPE_TO_MANAGER[reference["type"]])

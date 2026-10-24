@@ -1,6 +1,13 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SourceEditForm from './SourceEditForm';
+import { fetchRenameImpact, renameResource } from '../../../api/rename';
+
+jest.mock('../../../api/rename', () => ({
+  ...jest.requireActual('../../../api/rename'),
+  fetchRenameImpact: jest.fn(),
+  renameResource: jest.fn(),
+}));
 
 // Selector-aware store mock (smoke-test convention): the form destructures
 // `useStore()`, so the default export applies selectors against mockState.
@@ -432,5 +439,31 @@ describe('SourceEditForm — seeds', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
+describe('SourceEditForm — a Save that renames and edits (VIS-1538)', () => {
+  test('saves the edited fields under the current name, then renames', async () => {
+    fetchRenameImpact.mockResolvedValue({
+      target: { type: 'sources', name: 's1', new_name: 's2', status: 'published' },
+      references: [],
+    });
+    renameResource.mockResolvedValue({ renamed: true, references: [] });
+    const onSave = jest.fn(async () => ({ success: true }));
+    renderForm({ source: publishedSqlite, isCreate: false, onSave });
+
+    fireEvent.change(screen.getByLabelText(/Source Name/), { target: { value: 's2' } });
+    makeDirty();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(await screen.findByTestId('rename-impact-confirm'));
+
+    await waitFor(() =>
+      expect(renameResource).toHaveBeenCalledWith('sources', 's1', 's2', expect.anything())
+    );
+    expect(onSave).toHaveBeenCalledWith(
+      'source',
+      's1',
+      expect.objectContaining({ name: 's1', type: 'sqlite', database: 'edited.db' })
+    );
   });
 });

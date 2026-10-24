@@ -134,6 +134,48 @@ describe('createWorkspaceObject', () => {
     });
   });
 
+  describe('source', () => {
+    test('drafts an in-memory database, so no file is created before the user saves', async () => {
+      const save = jest.fn(async () => ({ success: true }));
+      useStore.setState({ sources: [], saveSource: save });
+
+      await useStore.getState().createWorkspaceObject('source');
+
+      const [name, config] = save.mock.calls[0];
+      expect(name).toBe('new-source');
+      expect(config).toEqual({ type: 'sqlite', database: ':memory:' });
+    });
+  });
+
+  describe('refusals', () => {
+    test('an unknown type is refused', async () => {
+      const result = await useStore.getState().createWorkspaceObject('widget');
+      expect(result).toEqual({ success: false, error: 'No inline-create template for type "widget"' });
+    });
+
+    test('a type whose save action is missing is refused', async () => {
+      useStore.setState({ saveSource: undefined });
+      const result = await useStore.getState().createWorkspaceObject('source');
+      expect(result).toEqual({ success: false, error: 'saveSource unavailable' });
+    });
+
+    test('a template that cannot build a draft reports why and saves nothing', async () => {
+      const save = jest.fn();
+      const original = CREATE_TEMPLATES.source.config;
+      CREATE_TEMPLATES.source.config = () => {
+        throw new Error('');
+      };
+      useStore.setState({ sources: [], saveSource: save });
+      try {
+        const result = await useStore.getState().createWorkspaceObject('source');
+        expect(result).toEqual({ success: false, error: 'Could not draft a new source' });
+      } finally {
+        CREATE_TEMPLATES.source.config = original;
+      }
+      expect(save).not.toHaveBeenCalled();
+    });
+  });
+
   // VIS-1237: "+ New" → Relation was a dead affordance. A relation IS
   // templatable — its condition just has to be built from real models, because
   // the backend requires two distinct model references.
