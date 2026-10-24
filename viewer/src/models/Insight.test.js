@@ -946,6 +946,12 @@ describe('processInputRefsInProps — embedded templates', () => {
     expect(processInputRefsInProps(props, inputs)).toEqual({ title: 'Jan to Mar' });
   });
 
+  it('replaces ${ref(name).accessor} refs embedded inside a longer string', () => {
+    const props = { title: 'Sales for ${ref(region).value} and ${ref(other).value}' };
+    const inputs = { region: { value: 'EMEA' }, other: { value: 'APAC' } };
+    expect(processInputRefsInProps(props, inputs)).toEqual({ title: 'Sales for EMEA and APAC' });
+  });
+
   it('leaves ${...} strings that are not input refs untouched', () => {
     const props = { expr: '${not an input ref}' };
     const inputs = { a: { value: 1 } };
