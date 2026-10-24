@@ -3,6 +3,13 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import selectEvent from 'react-select-event';
 import DashboardEditForm from './DashboardEditForm';
 import useStore from '../../../stores/store';
+import { fetchRenameImpact, renameResource } from '../../../api/rename';
+
+jest.mock('../../../api/rename', () => ({
+  ...jest.requireActual('../../../api/rename'),
+  fetchRenameImpact: jest.fn(),
+  renameResource: jest.fn(),
+}));
 
 jest.mock('../../../stores/store');
 
@@ -316,5 +323,38 @@ describe('DashboardEditForm — template dashboards', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalled();
     expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
+describe('DashboardEditForm — a Save that renames and edits (VIS-1538)', () => {
+  test('saves the edited description under the current name, then renames', async () => {
+    fetchRenameImpact.mockResolvedValue({
+      target: { type: 'dashboards', name: 'sales', new_name: 'revenue', status: 'published' },
+      references: [],
+    });
+    renameResource.mockResolvedValue({ renamed: true, references: [] });
+    const onSave = jest.fn(async () => ({ success: true }));
+    render(
+      <DashboardEditForm
+        dashboard={dashboardWithRows}
+        isCreate={false}
+        onSave={onSave}
+        onClose={jest.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByDisplayValue('sales'), { target: { value: 'revenue' } });
+    fireEvent.change(screen.getByDisplayValue('Sales overview'), { target: { value: 'Edited' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(await screen.findByTestId('rename-impact-confirm'));
+
+    await waitFor(() =>
+      expect(renameResource).toHaveBeenCalledWith('dashboards', 'sales', 'revenue', expect.anything())
+    );
+    expect(onSave).toHaveBeenCalledWith(
+      'dashboard',
+      'sales',
+      expect.objectContaining({ name: 'sales', description: 'Edited' })
+    );
   });
 });

@@ -230,23 +230,25 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   };
 
   // ---- save / delete ----
-  const handleSave = async () => {
-    if (!validateForm()) return;
-    // A changed name in edit mode is a rename, not a field edit.
-    if (isEditMode && rename.nameChanged) {
-      rename.start();
-      return;
-    }
+  const persist = async nameToSave => {
     setSaving(true);
     setSaveError(null);
     // Carry the scope through the round trip; see `parentModelName` above.
-    const body = { ...config, name, ...(parentModelName ? { parentModel: parentModelName } : {}) };
+    const body = {
+      ...config,
+      name: nameToSave,
+      ...(parentModelName ? { parentModel: parentModelName } : {}),
+    };
     try {
       if (isEmbedded) {
         // Embedded object — delegate; the parent applies it via its edit stack.
-        const result = await onSave(type, name, body);
+        const result = await onSave(type, nameToSave, body);
         setSaving(false);
-        if (!result?.success) setSaveError(result?.error || `Failed to save ${type}`);
+        if (!result?.success) {
+          setSaveError(result?.error || `Failed to save ${type}`);
+          return false;
+        }
+        return true;
       } else if (isEditMode) {
         // Standalone edit — flush through the gated optimistic backbone. The
         // saveX refetch writes the record back, re-seeding the baseline so the
@@ -255,25 +257,38 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
         const { name: _n, ...rest } = body;
         const result = await saveNow({ name: recordName, ...rest });
         setSaving(false);
-        if (result && result.success === false && !result.validation) {
-          setSaveError(result.error || `Failed to save ${type}`);
+        if (result && result.success === false) {
+          if (!result.validation) setSaveError(result.error || `Failed to save ${type}`);
+          return false;
         }
+        return true;
       } else {
         // Create mode — persist through the type's store action.
         const saveAction = store[SAVE_ACTION[type]];
-        const result = await saveAction(name, body);
+        const result = await saveAction(nameToSave, body);
         setSaving(false);
         if (result?.success) {
           onSave && onSave(body);
           onClose && onClose();
-        } else {
-          setSaveError(result?.error || `Failed to save ${type}`);
+          return true;
         }
+        setSaveError(result?.error || `Failed to save ${type}`);
+        return false;
       }
     } catch (error) {
       setSaveError(error.message || `Failed to save ${type}`);
       setSaving(false);
+      return false;
     }
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+    if (isEditMode && rename.nameChanged) {
+      await rename.start(() => persist(recordName));
+      return;
+    }
+    await persist(name);
   };
 
   const handleDelete = async () => {

@@ -112,19 +112,13 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
     handleSave();
   };
 
-  const handleSave = async () => {
-    // A changed name in edit mode is a RENAME — its own server operation,
-    // confirmed first, because every `${ref()}` to this object moves with it.
-    if (!isCreate && rename.nameChanged) {
-      rename.start();
-      return;
-    }
+  const persist = async nameToSave => {
     setError(null);
     setSaving(true);
 
     // Build config object
     const config = {
-      name: name.trim(),
+      name: nameToSave.trim(),
       sql: sql.trim(),
     };
 
@@ -156,7 +150,17 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
 
     if (!result?.success) {
       setError(result?.error || 'Failed to save model');
+      return false;
     }
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (!isCreate && rename.nameChanged) {
+      await rename.start(() => persist(model.name));
+      return;
+    }
+    await persist(name);
   };
 
   const handleDelete = async () => {

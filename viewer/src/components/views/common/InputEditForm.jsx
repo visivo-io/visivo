@@ -262,13 +262,19 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
     }
   };
 
-  const handleSave = async () => {
-    // A changed name in edit mode is a RENAME — its own server operation,
-    // confirmed first, because every `${ref()}` to this object moves with it.
-    if (isEditMode && rename.nameChanged) {
-      rename.start();
-      return;
+  const persist = async draft => {
+    setSaving(true);
+    setSaveError(null);
+    const result = await onSave('input', draft.name, buildInputConfig(draft));
+    setSaving(false);
+    if (result && result.success === false) {
+      setSaveError(result.error || 'Failed to save input');
+      return false;
     }
+    return true;
+  };
+
+  const handleSave = async () => {
     const draft = {
       name,
       inputType,
@@ -286,13 +292,11 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    setSaving(true);
-    setSaveError(null);
-    const result = await onSave('input', name, buildInputConfig(draft));
-    setSaving(false);
-    if (result && result.success === false) {
-      setSaveError(result.error || 'Failed to save input');
+    if (isEditMode && rename.nameChanged) {
+      await rename.start(() => persist({ ...draft, name: recordName }));
+      return;
     }
+    await persist(draft);
   };
 
   const handleDelete = async () => {

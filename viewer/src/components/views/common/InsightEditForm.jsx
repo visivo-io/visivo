@@ -201,28 +201,14 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
-
-    // A changed name in edit mode is a RENAME — its own server operation,
-
-    // confirmed first, because every `${ref()}` to this object moves with it.
-
-    if (isEditMode && rename.nameChanged) {
-
-      rename.start();
-
-      return;
-
-    }
-    if (!validateForm()) return;
-
+  const persist = async nameToSave => {
     setSaving(true);
     setSaveError(null);
 
     // Build config object - embedded insights don't include name
     const config = isEmbedded
       ? { props }
-      : { name, props };
+      : { name: nameToSave, props };
 
     // Only include description if non-empty
     if (description) {
@@ -249,13 +235,24 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
     }
 
     // Call unified save - parent handles embedded vs standalone routing
-    const result = await onSave('insight', name, config);
+    const result = await onSave('insight', nameToSave, config);
 
     setSaving(false);
 
     if (!result?.success) {
       setSaveError(result?.error || 'Failed to save insight');
+      return false;
     }
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+    if (isEditMode && rename.nameChanged) {
+      await rename.start(() => persist(insight.name));
+      return;
+    }
+    await persist(name);
   };
 
   const handleDelete = async () => {
