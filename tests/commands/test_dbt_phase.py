@@ -13,7 +13,7 @@ from tests.factories.model_factories import DbtFactory, ProjectFactory
 runner = CliRunner()
 
 
-def setup_dbt(project, working_dir):
+def setup_dbt(project, working_dir, project_settings=None, manifest_dir="target"):
     temp_yml_file(
         dict=json.loads(project.model_dump_json()),
         name=PROJECT_FILE_NAME,
@@ -43,7 +43,11 @@ def setup_dbt(project, working_dir):
         output_dir=working_dir,
     )
     temp_yml_file(
-        dict={"target-path": "target", "profile": "profile_name"},
+        dict=(
+            {"target-path": "target", "profile": "profile_name"}
+            if project_settings is None
+            else project_settings
+        ),
         name="dbt_project.yml",
         output_dir=working_dir,
     )
@@ -61,7 +65,7 @@ def setup_dbt(project, working_dir):
             }
         ),
         name="manifest.json",
-        output_dir=f"{working_dir}/target",
+        output_dir=f"{working_dir}/{manifest_dir}",
     )
 
 
@@ -83,6 +87,58 @@ def test_dbt_with_defaults():
         dbt_content = yaml.safe_load(file)
         SnowflakeSource(**dbt_content["sources"][0])
         assert dbt_content["models"][0]["source"] == "ref(profile_name_target_name)"
+
+
+def _run_default(working_dir):
+    output_dir = temp_folder()
+    dbt_phase(
+        working_dir=working_dir,
+        output_dir=output_dir,
+        dbt_profile=None,
+        dbt_target=None,
+    )
+    return output_dir
+
+
+def test_dbt_without_target_path_defaults_to_target():
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(project, working_dir, project_settings={"profile": "profile_name"})
+
+    output_dir = _run_default(working_dir)
+
+    assert os.path.exists(f"{output_dir}/dbt.yml")
+
+
+def test_dbt_target_path_env_var_overrides(monkeypatch):
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(
+        project,
+        working_dir,
+        project_settings={"target-path": "ignored", "profile": "profile_name"},
+        manifest_dir="custom_out",
+    )
+    monkeypatch.setenv("DBT_TARGET_PATH", "custom_out")
+
+    output_dir = _run_default(working_dir)
+
+    assert os.path.exists(f"{output_dir}/dbt.yml")
+
+
+def test_dbt_set_target_path_is_still_honored():
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(
+        project,
+        working_dir,
+        project_settings={"target-path": "build", "profile": "profile_name"},
+        manifest_dir="build",
+    )
+
+    output_dir = _run_default(working_dir)
+
+    assert os.path.exists(f"{output_dir}/dbt.yml")
 
 
 def test_dbt_with_set_profile_and_target():
@@ -245,3 +301,35 @@ def test_dbt_with_unsupported_source_type():
             exc_info.value.message
             == f"Target type 'unsupported' is not supported.  Only ['postgresql', 'mysql', 'sqlite', 'snowflake'] are supported."
         )
+
+
+def test_dbt_missing_dbt_project_file():
+    working_dir = temp_folder()
+    setup_dbt(ProjectFactory(dbt=DbtFactory()), working_dir)
+    os.remove(f"{working_dir}/dbt_project.yml")
+
+    with pytest.raises(click.ClickException, match="dbt_project.yml file not found"):
+        _run_default(working_dir)
+
+
+def test_dbt_missing_profiles_file():
+    working_dir = temp_folder()
+    setup_dbt(ProjectFactory(dbt=DbtFactory()), working_dir)
+    os.remove(f"{working_dir}/profiles.yml")
+
+    with pytest.raises(click.ClickException, match="profiles.yml file not found"):
+        _run_default(working_dir)
+
+
+def test_dbt_disabled_writes_nothing():
+    working_dir = temp_folder()
+    output_dir = temp_folder()
+    temp_yml_file(
+        dict=json.loads(ProjectFactory().model_dump_json()),
+        name=PROJECT_FILE_NAME,
+        output_dir=working_dir,
+    )
+
+    dbt_phase(working_dir=working_dir, output_dir=output_dir, dbt_profile=None, dbt_target=None)
+
+    assert not os.path.exists(f"{output_dir}/dbt.yml")
