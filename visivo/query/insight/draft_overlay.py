@@ -206,6 +206,12 @@ def build_draft_overlay(
     Raises ``DraftOverlayError`` for a malformed draft object (never lets a
     Pydantic ``ValidationError`` escape uncaught to the view).
     """
+    if flask_app.project is None:
+        raise DraftOverlayError(
+            "This project has not compiled, so there is nothing to preview against. "
+            "Its last build failed — call list_runs, read the error with get_run, "
+            "and fix that before previewing."
+        )
     project = deepcopy(flask_app.project)
     inject_cached_objects(flask_app, project, fields=_INSIGHT_DEPENDENCY_FIELDS)
     _inject_draft_objects(

@@ -34,6 +34,10 @@ def merge_objects_into_list(obj_list, new_objects):
     return list(by_name.values()) + unnamed
 
 
+class NoCompiledProject(Exception):
+    """The served project is None, so nothing can be overlaid onto it."""
+
+
 def replace_inline_definitions(container, replacements, _seen=None):
     """Swap drafts in for objects defined inline under ``container``; return the names swapped.
 
@@ -119,6 +123,14 @@ def inject_cached_objects(flask_app, project, fields=None):
     not yet written to YAML) resolve during the run. ``fields`` limits the
     overlay to those project fields. Re-nesting runs last so a field lands on
     the cached model, not the published one."""
+    if project is None:
+        # Reached when the served project failed to compile. Without this the
+        # first manager holding a draft walks `type(None).model_fields`, and
+        # the Pydantic internals are what the caller reports to the user.
+        raise NoCompiledProject(
+            "This project has no compiled state, so there is nothing to overlay drafts onto. "
+            "Its last build failed — check list_runs / get_run for the error and fix that first."
+        )
     for manager_attr, project_field in MANAGER_TO_PROJECT_FIELD:
         if fields is not None and project_field not in fields:
             continue
