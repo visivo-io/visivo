@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import TabStrip from './TabStrip';
 import LeftRail from './LeftRail';
 import RightRail from './RightRail';
@@ -18,6 +18,17 @@ import useStore from '../../../stores/store';
 // tests; `WorkspaceShell` is the only runtime caller.
 export const RAIL_COLLAPSED_WIDTH = 48;
 export const CENTER_MIN_WIDTH = 480;
+
+/**
+ * centerMinWidth — the canvas keeps `CENTER_MIN_WIDTH` unless the shell is too
+ * narrow to hold it beside two collapsed rails (a phone). There it shrinks to
+ * fit instead of pushing the page into a horizontal scroll.
+ */
+export const centerMinWidth = containerWidth => {
+  if (!containerWidth) return CENTER_MIN_WIDTH;
+  const room = containerWidth - 2 * RAIL_COLLAPSED_WIDTH;
+  return room >= CENTER_MIN_WIDTH ? CENTER_MIN_WIDTH : 0;
+};
 
 /**
  * computeAutoCollapse — stateless: given the shell's measured width and the
@@ -90,10 +101,12 @@ const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
   // should collapse again on the very next measurement rather than waiting
   // for an actual resize event).
   const shellRef = useRef(null);
+  const [shellWidth, setShellWidth] = useState(0);
   useEffect(() => {
     const el = shellRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
     const measure = width => {
+      setShellWidth(width);
       const { left, right } = computeAutoCollapse({
         containerWidth: width,
         leftWidth,
@@ -150,7 +163,7 @@ const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
             <div className="flex min-h-0 flex-1">
               <main
                 className="flex flex-1 flex-col"
-                style={{ minWidth: CENTER_MIN_WIDTH }}
+                style={{ minWidth: centerMinWidth(shellWidth) }}
                 data-testid="workspace-middle-container"
               >
                 {/* H-2: external-edit warning — top of the canvas area,

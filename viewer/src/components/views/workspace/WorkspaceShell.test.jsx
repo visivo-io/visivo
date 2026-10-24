@@ -15,7 +15,7 @@
  */
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
-import WorkspaceShell, { computeAutoCollapse, CENTER_MIN_WIDTH, RAIL_COLLAPSED_WIDTH } from './WorkspaceShell';
+import WorkspaceShell, { computeAutoCollapse, centerMinWidth, CENTER_MIN_WIDTH, RAIL_COLLAPSED_WIDTH } from './WorkspaceShell';
 import useStore from '../../../stores/store';
 
 jest.mock('./TabStrip', () => () => <div data-testid="tab-strip-mock" />);
@@ -112,6 +112,19 @@ describe('WorkspaceShell (integration — mocked children)', () => {
     render(<WorkspaceShell />);
     const middle = screen.getByTestId('workspace-middle-container');
     expect(middle.style.minWidth).toBe(`${CENTER_MIN_WIDTH}px`);
+  });
+
+  test('on a phone the canvas gives up the min-width so the page does not scroll sideways', () => {
+    observedWidth = 390;
+    render(<WorkspaceShell />);
+    expect(screen.getByTestId('workspace-middle-container').style.minWidth).toBe('0');
+  });
+
+  test('centerMinWidth keeps the minimum while it fits beside two collapsed rails', () => {
+    const fits = CENTER_MIN_WIDTH + 2 * RAIL_COLLAPSED_WIDTH;
+    expect(centerMinWidth(fits)).toBe(CENTER_MIN_WIDTH);
+    expect(centerMinWidth(fits - 1)).toBe(0);
+    expect(centerMinWidth(0)).toBe(CENTER_MIN_WIDTH);
   });
 
   test('at a wide viewport, both rails render at their configured width — no collapse', () => {
