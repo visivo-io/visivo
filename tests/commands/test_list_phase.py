@@ -33,3 +33,11 @@ def test_list_phase_with_nested_objects():
         list_phase(project, "sources")
     output = f.getvalue()
     assert output.count(" - nested_source") == 1
+
+
+def test_every_registry_type_has_a_class_to_list():
+    from visivo.commands.list_phase import OBJECT_TYPE_CLASSES, OBJECT_TYPES
+    from visivo.server.rename_service import TYPE_TO_MANAGER
+
+    assert set(OBJECT_TYPE_CLASSES) == set(TYPE_TO_MANAGER)
+    assert set(OBJECT_TYPES) == set(TYPE_TO_MANAGER)
