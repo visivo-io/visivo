@@ -52,6 +52,12 @@ const SourceErdCanvas = ({ activeObject }) => {
   const projectId = useStore(s => s.project?.id);
 
   const sourceName = activeObject?.name || null;
+  // Reload when the schema can have changed under an open canvas: a commit,
+  // or the Data tab generating (or finding) this source's schema.
+  const lastCommittedAt = useStore(s => s.lastCommittedAt);
+  const outlineHasSchema = useStore(
+    s => s.workspaceSourceOutlineDataCache?.[sourceName]?.hasCachedSchema ?? null
+  );
   const available = useMemo(() => {
     try {
       return isAvailable('sourceSchemaJobsList');
@@ -69,15 +75,20 @@ const SourceErdCanvas = ({ activeObject }) => {
 
   const reactFlowInstance = useRef(null);
   const cancelledRef = useRef(false);
+  const loadedSourceRef = useRef(null);
 
   useEffect(() => {
     cancelledRef.current = false;
-    setCtxMenu(null);
     // Drop the previous source's entry IMMEDIATELY — the frame reuses this body
     // across sibling selections, and a stale entry would render the OLD
     // source's ERD (with the NEW sourceName stamped onto its nodes, so the
     // table context menu targets the wrong source) through the load window.
-    setEntry(null);
+    // A reload of the same source keeps its diagram up until the new one lands.
+    if (loadedSourceRef.current !== sourceName) {
+      setCtxMenu(null);
+      setEntry(null);
+    }
+    loadedSourceRef.current = sourceName;
     if (!sourceName || !available) {
       setStatus(available ? 'missing' : 'idle');
       return () => {
@@ -131,7 +142,7 @@ const SourceErdCanvas = ({ activeObject }) => {
     return () => {
       cancelledRef.current = true;
     };
-  }, [sourceName, available, projectId]);
+  }, [sourceName, available, projectId, lastCommittedAt, outlineHasSchema]);
 
   const { nodes: rawNodes, edges } = useSourceErdDag(sourceName, entry);
 

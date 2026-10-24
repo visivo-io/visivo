@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import useStore from '../../stores/store';
-import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
+import { explorerSourcesFromLibrary, sameExplorerSources } from '../../stores/explorerStore';
 
 /**
  * useExplorerWorkbenchInit — the mount-time + reactive init/lifecycle effects
@@ -14,9 +14,8 @@ import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
  * is this hook's only consumer now.
  *
  * Runs:
- *   - fetch `explorerSources` on mount if empty (see the dedicated note
- *     below — this is a Phase 3a addition, not part of the original
- *     extraction);
+ *   - keep `explorerSources` in step with the Library's source list, drafts
+ *     included (VIS-1550);
  *   - a debounced (300ms) backend diff fetch whenever the working explorer
  *     state changes (`/api/explorer/diff/`);
  *   - fetch project defaults on mount (default source selection);
@@ -48,26 +47,12 @@ import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
  * explorerStore.js — a no-op if the user has since picked a source
  * themselves).
  *
- * Phase 3a regression fix (VIS-1053): `explorerSources` used to be populated
- * ONLY as a side effect of `ExplorerLeftPanel`'s nested `SourceBrowser`
- * mounting (`SourceBrowser.onSourcesLoaded` -> `ExplorerLeftPanel`'s
- * `handleSourcesLoaded` -> `setExplorerSources`) — true for the standalone
- * route (still mounts `ExplorerLeftPanel`), but Phase 3a's DnD unification
- * removed `ExplorerLeftPanel` from `ExplorationWorkbench` entirely (the
- * Library is now the browse surface). That silently starved
- * `explorerSources` to `[]` forever in the new surface, which in turn starved
- * the auto-create-model-tab effect below (its `explorerSources.length > 0`
- * guard never became true) — no query ever auto-created, `CenterPanel`'s
- * source selector stuck on "Select source." Fetching directly in this
- * SHARED init hook (rather than depending on a browse-panel component
- * happening to be mounted) fixes both hosts at once and removes that
- * component-render dependency entirely.
+ * `explorerSources` is derived from the Library's `sources` (the Workspace
+ * fetches them on mount and after every save, commit and discard), so a source
+ * saved but not yet committed is selectable here as soon as the Library shows
+ * it (VIS-1550).
  */
 export default function useExplorerWorkbenchInit() {
-  // Subscribed at render rather than read via getState() inside an async
-  // callback: that samples the id at request time, not render time.
-  const projectId = useStore(s => s.project?.id);
-
   const modelTabs = useStore(s => s.explorerModelTabs);
   const explorerSources = useStore(s => s.explorerSources);
   const chartInsightNames = useStore(s => s.explorerChartInsightNames);
@@ -78,27 +63,14 @@ export default function useExplorerWorkbenchInit() {
   const setExplorerSources = useStore(s => s.setExplorerSources);
   const defaults = useStore(s => s.defaults);
   const applyResolvedDefaultSource = useStore(s => s.applyResolvedDefaultSource);
+  const librarySources = useStore(s => s.sources);
 
-  // Populate explorerSources on mount if not already loaded — see the Phase
-  // 3a regression note above. Guarded on length so re-mounting this hook for
-  // a DIFFERENT exploration (switching tabs) doesn't keep re-fetching once a
-  // session already has sources cached; the sandbox's project sources don't
-  // change mid-session.
-  const explorerSourcesLength = explorerSources.length;
   useEffect(() => {
-    if (explorerSourcesLength > 0) return undefined;
-    let cancelled = false;
-    fetchSourceSchemaJobs(projectId)
-      .then(data => {
-        if (!cancelled) setExplorerSources(data || []);
-      })
-      .catch(() => {
-        /* best-effort — mirrors SourceBrowser's own console-only error handling */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [explorerSourcesLength, setExplorerSources, projectId]);
+    const next = explorerSourcesFromLibrary(librarySources);
+    if (!sameExplorerSources(next, useStore.getState().explorerSources)) {
+      setExplorerSources(next);
+    }
+  }, [librarySources, setExplorerSources]);
 
   // Watch explorer state changes to trigger backend diff (debounced).
   const explorerModelStates = useStore(s => s.explorerModelStates);
@@ -176,6 +148,21 @@ export default function useExplorerWorkbenchInit() {
     applyResolvedDefaultSource(pendingDefaultSourceTabRef.current, defaults.source_name);
     pendingDefaultSourceTabRef.current = null;
   }, [defaults, applyResolvedDefaultSource]);
+
+  // A query tab seeded before `defaults` or the source list had loaded (e.g.
+  // "Explore" from the Semantic Layer on a cold session) has no source yet.
+  // Resolve it the way `createModelTab` would, once `defaults` is known.
+  useEffect(() => {
+    if (!defaults) return;
+    const fallback = defaults.source_name || explorerSources[0]?.source_name;
+    if (!fallback) return;
+    const states = useStore.getState().explorerModelStates || {};
+    Object.entries(states).forEach(([name, modelState]) => {
+      if (modelState && !modelState.sourceName && !modelState.sourceEdited) {
+        applyResolvedDefaultSource(name, fallback);
+      }
+    });
+  }, [defaults, explorerSources, modelTabs, applyResolvedDefaultSource]);
 
   // Auto-create an insight on initial mount only (not when the user removes
   // every insight).
