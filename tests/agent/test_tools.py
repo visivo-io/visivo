@@ -360,3 +360,81 @@ class TestEveryFailureIsARefusal:
         with pytest.raises(ToolError) as raised:
             call(integration_app, "get_theme", {})
         assert raised.value is refusal
+
+
+class TestModelSqlThatDoesNotParse:
+    BROKEN = {"name": "m", "sql": "SELEC fare AS f FROM trips", "source": "${ref(taxi)}"}
+
+    def test_validate_model_rejects_it(self, integration_app):
+        result = call(integration_app, "validate_model", {"config": self.BROKEN})
+
+        assert result["valid"] is False
+        assert "has SQL that does not parse" in result["error"]
+
+    def test_valid_sql_still_validates(self, integration_app):
+        config = {**self.BROKEN, "sql": "SELECT fare AS f FROM trips"}
+
+        assert call(integration_app, "validate_model", {"config": config}) == {"valid": True}
+
+    def test_a_projection_without_a_name_is_rejected_like_the_http_route(self, integration_app):
+        config = {**self.BROKEN, "sql": "SELECT count(*) FROM trips"}
+
+        result = call(integration_app, "validate_model", {"config": config})
+
+        assert result["valid"] is False
+        assert "no alias" in result["error"]
+
+    def test_the_http_validate_route_agrees(self, integration_client):
+        response = integration_client.post(
+            "/api/models/m/validate/", json={"sql": self.BROKEN["sql"], "source": "${ref(taxi)}"}
+        )
+
+        assert response.status_code == 400
+
+
+class TestToolTextCarriesNoTerminalColors:
+    COLORED = "bad \x1b[4mtoken\x1b[0m here \x1b[1;31mred\x1b[m"
+
+    def test_a_parse_error_is_plain_text(self, integration_app):
+        config = {"name": "m", "sql": "SELEC fare AS f FROM trips", "source": "${ref(taxi)}"}
+
+        result = call(integration_app, "validate_model", {"config": config})
+
+        assert "\x1b" not in result["error"]
+
+    def test_results_are_cleaned_at_any_depth(self, integration_app, monkeypatch):
+        from visivo.agent.tools import Tool
+
+        handler = lambda app, arguments: {"a": [self.COLORED, {"b": self.COLORED}], "n": 3}
+        monkeypatch.setitem(TOOLS, "colored", Tool("colored", "", {}, handler))
+
+        result = call(integration_app, "colored", {})
+
+        assert result == {"a": ["bad token here red", {"b": "bad token here red"}], "n": 3}
+
+    def test_refusals_are_cleaned(self, integration_app, monkeypatch):
+        from visivo.agent.tools import Tool
+
+        def handler(app, arguments):
+            raise ToolError(self.COLORED)
+
+        monkeypatch.setitem(TOOLS, "colored", Tool("colored", "", {}, handler))
+
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, "colored", {})
+
+        assert str(raised.value) == "bad token here red"
+
+    def test_unexpected_errors_are_cleaned(self, integration_app, monkeypatch):
+        from visivo.agent.tools import Tool
+
+        def handler(app, arguments):
+            raise RuntimeError(self.COLORED)
+
+        monkeypatch.setitem(TOOLS, "colored", Tool("colored", "", {}, handler))
+
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, "colored", {})
+
+        assert "\x1b" not in str(raised.value)
+        assert "bad token here red" in str(raised.value)
