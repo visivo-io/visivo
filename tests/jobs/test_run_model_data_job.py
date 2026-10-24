@@ -118,3 +118,12 @@ class TestTheDeadline:
     def test_the_budgets_jared_set(self):
         assert UI_QUERY_TIMEOUT_S == 30 and AGENT_QUERY_TIMEOUT_S == 20
         assert UI_MAX_ROWS == 50_000
+
+
+def test_write_parquet_from_data_with_no_rows_keeps_the_given_columns(tmp_path):
+    import duckdb
+    from visivo.jobs.run_model_data_job import write_parquet_from_data
+
+    path = write_parquet_from_data([], str(tmp_path), "empty", columns=["a", "b"])
+
+    assert duckdb.sql(f"SELECT * FROM read_parquet('{path}')").columns == ["a", "b"]
