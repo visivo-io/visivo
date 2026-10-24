@@ -4,7 +4,9 @@ import { fetchDiff } from '../api/explorer';
 import { translateExpressions } from '../api/expressions';
 import {
   expandDotNotationProps,
+  explorerSourcesFromLibrary,
   getSourceDialect,
+  sameExplorerSources,
   selectActiveModelState,
   selectActiveModelSql,
   selectActiveModelSourceName,
@@ -3601,5 +3603,36 @@ describe('explorerStore', () => {
       expect(snapshot.modelStates.query_1.sourceName).toBe('totally_unknown_source');
     });
   });
+  });
+});
+
+describe('explorerSourcesFromLibrary (VIS-1550)', () => {
+  it('keeps committed and draft sources, drops deleted and nameless ones', () => {
+    expect(
+      explorerSourcesFromLibrary([
+        { name: 'wh', status: 'published', config: { type: 'postgresql' } },
+        { name: 'draft', status: 'new', config: { type: 'duckdb' } },
+        { name: 'edited', status: 'modified', config: {} },
+        { name: 'gone', status: 'deleted', config: { type: 'duckdb' } },
+        { status: 'new', config: { type: 'duckdb' } },
+        null,
+      ])
+    ).toEqual([
+      { source_name: 'wh', source_type: 'postgresql' },
+      { source_name: 'draft', source_type: 'duckdb' },
+      { source_name: 'edited', source_type: null },
+    ]);
+  });
+
+  it('tolerates a missing list', () => {
+    expect(explorerSourcesFromLibrary(undefined)).toEqual([]);
+  });
+
+  it('sameExplorerSources compares names and types in order', () => {
+    const a = [{ source_name: 'wh', source_type: 'duckdb' }];
+    expect(sameExplorerSources(a, [{ source_name: 'wh', source_type: 'duckdb' }])).toBe(true);
+    expect(sameExplorerSources(a, [{ source_name: 'wh', source_type: 'sqlite' }])).toBe(false);
+    expect(sameExplorerSources(a, [])).toBe(false);
+    expect(sameExplorerSources(undefined, [])).toBe(true);
   });
 });
