@@ -8,7 +8,7 @@ always: true
 
 Interactions run in the browser, instantly, with no re-query, so an input
 costs clutter, never time. After profiling, call `recommend_inputs` with the
-shape cards (each with its model) and the insights you plan (name, model, the
+shape cards (each with its model; `cardinality` is the distinct-value count, and a bucket name `one`, `few`, `some`, `many` or `high` is accepted in its place) and the insights you plan (name, model, the
 columns each reads, its chart); it returns input YAML, a default, the
 interaction to put on **every** insight that shares the column, and
 `layout_inputs` for `recommend_layout`. If you ship no input, tell the user why.
