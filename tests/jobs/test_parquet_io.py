@@ -155,3 +155,26 @@ def test_single_row_round_trip(tmp_path):
     assert df["a"][0] == 1
     assert df["b"][0] == "two"
     assert df["c"][0] == pytest.approx(3.14)
+
+
+# ---------------------------------------------------------------------------
+# Empty results keep their columns
+# ---------------------------------------------------------------------------
+
+
+def test_empty_data_with_columns_writes_a_readable_empty_table(tmp_path):
+    import duckdb
+
+    parquet_path = tmp_path / "out.parquet"
+    write_dicts_to_parquet([], str(parquet_path), columns=["x", "y"])
+
+    result = duckdb.sql(f"SELECT * FROM read_parquet('{parquet_path}')")
+    assert result.columns == ["x", "y"]
+    assert result.fetchall() == []
+
+
+def test_columns_are_ignored_when_there_are_rows(tmp_path):
+    parquet_path = tmp_path / "out.parquet"
+    write_dicts_to_parquet([{"a": 1}], str(parquet_path), columns=["x"])
+
+    assert pl.read_parquet(parquet_path).columns == ["a"]
