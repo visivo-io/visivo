@@ -623,3 +623,148 @@ class TestMultiSelectDefaults:
         options_df = pl.read_parquet(files_by_key["options"]["signed_data_file_url"])
         assert options_df.columns == ["option"]
         assert options_df.shape[0] == 4
+
+
+class TestOptionsQueryErrors:
+    """The options query names one SQL model on a source and returns one
+    non-empty column; each way it misses says which."""
+
+    def _dag(self, *models):
+        source = SourceFactory(name="source")
+        project = ProjectFactory(sources=[source], models=list(models))
+        return project.dag()
+
+    def _run(self, query, *models, **kwargs):
+        from visivo.jobs.run_input_job import _execute_query_for_options
+
+        return _execute_query_for_options(
+            query, self._dag(*models), "pick", temp_folder(), **kwargs
+        )
+
+    def test_a_query_with_no_ref_is_refused(self):
+        with pytest.raises(ValueError, match="must reference exactly one model"):
+            self._run("SELECT 1")
+
+    def test_a_query_with_two_refs_is_refused(self):
+        a = SqlModelFactory(name="a", sql="SELECT 1 AS x", source="ref(source)")
+        b = SqlModelFactory(name="b", sql="SELECT 2 AS x", source="ref(source)")
+        with pytest.raises(ValueError, match="references 2 items"):
+            self._run("SELECT x FROM ${ref(a)} UNION SELECT x FROM ${ref(b)}", a, b)
+
+    def test_a_ref_to_a_source_is_refused(self):
+        with pytest.raises(ValueError, match="can only reference SqlModel"):
+            self._run("SELECT 1 FROM ${ref(source)}")
+
+    def test_a_model_with_no_source_is_refused(self, mocker):
+        model = SqlModelFactory(name="m", sql="SELECT 1 AS x", source="ref(source)")
+        mocker.patch("visivo.jobs.run_input_job.get_source_for_model", return_value=None)
+        with pytest.raises(ValueError, match="Could not find source for model 'm'"):
+            self._run("SELECT x FROM ${ref(m)}", model)
+
+    def test_more_than_one_column_is_refused(self):
+        model = SqlModelFactory(name="m", sql="SELECT 1 AS x, 2 AS y", source="ref(source)")
+        with pytest.raises(ValueError, match="exactly one column, found 2"):
+            self._run("SELECT x, y FROM ${ref(m)}", model)
+
+    def test_a_slow_source_raises_query_timeout(self, mocker):
+        from visivo.jobs.run_model_data_job import QueryTimeout
+
+        model = SqlModelFactory(name="m", sql="SELECT 1 AS x", source="ref(source)")
+        mocker.patch(
+            "visivo.jobs.run_input_job.execute_and_get_result", side_effect=QueryTimeout("slow")
+        )
+        with pytest.raises(QueryTimeout):
+            self._run("SELECT x FROM ${ref(m)}", model, timeout_s=1)
+
+
+class TestSingleSelectDefaults:
+    def _metadata(self, input_obj, models=()):
+        source = SourceFactory(name="source")
+        project = ProjectFactory(sources=[source], models=list(models), inputs=[input_obj])
+        output_dir = temp_folder()
+        result = action(input_obj, project.dag(), output_dir)
+        assert result.success, result.message
+        with open(Path(output_dir) / "main" / "inputs" / f"{input_obj.name}.json") as f:
+            return json.load(f)
+
+    def test_a_static_default_is_kept(self):
+        input_obj = SingleSelectInputFactory(
+            name="mode",
+            options=["lines", "markers"],
+            display={"type": "radio", "default": {"value": "markers"}},
+        )
+
+        display = self._metadata(input_obj)["display"]
+
+        assert display == {"type": "radio", "default": {"value": "markers"}}
+
+
+class TestMultiSelectQueries:
+    def _project(self, input_obj):
+        source = SourceFactory(name="source")
+        model = SqlModelFactory(name="m", sql="SELECT 1 AS x UNION SELECT 5", source="ref(source)")
+        return ProjectFactory(sources=[source], models=[model], inputs=[input_obj])
+
+    def test_query_options_give_the_job_its_source(self):
+        input_obj = MultiSelectInputFactory(name="xs", options="?{ SELECT x FROM ${ref(m)} }")
+
+        assert job(self._project(input_obj).dag(), temp_folder(), input_obj).source.name == "source"
+
+    def test_a_query_default_gives_the_job_its_source(self):
+        input_obj = MultiSelectInputFactory(
+            name="xs",
+            options=["1", "5"],
+            display={"type": "checkboxes", "default": {"values": "?{ SELECT x FROM ${ref(m)} }"}},
+        )
+
+        assert job(self._project(input_obj).dag(), temp_folder(), input_obj).source.name == "source"
+
+    def test_option_counts_warn_then_fail(self, mocker):
+        mocker.patch("visivo.jobs.run_input_job.OPTION_COUNT_WARNING_THRESHOLD", 1)
+        mocker.patch("visivo.jobs.run_input_job.OPTION_COUNT_ERROR_THRESHOLD", 2)
+        two = MultiSelectInputFactory(name="two", options=["a", "b"])
+        three = MultiSelectInputFactory(name="three", options=["a", "b", "c"])
+
+        warned = action(two, ProjectFactory(inputs=[two]).dag(), temp_folder())
+        failed = action(three, ProjectFactory(inputs=[three]).dag(), temp_folder())
+
+        assert warned.success and "has 2 options" in warned.warnings[0]
+        assert not failed.success and "exceeding the 2 limit" in failed.message
+
+
+class TestScalarQueries:
+    def _dag(self):
+        source = SourceFactory(name="source")
+        model = SqlModelFactory(name="m", sql="SELECT 1 AS x UNION SELECT 5", source="ref(source)")
+        return ProjectFactory(sources=[source], models=[model]).dag()
+
+    def test_a_query_value_resolves_to_its_one_value(self):
+        from visivo.jobs.run_input_job import _resolve_value
+        from visivo.models.base.query_string import QueryString
+
+        value = QueryString("?{ SELECT MAX(x) FROM ${ref(m)} }")
+
+        assert _resolve_value(value, self._dag(), "span", "range.end", temp_folder()) == "5"
+        assert _resolve_value(7, self._dag(), "span", "range.end", temp_folder()) == 7
+
+    def test_a_scalar_query_with_many_values_is_refused(self):
+        from visivo.jobs.run_input_job import _execute_scalar_query
+
+        with pytest.raises(ValueError, match="range.start query returned 2 values"):
+            _execute_scalar_query(
+                "SELECT x FROM ${ref(m)}", self._dag(), "span", "range.start", temp_folder()
+            )
+
+    def test_an_object_that_is_no_input_fails_the_job(self):
+        not_an_input = SqlModelFactory(name="m", sql="SELECT 1 AS x", source="ref(source)")
+
+        result = action(not_an_input, self._dag(), temp_folder())
+
+        assert not result.success and "Unknown input type: SqlModel" in result.message
+
+    def test_a_model_the_dag_cannot_find_leaves_the_job_without_a_source(self, mocker):
+        input_obj = SingleSelectInputFactory(name="xs", options="?{ SELECT x FROM ${ref(m)} }")
+        dag = self._dag()
+        mocker.patch.object(dag, "get_descendant_by_name", side_effect=ValueError("gone"))
+
+        assert job(dag, temp_folder(), input_obj).source is None
