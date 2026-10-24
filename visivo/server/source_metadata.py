@@ -13,6 +13,10 @@ def _test_source_connection(source: Source, source_name: str) -> Dict[str, Any]:
     try:
         Logger.instance().info(f"Testing connection for source: {source_name}")
 
+        check_files = getattr(source, "check_database_files_exist", None)
+        if check_files:
+            check_files()
+
         try:
             source.read_sql("SELECT 1 as test_column LIMIT 1")
         except AttributeError:

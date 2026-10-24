@@ -78,6 +78,18 @@ class SqliteSource(ServerSource, SqlalchemySource):
             os.makedirs(parent, exist_ok=True)
         return super().get_engine()
 
+    def check_database_files_exist(self):
+        """Raise FileNotFoundError when the database file, or an attached one, is missing.
+
+        Connecting creates a missing file, so a connection test must check first.
+        """
+        paths = [str(self.database)]
+        for attachment in self.attach or []:
+            paths.append(str(attachment.source.database))
+        for path in paths:
+            if path and path != ":memory:" and not os.path.isfile(path):
+                raise FileNotFoundError(f"File not found: {path}")
+
     def get_connection_dialect(self):
         return "sqlite+pysqlite"
 

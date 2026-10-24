@@ -117,3 +117,37 @@ class TestSourceMetadata:
         assert result["status"] == "connected"
         assert result["source"] == "test_csv"
         mock_test.assert_called_once_with(mock_source, "test_csv")
+
+
+class TestSqliteConnectionTestDoesNotCreateFiles:
+    def test_missing_sqlite_file_fails_and_creates_nothing(self, tmp_path):
+        from visivo.server.source_metadata import validate_source_from_config
+
+        target = tmp_path / "nested" / "missing.db"
+        result = validate_source_from_config(
+            {"name": "s", "type": "sqlite", "database": str(target)}
+        )
+
+        assert result["status"] == "connection_failed"
+        assert result["error"] == f"File not found: {target}"
+        assert not target.exists()
+        assert not target.parent.exists()
+
+    def test_memory_database_connects(self):
+        from visivo.server.source_metadata import validate_source_from_config
+
+        result = validate_source_from_config(
+            {"name": "s", "type": "sqlite", "database": ":memory:"}
+        )
+
+        assert result["status"] == "connected"
+
+    def test_existing_sqlite_file_connects(self, tmp_path):
+        import sqlite3
+        from visivo.server.source_metadata import validate_source_from_config
+
+        db = tmp_path / "ok.db"
+        sqlite3.connect(db).close()
+        result = validate_source_from_config({"name": "s", "type": "sqlite", "database": str(db)})
+
+        assert result["status"] == "connected"
