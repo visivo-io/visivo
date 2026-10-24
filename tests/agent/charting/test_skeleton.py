@@ -378,7 +378,11 @@ class TestTheEdges:
 
     def test_sql_that_does_not_parse_keeps_the_example(self, members):
         broken = members["bar"].model_copy(
-            update={"example": members["bar"].example.replace("count(*) DESC", "count(( DESC")}
+            update={
+                "example": members["bar"].example.replace(
+                    "text: ?{ count(*) }", "text: ?{ count(( }"
+                )
+            }
         )
         skeleton, adapted = build(broken, metrics=[RIDES], dimensions=[BOROUGH])
         assert not adapted and insight(skeleton)["name"] == "rides-by-borough"

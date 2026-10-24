@@ -115,7 +115,10 @@ def _validate_handler(type_key):
         clash = manager.name_clash and isinstance(name, str) and manager.name_clash(name, obj)
         if clash:
             return {"valid": False, "error": f"{clash} {_rename_hint(type_key, name)}"}
-        return {"valid": True}
+        from visivo.agent.charting import lint
+
+        found = lint.warnings(app, type_key, config) if type_key == "insights" else []
+        return {"valid": True, "warnings": found} if found else {"valid": True}
 
     return handler
 
