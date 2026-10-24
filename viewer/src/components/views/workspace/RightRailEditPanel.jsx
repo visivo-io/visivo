@@ -286,7 +286,13 @@ const RightRailEditPanel = () => {
   const [dashboardSaving, setDashboardSaving] = useState(false);
   const [dashboardDeleting, setDashboardDeleting] = useState(false);
   const [showDashboardDeleteConfirm, setShowDashboardDeleteConfirm] = useState(false);
+  const [showDashboardDiscardConfirm, setShowDashboardDiscardConfirm] = useState(false);
   const [dashboardActionError, setDashboardActionError] = useState(null);
+
+  const handleDashboardDiscard = useCallback(() => {
+    discardDashboardEdits(dashboardName);
+    setShowDashboardDiscardConfirm(false);
+  }, [discardDashboardEdits, dashboardName]);
 
   const handleDashboardSave = useCallback(async () => {
     if (!dashboardName) return;
@@ -323,25 +329,36 @@ const RightRailEditPanel = () => {
         </div>
       )}
       <FormFooter
-        onCancel={() => discardDashboardEdits(dashboardName)}
+        onCancel={() => {
+          setShowDashboardDeleteConfirm(false);
+          setShowDashboardDiscardConfirm(true);
+        }}
         onSave={handleDashboardSave}
         saving={dashboardSaving}
         cancelLabel="Discard"
         cancelDisabled={!dashboardDirty || dashboardSaving || dashboardDeleting}
         saveDisabled={!dashboardDirty}
-        showDelete={!showDashboardDeleteConfirm}
+        showDelete={!showDashboardDeleteConfirm && !showDashboardDiscardConfirm}
         onDeleteClick={() => setShowDashboardDeleteConfirm(true)}
         deleteConfirm={
-          showDashboardDeleteConfirm
+          showDashboardDiscardConfirm
             ? {
                 show: true,
-                message:
-                  'Delete this dashboard? It will be marked for deletion and removed from YAML when you commit.',
-                onConfirm: handleDashboardDelete,
-                onCancel: () => setShowDashboardDeleteConfirm(false),
-                deleting: dashboardDeleting,
+                message: 'Discard all unsaved changes to this dashboard? This cannot be undone.',
+                confirmLabel: 'Confirm Discard',
+                onConfirm: handleDashboardDiscard,
+                onCancel: () => setShowDashboardDiscardConfirm(false),
               }
-            : null
+            : showDashboardDeleteConfirm
+              ? {
+                  show: true,
+                  message:
+                    'Delete this dashboard? It will be marked for deletion and removed from YAML when you commit.',
+                  onConfirm: handleDashboardDelete,
+                  onCancel: () => setShowDashboardDeleteConfirm(false),
+                  deleting: dashboardDeleting,
+                }
+              : null
         }
       />
     </>
