@@ -2,6 +2,7 @@
 SQLGlot utility functions for AST analysis and SQL building.
 """
 
+import re
 import sqlglot
 from sqlglot import exp, parse_one
 from sqlglot.schema import MappingSchema
@@ -95,6 +96,59 @@ def normalize_identifier_for_dialect(
         normalized = identifier
 
     return exp.Identifier(this=normalized, quoted=quoted)
+
+
+def replace_template_patterns_with_placeholders(text: str) -> Tuple[str, Dict[str, str]]:
+    """Replace each ``${...}`` in ``text`` with a parseable ``__PHn__`` placeholder.
+
+    Returns the rewritten text and a map from placeholder back to the original.
+    """
+    placeholders = {}
+    result = []
+    i = 0
+    while i < len(text):
+        if text[i : i + 2] == "${":
+            start = i
+            depth = 0
+            while i < len(text):
+                if text[i] == "{":
+                    depth += 1
+                elif text[i] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                i += 1
+            placeholder = f"__PH{len(placeholders)}__"
+            placeholders[placeholder] = text[start : i + 1]
+            result.append(placeholder)
+            i += 1
+        else:
+            result.append(text[i])
+            i += 1
+    return "".join(result), placeholders
+
+
+_TRAILING_PLACEHOLDER = re.compile(r"\s+__PH\d+__\s*$")
+
+
+def sort_expression_error(expression: str, dialect: str = None) -> Optional[str]:
+    """Why ``expression`` cannot be an ORDER BY term, or ``None`` when it parses.
+
+    A trailing ``${...}`` may be an input that supplies ASC or DESC, so the
+    expression also passes when it parses with that placeholder read as ``ASC``.
+    """
+    placeholder_expr, _ = replace_template_patterns_with_placeholders(expression)
+    candidates = [placeholder_expr]
+    if _TRAILING_PLACEHOLDER.search(placeholder_expr):
+        candidates.append(_TRAILING_PLACEHOLDER.sub(" ASC", placeholder_expr))
+    first_error = None
+    for candidate in candidates:
+        try:
+            parse_one(f"SELECT 1 ORDER BY {candidate}", dialect=dialect)
+            return None
+        except sqlglot.errors.ParseError as error:
+            first_error = first_error or str(error).splitlines()[0]
+    return f"Cannot parse sort expression '{expression}': {first_error}"
 
 
 def parse_expression(statement: str, dialect: str = None) -> Optional[exp.Expression]:
