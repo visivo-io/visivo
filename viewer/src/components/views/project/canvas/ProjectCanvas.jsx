@@ -44,6 +44,8 @@ import CanvasItemFlipLayer from './CanvasItemFlipLayer';
  * `stackBreakpoint={768}` (VIS-829): the canvas loses ~600px to the rails, so
  * it stacks at a lower container width than static View mode (default 1024).
  */
+const CREATE_TYPES = ['chart', 'table', 'markdown', 'input'];
+
 const ProjectCanvas = ({ projectId, dashboardName }) => {
   // The overlay measures + delegates pointer events against this positioned
   // root, so the rings land exactly over Dashboard's rows/items.
@@ -56,10 +58,9 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
   // SAME optimistic → validate → save path the other canvas mutations use).
   const dashboards = useStore(s => s.dashboards);
   const commitCanvasConfig = useWorkspaceCommit();
-  const openCreateChartModal = useStore(s => s.openCreateChartModal);
-  const openCreateTableModal = useStore(s => s.openCreateTableModal);
-  const openCreateMarkdownModal = useStore(s => s.openCreateMarkdownModal);
-  const openCreateInputModal = useStore(s => s.openCreateInputModal);
+  const createWorkspaceObject = useStore(s => s.createWorkspaceObject);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const showWorkspaceToast = useStore(s => s.showWorkspaceToast);
 
   const dashboardConfig = useMemo(() => {
     const entry = (dashboards || []).find(d => d.name === dashboardName);
@@ -68,26 +69,32 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
   }, [dashboards, dashboardName]);
 
   const handleCreateNew = useCallback(
-    (typeKey, source = 'broken_ref') => {
+    async (typeKey, source = 'broken_ref', itemPath = null) => {
+      if (!CREATE_TYPES.includes(typeKey) || typeof createWorkspaceObject !== 'function') return;
       emitWorkspaceEvent('inline_create_used', { source, kind: typeKey });
-      switch (typeKey) {
-        case 'chart':
-          if (openCreateChartModal) openCreateChartModal();
-          break;
-        case 'table':
-          if (openCreateTableModal) openCreateTableModal();
-          break;
-        case 'markdown':
-          if (openCreateMarkdownModal) openCreateMarkdownModal();
-          break;
-        case 'input':
-          if (openCreateInputModal) openCreateInputModal();
-          break;
-        default:
-          break;
+      const result = await createWorkspaceObject(typeKey);
+      if (!result?.success || !result.name) {
+        if (result?.error && showWorkspaceToast) showWorkspaceToast(result.error);
+        return;
+      }
+      if (itemPath && dashboardConfig && typeof commitCanvasConfig === 'function') {
+        const next = setItemRef(dashboardConfig, itemPath, typeKey, result.name);
+        if (next !== dashboardConfig) {
+          commitCanvasConfig(dashboardName, next, { kind: 'picker_insert' });
+        }
+      }
+      if (openWorkspaceTab) {
+        openWorkspaceTab({ id: `${typeKey}:${result.name}`, type: typeKey, name: result.name });
       }
     },
-    [openCreateChartModal, openCreateTableModal, openCreateMarkdownModal, openCreateInputModal]
+    [
+      createWorkspaceObject,
+      showWorkspaceToast,
+      openWorkspaceTab,
+      dashboardConfig,
+      commitCanvasConfig,
+      dashboardName,
+    ]
   );
 
   // Empty-slot click-to-pick. An insight pick is wrapped in a minted chart, saved
@@ -144,10 +151,11 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
 
   const handlePickerCreateNew = useCallback(
     typeKey => {
+      const itemPath = pickerItemPath;
       setPickerItemPath(null);
-      handleCreateNew(typeKey, 'picker');
+      return handleCreateNew(typeKey, 'picker', itemPath);
     },
-    [handleCreateNew]
+    [handleCreateNew, pickerItemPath]
   );
 
   const renderBrokenRef = useCallback(
@@ -179,7 +187,7 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
             path: itemPath,
           });
         }}
-        onCreateNew={handleCreateNew}
+        onCreateNew={typeKey => handleCreateNew(typeKey, 'broken_ref', itemPath)}
       />
     ),
     [dashboardConfig, commitCanvasConfig, dashboardName, handleCreateNew]
