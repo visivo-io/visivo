@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 from pydantic import BaseModel, Field
 
@@ -28,6 +29,9 @@ class Dbt(BaseModel):
       dbt_project_yml_location: dbt
       profiles_yml_location: dbt
     ```
+
+    Both location fields accept the directory that holds the file or the path to the file itself,
+    so `dbt` and `dbt/dbt_project.yml` mean the same thing.
     """
 
     enabled: Optional[bool] = Field(
@@ -40,11 +44,11 @@ class Dbt(BaseModel):
     )
     dbt_project_yml_location: Optional[str] = Field(
         None,
-        description="Location for the dbt_project.yml file relative to the working directory.  Defaults to the current working directory.",
+        description="Location for the dbt_project.yml file relative to the working directory.  Either the directory that contains it or the path to the file itself (a path ending in .yml or .yaml). Defaults to the current working directory.",
     )
     profiles_yml_location: Optional[str] = Field(
         None,
-        description="Location for the profiles.yml file relative to the working directory.  Defaults to the current working directory.",
+        description="Location for the profiles.yml file relative to the working directory.  Either the directory that contains it or the path to the file itself (a path ending in .yml or .yaml). Defaults to the current working directory.",
     )
     prefix: str = Field(
         "",
@@ -55,3 +59,25 @@ class Dbt(BaseModel):
         if self.output_file:
             return f"{working_dir}/{self.output_file}"
         return f"{output_dir}/dbt.yml"
+
+    def dbt_project_dir(self, working_dir: str):
+        return _location_dir(working_dir, self.dbt_project_yml_location)
+
+    def profiles_file(self, working_dir: str):
+        if not self.profiles_yml_location:
+            return f"{working_dir}/profiles.yml"
+        if _is_yaml_path(self.profiles_yml_location):
+            return f"{working_dir}/{self.profiles_yml_location}"
+        return f"{working_dir}/{self.profiles_yml_location}/profiles.yml"
+
+
+def _is_yaml_path(location: str):
+    return location.lower().endswith((".yml", ".yaml"))
+
+
+def _location_dir(working_dir: str, location: Optional[str]):
+    if not location:
+        return working_dir
+    if _is_yaml_path(location):
+        location = os.path.dirname(location)
+    return f"{working_dir}/{location}" if location else working_dir
