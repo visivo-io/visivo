@@ -28,6 +28,7 @@ from visivo.query.patterns import (
     extract_input_accessors,
 )
 from visivo.query.accessor_validator import get_accessor_sample_value
+from visivo.query.insight.filter_syntax import filter_error
 from visivo.logger.logger import Logger
 import sqlglot
 from sqlglot import exp
@@ -445,6 +446,25 @@ class InsightQueryBuilder:
         self.resolved_query_statements = resolved_query_statements
         self.is_resolved = True
 
+    def _filter_statements(self):
+        filters = (s for k, s in self.resolved_query_statements if k == "filter")
+        return enumerate(filters)
+
+    def _parse_filter(self, index, statement, dialect):
+        """Parse the ``index``-th filter, or raise naming the authored filter."""
+        parsed = parse_expression(statement, dialect)
+        if parsed is not None:
+            return parsed
+        from visivo.models.dag import all_descendants_of_type
+        from visivo.models.inputs.input import Input
+
+        authored = [i.filter.get_value() for i in self.insight.interactions or [] if i.filter]
+        inputs = {
+            i.name
+            for i in all_descendants_of_type(type=Input, dag=self.dag, from_node=self.insight)
+        }
+        raise filter_error(self.insight_name, authored[index], inputs.__contains__, dialect)
+
     def _build_main_query(self):
         """
         Build the main query SQL.
@@ -511,22 +531,20 @@ class InsightQueryBuilder:
                 join_type_str = join_type.upper() if join_type else "INNER"
                 join_clauses.append(f'{join_type_str} JOIN "{right_hash}" ON {condition}')
 
-        # Collect WHERE conditions (non-aggregate, non-window filters)
         where_conditions = []
-        for key, statement in self.resolved_query_statements:
-            if key == "filter":
-                # Replace input placeholders with sample values for SQLGlot parsing
-                safe_statement, _ = replace_input_placeholders_for_parsing(
-                    statement, dag=self.dag, insight=self.insight, output_dir=self.output_dir
-                )
-                parsed = parse_expression(safe_statement, "duckdb")
-                if (
-                    parsed
-                    and not has_aggregate_function(parsed)
-                    and not has_window_function(parsed)
-                ):
-                    # Use original statement (with placeholders) in final query
-                    where_conditions.append(statement)
+        having_conditions = []
+        qualify_conditions = []
+        for index, statement in self._filter_statements():
+            safe_statement, _ = replace_input_placeholders_for_parsing(
+                statement, dag=self.dag, insight=self.insight, output_dir=self.output_dir
+            )
+            parsed = self._parse_filter(index, safe_statement, "duckdb")
+            if has_window_function(parsed):
+                qualify_conditions.append(statement)
+            elif has_aggregate_function(parsed):
+                having_conditions.append(statement)
+            else:
+                where_conditions.append(statement)
 
         # Collect GROUP BY expressions
         # Use find_non_aggregated_expressions() to get full expressions (e.g., CASE statements)
@@ -577,19 +595,6 @@ class InsightQueryBuilder:
                         if restored_expr not in group_by_clauses:
                             group_by_clauses.append(restored_expr)
 
-        # Collect HAVING conditions (aggregate filters)
-        having_conditions = []
-        for key, statement in self.resolved_query_statements:
-            if key == "filter":
-                # Replace input placeholders with sample values for SQLGlot parsing
-                safe_statement, _ = replace_input_placeholders_for_parsing(
-                    statement, dag=self.dag, insight=self.insight, output_dir=self.output_dir
-                )
-                parsed = parse_expression(safe_statement, "duckdb")
-                if parsed and has_aggregate_function(parsed):
-                    # Use original statement (with placeholders) in final query
-                    having_conditions.append(statement)
-
         # Collect ORDER BY (sort interactions)
         order_by_clauses = []
         for key, statement in self.resolved_query_statements:
@@ -622,6 +627,10 @@ class InsightQueryBuilder:
         if having_conditions:
             query_parts.append("HAVING")
             query_parts.append("  " + " AND ".join(having_conditions))
+
+        if qualify_conditions:
+            query_parts.append("QUALIFY")
+            query_parts.append("  " + " AND ".join(qualify_conditions))
 
         if order_by_clauses:
             query_parts.append("ORDER BY")
@@ -777,7 +786,7 @@ class InsightQueryBuilder:
 
         # Add QUALIFY clause
         if qualify_clause:
-            query.set("qualify", qualify_clause)
+            query.set("qualify", exp.Qualify(this=qualify_clause))
 
         # Add ORDER BY clause
         if order_by_expressions:
@@ -974,19 +983,11 @@ class InsightQueryBuilder:
         where_conditions = []
         target_dialect = "duckdb" if self.is_dynamic else self.native_dialect
 
-        for key, statement in self.resolved_query_statements:
-            # Only process filter statements
-            if key == "filter":
-                # Parse the filter statement
-                parsed_expr = parse_expression(statement, self.native_dialect)
-
-                if parsed_expr:
-                    # Only include in WHERE if it has no aggregates and no window functions
-                    if not has_aggregate_function(parsed_expr) and not has_window_function(
-                        parsed_expr
-                    ):
-                        parsed_expr = self._transpile_if_dynamic(parsed_expr, target_dialect)
-                        where_conditions.append(parsed_expr)
+        for index, statement in self._filter_statements():
+            parsed_expr = self._parse_filter(index, statement, self.native_dialect)
+            if not has_aggregate_function(parsed_expr) and not has_window_function(parsed_expr):
+                parsed_expr = self._transpile_if_dynamic(parsed_expr, target_dialect)
+                where_conditions.append(parsed_expr)
 
         return self._combine_conditions_with_and(where_conditions)
 
@@ -1069,17 +1070,11 @@ class InsightQueryBuilder:
         having_conditions = []
         target_dialect = "duckdb" if self.is_dynamic else self.native_dialect
 
-        for key, statement in self.resolved_query_statements:
-            # Only process filter statements
-            if key == "filter":
-                # Parse the filter statement
-                parsed_expr = parse_expression(statement, self.native_dialect)
-
-                if parsed_expr:
-                    # Only include in HAVING if it has aggregates
-                    if has_aggregate_function(parsed_expr):
-                        parsed_expr = self._transpile_if_dynamic(parsed_expr, target_dialect)
-                        having_conditions.append(parsed_expr)
+        for index, statement in self._filter_statements():
+            parsed_expr = self._parse_filter(index, statement, self.native_dialect)
+            if has_aggregate_function(parsed_expr):
+                parsed_expr = self._transpile_if_dynamic(parsed_expr, target_dialect)
+                having_conditions.append(parsed_expr)
 
         return self._combine_conditions_with_and(having_conditions)
 
@@ -1102,17 +1097,11 @@ class InsightQueryBuilder:
 
         qualify_conditions = []
 
-        for key, statement in self.resolved_query_statements:
-            # Only process filter statements
-            if key == "filter":
-                # Parse the filter statement
-                parsed_expr = parse_expression(statement, self.native_dialect)
-
-                if parsed_expr:
-                    # Only include in QUALIFY if it has window functions
-                    if has_window_function(parsed_expr):
-                        parsed_expr = self._transpile_if_dynamic(parsed_expr, target_dialect)
-                        qualify_conditions.append(parsed_expr)
+        for index, statement in self._filter_statements():
+            parsed_expr = self._parse_filter(index, statement, self.native_dialect)
+            if has_window_function(parsed_expr):
+                parsed_expr = self._transpile_if_dynamic(parsed_expr, target_dialect)
+                qualify_conditions.append(parsed_expr)
 
         return self._combine_conditions_with_and(qualify_conditions)
 

@@ -128,6 +128,25 @@ class TestTheToolsWorkUnchanged:
         assert result["valid"] is True
         assert core.saved == []
 
+    def test_validate_judges_a_filter_against_the_remote_inputs(self):
+        """The input lives in core, so the filter check must look it up there."""
+        project, _ = _project(
+            {
+                "inputs": [
+                    _envelope("regions", {"type": "multi-select", "options": ["North", "South"]})
+                ]
+            }
+        )
+        config = {
+            "name": "by_region",
+            "props": {"type": "bar", "x": "?{ ${ref(sales).region} }"},
+            "interactions": [{"filter": "?{ ${ref(sales).region} IN ${ref(regions).values} }"}],
+        }
+
+        result = call(project, "validate_insight", {"config": config})
+
+        assert result["valid"] is False and "IN (${ref(regions).values})" in result["error"]
+
     def test_a_write_reaches_core_as_a_draft(self):
         project, core = _project()
 

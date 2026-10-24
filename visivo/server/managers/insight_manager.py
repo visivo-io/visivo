@@ -5,6 +5,7 @@ from pydantic import TypeAdapter, ValidationError
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.insight import Insight
+from visivo.query.insight.filter_syntax import insight_filter_error
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
@@ -20,6 +21,11 @@ class InsightManager(ObjectManager[Insight]):
     def __init__(self):
         super().__init__()
         self._insight_adapter = TypeAdapter(Insight)
+        # name -> Input or None, and insight -> its source's SQLGlot dialect or
+        # None. FlaskApp installs both, so a filter's input refs are judged as
+        # inputs and a static filter parses in the dialect it is built in.
+        self.input_lookup = None
+        self.dialect_lookup = None
 
     def validate_object(self, obj_data: dict) -> Insight:
         """
@@ -35,6 +41,18 @@ class InsightManager(ObjectManager[Insight]):
             ValidationError: If the insight configuration is invalid
         """
         return self._insight_adapter.validate_python(obj_data)
+
+    def save_error(self, insight: Insight) -> Optional[str]:
+        """A filter that does not parse as SQL is refused."""
+        if not any(i.filter is not None for i in insight.interactions or []):
+            return None
+        lookup = self.input_lookup
+        source_dialect = self.dialect_lookup(insight) if self.dialect_lookup else None
+        return insight_filter_error(
+            insight,
+            lambda name: lookup is not None and lookup(name) is not None,
+            source_dialect,
+        )
 
     def extract_from_dag(self, dag) -> None:
         """
@@ -137,6 +155,9 @@ class InsightManager(ObjectManager[Insight]):
         """
         try:
             insight = self.validate_object(config)
+            refusal = self.save_error(insight)
+            if refusal:
+                return {"valid": False, "error": refusal}
             return {
                 "valid": True,
                 "name": insight.name,
