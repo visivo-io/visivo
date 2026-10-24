@@ -335,8 +335,9 @@ export const getSourceDialect = (sourceName, sources) => {
   const source = (sources || []).find(
     (src) => src.source_name === sourceName || src.name === sourceName
   );
-  if (!source?.type) return null;
-  const d = source.type.toLowerCase();
+  const type = source?.source_type || source?.type;
+  if (!type) return null;
+  const d = type.toLowerCase();
   return d === 'postgresql' ? 'postgres' : d;
 };
 

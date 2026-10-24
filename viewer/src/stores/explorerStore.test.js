@@ -2415,6 +2415,27 @@ describe('explorerStore', () => {
       expect(selectActiveModelSourceDialect(useStore.getState())).toBe('snowflake');
     });
 
+    it.each([
+      ['duckdb', 'duckdb'],
+      ['postgresql', 'postgres'],
+      ['snowflake', 'snowflake'],
+    ])('getSourceDialect reads the source_type an Explorer source entry carries (%s)', (type, dialect) => {
+      expect(getSourceDialect('src', [{ source_name: 'src', source_type: type }])).toBe(dialect);
+    });
+
+    it('getSourceDialect returns null for an entry with no source_type', () => {
+      expect(getSourceDialect('src', [{ source_name: 'src' }])).toBeNull();
+    });
+
+    it('selectActiveModelSourceDialect resolves from source_type entries', () => {
+      useStore.setState({
+        explorerSources: [{ source_name: 'local-duck', source_type: 'duckdb' }],
+      });
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().setActiveModelSource('local-duck');
+      expect(selectActiveModelSourceDialect(useStore.getState())).toBe('duckdb');
+    });
+
     it('getSourceDialect returns null for unknown sources', () => {
       expect(getSourceDialect('ghost', [{ source_name: 'pg', type: 'postgresql' }])).toBeNull();
       expect(getSourceDialect(null, [])).toBeNull();
