@@ -141,10 +141,25 @@ def _parse(site, refs):
 _AGG_SQL = {"count": "COUNT(*)", "count_distinct": "COUNT(DISTINCT {})", "rate": "AVG({})"}
 
 
+def ref_text(model, name):
+    """``${ref(model).name}``, or ``${ref(name)}`` for a project-level object."""
+    return f"${{ref({model}).{name}}}" if model else f"${{ref({name})}}"
+
+
 def _metric_sql(metric, column_of):
-    """The request metric as SQL; ``column_of`` turns a name into its token."""
+    """The request metric as SQL; ``column_of(name, model)`` turns a name into
+    its token. A defined metric already aggregates, so it is not wrapped again."""
+    if metric.defined == "project":
+        return column_of(metric.name, None)
+    if metric.defined == "model":
+        return column_of(metric.name)
     sql = _AGG_SQL.get(metric.agg, f"{metric.agg.upper()}({{}})")
     return sql.format(column_of(metric.name))
+
+
+def metric_sql(metric, model):
+    """The request metric as SQL over ``model``, with its refs written out."""
+    return _metric_sql(metric, lambda name, owner=model: ref_text(owner, name))
 
 
 class _Unadaptable(ValueError):
@@ -389,7 +404,7 @@ def _flat_hierarchy(example, member, request, skip):
     props.update(
         labels=f"?{{ ${{ref({model}).{dim.column}}} }}",
         parents="?{ '' }",
-        values=f"?{{ {_metric_sql(request.metrics[0], lambda c: f'${{ref({model}).{c}}}')} }}",
+        values=f"?{{ {metric_sql(request.metrics[0], model)} }}",
     )
     props.pop("maxdepth", None)
     return _Adapted({"insights": [{"name": insight["name"], "props": props}]}, drawn=[dim])
@@ -441,9 +456,8 @@ def _adapt(member, request, skip=(), series=None):
     tokens, clips, doomed = {}, {}, []
     by_column = {d.column: d for d in request.dimensions}
 
-    def new_ref(column):
-        ref = f"${{ref({request.context.model}).{column}}}"
-        return tokens.setdefault(ref, f"__col_{len(tokens)}__")
+    def new_ref(column, model=request.context.model):
+        return tokens.setdefault(ref_text(model, column), f"__col_{len(tokens)}__")
 
     drawn = list(mapping[0].values()) + list(mapping[4].values()) + extra
     result = _Adapted(example, drawn=drawn, clips=clips)
@@ -647,9 +661,12 @@ def _foreign_columns(skeleton, request, cuts, other):
     rank column is the top-N recipe's, so it counts as named)."""
     known = {d.column for d in request.dimensions} | {m.name for m in request.metrics}
     known |= {f"{c}{other.rank_column}" for c in cuts} if other else set()
+    project_metrics = {m.name for m in request.metrics if m.defined == "project"}
     found = []
 
     def collect(model, column):
+        if not column and model in project_metrics:
+            return ""
         if model != request.context.model or (column and column not in known):
             found.append(f"{model}.{column}" if column else model)
         return ""

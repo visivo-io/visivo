@@ -21,7 +21,7 @@ from visivo.agent.charting.rules import (
     load_tables,
     load_transforms,
 )
-from visivo.agent.charting.skeleton import Repaired, chart_skeleton
+from visivo.agent.charting.skeleton import Repaired, chart_skeleton, metric_sql
 from visivo.agent.charting.schema import (
     TRACE_TYPES,
     Limits,
@@ -630,7 +630,11 @@ def pivot_skeleton(request, tables=None):
     rule = tables.pivot_rules
     fits = _pivot_values_that_fit(request, tables.column_budget.full_width)
     values = [
-        f"{m.agg if m.agg in rule.values.aggs else 'sum'}({_column_ref(request, m.name)})"
+        (
+            metric_sql(m, request.context.model)
+            if m.defined
+            else f"{m.agg if m.agg in rule.values.aggs else 'sum'}({_column_ref(request, m.name)})"
+        )
         for m in request.metrics[: max(1, min(rule.values.max, fits))]
     ]
     scope = "row" if cols_dim.role == "time" else _PIVOT_SCOPE_DEFAULT
