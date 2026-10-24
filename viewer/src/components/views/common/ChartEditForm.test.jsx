@@ -40,6 +40,7 @@ jest.mock('./SchemaEditor/SchemaEditor', () => ({
 const mockFetchInsights = jest.fn();
 const mockDeleteChart = jest.fn();
 const mockCheckPublishStatus = jest.fn();
+const mockCreateWorkspaceObject = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -48,6 +49,7 @@ beforeEach(() => {
       deleteChart: mockDeleteChart,
       checkCommitStatus: mockCheckPublishStatus,
       fetchInsights: mockFetchInsights,
+      createWorkspaceObject: mockCreateWorkspaceObject,
       insights: [
         { name: 'revenue_insight', config: { props: { type: 'bar', x: ['q1'] } } },
         { name: 'cost_insight', config: { props: { type: 'scatter' } } },
@@ -116,8 +118,6 @@ describe('ChartEditForm — ref insight pills', () => {
     expect(screen.getByText(/No insights yet/i)).toBeInTheDocument();
   });
 
-  // VIS-1224: "+ Add Insight" opens the shared AddInsightMenu — pick an existing
-  // project insight (added as a ref pill) or "New blank insight" (staged).
   test('the Add Insight menu adds an existing project insight as a ref pill', async () => {
     await renderForm();
     expect(screen.queryByTestId('ref-insight-row-1')).not.toBeInTheDocument();
@@ -127,12 +127,98 @@ describe('ChartEditForm — ref insight pills', () => {
     expect(screen.getByTestId('ref-insight-row-1')).toBeInTheDocument();
   });
 
-  test('the Add Insight menu "New blank insight" branches a blank embedded insight', async () => {
-    await renderForm();
-    expect(screen.queryByTestId('staged-insight-row-0')).not.toBeInTheDocument();
+});
+
+describe('ChartEditForm — New blank insight (VIS-1617)', () => {
+  const renderCreate = async onSave => {
+    render(
+      <ChartEditForm chart={null} isCreate onClose={jest.fn()} onSave={onSave} onNavigateToEmbedded={jest.fn()} />
+    );
+    await screen.findByText(/No insights yet/i);
+    fireEvent.change(screen.getByLabelText(/Chart Name/), { target: { value: 'new-chart' } });
+  };
+
+  const clickNewBlank = () => {
     fireEvent.click(screen.getByTestId('chart-add-insight'));
     fireEvent.click(screen.getByTestId('add-insight-menu-create-new'));
-    expect(screen.getByTestId('staged-insight-row-0')).toBeInTheDocument();
+  };
+
+  test('drafts a named insight and saves the chart with a ref to it', async () => {
+    mockCreateWorkspaceObject.mockResolvedValueOnce({
+      success: true,
+      name: 'new-insight',
+      type: 'insight',
+    });
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderCreate(onSave);
+
+    clickNewBlank();
+
+    const row = await screen.findByTestId('ref-insight-row-0');
+    expect(getPillLabel(row, 'new-insight')).toBeInTheDocument();
+    expect(mockCreateWorkspaceObject).toHaveBeenCalledWith('insight');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const config = onSave.mock.calls[0][2];
+    expect(config.insights).toEqual(['ref(new-insight)']);
+    config.insights.forEach(insight => expect(typeof insight).toBe('string'));
+  });
+
+  test('keeps refs already on the chart and appends the new insight after them', async () => {
+    mockCreateWorkspaceObject.mockResolvedValueOnce({ success: true, name: 'new-insight-2' });
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ onSave });
+
+    clickNewBlank();
+    await screen.findByTestId('ref-insight-row-1');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][2].insights).toEqual([
+      'ref(revenue_insight)',
+      'ref(new-insight-2)',
+    ]);
+  });
+
+  test('disables Save and Add Insight while the draft insight is being created', async () => {
+    let resolveCreate;
+    mockCreateWorkspaceObject.mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveCreate = resolve;
+      })
+    );
+    await renderCreate(jest.fn());
+
+    clickNewBlank();
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(screen.getByTestId('chart-add-insight')).toBeDisabled();
+
+    resolveCreate({ success: true, name: 'new-insight' });
+    await screen.findByTestId('ref-insight-row-0');
+    expect(screen.getByRole('button', { name: 'Save' })).not.toBeDisabled();
+    expect(screen.getByTestId('chart-add-insight')).not.toBeDisabled();
+  });
+
+  test('a failed draft shows the error and adds nothing to the chart', async () => {
+    mockCreateWorkspaceObject.mockResolvedValueOnce({ success: false, error: 'insight save failed' });
+    await renderCreate(jest.fn());
+
+    clickNewBlank();
+
+    expect(await screen.findByText('insight save failed')).toBeInTheDocument();
+    expect(screen.queryByTestId('ref-insight-row-0')).not.toBeInTheDocument();
+    expect(screen.getByText(/No insights yet/i)).toBeInTheDocument();
+  });
+
+  test('a failed draft with no message falls back to a generic error', async () => {
+    mockCreateWorkspaceObject.mockResolvedValueOnce(undefined);
+    await renderCreate(jest.fn());
+
+    clickNewBlank();
+
+    expect(await screen.findByText('Failed to create insight')).toBeInTheDocument();
   });
 });
 
