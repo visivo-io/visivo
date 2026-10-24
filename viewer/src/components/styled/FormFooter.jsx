@@ -19,7 +19,7 @@ import { Button, ButtonOutline } from './Button';
  * - saving: Whether save is in progress
  * - showDelete: Whether to show delete button
  * - onDeleteClick: Delete button click handler
- * - deleteConfirm: Delete confirmation state object { show, message, onConfirm, onCancel, deleting }
+ * - deleteConfirm: Delete confirmation state object { show, message, onConfirm, onCancel, deleting, confirmLabel }
  * - saveLabel: Custom save button label (default: "Save")
  * - cancelLabel: Custom cancel button label (default: "Cancel")
  * - saveDisabled / cancelDisabled: gate the buttons on form state (VIS-1133 —
@@ -69,7 +69,7 @@ const FormFooter = ({
               disabled={deleteConfirm.deleting}
               className="px-3 py-1 text-sm text-white bg-highlight-600 rounded hover:bg-highlight-700 disabled:opacity-50"
             >
-              {deleteConfirm.deleting ? 'Deleting...' : 'Confirm Delete'}
+              {deleteConfirm.deleting ? 'Deleting...' : deleteConfirm.confirmLabel || 'Confirm Delete'}
             </button>
           </div>
         </div>

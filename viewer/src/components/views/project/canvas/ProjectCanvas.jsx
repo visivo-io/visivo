@@ -15,6 +15,8 @@ import CanvasContextMenu from './CanvasContextMenu';
 import CanvasKeyboardLayer from './CanvasKeyboardLayer';
 import CanvasItemFlipLayer from './CanvasItemFlipLayer';
 
+const CANVAS_STACK_BREAKPOINT = 480;
+
 /**
  * ProjectCanvas (VIS-D1 / VIS-767, extended by VIS-D2 / VIS-768) — the
  * Workspace dashboard canvas (a.k.a. the "Canvas"/preview lens).
@@ -41,8 +43,9 @@ import CanvasItemFlipLayer from './CanvasItemFlipLayer';
  * mounted inside the Workspace's dashboard-scoped canvas lens), so there is no
  * build/view-mode flag.
  *
- * `stackBreakpoint={768}` (VIS-829): the canvas loses ~600px to the rails, so
- * it stacks at a lower container width than static View mode (default 1024).
+ * The canvas pane is ~700px on a desktop viewport because the rails take the
+ * rest, so it stacks only below `CANVAS_STACK_BREAKPOINT`, a phone-width pane.
+ * The View-mode default would collapse every desktop row into one column.
  */
 const ProjectCanvas = ({ projectId, dashboardName }) => {
   // The overlay measures + delegates pointer events against this positioned
@@ -210,7 +213,7 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
       <Dashboard
         projectId={projectId}
         dashboardName={dashboardName}
-        stackBreakpoint={768}
+        stackBreakpoint={CANVAS_STACK_BREAKPOINT}
         hideEmptyPlaceholder
         canvasMode
         renderBrokenRef={renderBrokenRef}

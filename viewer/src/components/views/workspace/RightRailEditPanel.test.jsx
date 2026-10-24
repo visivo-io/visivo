@@ -494,9 +494,42 @@ describe('RightRailEditPanel dashboard editing (#46 — working copy, explicit s
     fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
     expect(liveConfig().rows[0].height).toBe('large');
 
-    fireEvent.click(screen.getByTestId('form-footer-cancel')); // Discard
+    fireEvent.click(screen.getByTestId('form-footer-cancel')); // Discard asks first
+    expect(liveConfig().rows[0].height).toBe('large');
+    expect(screen.getByText(/Discard all unsaved changes/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Confirm Discard'));
     expect(liveConfig().rows[0].height).toBe('medium');
     expect(screen.getByTestId('form-footer-save')).toBeDisabled();
+    expect(screen.queryByText(/Discard all unsaved changes/)).not.toBeInTheDocument();
+  });
+
+  test('cancelling the Discard confirm keeps the unsaved layout', async () => {
+    resetStore({ workspaceOutlineSelectedKey: 'row.0' });
+    renderPanel();
+
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+
+    fireEvent.click(screen.getByTestId('form-footer-cancel'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(liveConfig().rows[0].height).toBe('large');
+    expect(screen.queryByText(/Discard all unsaved changes/)).not.toBeInTheDocument();
+    expect(screen.getByTestId('form-footer-save')).not.toBeDisabled();
+  });
+
+  test('Discard replaces a pending Delete confirm', async () => {
+    resetStore({ workspaceOutlineSelectedKey: 'row.0' });
+    renderPanel();
+
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+
+    fireEvent.click(screen.getByTitle('Delete'));
+    expect(screen.getByText(/Delete this dashboard/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('form-footer-cancel'));
+    expect(screen.queryByText(/Delete this dashboard/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Discard all unsaved changes/)).toBeInTheDocument();
+    expect(screen.queryByTitle('Delete')).not.toBeInTheDocument();
   });
 
   test('an invalid working copy still updates optimistically but surfaces the gate errors', async () => {

@@ -376,9 +376,9 @@ const Dashboard = ({
   // the viewport. It is PER-SURFACE (VIS-829): static viewing (/project-new and,
   // once VIS-833 lands, /project) keeps the default 1024 so rows stack earlier
   // for readability on genuinely narrow windows; the Workspace canvas passes
-  // `stackBreakpoint={768}` (via ProjectCanvas) because it loses ~600px to the
-  // left + right rails, so a 1024 threshold made every row collapse into a
-  // single column even on a wide screen (the "everything stacks" bug). The
+  // `stackBreakpoint` (via ProjectCanvas) at a phone-width pane, because the
+  // canvas pane is ~700px on a desktop viewport and the default would collapse
+  // every row into one column. The
   // threshold is applied per-container (top-level + each nested slot) via
   // `shouldStack`, so nesting decisions stay slot-relative.
   const widthBreakpoint = stackBreakpoint;
