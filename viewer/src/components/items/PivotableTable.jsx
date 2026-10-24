@@ -22,7 +22,11 @@ import { useDashboardTheme } from '../../theme/DashboardThemeContext';
 import { createDashboardMuiTheme } from '../../theme/muiTheme';
 import { mkConfig, generateCsv } from 'export-to-csv';
 import { ROWS_PER_PAGE_OPTIONS } from './rowsPerPageOptions';
-import { buildReverseMapping, formatColumnHeader } from '../../utils/pivotRefResolver';
+import {
+  buildReverseMapping,
+  dehashColumnKey,
+  formatColumnHeader,
+} from '../../utils/pivotRefResolver';
 
 const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   const { tokens: themeTokens } = useDashboardTheme();
@@ -161,11 +165,17 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     []
   );
 
-  const csvConfig = mkConfig({
-    fieldSeparator: ',',
-    decimalSeparator: '.',
-    useKeysAsHeaders: true,
-  });
+  const csvConfig = useMemo(() => {
+    const reverseMapping = buildReverseMapping(sourceData?.props_mapping);
+    return mkConfig({
+      fieldSeparator: ',',
+      decimalSeparator: '.',
+      columnHeaders: dataTableColumns.map(col => ({
+        key: col.name,
+        displayLabel: csvHeaderFor(col.name, reverseMapping),
+      })),
+    });
+  }, [dataTableColumns, sourceData]);
 
   const handleExportData = useCallback(() => {
     const csv = generateCsv(csvConfig)(allRows);
@@ -270,6 +280,7 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
             <Button
               aria-label="DownloadCsv"
               onClick={handleExportData}
+              disabled={dataTableColumns.length === 0}
               size="small"
               color="primary"
               sx={{ minWidth: '40px', color: 'var(--color-secondary-500)', '&:hover': { color: 'var(--color-primary-600)' } }}
@@ -302,6 +313,15 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     </ItemContainer>
   );
 };
+
+// A CSV keeps real column names and aliases; only generated (hashed) keys are
+// rewritten, since nothing outside the viewer can read a hash.
+function csvHeaderFor(key, reverseMapping) {
+  const dehashed = dehashColumnKey(key, reverseMapping);
+  if (dehashed !== key) return dehashed;
+  if (/_hash_[a-f0-9]+$/i.test(key)) return formatColumnHeader(key);
+  return key;
+}
 
 // The shape processArrowResult gives every DATE / TIMESTAMP value.
 const ARROW_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
