@@ -1,7 +1,7 @@
 from flask import Flask
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from threading import Thread, Event, Lock
+from threading import Thread, Event, Lock, Timer
 import time
 from visivo.logger.logger import Logger
 import os
@@ -10,40 +10,111 @@ import logging
 import socket
 
 WATCHED_EXTENSIONS = (".yml", ".yaml")
+EDITOR_TEMP_PREFIXES = (".#", ".~")
+
+
+def is_editor_temp_file(path):
+    return os.path.basename(path).startswith(EDITOR_TEMP_PREFIXES)
+
+
+def project_file_matcher(working_dir, output_dir):
+    """Return a check that a path is one of the files the project includes.
+
+    The include set is read again on every call, so a file added to an included
+    directory counts at once. If the project files cannot be read (for example
+    a half-written include), every YAML path counts, so the compile reports the error.
+    """
+    from visivo.discovery.discover import Discover
+
+    def is_project_file(path):
+        try:
+            files = Discover(working_dir=working_dir, output_dir=output_dir).files
+        except Exception:
+            return True
+        return os.path.realpath(path) in {os.path.realpath(str(f)) for f in files}
+
+    return is_project_file
 
 
 class ProjectChangeHandler(FileSystemEventHandler):
-    def __init__(self, callback, ignore_patterns=None, pause_lock=None):
+    """Call ``callback`` once per save of a project YAML file.
+
+    Editors save in different ways: in place (modified), as a new file
+    (created), or as a temp file renamed over the original (moved). Events
+    are debounced on the trailing edge, so the callback runs once after the
+    last event of a burst and reads the final content.
+    """
+
+    def __init__(
+        self,
+        callback,
+        ignore_patterns=None,
+        pause_lock=None,
+        is_project_file=None,
+        debounce_seconds=0.5,
+    ):
         self.callback = callback
         self.ignore_patterns = ignore_patterns or []
-        self.last_event_time = 0
-        self.debounce_seconds = 0.5  # Debounce events within 500ms
+        self.debounce_seconds = debounce_seconds
         self.pause_lock = pause_lock or Lock()
+        self.is_project_file = is_project_file
+        self._timer = None
+        self._generation = 0
+        self._schedule_lock = Lock()
+        self._run_lock = Lock()
+        self._running = False
 
     def on_modified(self, event):
-        if event.is_directory:
+        self._handle(event, event.src_path)
+
+    def on_created(self, event):
+        self._handle(event, event.src_path)
+
+    def on_moved(self, event):
+        self._handle(event, event.dest_path)
+
+    def _is_watched(self, path):
+        if not path.endswith(WATCHED_EXTENSIONS) or is_editor_temp_file(path):
+            return False
+        if any(pattern in path for pattern in self.ignore_patterns):
+            return False
+        return self.is_project_file is None or self.is_project_file(path)
+
+    def _handle(self, event, path):
+        if event.is_directory or not self._is_watched(path):
             return
 
-        if not event.src_path.endswith(WATCHED_EXTENSIONS):
-            return
-
-        # Check if file should be ignored
-        if any(pattern in event.src_path for pattern in self.ignore_patterns):
-            return
-
-        # Check if we're paused (e.g., during cloning)
-        if not self.pause_lock.acquire(blocking=False):
-            Logger.instance().debug(f"File watcher paused, ignoring change: {event.src_path}")
-            return
-
-        try:
-            current_time = time.time()
-            if current_time - self.last_event_time > self.debounce_seconds:
-                Logger.instance().debug(f"Triggering file modified: {event.src_path}")
-                self.last_event_time = current_time
-                self.callback()
-        finally:
+        if self.pause_lock.acquire(blocking=False):
             self.pause_lock.release()
+        elif not self._running:
+            Logger.instance().debug(f"File watcher paused, ignoring change: {path}")
+            return
+
+        Logger.instance().debug(f"Project file changed: {path}")
+        self._schedule()
+
+    def _schedule(self):
+        with self._schedule_lock:
+            if self._timer:
+                self._timer.cancel()
+            self._generation += 1
+            self._timer = Timer(self.debounce_seconds, self._fire, args=(self._generation,))
+            self._timer.daemon = True
+            self._timer.start()
+
+    def _fire(self, generation):
+        with self._run_lock:
+            if generation != self._generation:
+                return
+            if not self.pause_lock.acquire(blocking=False):
+                Logger.instance().debug("File watcher paused, dropping queued change")
+                return
+            self._running = True
+            try:
+                self.callback()
+            finally:
+                self._running = False
+                self.pause_lock.release()
 
 
 class HotReloadServer:
@@ -59,10 +130,18 @@ class HotReloadServer:
                 continue
         raise RuntimeError(f"Could not find an available port after {max_attempts} attempts")
 
-    def __init__(self, app: Flask, on_project_change, watch_path: str, ignore_patterns=None):
+    def __init__(
+        self,
+        app: Flask,
+        on_project_change,
+        watch_path: str,
+        ignore_patterns=None,
+        is_project_file=None,
+    ):
         self.app = app
         self.watch_path = watch_path
         self.ignore_patterns = ignore_patterns or []
+        self.is_project_file = is_project_file
         self.observer = None
         self.server_thread = None
         self.on_project_change = on_project_change
@@ -91,7 +170,10 @@ class HotReloadServer:
             self.socketio.emit("reload")
 
         event_handler = ProjectChangeHandler(
-            wrapped_callback, self.ignore_patterns, self.pause_lock
+            wrapped_callback,
+            self.ignore_patterns,
+            self.pause_lock,
+            is_project_file=self.is_project_file,
         )
         self.observer = Observer()
         self.observer.schedule(event_handler, self.watch_path, recursive=True)

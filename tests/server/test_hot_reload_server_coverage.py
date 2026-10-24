@@ -48,9 +48,10 @@ class TestProjectChangeHandlerFilters:
 
     def test_yaml_extension_also_triggers(self):
         callback = Mock()
-        handler = ProjectChangeHandler(callback)
+        handler = ProjectChangeHandler(callback, debounce_seconds=0.01)
         event = Mock(is_directory=False, src_path="/proj/project.yaml")
         handler.on_modified(event)
+        time.sleep(0.2)
         callback.assert_called_once()
 
     def test_html_does_not_trigger(self):
