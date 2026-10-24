@@ -20,6 +20,13 @@ import {
   removeItemAtPath,
   moveItemBetweenRows,
   moveItemIntoSlot,
+  followNodePath,
+  reorderRowsInContainer,
+  parseNestedRowPath,
+  isTriviallyWrappedContainer,
+  setItemWidth,
+  resizeItemFromLeft,
+  pixelsToNearestHeightEnum,
 } from './canvasReorder';
 
 const config = () => ({
@@ -860,5 +867,124 @@ describe('removeItemAtPath (VIS-792)', () => {
     const snapshot = JSON.stringify(cfg);
     removeItemAtPath(cfg, 'row.0.item.1');
     expect(JSON.stringify(cfg)).toBe(snapshot);
+  });
+});
+
+describe('followNodePath (VIS-1533)', () => {
+  const a = { width: 6, chart: 'ref(a)' };
+  const b = { width: 6, chart: 'ref(b)' };
+  const deep = { width: 1, chart: 'ref(deep)' };
+  const nestedRow = { items: [{ width: 1 }, deep] };
+  const container = { width: 12, rows: [nestedRow] };
+  const prev = { rows: [{ items: [a, b] }, { items: [container] }] };
+
+  test('follows a reordered item to its new index', () => {
+    const next = reorderItemsInRow(prev, 'row.0', 1, 0);
+    expect(followNodePath(prev, next, 'row.0.item.1')).toBe('row.0.item.0');
+  });
+
+  test('follows an item moved to another row', () => {
+    const next = moveItemBetweenRows(prev, 'row.0', 0, { kind: 'end-of-row', rowPath: 'row.1' });
+    expect(followNodePath(prev, next, 'row.0.item.0')).toBe('row.1.item.1');
+  });
+
+  test('follows a nested leaf when its container row moves', () => {
+    const next = reorderTopLevelRows(prev, 1, 0);
+    expect(followNodePath(prev, next, 'row.1.item.0.row.0.item.1')).toBe(
+      'row.0.item.0.row.0.item.1'
+    );
+  });
+
+  test('follows a nested leaf reordered inside its container', () => {
+    const next = reorderItemsInRow(prev, 'row.1.item.0.row.0', 1, 0);
+    expect(followNodePath(prev, next, 'row.1.item.0.row.0.item.1')).toBe(
+      'row.1.item.0.row.0.item.0'
+    );
+  });
+
+  test('keeps the path when the node was replaced', () => {
+    const next = { rows: [{ items: [a, { ...b, width: 3 }] }, prev.rows[1]] };
+    expect(followNodePath(prev, next, 'row.0.item.1')).toBe('row.0.item.1');
+  });
+
+  test('keeps the path when the node was removed', () => {
+    expect(followNodePath(prev, { rows: [] }, 'row.0.item.1')).toBe('row.0.item.1');
+    expect(followNodePath(prev, null, 'row.0.item.1')).toBe('row.0.item.1');
+  });
+
+  test('keeps paths that do not resolve in the previous config', () => {
+    expect(followNodePath(prev, prev, 'dashboard')).toBe('dashboard');
+    expect(followNodePath(prev, prev, 'row.9.item.0')).toBe('row.9.item.0');
+    expect(followNodePath(prev, prev, 'row.0.row.0')).toBe('row.0.row.0');
+    expect(followNodePath({ rows: ['ref(x)'] }, prev, 'row.0')).toBe('row.0');
+    expect(followNodePath(null, prev, 'row.0')).toBe('row.0');
+  });
+
+  test('skips rows without items while searching', () => {
+    const next = { rows: [{ height: 'small' }, { items: [b, a] }] };
+    expect(followNodePath(prev, next, 'row.0.item.0')).toBe('row.1.item.1');
+  });
+});
+
+describe('invalid input leaves the config untouched', () => {
+  const cfg = {
+    rows: [
+      { items: [{ width: 6, chart: 'ref(a)' }, { width: 6, chart: 'ref(b)' }] },
+      { items: [{ width: 12, rows: [{ items: [{ width: 1, chart: 'ref(c)' }] }] }] },
+      { height: 'small' },
+    ],
+  };
+
+  test.each([
+    ['reorder with an item path', () => reorderItemsInRow(cfg, 'row.0.item.0', 0, 1)],
+    ['reorder under a row.row path', () => reorderItemsInRow(cfg, 'row.0.row.0', 0, 1)],
+    ['reorder under a missing row', () => reorderItemsInRow(cfg, 'row.9.item.0.row.0', 0, 1)],
+    ['reorder under a leaf item', () => reorderItemsInRow(cfg, 'row.0.item.0.row.0', 0, 1)],
+    ['container reorder without a row', () => reorderRowsInContainer(cfg, 'item.0', 0, 1)],
+    ['insert with no target', () => insertItemAtTarget(cfg, null)],
+    [
+      'insert into a container addressed by a row path',
+      () => insertItemAtTarget(cfg, { kind: 'in-container', itemPath: 'row.0' }),
+    ],
+    ['wrap a row path', () => wrapItemInContainer(cfg, 'row.0')],
+    ['wrap an item with no row', () => wrapItemInContainer(cfg, 'item.0')],
+    ['add an item to an item path', () => addItemToRow(cfg, 'row.0.item.0')],
+    ['remove an item with no row', () => removeItemAtPath(cfg, 'item.0')],
+    ['remove a missing item', () => removeItemAtPath(cfg, 'row.0.item.9')],
+    ['fill a slot addressed by a row path', () => moveItemIntoSlot(cfg, 'row.0', 0, 'row.1')],
+    ['set a width with no row', () => setItemWidth(cfg, 'item.0', 3)],
+    ['resize a missing item from the left', () => resizeItemFromLeft(cfg, 'row.0', 5, 1)],
+  ])('%s', (_label, run) => {
+    expect(run()).toBe(cfg);
+  });
+
+  test('transforms return a config without rows as is', () => {
+    expect(reorderTopLevelRows(null, 0, 1)).toBeNull();
+    expect(moveItemBetweenRows(null, 'row.0', 0, {})).toBeNull();
+    expect(moveItemIntoSlot(null, 'row.0', 0, 'row.1.item.0')).toBeNull();
+    const noRows = { name: 'x' };
+    expect(reorderItemsInRow(noRows, 'row.0', 0, 1)).toBe(noRows);
+  });
+
+  test('an out-of-range source index keeps the item order', () => {
+    expect(reorderItemsInRow(cfg, 'row.0', 5, 0)).toEqual(cfg);
+  });
+
+  test('a container reorder on a row without items keeps the rows', () => {
+    expect(reorderRowsInContainer(cfg, 'row.2.item.0', 0, 1)).toEqual(cfg);
+  });
+
+  test('path readers reject malformed paths', () => {
+    expect(parseNestedRowPath('row.0.row.1.row.2')).toBeNull();
+    expect(smallestWidthInRow(cfg, 'row.0.item.0')).toBe(1);
+    expect(smallestWidthInRow(cfg, 'row.0.item.9.row.0')).toBe(1);
+    expect(isTriviallyWrappedContainer(cfg, 'row.0')).toBe(false);
+    expect(isTriviallyWrappedContainer(cfg, 'row.9.item.0')).toBe(false);
+    expect(isTriviallyWrappedContainer(cfg, 'row.0.item.9')).toBe(false);
+  });
+
+  test('non-numeric sizes fall back to safe defaults', () => {
+    expect(pixelsToNearestHeightEnum('tall')).toBe('medium');
+    expect(setItemWidth(cfg, 'row.0.item.0', 'wide').rows[0].items[0].width).toBe(1);
   });
 });

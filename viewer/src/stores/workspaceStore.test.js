@@ -1880,6 +1880,65 @@ describe('workspace store slice', () => {
     expect(returned).toBe(false);
   });
 
+  describe('updateDashboardConfigOptimistic keeps the selection on its node (VIS-1533)', () => {
+    const weekly = { width: 8, chart: '${ref(weekly)}' };
+    const payment = { width: 4, chart: '${ref(payment)}' };
+    const kpi = { width: 12, chart: '${ref(kpi)}' };
+    const rowA = { height: 'medium', items: [weekly, payment] };
+    const rowB = { height: 'small', items: [kpi] };
+
+    const seed = (selectedKey, activeObject = { type: 'dashboard', name: 'd1' }) => {
+      act(() => {
+        useStore.setState({
+          dashboards: [{ name: 'd1', config: { name: 'd1', rows: [rowA, rowB] } }],
+          workspaceActiveObject: activeObject,
+          workspaceOutlineSelectedKey: selectedKey,
+        });
+      });
+    };
+    const commit = rows =>
+      act(() => {
+        useStore.getState().updateDashboardConfigOptimistic('d1', { name: 'd1', rows });
+      });
+    const selectedKey = () => useStore.getState().workspaceOutlineSelectedKey;
+
+    test('a reordered item keeps its selection at its new index', () => {
+      seed('row.0.item.1');
+      commit([{ ...rowA, items: [payment, weekly] }, rowB]);
+      expect(selectedKey()).toBe('row.0.item.0');
+    });
+
+    test('an item inside a reordered row keeps its selection', () => {
+      seed('row.1.item.0');
+      commit([rowB, rowA]);
+      expect(selectedKey()).toBe('row.0.item.0');
+    });
+
+    test('a selected row follows a row reorder', () => {
+      seed('row.0');
+      commit([rowB, rowA]);
+      expect(selectedKey()).toBe('row.1');
+    });
+
+    test('the selection is left alone when the selected node was replaced', () => {
+      seed('row.0.item.1');
+      commit([{ ...rowA, items: [weekly, { ...payment, width: 6 }] }, rowB]);
+      expect(selectedKey()).toBe('row.0.item.1');
+    });
+
+    test('the selection is left alone when it belongs to another open object', () => {
+      seed('row.0.item.1', { type: 'dashboard', name: 'other' });
+      commit([{ ...rowA, items: [payment, weekly] }, rowB]);
+      expect(selectedKey()).toBe('row.0.item.1');
+    });
+
+    test('the dashboard chrome selection is left alone', () => {
+      seed('dashboard');
+      commit([rowB, rowA]);
+      expect(selectedKey()).toBe('dashboard');
+    });
+  });
+
   // ── #46: dashboard explicit-save working copy ──────────────────────────────
   describe('dashboard working copy (#46)', () => {
     const seedDashboard = (config, extra = {}) => {

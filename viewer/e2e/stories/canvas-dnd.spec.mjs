@@ -62,82 +62,34 @@ const readItemOrder = async (page, rowIndex) => {
   return items.map(itemKey);
 };
 
-// Start a canvas drag and travel to the target drop zone, leaving the pointer
-// DOWN (the caller commits the drop with `page.mouse.up()`).
-//
-// Why this dispatches `pointerdown` directly on the grip element instead of
-// driving `page.mouse.down()` at the grip's coordinates:
-//
-//   The canvas grips are an absolutely-positioned overlay (`<CanvasDndLayer>`,
-//   z-10) painted OVER the render-only <Dashboard>, and an item grip sits at the
-//   top-left corner of its item — directly over the item's Plotly chart. The
-//   dashboard item wrapper carries `z-40`, which is ABOVE the overlay's z-10, so
-//   at the grip's centre `elementFromPoint` resolves to the Plotly
-//   `svg-container`, not the grip. A coordinate-based `page.mouse.down()`
-//   therefore lands on the chart and dnd-kit's PointerSensor never arms — the
-//   drag silently no-ops (this is what the previous `scrollIntoViewIfNeeded`
-//   harness masked; the scroll only made it flakier by reflowing the gated grip
-//   mid-grab). The grip is fully visible per CSS (the gating test asserts that),
-//   it's just occluded for hit-testing.
-//
-//   Dispatching `pointerdown` on the grip element itself bypasses hit-testing
-//   and arms dnd-kit's PointerSensor on the real draggable node. The subsequent
-//   document-level `pointermove`s clear the 5px activation distance and travel to
-//   the target (dnd-kit measures droppables by rect — MeasuringStrategy.Always —
-//   so the moves only need to reach the target's centre, occlusion-immune too).
-//   The final commit is a REAL `page.mouse.up()` in the caller, which dnd-kit's
-//   document pointerup listener catches and routes through `routeWorkspaceDragEnd`.
+// Start a canvas drag and travel to the target drop zone with the real mouse,
+// leaving the pointer DOWN (the caller commits the drop with `page.mouse.up()`).
+// A real mousedown on the grip is the point: the canvas render is an isolated
+// stacking context (VIS-1533), so a hovered card's `hover:z-40` can no longer
+// rise above the overlay and swallow the grab.
 const dndDrag = async (page, source, target) => {
   await expect(source).toBeVisible();
   await page.waitForTimeout(150); // settle the reveal/select reflow before grabbing
   const sb = await source.boundingBox();
   const tb = await target.boundingBox();
   expect(sb && tb, 'both drag endpoints have a box').toBeTruthy();
+  const sx = sb.x + sb.width / 2;
+  const sy = sb.y + sb.height / 2;
   const tx = tb.x + tb.width / 2;
   const ty = tb.y + tb.height / 2;
-  // Arm the PointerSensor by dispatching pointerdown on the grip node directly.
-  await source.evaluate(el => {
-    const r = el.getBoundingClientRect();
-    window.__canvasDndSrc = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    const ev = (x, y) => ({
-      bubbles: true,
-      cancelable: true,
-      clientX: x,
-      clientY: y,
-      pointerId: 1,
-      button: 0,
-      pointerType: 'mouse',
-      isPrimary: true,
-      view: window,
-    });
-    el.dispatchEvent(new PointerEvent('pointerdown', ev(window.__canvasDndSrc.x, window.__canvasDndSrc.y)));
-  });
-  await page.waitForTimeout(40);
-  // Nudge past the 5px activation distance, then travel to the target centre.
-  await page.evaluate(
-    ([tx, ty]) => {
-      const s = window.__canvasDndSrc;
-      const ev = (x, y) => ({
-        bubbles: true,
-        cancelable: true,
-        clientX: x,
-        clientY: y,
-        pointerId: 1,
-        button: 0,
-        pointerType: 'mouse',
-        isPrimary: true,
-        view: window,
-      });
-      document.dispatchEvent(new PointerEvent('pointermove', ev(s.x + 10, s.y + 10)));
-      document.dispatchEvent(new PointerEvent('pointermove', ev((s.x + tx) / 2, (s.y + ty) / 2)));
-      document.dispatchEvent(new PointerEvent('pointermove', ev(tx, ty)));
-      document.dispatchEvent(new PointerEvent('pointermove', ev(tx, ty)));
-    },
-    [tx, ty]
-  );
+  await page.mouse.move(sx, sy);
+  await page.mouse.down();
+  await page.mouse.move(sx + 10, sy + 10, { steps: 3 });
+  await page.mouse.move(tx, ty, { steps: 15 });
   await page.waitForTimeout(40);
   return { sb, tb };
 };
+
+const boxOf = locator =>
+  locator.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    return { x: r.left, y: r.top, width: r.width, height: r.height };
+  });
 
 // VIS-975: the drag affordance is now the SELECTED node's frame (a border-ring
 // grab surface), not a hover grip icon. We reveal it via SELECTION (click): the
@@ -262,6 +214,18 @@ test.describe('Canvas drag-and-drop (VIS-771 / D-3)', () => {
     const after = await readItemOrder(page, ri);
     expect(after).toHaveLength(before.length);
     expect(after).not.toEqual(before);
+
+    // VIS-1533: the selection follows the moved card, and the ring sits on its
+    // new box rather than on the box it left.
+    const movedPath = `row.${ri}.item.${before.length - 1}`;
+    await expect
+      .poll(() => page.evaluate(() => window.useStore.getState().workspaceOutlineSelectedKey))
+      .toBe(movedPath);
+    const ring = await boxOf(page.getByTestId('canvas-overlay-selected-item'));
+    const card = await boxOf(page.locator(`[data-canvas-path="${movedPath}"]`).first());
+    for (const k of ['x', 'y', 'width', 'height']) {
+      expect(Math.abs(ring[k] - card[k]), `ring ${k} matches the moved card`).toBeLessThanOrEqual(1);
+    }
     await page.screenshot({ path: `${SCREENS}/vis771-02-item-reordered.png`, fullPage: true });
   });
 

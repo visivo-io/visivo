@@ -1083,7 +1083,11 @@ const Dashboard = ({
       // pb-8:  32px bottom padding so the last row isn't flush against the
       //        page edge (longstanding pet peeve). Top padding is handled by
       //        the parent route's pt-12.
-      className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-clip px-6 pb-8"
+      // canvasMode isolates the render so a hovered card's z-40 cannot rise
+      // above the canvas overlays and cover the selected card's drag frame.
+      className={`flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-clip px-6 pb-8${
+        canvasMode ? ' isolate' : ''
+      }`}
     >
       {dashboard.rows.map(renderRow)}
     </div>

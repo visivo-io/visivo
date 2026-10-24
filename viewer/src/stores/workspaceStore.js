@@ -49,6 +49,7 @@ import { emitWorkspaceEvent } from '../components/views/workspace/telemetry';
 import { generateUniqueName } from '../utils/uniqueName';
 import { COLLECTION_KEY } from '../components/views/workspace/collectionKeys';
 import { unwrapConfig, withConfig } from '../components/views/workspace/unwrapRecordConfig';
+import { followNodePath } from '../components/views/project/canvas/canvasReorder';
 import { workspaceTabUrl, workspaceViewUrl, WORKSPACE_BASE } from '../components/views/workspace/workspaceUrl';
 import {
   isWorkspaceView,
@@ -1025,7 +1026,12 @@ const createWorkspaceSlice = (set, get) => ({
     const nextEntry = withConfig(entry, nextConfig);
     const nextList = [...list];
     nextList[idx] = nextEntry;
-    set({ dashboards: nextList });
+    const active = state.workspaceActiveObject;
+    const selectedKey =
+      active?.type === 'dashboard' && active.name === dashboardName
+        ? followNodePath(unwrapConfig(entry), nextConfig, state.workspaceOutlineSelectedKey)
+        : state.workspaceOutlineSelectedKey;
+    set({ dashboards: nextList, workspaceOutlineSelectedKey: selectedKey });
     // Mirror the working copy to storage while an editing session is open (a
     // baseline exists), so unsaved dashboard edits survive a reload the same
     // way the leaf panels' do. Non-editing optimistic writes have no baseline

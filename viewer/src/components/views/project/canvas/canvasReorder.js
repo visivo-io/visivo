@@ -167,6 +167,46 @@ export const parseNestedRowPath = rowPath => {
   return { containerPath, rowIndex };
 };
 
+const nodeAtPath = (config, path) => {
+  const segments = parseCanvasPath(path);
+  if (!segments.length) return null;
+  let node = config;
+  for (const seg of segments) {
+    const list = seg.kind === 'row' ? node?.rows : node?.items;
+    node = Array.isArray(list) ? list[seg.index] : null;
+    if (!node || typeof node !== 'object') return null;
+  }
+  return node;
+};
+
+const pathOfNode = (rows, target, prefix = '') => {
+  if (!Array.isArray(rows)) return null;
+  for (let ri = 0; ri < rows.length; ri += 1) {
+    const rowPath = `${prefix}row.${ri}`;
+    if (rows[ri] === target) return rowPath;
+    const items = Array.isArray(rows[ri]?.items) ? rows[ri].items : [];
+    for (let ii = 0; ii < items.length; ii += 1) {
+      const itemPath = `${rowPath}.item.${ii}`;
+      if (items[ii] === target) return itemPath;
+      const nested = pathOfNode(items[ii]?.rows, target, `${itemPath}.`);
+      if (nested) return nested;
+    }
+  }
+  return null;
+};
+
+/**
+ * The path of the node at `path` in `prevConfig` once `nextConfig` replaces it.
+ * The reorder and move helpers keep the moved row or item as the same object,
+ * so the node is found by identity. Returns `path` unchanged when the node was
+ * replaced or removed, or when `path` is the dashboard chrome.
+ */
+export const followNodePath = (prevConfig, nextConfig, path) => {
+  const node = nodeAtPath(prevConfig, path);
+  if (!node) return path;
+  return pathOfNode(nextConfig?.rows, node) ?? path;
+};
+
 /** Default empty layout slot height for a freshly-created top-level row. */
 const NEW_ROW = items => ({ height: 'medium', items });
 

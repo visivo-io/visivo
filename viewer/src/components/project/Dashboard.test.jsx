@@ -315,6 +315,16 @@ describe('Dashboard', () => {
       expect(screen.getByTestId('canvas-empty-slot')).toBeInTheDocument();
     });
 
+    it('isolates the canvas render so card hover z-index stays below the overlays (VIS-1533)', () => {
+      renderEmptySlot({ canvasMode: true });
+      expect(screen.getByTestId('dashboard_with-empty-slot')).toHaveClass('isolate');
+    });
+
+    it('leaves the View mode render without its own stacking context', () => {
+      renderEmptySlot();
+      expect(screen.getByTestId('dashboard_with-empty-slot')).not.toHaveClass('isolate');
+    });
+
     it('renders nothing for an empty slot in View mode (parity preserved)', () => {
       renderEmptySlot();
       expect(screen.queryByTestId('canvas-empty-slot')).not.toBeInTheDocument();
