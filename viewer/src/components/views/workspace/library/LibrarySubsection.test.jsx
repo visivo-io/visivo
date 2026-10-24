@@ -49,6 +49,30 @@ describe('LibrarySubsection', () => {
     expect(screen.getByTestId('library-row-chart-fibonacci_growth')).toBeInTheDocument();
   });
 
+  test('a metric defined inside a model is counted, listed and marked with its model', () => {
+    expand('metric');
+    const rows = [
+      { id: 'metric:revenue', type: 'metric', name: 'revenue', parentModel: 'orders' },
+      { id: 'metric:margin', type: 'metric', name: 'margin', parentModel: null },
+    ];
+    render(withDnd(<LibrarySubsection typeKey="metric" rows={rows} />));
+    expect(screen.getByTestId('library-subsection-metric-count')).toHaveTextContent('(2)');
+    expect(screen.queryByTestId('library-subsection-metric-empty')).not.toBeInTheDocument();
+    expect(screen.getByTestId('library-row-metric-revenue-in-orders-owner-model')).toHaveTextContent(
+      'in orders'
+    );
+    expect(screen.getByTestId('library-row-metric-margin')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-row-metric-margin-owner-model')).not.toBeInTheDocument();
+  });
+
+  test('a dimension defined inside a model is marked with its model', () => {
+    expand('dimension');
+    const rows = [{ id: 'dimension:region', type: 'dimension', name: 'region', parentModel: 'orders' }];
+    render(withDnd(<LibrarySubsection typeKey="dimension" rows={rows} />));
+    expect(screen.getByTestId('library-subsection-dimension-count')).toHaveTextContent('(1)');
+    expect(screen.getByTestId('library-row-dimension-region-in-orders-owner-model')).toBeInTheDocument();
+  });
+
   test('renders the empty placeholder when the subsection has no rows', () => {
     expand('model');
     render(withDnd(<LibrarySubsection typeKey="model" rows={[]} />));
