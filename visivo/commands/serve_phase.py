@@ -49,6 +49,7 @@ def serve_phase(
                     "project_changed", {"drafts_dropped": drafts_dropped}
                 )
 
+        compiled = False
         try:
             Logger.instance().info(
                 "Server has detected changes to the project. Re-running project..."
@@ -79,6 +80,8 @@ def serve_phase(
             changed_dag_filter = project.dag().get_diff_dag_filter(
                 existing_project=app.project, existing_dag_filter=dag_filter
             )
+            compiled = True
+            app.project_error = None
             if not changed_dag_filter and not new:
                 # No runnable jobs changed, but the compiled project may still
                 # differ (e.g. a layout-only dashboard edit published to YAML).
@@ -126,6 +129,8 @@ def serve_phase(
             if os.environ.get("STACKTRACE"):
                 error_message = f"{str(e)}\n{traceback.format_exc()}"
             Logger.instance().error(error_message)
+            if not compiled:
+                app.project_error = str(e)
             with open(f"{output_dir}/error.json", "w") as error_file:
                 error_file.write(json.dumps({"message": error_message}))
 
