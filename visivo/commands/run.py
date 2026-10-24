@@ -41,7 +41,6 @@ def run(
     """
     from visivo.logger.logger import Logger
     from visivo.commands.parse_project_phase import parse_project_phase
-    from visivo.commands.serve_phase import serve_phase
 
     Logger.instance().debug("Running")
 
