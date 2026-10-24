@@ -307,9 +307,7 @@ def _get_schema_handler(app, arguments):
         raise ToolError(f"No type '{requested}'. Available: " + ", ".join(slicer.type_keys()))
 
 
-# Run logs are the whole build output and an agent does not need the part that
-# went well — a failure explains itself at the end.
-RUN_LOG_TAIL = 4000
+from visivo.agent.runs import LOG_TAIL as RUN_LOG_TAIL
 
 
 def _run_entry(app, run, with_logs=False):
@@ -341,6 +339,12 @@ def _get_run_handler(app, arguments):
             raise ToolError("No runs yet.")
         run = app.run_manager.get(listed[0]["id"])
     return _run_entry(app, run, with_logs=True)
+
+
+def _check_runs_handler(app, arguments):
+    from visivo.agent import runs
+
+    return runs.verdict(app)
 
 
 def _theme_config(app):
@@ -825,6 +829,20 @@ _HAND_WRITTEN = {
         ),
         input_schema={"type": "object", "properties": {}},
         handler=_list_runs_handler,
+    ),
+    "check_runs": Tool(
+        name="check_runs",
+        description=(
+            "Whether the project builds. Waits for a build in flight to finish, "
+            "then reports whether the newest run succeeded, with the "
+            "diagnostics and log tail of one that did not. Call this before you "
+            "say a change is done: a write that changes data starts a build, "
+            "and until it finishes nobody knows whether what you wrote works. "
+            "`ok` is true only when nothing is still building and the newest "
+            "run succeeded."
+        ),
+        input_schema={"type": "object", "properties": {}},
+        handler=_check_runs_handler,
     ),
     "get_run": Tool(
         name="get_run",
