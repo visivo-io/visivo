@@ -3,7 +3,7 @@ from flask import jsonify, request
 from visivo.models.validators import standalone_field_ref_error
 from pydantic import ValidationError
 from visivo.logger.logger import Logger
-from visivo.server.managers.object_manager import ObjectStatus
+from visivo.server.managers.object_manager import ObjectStatus, SaveRefusedError
 from visivo.server.names import NameTakenError
 
 
@@ -93,6 +93,8 @@ def register_dimension_views(app, flask_app, output_dir):
             )
         except NameTakenError as e:
             return jsonify({"error": str(e)}), 409
+        except SaveRefusedError as e:
+            return jsonify({"error": str(e)}), 400
         except ValidationError as e:
             Logger.instance().debug(f"Dimension validation failed: {e}")
             first_error = e.errors()[0]

@@ -36,6 +36,7 @@ from visivo.agent.schema import SchemaSlicer
 from visivo.agent.screenshot import SCREENSHOT_TOOLS
 from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
 from visivo.jobs.run_model_data_job import QueryTimeout
+from visivo.server.managers.object_manager import SaveRefusedError
 from visivo.server.names import NameTakenError
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
@@ -115,6 +116,9 @@ def _validate_handler(type_key):
         clash = manager.name_clash and isinstance(name, str) and manager.name_clash(name, obj)
         if clash:
             return {"valid": False, "error": f"{clash} {_rename_hint(type_key, name)}"}
+        bad_name = isinstance(name, str) and manager.name_grammar_error(name, obj)
+        if bad_name:
+            return {"valid": False, "error": f"Invalid {_singular(type_key)}: {bad_name}"}
         return {"valid": True}
 
     return handler
@@ -143,6 +147,8 @@ def _write_handler(type_key):
             manager.save(name, obj)
         except NameTakenError as error:
             raise ToolError(f"{error} {_rename_hint(type_key, name)}")
+        except SaveRefusedError as error:
+            raise ToolError(f"Invalid {_singular(type_key)}: {error}")
         # A person's edit reaches this through the after_request hook on
         # POST /api/<type>/<name>/. The agent saves in-process, so without this
         # its writes stage nothing (leaving the top bar on Deploy) and never
@@ -438,7 +444,33 @@ def _recommend_charts_handler(app, arguments):
             f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in error.errors()[:5]
         )
         raise ToolError(f"Invalid request: {problems}")
+    _mark_defined_metrics(app, request)
     return compact(recommend(request))
+
+
+def _mark_defined_metrics(app, request):
+    """Flag each request metric the project defines: its expression already
+    aggregates, so a skeleton must not wrap it in another aggregate."""
+    from visivo.server.source_resolution import find_model
+
+    model_name = request.context.model
+    model = find_model(app, model_name)
+    on_model = {m.name for m in getattr(model, "metrics", None) or []}
+    manager = getattr(app, "metric_manager", None)
+    for metric in request.metrics:
+        if metric.defined:
+            continue
+        if metric.name in on_model:
+            metric.defined = "model"
+            continue
+        found = manager.get(metric.name) if manager is not None else None
+        if found is None:
+            continue
+        parent = getattr(found, "_parent_name", None)
+        if not parent:
+            metric.defined = "project"
+        elif parent == model_name:
+            metric.defined = "model"
 
 
 def _recommend_inputs_handler(app, arguments):

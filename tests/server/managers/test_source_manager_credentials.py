@@ -422,7 +422,10 @@ class TestEnvVarNameIsResolvable:
         assert read_env(tmp_path)[source.password.get_env_var_names()[0]] == "hunter2"
 
     def test_non_ascii_source_name_still_resolves(self, tmp_path):
+        """A new name must be ASCII, but a parsed project may already hold one."""
         manager = SourceManager(project_dir=str(tmp_path))
+        published = manager.validate_object(redshift_config(name="café", password="old"))
+        manager.published_objects["café"] = published
 
         source = manager.save_from_config(redshift_config(name="café"))
 

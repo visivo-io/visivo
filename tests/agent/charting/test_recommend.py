@@ -1193,3 +1193,58 @@ class TestOneCardListServesEveryTool:
     def test_a_plain_shape_card_is_accepted(self):
         request = RecommendRequest(dimensions=[ShapeCard(**self.CARD)])
         assert request.dimensions[0].column == "day" and request.dimensions[0].model is None
+
+
+class TestADefinedMetricIsNotAggregatedAgain:
+    """A metric the project defines already aggregates. Wrapping its ref in
+    another aggregate (`SUM(${ref(subs).total_mrr})`) nests aggregates, and the
+    query fails."""
+
+    def _kpi_value(self, defined):
+        response = recommend(
+            RecommendRequest(
+                metrics=[{"name": "total_mrr", "agg": "sum", "defined": defined}],
+                dimensions=[],
+                intent="kpi",
+                context={"model": "subs"},
+            )
+        )
+        skeleton = yaml.safe_load(rec(response, "kpi").yaml_skeleton)
+        return skeleton["insights"][0]["props"]["value"]
+
+    def test_a_model_metric_is_refd_bare(self):
+        assert self._kpi_value("model") == "?{ ${ref(subs).total_mrr} }[0]"
+
+    def test_a_project_metric_is_refd_by_its_own_name(self):
+        assert self._kpi_value("project") == "?{ ${ref(total_mrr)} }[0]"
+
+    def test_a_column_is_still_aggregated(self):
+        assert self._kpi_value(None) == "?{ SUM(${ref(subs).total_mrr}) }[0]"
+
+    def test_a_pivot_values_a_defined_metric_bare(self):
+        response = recommend(
+            RecommendRequest(
+                metrics=[{"name": "revenue", "agg": "sum", "defined": "model"}],
+                dimensions=[
+                    card("month", "time", 6, time_grain="month", time_span_points=6),
+                    card("vendor", "categorical", 4),
+                ],
+                intent="detail",
+                context={"model": "trips_monthly"},
+            )
+        )
+        spec = yaml.safe_load(rec(response, "table_pivot").table_yaml)["tables"][0]
+        assert spec["values"] == ["${ref(trips_monthly).revenue}"]
+
+    def test_a_hierarchy_values_a_defined_metric_bare(self):
+        response = recommend(
+            RecommendRequest(
+                metrics=[{"name": "revenue", "agg": "sum", "defined": "model"}],
+                dimensions=[card("vendor", "categorical", 4)],
+                semantics={"hierarchy": True, "part_of_whole": True},
+                requested="treemap",
+                context={"model": "trips", "max_results": 25},
+            )
+        )
+        skeleton = yaml.safe_load(rec(response, "hierarchy").yaml_skeleton)
+        assert skeleton["insights"][0]["props"]["values"] == "?{ ${ref(trips).revenue} }"

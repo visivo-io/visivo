@@ -31,6 +31,7 @@ import re
 
 from pydantic import SecretStr
 
+from visivo.models.base.named_model import new_name_error
 from visivo.models.dashboards.template_dashboard import TemplateDashboard
 
 TYPE_TO_MANAGER = {
@@ -134,6 +135,9 @@ def _validate(flask_app, type_key, old_name, new_name):
     # visivo names are project-global, so a collision crosses every type.
     if new_name in _all_names(flask_app):
         raise RenameError(f"A resource named '{new_name}' already exists.", 409)
+    bad_name = new_name_error(type(target), new_name)
+    if bad_name:
+        raise RenameError(bad_name, 400)
 
     # A template's HTML lives in a file the rename can't rewrite.
     if isinstance(target, TemplateDashboard):

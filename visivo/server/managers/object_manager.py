@@ -7,6 +7,7 @@ from typing import Any, Dict, Generic, List, Optional, TypeVar
 from pydantic import BaseModel as PydanticBaseModel
 
 from visivo.models.base.context_string import ContextString
+from visivo.models.base.named_model import new_name_error
 from visivo.models.item import Item
 from visivo.models.row import Row
 from visivo.query.patterns import REF_FUNCTION_PATTERN, extract_ref_names
@@ -59,6 +60,10 @@ class ObjectStatus(str, Enum):
     PUBLISHED = "published"  # In published_objects only (no cached changes)
     DELETED = "deleted"  # Marked for deletion (None in cache, exists in published)
     RENAMED = "renamed"  # Cached under a new name; the published object holds the old one
+
+
+class SaveRefusedError(ValueError):
+    """A save of an object the project would reject at commit."""
 
 
 class ObjectManager(ABC, Generic[T]):
@@ -134,7 +139,11 @@ class ObjectManager(ABC, Generic[T]):
 
         Raises:
             NameTakenError: If an object of another type already holds ``name``
+            SaveRefusedError: If ``name`` is new and breaks the name grammar
         """
+        bad_name = self.name_grammar_error(name, obj)
+        if bad_name:
+            raise SaveRefusedError(bad_name)
         reason = self.name_clash(name, obj) if self.name_clash and obj is not None else None
         if reason:
             from visivo.server.names import NameTakenError
@@ -142,6 +151,13 @@ class ObjectManager(ABC, Generic[T]):
             raise NameTakenError(reason)
         with self._lock:
             self._cached_objects[name] = obj
+
+    def name_grammar_error(self, name: str, obj: T) -> Optional[str]:
+        """Why ``name`` cannot name a new ``obj``, or ``None``. A name the manager
+        already holds stays editable, so a parsed project's older names keep working."""
+        if obj is None or name in self._cached_objects or name in self._published_objects:
+            return None
+        return new_name_error(type(obj), name)
 
     def load(self, dag) -> None:
         """
