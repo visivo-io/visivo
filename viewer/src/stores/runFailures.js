@@ -125,3 +125,28 @@ export const findLatestRunFailureFor = (runs, name) => {
 /** Selector factory over the store state (see the React note in the header). */
 export const selectLatestRunFailureFor = name => state =>
   findLatestRunFailureFor(state?.runs, name);
+
+/**
+ * Why `name` has no built output: its own run failure (above), or else a
+ * diagnostic about it in the newest run, whatever that run's dag_filter. Serve
+ * scopes its start-up build to the dashboards, so the insight that failed is
+ * named only in the diagnostics. Null when neither explains it.
+ */
+export const findBuildFailureFor = (runs, name) => {
+  const scoped = findLatestRunFailureFor(runs, name);
+  if (scoped) return scoped;
+  if (!Array.isArray(runs) || !name) return null;
+  const newest = runs
+    .map((run, index) => ({ run, index }))
+    .filter(({ run }) => run && !run.is_superseded)
+    .sort((a, b) => runTime(b.run) - runTime(a.run) || a.index - b.index)[0]?.run;
+  if (newest?.state !== 'failed') return null;
+  const diagnostic = diagnosticsFrom(newest.error_json).find(d => d.object?.name === name);
+  if (!diagnostic) return null;
+  return {
+    runId: newest.id,
+    error: diagnostic.message,
+    diagnostic,
+    createdAt: newest.created_at ?? null,
+  };
+};
