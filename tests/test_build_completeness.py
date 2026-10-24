@@ -31,6 +31,12 @@ RUNTIME_DATA = {
     "visivo/agent/skills": "agent skills, INCLUDING the charts/ and interactions/ namespaces",
     "visivo/agent/charting/rules": "chart recommendation rules",
     "visivo/models/dashboards": "template_policy.json",
+    "visivo/templates/samples": "sample projects for `visivo init --example` and onboarding",
+}
+
+# Data files in the package that nothing reads at run time.
+NOT_RUNTIME = {
+    "visivo/agent/charting/families.json": "written by families_export for the viewer build",
 }
 
 
@@ -56,6 +62,25 @@ def test_nuitka_ships_every_runtime_resource(resource, why):
     assert all(part in args for part in parts), f"build_nuitka.py does not ship {resource} — {why}"
 
 
+def test_every_data_file_in_the_package_is_covered_by_a_shipped_directory():
+    """Python files are traced by the freezer; anything else is not. A new data
+    file outside every declared directory fails here instead of in a release."""
+    uncovered = []
+    for path in PACKAGE.rglob("*"):
+        rel = path.relative_to(REPO).as_posix()
+        if not path.is_file() or path.suffix in {".py", ".pyc"}:
+            continue
+        if "__pycache__" in path.parts or "tests" in path.relative_to(PACKAGE).parts:
+            continue
+        if rel in NOT_RUNTIME or any(rel.startswith(d + "/") for d in RUNTIME_DATA):
+            continue
+        uncovered.append(rel)
+    assert not uncovered, (
+        f"Data files not shipped by build.py/build_nuitka.py: {uncovered[:5]}. "
+        "Add their directory to RUNTIME_DATA and both build scripts."
+    )
+
+
 class TestDirectoriesAreShippedWhole:
     """A glob over a directory that has subdirectories ships only the top of
     it. `visivo/agent/skills/*.md` shipped 16 skills and silently left 32
@@ -68,14 +93,18 @@ class TestDirectoriesAreShippedWhole:
             if p.is_file() and p.parent != PACKAGE / directory
         ]
 
-    @pytest.mark.parametrize("directory", ["agent/skills", "agent/charting/rules"])
+    @pytest.mark.parametrize(
+        "directory", ["agent/skills", "agent/charting/rules", "templates/samples"]
+    )
     def test_the_directory_actually_has_nested_files(self, directory):
         """If this fails the guard below has stopped guarding anything."""
         assert self._nested(
             directory
         ), f"{directory} has no nested files; is this test still needed?"
 
-    @pytest.mark.parametrize("directory", ["agent/skills", "agent/charting/rules"])
+    @pytest.mark.parametrize(
+        "directory", ["agent/skills", "agent/charting/rules", "templates/samples"]
+    )
     def test_pyinstaller_takes_the_directory_not_a_glob(self, directory):
         args = _build_args("build.py")
         glob = re.search(rf"visivo/{re.escape(directory)}/\*[^:\"]*:", args)
