@@ -84,6 +84,14 @@ class TestTheInteractivitySkills:
         assert "Unverified end to end" in text["metric_switcher.md"]
         assert "Never on:" in text["prop_driven.md"] and "`layout.*`" in text["prop_driven.md"]
 
+    def test_global_filter_shows_a_multi_select_in_with_parentheses(self):
+        """VIS-1635: without the parentheses the whole filter was dropped."""
+        text = render.rendered_patterns()
+        assert "**Example:** `filter: ?{ ${ref(M).C} IN (${ref(I).values})" in (
+            text["global_filter.md"]
+        )
+        assert "**Example:**" not in text["top_n.md"]
+
     def test_the_rules_block_quotes_the_file(self):
         text = render.interactivity_rules_markdown()
         assert "| categorical/geo_region | few (n –5) |" in text and "`global_filter`" in text

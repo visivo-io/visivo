@@ -120,7 +120,7 @@ def get_accessor_sample_value(accessor: str, options: List, default_value=None) 
     if not options:
         # Fallback when no options available
         if accessor == "values":
-            return "'sample_value'"
+            return "'sample_value', 'sample_value'"
         return "0"
 
     # A multi-select default is a LIST (e.g. ['Raw']); every scalar accessor
@@ -147,9 +147,13 @@ def get_accessor_sample_value(accessor: str, options: List, default_value=None) 
         return str(default_value if default_value is not None else options[0])
 
     elif accessor == "values":
-        # Comma-separated quoted values for IN clause
-        sample_values = options[:2] if len(options) >= 2 else options
-        quoted = [f"'{v}'" if isinstance(v, str) else str(v) for v in sample_values]
+        # Always two values: a list that parses with one value (`x IN 'a'`)
+        # can still fail once two are selected (`x IN 'a', 'b'`).
+        sample_values = (list(options[:2]) * 2)[:2]
+        quoted = [
+            "'" + v.replace("'", "''") + "'" if isinstance(v, str) else str(v)
+            for v in sample_values
+        ]
         return ", ".join(quoted)
 
     elif accessor in ("min", "first"):

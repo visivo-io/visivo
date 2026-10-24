@@ -15,6 +15,7 @@ is known, and the run already does it.
 import sqlglot
 
 from visivo.models.base.context_string import ContextString
+from visivo.query.insight.filter_syntax import strings_in
 from visivo.query.patterns import REF_PROPERTY_PATTERN, extract_ref_names
 from visivo.query.sqlglot_utils import (
     unaliased_projection_message,
@@ -66,6 +67,22 @@ def dialect_for_model(flask_app, config) -> str:
     except Exception:
         return None
     return dialect if isinstance(dialect, str) and dialect else None
+
+
+def dialect_for_insight(flask_app, insight) -> str:
+    """The SQLGlot dialect of the source behind the first model ``insight`` refs,
+    or ``None`` when no model resolves."""
+    models = getattr(flask_app, "model_manager", None)
+    if models is None:
+        return None
+    names = set()
+    for text in strings_in(insight.model_dump(mode="json", exclude_none=True)):
+        names |= extract_ref_names(text)
+    for name in sorted(names):
+        model = models.get(name)
+        if model is not None:
+            return dialect_for_model(flask_app, {"source": getattr(model, "source", None)})
+    return None
 
 
 def validate_model_sql(sql, sqlglot_dialect, model_name):

@@ -252,6 +252,8 @@ def pattern_markdown(pattern):
         ]
     else:
         lines += ["", f"**Wiring:** `{pattern.wiring}`"]
+        if pattern.example:
+            lines += ["", f"**Example:** `{pattern.example}`"]
         if pattern.snippet_ref:
             lines += ["", f"**Verified against:** `{pattern.snippet_ref}`"]
         if not pattern.verified:
