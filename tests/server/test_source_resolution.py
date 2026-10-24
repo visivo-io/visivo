@@ -4,6 +4,7 @@ input name."""
 from unittest.mock import Mock
 
 from visivo.models.base.context_string import ContextString
+from visivo.models.defaults import Defaults
 from visivo.server import source_resolution as res
 from tests.factories.model_factories import DuckdbSourceFactory, SqlModelFactory
 
@@ -142,3 +143,65 @@ class TestSourceForModel:
             res.source_for_model(app, SqlModelFactory(name="m", source="ref(ghost)"), "/tmp")
             is None
         )
+
+
+class TestDefaultSourceName:
+    def test_reads_the_committed_defaults(self):
+        app = _app()
+        app._cached_defaults = None
+        app.project.defaults = Defaults(source_name="wh")
+
+        assert res.default_source_name(app) == "wh"
+
+    def test_draft_defaults_win_over_the_committed_ones(self):
+        app = _app()
+        app._cached_defaults = Defaults(source_name="draft_wh")
+        app.project.defaults = Defaults(source_name="wh")
+
+        assert res.default_source_name(app) == "draft_wh"
+
+    def test_none_when_no_default_is_set(self):
+        app = _app()
+        app._cached_defaults = None
+        app.project.defaults = None
+
+        assert res.default_source_name(app) is None
+        app.project.defaults = Defaults()
+        assert res.default_source_name(app) is None
+
+    def test_default_source_resolves_a_draft_source(self):
+        draft = DuckdbSourceFactory(name="wh")
+        app = _app(draft_sources=[draft])
+        app._cached_defaults = Defaults(source_name="wh")
+
+        assert res.default_source(app) is draft
+
+
+class TestSourceForModelDefaults:
+    """A SQL model with no ``source:`` reads from ``defaults.source_name``. The
+    DAG wires that edge for a committed model; a draft model is not in the DAG."""
+
+    def _draft_app(self, sources, default):
+        app = _app(draft_sources=sources)
+        app.project.dag.side_effect = RuntimeError("not in the dag")
+        app._cached_defaults = None
+        app.project.defaults = Defaults(source_name=default)
+        return app
+
+    def test_a_draft_model_without_a_source_uses_the_default(self):
+        source = DuckdbSourceFactory(name="wh")
+        app = self._draft_app([source], "wh")
+
+        model = SqlModelFactory(name="m", source=None)
+        assert res.source_for_model(app, model, "/tmp") is source
+
+    def test_an_explicit_source_that_does_not_resolve_is_not_replaced_by_the_default(self):
+        app = self._draft_app([DuckdbSourceFactory(name="wh")], "wh")
+
+        model = SqlModelFactory(name="m", source="ref(ghost)")
+        assert res.source_for_model(app, model, "/tmp") is None
+
+    def test_a_model_that_is_not_a_sql_model_gets_no_default(self):
+        app = self._draft_app([DuckdbSourceFactory(name="wh")], "wh")
+
+        assert res.source_for_model(app, Mock(source=None), "/tmp") is None
