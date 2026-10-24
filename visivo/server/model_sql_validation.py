@@ -16,6 +16,7 @@ import sqlglot
 
 from visivo.models.base.context_string import ContextString
 from visivo.query.patterns import REF_PROPERTY_PATTERN, extract_ref_names
+from visivo.server.source_resolution import default_source_name, find_source
 from visivo.query.sqlglot_utils import (
     unaliased_projection_message,
     unaliased_projections,
@@ -50,15 +51,11 @@ def dialect_for_model(flask_app, config) -> str:
     generic dialect, which still parses ordinary SQL. Refusing to validate would
     be worse than validating a little less precisely.
     """
-    name = source_ref_name((config or {}).get("source"))
-    if not name:
-        project = getattr(flask_app, "project", None)
-        defaults = getattr(project, "defaults", None)
-        name = getattr(defaults, "source_name", None)
+    name = source_ref_name((config or {}).get("source")) or default_source_name(flask_app)
     if not isinstance(name, str) or not name:
         return None
 
-    source = _source_named(flask_app, name)
+    source = find_source(flask_app, name)
     if source is None:
         return None
     try:
@@ -90,23 +87,4 @@ def validate_model_sql(sql, sqlglot_dialect, model_name):
     unaliased = unaliased_projections(sql, dialect)
     if unaliased:
         return unaliased_projection_message(model_name, unaliased)
-    return None
-
-
-def _source_named(flask_app, name):
-    """Draft cache first, then the committed project — the order every other
-    lookup here uses, so a source created in the editor resolves too."""
-    manager = getattr(flask_app, "source_manager", None)
-    getter = getattr(manager, "get", None)
-    if callable(getter):
-        try:
-            found = getter(name)
-            if found is not None:
-                return found
-        except Exception:
-            pass
-    project = getattr(flask_app, "project", None)
-    for source in getattr(project, "sources", None) or []:
-        if getattr(source, "name", None) == name:
-            return source
     return None
