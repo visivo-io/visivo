@@ -26,6 +26,7 @@ is what makes an autonomous loop safe to ship, because the blast radius of a
 hijacked agent is a draft someone can discard.
 """
 
+import re
 from typing import Dict, get_args
 
 from visivo.agent import images
@@ -112,6 +113,14 @@ def _validate_handler(type_key):
         except Exception as error:
             return {"valid": False, "error": str(error)}
         name = config.get("name")
+        if type_key == "models":
+            from visivo.server.model_sql_validation import dialect_for_model, validate_model_sql
+
+            problem = validate_model_sql(
+                config.get("sql"), dialect_for_model(app, config), name or ""
+            )
+            if problem:
+                return {"valid": False, "error": problem}
         clash = manager.name_clash and isinstance(name, str) and manager.name_clash(name, obj)
         if clash:
             return {"valid": False, "error": f"{clash} {_rename_hint(type_key, name)}"}
@@ -895,6 +904,21 @@ def _image_url_of(result):
     return value.get("image_url") if isinstance(value, dict) else None
 
 
+_ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
+
+
+def _without_ansi(value):
+    """``value`` with terminal color codes removed from every string in it. Parser
+    and driver errors carry them, and an agent reads them as literal noise."""
+    if isinstance(value, str):
+        return _ANSI.sub("", value)
+    if isinstance(value, dict):
+        return {key: _without_ansi(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_without_ansi(item) for item in value]
+    return value
+
+
 def _as_refusal(name, arguments, error):
     """Every handler failure reaches the agent as a ``ToolError``: a timeout
     as its own message, anything unexpected prefixed with the tool and the
@@ -931,9 +955,12 @@ def call(app, name, arguments=None):
     pending = action_log().record(name, obj=obj, outcome="pending")
 
     try:
-        result = tool.handler(app, arguments)
+        result = _without_ansi(tool.handler(app, arguments))
     except Exception as error:
         refusal = _as_refusal(name, arguments, error)
+        plain = _without_ansi(str(refusal))
+        if plain != str(refusal):
+            refusal = ToolError(plain)
         action_log().resolve(pending["id"], outcome="error", error=str(refusal))
         raise refusal
 
