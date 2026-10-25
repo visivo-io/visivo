@@ -130,7 +130,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onDirtyChange }) => {
 
   const recordName = input?.name || '';
 
-  const rename = useRenameFlow({ type: 'input', recordName, name });
+  const rename = useRenameFlow({ type: 'input', recordName, name, onCancel: setName });
   const isNewObject = input?.status === ObjectStatus.NEW;
 
   // VIS-1133: snapshot the last-saved values so the form can report dirtiness

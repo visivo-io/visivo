@@ -52,7 +52,12 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
   // Form state - Basic fields
   const [name, setName] = useState('');
-  const rename = useRenameFlow({ type: 'insight', recordName: insight?.name || '', name });
+  const rename = useRenameFlow({
+    type: 'insight',
+    recordName: insight?.name || '',
+    name,
+    onCancel: setName,
+  });
   const [description, setDescription] = useState('');
 
   // Props state - the insight's Plotly props object (carries `.type`). Fully

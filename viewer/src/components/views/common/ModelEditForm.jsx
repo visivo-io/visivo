@@ -38,7 +38,12 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
 
   // Form state
   const [name, setName] = useState('');
-  const rename = useRenameFlow({ type: 'model', recordName: model?.name || '', name });
+  const rename = useRenameFlow({
+    type: 'model',
+    recordName: model?.name || '',
+    name,
+    onCancel: setName,
+  });
   const [sql, setSql] = useState('');
   const [source, setSource] = useState(null); // Stored as ref(name) format
   const [dimensions, setDimensions] = useState([]); // Inline dimensions

@@ -53,7 +53,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
 
   const recordName = source?.name || '';
 
-  const rename = useRenameFlow({ type: 'source', recordName, name });
+  const rename = useRenameFlow({ type: 'source', recordName, name, onCancel: setName });
   const isNewObject = source?.status === ObjectStatus.NEW;
   const isEmbedded = isEmbeddedObject(source);
   const parentName = source?._embedded?.parentName;

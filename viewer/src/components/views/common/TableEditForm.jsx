@@ -59,7 +59,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
 
   const recordName = table?.name || '';
 
-  const rename = useRenameFlow({ type: 'table', recordName, name });
+  const rename = useRenameFlow({ type: 'table', recordName, name, onCancel: setName });
   const isNewObject = table?.status === ObjectStatus.NEW;
 
   // Combine insights and models for the data source dropdown

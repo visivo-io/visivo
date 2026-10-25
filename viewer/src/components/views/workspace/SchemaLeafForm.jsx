@@ -188,7 +188,11 @@ const SchemaLeafForm = ({ type, record, isCreate = false, onClose, onSave, onGoB
   }, [record, isCreate, type]);
 
   const name = config.name || '';
-  const rename = useRenameFlow({ type, recordName, name });
+  const restoreSavedName = useCallback(
+    savedName => setConfig(current => ({ ...current, name: savedName })),
+    []
+  );
+  const rename = useRenameFlow({ type, recordName, name, onCancel: restoreSavedName });
 
   // Edits update the working config; nothing persists until an explicit Save.
   const applyChange = useCallback(nextConfig => setConfig(nextConfig), []);

@@ -165,6 +165,29 @@ describe('useRenameFlow', () => {
     expect(renameResource).not.toHaveBeenCalled();
   });
 
+  test('cancel hands the saved name back so the form can restore its name field', async () => {
+    fetchRenameImpact.mockResolvedValue(impactFor('published'));
+    const onCancel = jest.fn();
+    const { result } = renderFlow({ onCancel });
+    await act(() => result.current.start(async () => true));
+
+    act(() => result.current.dialogProps.onCancel());
+
+    expect(onCancel).toHaveBeenCalledWith('old');
+  });
+
+  test('a rename that goes through does not call onCancel', async () => {
+    fetchRenameImpact.mockResolvedValue(impactFor('published'));
+    const onCancel = jest.fn();
+    const { result } = renderFlow({ onCancel });
+    await act(() => result.current.start(async () => true));
+
+    await act(() => result.current.dialogProps.onConfirm());
+
+    expect(renameResource).toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
   test('works against a store without tab or commit actions', async () => {
     mockState = {};
     fetchRenameImpact.mockResolvedValue(impactFor('new'));

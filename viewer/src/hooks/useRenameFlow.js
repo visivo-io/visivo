@@ -21,11 +21,14 @@ const isDraftOnly = impact =>
  * so a Save that changes the name and other fields keeps both. A published or
  * referenced object then shows the impact dialog; a draft nothing references is
  * renamed at once, because there is nothing for the user to confirm.
+ * Cancelling the dialog keeps the saved fields and calls `onCancel(recordName)`,
+ * so the form can put its name field back to the saved name.
  *
  * @param {object} params
  * @param {string} params.type      viewer singular type, e.g. 'metric'
  * @param {string} params.recordName the name as saved
  * @param {string} params.name       the name in the form
+ * @param {(savedName: string) => void} [params.onCancel] called when the user cancels the rename
  * @returns {{
  *   supported: boolean,
  *   isRenaming: boolean,
@@ -34,7 +37,7 @@ const isDraftOnly = impact =>
  *   dialogProps: {impact, error, loading, onConfirm, onCancel} | null,
  * }}
  */
-export default function useRenameFlow({ type, recordName, name }) {
+export default function useRenameFlow({ type, recordName, name, onCancel }) {
   const store = useStore();
   const [pending, setPending] = useState(null);
   const [impact, setImpact] = useState(null);
@@ -46,13 +49,18 @@ export default function useRenameFlow({ type, recordName, name }) {
   const projectId = store.project?.id;
   const nameChanged = Boolean(recordName && name && name !== recordName);
 
-  const cancel = useCallback(() => {
+  const reset = useCallback(() => {
     setPending(null);
     setImpact(null);
     setError(null);
     setLoading(false);
     setDialogOpen(false);
   }, []);
+
+  const cancel = useCallback(() => {
+    reset();
+    if (onCancel) onCancel(recordName);
+  }, [reset, onCancel, recordName]);
 
   const apply = useCallback(
     async ({ oldName, newName }) => {
@@ -79,14 +87,14 @@ export default function useRenameFlow({ type, recordName, name }) {
           store.openWorkspaceTab({ id: `${type}:${newName}`, type, name: newName });
         }
         if (store.checkCommitStatus) await store.checkCommitStatus();
-        cancel();
+        reset();
       } catch (caught) {
         setError(caught.message || `Failed to rename ${type}`);
         setLoading(false);
         setDialogOpen(true);
       }
     },
-    [typeKey, type, store, cancel, projectId]
+    [typeKey, type, store, reset, projectId]
   );
 
   const start = useCallback(

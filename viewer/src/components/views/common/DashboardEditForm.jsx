@@ -29,7 +29,12 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
 
   const [name, setName] = useState('');
 
-  const rename = useRenameFlow({ type: 'dashboard', recordName: dashboard?.name || '', name });
+  const rename = useRenameFlow({
+    type: 'dashboard',
+    recordName: dashboard?.name || '',
+    name,
+    onCancel: setName,
+  });
   const [rows, setRows] = useState([]);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);

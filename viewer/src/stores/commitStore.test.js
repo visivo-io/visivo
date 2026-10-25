@@ -12,11 +12,16 @@ import * as branchingApi from '../api/branching';
 import * as preferencesApi from '../api/preferences';
 import * as commitApi from '../api/commit';
 import { emitFirstPublishTelemetry } from '../components/views/workspace/telemetry';
+import { restoreObject } from '../api/restore';
 
 jest.mock('../api/branching', () => ({
   fetchChanges: jest.fn(),
   commitDraft: jest.fn(),
   discardDraftChanges: jest.fn(),
+}));
+
+jest.mock('../api/restore', () => ({
+  restoreObject: jest.fn(),
 }));
 
 jest.mock('../api/preferences', () => ({
@@ -442,5 +447,66 @@ describe('commitStore staged changes', () => {
     const ok = await useStore.getState().setRunTrigger('manual');
     expect(ok).toBe(false);
     expect(useStore.getState().runTrigger).toBe('automatic');
+  });
+});
+
+describe('commitStore modal and restore actions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useStore.setState({
+      project: { id: 'p1' },
+      commitError: null,
+      commitModalOpen: false,
+      externalEditBannerVisible: false,
+    });
+    branchingApi.fetchChanges.mockResolvedValue({
+      to_publish: [{ name: 'db', type: 'source', status: 'modified' }],
+      to_remove: [],
+      has_changes: true,
+    });
+  });
+
+  test('fetchPendingChanges returns the list it just refreshed', async () => {
+    const pending = await useStore.getState().fetchPendingChanges();
+    expect(pending).toEqual([{ name: 'db', type: 'source', status: 'modified' }]);
+  });
+
+  test('restoreDeleted restores one object and re-reads the pending set', async () => {
+    restoreObject.mockResolvedValue({});
+    const result = await useStore.getState().restoreDeleted('sources', 'db');
+    expect(result).toEqual({ success: true });
+    expect(restoreObject).toHaveBeenCalledWith('sources', 'db', 'p1');
+    expect(useStore.getState().pendingCount).toBe(1);
+  });
+
+  test('a failed restore surfaces its error', async () => {
+    restoreObject.mockRejectedValue(new Error('not deleted'));
+    const result = await useStore.getState().restoreDeleted('sources', 'db');
+    expect(result).toEqual({ success: false, error: 'not deleted' });
+    expect(useStore.getState().commitError).toBe('not deleted');
+  });
+
+  test('showExternalEditBanner shows the banner', () => {
+    useStore.getState().showExternalEditBanner();
+    expect(useStore.getState().externalEditBannerVisible).toBe(true);
+  });
+
+  test('opening the modal clears an old error and loads the pending set', async () => {
+    useStore.setState({ commitError: 'old' });
+    await useStore.getState().openCommitModal();
+    expect(useStore.getState().commitModalOpen).toBe(true);
+    expect(useStore.getState().commitError).toBeNull();
+    expect(useStore.getState().pendingCount).toBe(1);
+  });
+
+  test('closing the modal and clearing the error reset commitError', () => {
+    useStore.setState({ commitModalOpen: true, commitError: 'boom' });
+    useStore.getState().closeCommitModal();
+    expect(useStore.getState().commitModalOpen).toBe(false);
+    expect(useStore.getState().commitError).toBeNull();
+
+    useStore.setState({ commitError: 'again' });
+    useStore.getState().clearCommitError();
+    expect(useStore.getState().commitError).toBeNull();
   });
 });

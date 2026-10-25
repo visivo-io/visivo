@@ -170,6 +170,17 @@ describe('renaming through the edit form', () => {
     );
   });
 
+  test('cancelling the rename puts the saved name back in the name field', async () => {
+    await renderEdit();
+
+    fireEvent.change(screen.getByLabelText(/Metric Name/), { target: { value: 'purchases' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(await screen.findByTestId('rename-impact-cancel'));
+
+    await waitFor(() => expect(screen.getByLabelText(/Metric Name/)).toHaveValue('orders'));
+    expect(renameApi.renameResource).not.toHaveBeenCalled();
+  });
+
   test('a failed field save stops the rename', async () => {
     mockSaveNow.mockResolvedValue({ success: false, error: 'boom' });
     await renderEdit();

@@ -466,4 +466,26 @@ describe('SourceEditForm — a Save that renames and edits (VIS-1538)', () => {
       expect.objectContaining({ name: 's1', type: 'sqlite', database: 'edited.db' })
     );
   });
+
+  test('cancelling the rename puts the saved name back in the name field', async () => {
+    fetchRenameImpact.mockResolvedValue({
+      target: { type: 'sources', name: 's1', new_name: 's2', status: 'published' },
+      references: [],
+    });
+    const onSave = jest.fn(async () => ({ success: true }));
+    renderForm({ source: publishedSqlite, isCreate: false, onSave });
+
+    fireEvent.change(screen.getByLabelText(/Source Name/), { target: { value: 's2' } });
+    makeDirty();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(await screen.findByTestId('rename-impact-cancel'));
+
+    await waitFor(() => expect(screen.getByLabelText(/Source Name/)).toHaveValue('s1'));
+    expect(renameResource).not.toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledWith(
+      'source',
+      's1',
+      expect.objectContaining({ database: 'edited.db' })
+    );
+  });
 });

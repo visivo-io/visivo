@@ -50,7 +50,7 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
 
   const recordName = markdown?.name || '';
 
-  const rename = useRenameFlow({ type: 'markdown', recordName, name });
+  const rename = useRenameFlow({ type: 'markdown', recordName, name, onCancel: setName });
   const isNewObject = markdown?.status === ObjectStatus.NEW;
 
   // Unified optimistic save backbone (VIS-1018 step 2) — `saveNow` shares the

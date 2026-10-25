@@ -113,3 +113,13 @@ def test_a_published_source_renamed_and_edited_in_one_save_keeps_both(client, pr
     assert sources["warehouse"]["database"] == "other.db"
     with open(project_dir / "project.visivo.yml") as handle:
         assert "${ref(warehouse)}" in handle.read()
+
+
+def test_a_pure_rename_of_a_published_object_counts_as_unpublished(client):
+    assert _ok(client.get("/api/commit/status/"))["has_unpublished_changes"] is False
+
+    _ok(client.post("/api/rename/", json={"type": "models", "old_name": "m", "new_name": "n"}))
+
+    pending = _ok(client.get("/api/commit/pending/"))["pending"]
+    assert [(p["name"], p["status"]) for p in pending] == [("n", "renamed")]
+    assert _ok(client.get("/api/commit/status/"))["has_unpublished_changes"] is True

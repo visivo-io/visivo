@@ -35,7 +35,12 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
 
   // Form state
   const [name, setName] = useState('');
-  const rename = useRenameFlow({ type: 'chart', recordName: chart?.name || '', name });
+  const rename = useRenameFlow({
+    type: 'chart',
+    recordName: chart?.name || '',
+    name,
+    onCancel: setName,
+  });
   const [insights, setInsights] = useState([]);
   const [layoutValues, setLayoutValues] = useState({});
 
