@@ -25,10 +25,10 @@ const firstLine = text => String(text).split('\n')[0];
 
 /**
  * What a chart shows instead of a plot when it has nothing to draw: its
- * insight has no built output (`missingInsightNames`), or every query
- * returned zero rows.
+ * insight has no built output (`missingInsightNames`), its data could not be
+ * fetched (`loadError`), or every query returned zero rows.
  */
-const ChartNotice = ({ chartName, chartTitle, missingInsightNames = [] }) => {
+const ChartNotice = ({ chartName, chartTitle, missingInsightNames = [], loadError = null }) => {
   const runs = useStore(state => state.runs);
   const hasRunsPage = useStore(state => !!state.polledProjectId);
 
@@ -41,10 +41,18 @@ const ChartNotice = ({ chartName, chartTitle, missingInsightNames = [] }) => {
   }, [runs, missingInsightNames]);
 
   const isMissing = missingInsightNames.length > 0;
+  const isLoadError = !isMissing && !!loadError;
+  const isAlert = isMissing || isLoadError;
   let title;
   let detail;
-  if (!isMissing) {
+  let testId = `chart_build_error_${chartName}`;
+  if (isLoadError) {
+    title = "This chart's data could not be loaded";
+    detail = firstLine(loadError);
+    testId = `chart_load_error_${chartName}`;
+  } else if (!isMissing) {
     title = 'No rows match';
+    testId = `chart_empty_${chartName}`;
     detail = "The chart's query returned no rows. Check its filters and input selections.";
   } else if (failure) {
     const object = failure.diagnostic?.object;
@@ -60,14 +68,14 @@ const ChartNotice = ({ chartName, chartTitle, missingInsightNames = [] }) => {
     <div className="flex h-full w-full flex-col text-(--vt-text)">
       {chartTitle && <p className="truncate px-2 pt-2 text-base">{chartTitle}</p>}
       <div
-        role={isMissing ? 'alert' : 'status'}
-        data-testid={isMissing ? `chart_build_error_${chartName}` : `chart_empty_${chartName}`}
+        role={isAlert ? 'alert' : 'status'}
+        data-testid={testId}
         className="flex flex-1 flex-col items-center justify-center gap-1 px-4 py-6 text-center text-sm"
       >
-        <p className={`font-semibold ${isMissing ? 'text-red-500' : ''}`}>{title}</p>
+        <p className={`font-semibold ${isAlert ? 'text-red-500' : ''}`}>{title}</p>
         <p
           className={`max-w-md break-words text-xs text-(--vt-muted) line-clamp-4 ${
-            failure ? 'font-mono' : ''
+            failure || isLoadError ? 'font-mono' : ''
           }`}
         >
           {detail}
@@ -77,6 +85,7 @@ const ChartNotice = ({ chartName, chartTitle, missingInsightNames = [] }) => {
             {hasRunsPage ? <RunsLink /> : 'Run the project to build it.'}
           </p>
         )}
+        {isLoadError && <p className="mt-1 text-xs">Reload the page to try again.</p>}
       </div>
     </div>
   );

@@ -68,10 +68,12 @@ describe('useInsightsData missing insights', () => {
     expect(jobs['built'].missing).toBeUndefined();
   });
 
-  test('marks every name as missing when the fetch fails', async () => {
+  const httpError = (status, message) => Object.assign(new Error(message), { status });
+
+  test('marks every name as missing when the fetch answers 404', async () => {
     useFetchInsightJobs.mockReturnValue(
       jest.fn(async () => {
-        throw new Error('404 NOT FOUND. No insight files found');
+        throw httpError(404, '404 NOT FOUND. No insight files found');
       })
     );
 
@@ -84,6 +86,68 @@ describe('useInsightsData missing insights', () => {
       { timeout: 4000 }
     );
     expect(useStore.getState().insightJobs['failed'].data).toBeNull();
+  });
+
+  test('a fetch that fails with another status is a load error, not missing', async () => {
+    useFetchInsightJobs.mockReturnValue(
+      jest.fn(async () => {
+        throw httpError(500, '500 INTERNAL SERVER ERROR');
+      })
+    );
+
+    renderHook(() => useInsightsData('project1', ['failed']), { wrapper: createWrapper() });
+
+    await waitFor(
+      () => {
+        expect(useStore.getState().insightJobs['failed']?.loadError).toBe(
+          '500 INTERNAL SERVER ERROR'
+        );
+      },
+      { timeout: 4000 }
+    );
+    const job = useStore.getState().insightJobs['failed'];
+    expect(job.missing).toBeUndefined();
+    expect(job.data).toBeNull();
+  });
+
+  test('a network error with no status is a load error', async () => {
+    useFetchInsightJobs.mockReturnValue(
+      jest.fn(async () => {
+        throw new Error('Failed to fetch');
+      })
+    );
+
+    renderHook(() => useInsightsData('project1', ['failed']), { wrapper: createWrapper() });
+
+    await waitFor(
+      () => {
+        expect(useStore.getState().insightJobs['failed']?.loadError).toBe('Failed to fetch');
+      },
+      { timeout: 4000 }
+    );
+    expect(useStore.getState().insightJobs['failed'].missing).toBeUndefined();
+  });
+
+  test('a 404 after a load error replaces the load error with missing', async () => {
+    act(() => {
+      useStore.setState({
+        insightJobs: { failed: { name: 'failed', data: null, loadError: 'timeout', error: null } },
+      });
+    });
+    useFetchInsightJobs.mockReturnValue(
+      jest.fn(async () => {
+        throw httpError(404, 'not found');
+      })
+    );
+
+    renderHook(() => useInsightsData('project1', ['failed']), { wrapper: createWrapper() });
+
+    await waitFor(
+      () => {
+        expect(useStore.getState().insightJobs['failed']?.missing).toBe(true);
+      },
+      { timeout: 4000 }
+    );
   });
 
   test('a failed fetch leaves an entry that already exists alone', async () => {

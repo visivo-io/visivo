@@ -207,6 +207,18 @@ const missingInsightEntry = name => ({
   pendingInputs: null,
 });
 
+/** Store entry for an insight whose fetch failed for a reason other than 404. */
+const loadErrorInsightEntry = (name, message) => ({
+  name,
+  data: null,
+  loadError: message,
+  error: null,
+  pendingInputs: null,
+});
+
+const isPlaceholderEntry = entry =>
+  !entry || (entry.data == null && (entry.missing || entry.loadError));
+
 /**
  * Hook for loading and managing insights data
  *
@@ -408,17 +420,22 @@ export const useInsightsData = (
     setInsightJobs(prefixed);
   }, [data, setInsightJobs, storeKeyPrefix]);
 
-  // A failed fetch (the server answers 404 when none of the names has built
-  // output) writes nothing above, so mark the names that have no entry yet.
+  // A failed fetch writes nothing above. The server answers 404 when none of
+  // the names has built output; any other failure is a load error.
   useEffect(() => {
     if (!error || !stableInsightNames.length) return;
     const current = useStore.getState().insightJobs || {};
-    const missing = {};
+    const entries = {};
     for (const name of stableInsightNames) {
       const key = storeKeyPrefix + name;
-      if (!current[key]) missing[key] = missingInsightEntry(name);
+      if (!isPlaceholderEntry(current[key])) continue;
+      const entry =
+        error.status === 404
+          ? missingInsightEntry(name)
+          : loadErrorInsightEntry(name, error.message || String(error));
+      if (!isEqual(current[key], entry)) entries[key] = entry;
     }
-    if (Object.keys(missing).length) setInsightJobs(missing);
+    if (Object.keys(entries).length) setInsightJobs(entries);
   }, [error, stableInsightNames, storeKeyPrefix, setInsightJobs]);
 
   const returnValue = {
