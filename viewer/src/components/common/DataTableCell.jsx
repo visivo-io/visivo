@@ -47,7 +47,13 @@ const formatTimestamp = date => {
 /**
  * The text a cell shows for a non-null value.
  */
-const isYearColumn = columnName => /year/i.test(columnName || '');
+const nameTokens = columnName =>
+  String(columnName || '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/);
+
+const isYearColumn = columnName => nameTokens(columnName).includes('year');
 
 const isYearValue = value => {
   const num = typeof value === 'bigint' ? Number(value) : value;
