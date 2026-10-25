@@ -2,9 +2,9 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import AgentOwnClient, { buildSnippets, mcpUrl } from './AgentOwnClient';
 
-const setPort = port => {
+const setOrigin = origin => {
   delete window.location;
-  window.location = { port };
+  window.location = { origin };
 };
 const originalLocation = window.location;
 afterEach(() => {
@@ -13,8 +13,8 @@ afterEach(() => {
 });
 
 describe('snippets', () => {
-  test('use the live serve port', () => {
-    setPort('8123');
+  test('use the page origin', () => {
+    setOrigin('http://localhost:8123');
     render(<AgentOwnClient />);
     expect(screen.getByText(/claude mcp add --transport http visivo http:\/\/localhost:8123\/api\/mcp\//)).toBeInTheDocument();
     const cursor = screen.getByTestId('agent-own-client-cursor');
@@ -24,8 +24,18 @@ describe('snippets', () => {
     );
   });
 
-  test('fall back to 8000 when the page has no port', () => {
-    expect(mcpUrl('')).toBe('http://localhost:8000/api/mcp/');
+  test.each([
+    ['https://dev.example.com', 'https://dev.example.com/api/mcp/'],
+    ['http://192.168.1.20:8000', 'http://192.168.1.20:8000/api/mcp/'],
+    ['http://devbox:8123', 'http://devbox:8123/api/mcp/'],
+  ])('keep the host, scheme and port of %s', (origin, expected) => {
+    setOrigin(origin);
+    render(<AgentOwnClient />);
+    expect(screen.getByTestId('agent-own-client-cursor')).toHaveTextContent(`"url": "${expected}"`);
+  });
+
+  test.each(['', 'null'])('fall back to localhost:8000 when the origin is %p', origin => {
+    expect(mcpUrl(origin)).toBe('http://localhost:8000/api/mcp/');
   });
 
   test('match the documented JSON blocks exactly', () => {
@@ -39,7 +49,7 @@ describe('snippets', () => {
   });
 
   test('link to the MCP guide', () => {
-    setPort('8000');
+    setOrigin('http://localhost:8000');
     render(<AgentOwnClient />);
     expect(screen.getByRole('link', { name: 'Read the MCP guide' })).toHaveAttribute(
       'href',
@@ -50,7 +60,7 @@ describe('snippets', () => {
 
 describe('copy buttons', () => {
   test('write the snippet to the clipboard from the click handler', async () => {
-    setPort('8000');
+    setOrigin('http://localhost:8000');
     const writeText = jest.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
     render(<AgentOwnClient />);
@@ -68,7 +78,7 @@ describe('copy buttons', () => {
   });
 
   test('select the text and say so when the clipboard is unavailable', () => {
-    setPort('8000');
+    setOrigin('http://localhost:8000');
     render(<AgentOwnClient />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy Cursor snippet' }));
@@ -78,7 +88,7 @@ describe('copy buttons', () => {
   });
 
   test('fall back the same way when the write is rejected', async () => {
-    setPort('8000');
+    setOrigin('http://localhost:8000');
     Object.assign(navigator, { clipboard: { writeText: jest.fn().mockRejectedValue(new Error('no')) } });
     render(<AgentOwnClient />);
 

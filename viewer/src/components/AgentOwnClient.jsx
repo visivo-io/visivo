@@ -1,10 +1,10 @@
 import React, { useRef, useState } from 'react';
 
 const DOCS_URL = 'https://docs.visivo.io/ai/mcp/';
-const DEFAULT_PORT = '8000';
+const DEFAULT_ORIGIN = 'http://localhost:8000';
 
-export const mcpUrl = (port = window.location.port) =>
-  `http://localhost:${port || DEFAULT_PORT}/api/mcp/`;
+export const mcpUrl = (origin = window.location.origin) =>
+  `${origin && origin !== 'null' ? origin : DEFAULT_ORIGIN}/api/mcp/`;
 
 export const buildSnippets = url => [
   {
