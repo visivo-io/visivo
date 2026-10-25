@@ -300,4 +300,80 @@ describe('ProjectEditor', () => {
       unsub();
     }
   });
+
+  test('clicking a recent edit opens that dashboard', () => {
+    const openWorkspaceTab = jest.fn();
+    seed({ openWorkspaceTab });
+    render(<ProjectEditor />);
+    fireEvent.click(screen.getByTestId('project-editor-recent-exec'));
+    expect(openWorkspaceTab).toHaveBeenCalledTimes(1);
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'dashboard:exec',
+      type: 'dashboard',
+      name: 'exec',
+    });
+  });
+
+  test('"Open in new tab" on a tile opens it in the background', () => {
+    const openWorkspaceTab = jest.fn();
+    const openWorkspaceTabBackground = jest.fn();
+    seed({ openWorkspaceTab, openWorkspaceTabBackground });
+    render(<ProjectEditor />);
+    fireEvent.contextMenu(screen.getByTestId('project-tile-exec'));
+    fireEvent.click(screen.getByTestId('project-tile-ctx-exec-open-new-tab'));
+    expect(openWorkspaceTabBackground).toHaveBeenCalledWith({
+      id: 'dashboard:exec',
+      type: 'dashboard',
+      name: 'exec',
+    });
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('the level toggle collapses and expands its group', () => {
+    render(<ProjectEditor />);
+    expect(screen.getByTestId('project-tile-exec')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('level-group-header-level:0-toggle'));
+    expect(screen.queryByTestId('project-tile-exec')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('level-group-header-level:0-toggle'));
+    expect(screen.getByTestId('project-tile-exec')).toBeInTheDocument();
+  });
+
+  test('reorder up invokes reorderLevel with -1', () => {
+    const reorderLevel = jest.fn();
+    seed({ reorderLevel });
+    render(<ProjectEditor />);
+    fireEvent.click(screen.getByTestId('level-group-header-level:1-move-up'));
+    expect(reorderLevel).toHaveBeenCalledWith(1, -1);
+  });
+
+  test('the Theme button opens the theme dialog without selecting the project', () => {
+    const openWorkspaceTab = jest.fn();
+    seed({ openWorkspaceTab });
+    render(<ProjectEditor />);
+    fireEvent.click(screen.getByTestId('project-editor-theme'));
+    expect(screen.getByTestId('theme-editor-backdrop')).toBeInTheDocument();
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('theme-editor-backdrop')).not.toBeInTheDocument();
+  });
+
+  test('clicking the search field or the Semantic Layer card does not select the project', () => {
+    const openWorkspaceTab = jest.fn();
+    seed({
+      openWorkspaceTab,
+      dashboards: Array.from({ length: 6 }, (_, i) => makeDashboard(`d${i}`, 'Organization')),
+    });
+    render(<ProjectEditor />);
+    fireEvent.click(screen.getByTestId('project-editor-search'));
+    fireEvent.click(screen.getByTestId('project-semantic-layer-cta'));
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('the empty state button creates a dashboard', async () => {
+    const createDashboard = jest.fn().mockResolvedValue({ success: true, name: 'new-dashboard' });
+    seed({ dashboards: [], createDashboard });
+    render(<ProjectEditor />);
+    fireEvent.click(within(screen.getByTestId('project-editor-empty')).getByRole('button'));
+    await waitFor(() => expect(createDashboard).toHaveBeenCalledTimes(1));
+  });
 });
