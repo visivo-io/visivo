@@ -47,6 +47,19 @@ describe('common Dropdown', () => {
     expect(screen.queryByText('Item')).not.toBeInTheDocument();
   });
 
+  it('in portal mode a click in the panel keeps it open and the backdrop closes it', () => {
+    render(
+      <Dropdown trigger={<button>Open menu</button>} portal>
+        <div>Body</div>
+      </Dropdown>
+    );
+    fireEvent.click(screen.getByText('Open menu'));
+    fireEvent.click(screen.getByText('Body'));
+    expect(screen.getByText('Body')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('dropdown-backdrop'));
+    expect(screen.queryByText('Body')).not.toBeInTheDocument();
+  });
+
   it('does not throw on Escape when the trigger has nothing focusable', () => {
     render(
       <Dropdown trigger={<span>plain</span>}>

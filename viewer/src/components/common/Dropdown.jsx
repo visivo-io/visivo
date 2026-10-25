@@ -127,10 +127,10 @@ export default function Dropdown({
         createPortal(
           <>
             <div
-            data-testid="dropdown-backdrop"
-            onClick={() => set(false)}
-            style={{ position: 'fixed', inset: 0, zIndex: 80 }}
-          />
+              data-testid="dropdown-backdrop"
+              onClick={() => set(false)}
+              style={{ position: 'fixed', inset: 0, zIndex: 80 }}
+            />
             <div onClick={e => e.stopPropagation()} style={{ ...fixedPos, ...panelBoxStyle }}>
               {panelContent}
             </div>
