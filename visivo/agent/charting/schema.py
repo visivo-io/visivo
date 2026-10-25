@@ -820,6 +820,7 @@ class Pattern(_Strict):
     name: str
     trigger: str
     wiring: Optional[str] = None
+    example: Optional[str] = None
     snippet_ref: Optional[str] = None
     note: Optional[str] = None
     verified: bool = True

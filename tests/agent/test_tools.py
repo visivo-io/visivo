@@ -210,6 +210,96 @@ class TestNamesAreUniqueAcrossTypes:
         assert call(integration_app, "validate_chart", {"config": chart}) == {"valid": True}
 
 
+class TestAFilterThatDoesNotParseIsRefused:
+    """VIS-1635: `IN ${ref(regions).values}` without parentheses built, and the
+    whole filter was left out of the query. Every writer refuses it now."""
+
+    INPUT = {"name": "regions", "type": "multi-select", "options": ["North", "South"]}
+    FILTER = "${ref(sales).region} IN ${ref(regions).values}"
+    HINT = "wrap the values in parentheses: IN (${ref(regions).values})"
+
+    def _insight(self, filter_text):
+        return {
+            "name": "by_region",
+            "props": {"type": "bar", "x": "?{ ${ref(sales).region} }", "y": "?{ 1 }"},
+            "interactions": [{"filter": f"?{{ {filter_text} }}"}],
+        }
+
+    def test_validate_insight_reports_it_with_the_hint(self, integration_app):
+        call(integration_app, "write_input", {"config": self.INPUT})
+
+        result = call(integration_app, "validate_insight", {"config": self._insight(self.FILTER)})
+
+        assert result["valid"] is False
+        assert "Insight 'by_region'" in result["error"] and self.HINT in result["error"]
+
+    def test_write_insight_refuses_it_and_saves_nothing(self, integration_app):
+        call(integration_app, "write_input", {"config": self.INPUT})
+
+        with pytest.raises(ToolError, match="Invalid insight") as raised:
+            call(integration_app, "write_insight", {"config": self._insight(self.FILTER)})
+
+        assert self.HINT in str(raised.value)
+        assert "by_region" not in integration_app.insight_manager.cached_objects
+
+    def test_the_api_routes_refuse_it_the_same_way(self, integration_app, integration_client):
+        call(integration_app, "write_input", {"config": self.INPUT})
+        config = self._insight(self.FILTER)
+
+        saved = integration_client.post("/api/insights/by_region/", json=config)
+        validated = integration_client.post("/api/insights/by_region/validate/", json=config)
+
+        assert saved.status_code == 400 and self.HINT in saved.get_json()["error"]
+        assert validated.status_code == 400 and self.HINT in validated.get_json()["error"]
+        assert "by_region" not in integration_app.insight_manager.cached_objects
+
+    def test_wrapped_values_are_written(self, integration_app):
+        call(integration_app, "write_input", {"config": self.INPUT})
+        config = self._insight("${ref(sales).region} IN (${ref(regions).values})")
+
+        assert call(integration_app, "validate_insight", {"config": config}) == {"valid": True}
+        assert call(integration_app, "write_insight", {"config": config})["status"] == "draft"
+
+
+class TestAStaticFilterParsesInItsSourcesDialect:
+    """A filter with no input is built in its source's dialect, so it is judged
+    in that dialect alone: backticks parse in SQLite, not in DuckDB."""
+
+    FILTER = "?{ `region` = 'North' }"
+
+    def _insight(self):
+        return {
+            "name": "north",
+            "props": {"type": "bar", "x": "?{ ${ref(sales).region} }", "y": "?{ 1 }"},
+            "interactions": [{"filter": self.FILTER}],
+        }
+
+    def _model_on(self, app, source):
+        model = {"name": "sales", "sql": "select 'North' as region", "source": f"ref({source})"}
+        call(app, "write_model", {"config": model})
+
+    def test_a_sqlite_source_accepts_it(self, integration_app):
+        self._model_on(integration_app, "source")
+
+        assert call(integration_app, "write_insight", {"config": self._insight()})["status"] == (
+            "draft"
+        )
+
+    def test_a_duckdb_source_refuses_it_through_the_tool_and_the_route(
+        self, integration_app, integration_client, tmp_path
+    ):
+        duckdb_source = {"name": "wh", "type": "duckdb", "database": str(tmp_path / "wh.duckdb")}
+        call(integration_app, "write_source", {"config": duckdb_source})
+        self._model_on(integration_app, "wh")
+
+        with pytest.raises(ToolError, match="not valid SQL"):
+            call(integration_app, "write_insight", {"config": self._insight()})
+        response = integration_client.post("/api/insights/north/", json=self._insight())
+
+        assert response.status_code == 400 and "not valid SQL" in response.get_json()["error"]
+        assert integration_app.insight_manager.get("north") is None
+
+
 class TestTheCallingContract:
     def test_an_unknown_tool_is_a_reason_not_a_crash(self, integration_app):
         with pytest.raises(ToolError, match="No tool named 'fly'"):

@@ -76,8 +76,9 @@ patterns:
   - name: global_filter
     trigger: a column read by two or more insights on the same model
     wiring: the same filter expression on EVERY insight whose model carries the column
+    example: "filter: ?{ ${ref(M).C} IN (${ref(I).values}) AND ${ref(M).D} = '${ref(J).value}' }"
     snippet_ref: test-projects/docs-interactivity/project.visivo.yml:30-52
-    note: a half-wired filter is the canonical failure; nothing propagates by itself
+    note: a half-wired filter is the canonical failure; nothing propagates by itself. A multi-select's `.values` is a bare list ('a', 'b'), so `IN` needs the parentheses
   - name: split_switcher
     trigger: two or more `few` categoricals the reader would compare by in turn
     wiring: "split: CASE WHEN '${ref(I).value}' = '<A>' THEN ${ref(M).A} ELSE ${ref(M).B} END"
