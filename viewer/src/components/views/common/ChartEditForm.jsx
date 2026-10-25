@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import isEqual from 'lodash/isEqual';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import useFormBaseline from '../../../hooks/useFormBaseline';
 import { Button, ButtonOutline } from '../../styled/Button';
@@ -37,6 +38,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     insights: storeInsights,
     fetchInsights,
     createWorkspaceObject,
+    deleteInsight,
   } = useStore();
 
   // Form state
@@ -46,6 +48,10 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
   const [layoutValues, setLayoutValues] = useState({});
 
   const [creatingInsight, setCreatingInsight] = useState(false);
+  // Insights drafted by "New blank insight" in this form, and their config as
+  // first seen, so Discard/Cancel can remove the ones still untouched.
+  const [draftedInsights, setDraftedInsights] = useState([]);
+  const draftSnapshotsRef = useRef(new Map());
 
   // UI state
   const [errors, setErrors] = useState({});
@@ -145,6 +151,14 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
   }, [chart, isCreate]);
 
   const dirty = isDirtyAgainst({ name, insights, layoutValues });
+
+  useEffect(() => {
+    draftedInsights.forEach(draftedName => {
+      if (draftSnapshotsRef.current.has(draftedName)) return;
+      const record = (storeInsights || []).find(i => i.name === draftedName);
+      if (record) draftSnapshotsRef.current.set(draftedName, record.config);
+    });
+  }, [draftedInsights, storeInsights]);
 
   // Report upward so the tab strip's unsaved dot and its guarded close reflect
   // real edits (VIS-1133) — the rail clears it on unmount.
@@ -260,6 +274,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     setCreatingInsight(false);
     if (result?.success) {
       addExistingInsight(result.name);
+      setDraftedInsights(current => [...current, result.name]);
     } else {
       setSaveError(result?.error || 'Failed to create insight');
     }
@@ -267,6 +282,34 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
 
   const removeInsight = index => {
     setInsights(insights.filter((_, i) => i !== index));
+  };
+
+  // A blank insight the saved chart does not reference, and that nobody has
+  // edited since it was drafted, would be left behind as an orphan draft.
+  const removeUntouchedDrafts = () => {
+    const savedRefs = new Set(
+      rawInsights.filter(i => typeof i === 'string').map(i => parseRefValue(i))
+    );
+    const untouched = draftedInsights.filter(draftedName => {
+      if (savedRefs.has(draftedName) || !draftSnapshotsRef.current.has(draftedName)) return false;
+      const record = (storeInsights || []).find(i => i.name === draftedName);
+      return Boolean(record) && isEqual(record.config, draftSnapshotsRef.current.get(draftedName));
+    });
+    setDraftedInsights(current => current.filter(n => !untouched.includes(n)));
+    untouched.forEach(draftedName => {
+      draftSnapshotsRef.current.delete(draftedName);
+      deleteInsight(draftedName);
+    });
+  };
+
+  const handleDiscard = () => {
+    removeUntouchedDrafts();
+    discard();
+  };
+
+  const handleCancel = () => {
+    removeUntouchedDrafts();
+    onClose?.();
   };
 
   return (
@@ -466,7 +509,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
                 (the onboarding modal) it stays a real Cancel. */}
             <ButtonOutline
               type="button"
-              onClick={isEditMode ? discard : onClose}
+              onClick={isEditMode ? handleDiscard : handleCancel}
               disabled={isEditMode && (!dirty || saving || deleting)}
               data-testid="chart-form-discard"
               className="text-sm"

@@ -41,18 +41,23 @@ const mockFetchInsights = jest.fn();
 const mockDeleteChart = jest.fn();
 const mockCheckPublishStatus = jest.fn();
 const mockCreateWorkspaceObject = jest.fn();
+const mockDeleteInsight = jest.fn();
+let mockDraftedInsights;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockDraftedInsights = [];
   useStore.mockImplementation(selector => {
     const state = {
       deleteChart: mockDeleteChart,
       checkCommitStatus: mockCheckPublishStatus,
       fetchInsights: mockFetchInsights,
       createWorkspaceObject: mockCreateWorkspaceObject,
+      deleteInsight: mockDeleteInsight,
       insights: [
         { name: 'revenue_insight', config: { props: { type: 'bar', x: ['q1'] } } },
         { name: 'cost_insight', config: { props: { type: 'scatter' } } },
+        ...mockDraftedInsights,
       ],
     };
     return typeof selector === 'function' ? selector(state) : state;
@@ -210,6 +215,90 @@ describe('ChartEditForm — New blank insight (VIS-1617)', () => {
     expect(await screen.findByText('insight save failed')).toBeInTheDocument();
     expect(screen.queryByTestId('ref-insight-row-0')).not.toBeInTheDocument();
     expect(screen.getByText(/No insights yet/i)).toBeInTheDocument();
+  });
+
+  const draftsInsight = draftedName =>
+    mockCreateWorkspaceObject.mockImplementationOnce(async () => {
+      mockDraftedInsights.push({
+        name: draftedName,
+        status: 'new',
+        config: { name: draftedName, props: { type: 'scatter' } },
+      });
+      return { success: true, name: draftedName, type: 'insight' };
+    });
+
+  test('Cancel removes the blank insight it drafted', async () => {
+    draftsInsight('new-insight');
+    const onClose = jest.fn();
+    render(
+      <ChartEditForm chart={null} isCreate onClose={onClose} onSave={jest.fn()} onNavigateToEmbedded={jest.fn()} />
+    );
+    await screen.findByText(/No insights yet/i);
+
+    clickNewBlank();
+    await screen.findByTestId('ref-insight-row-0');
+    fireEvent.click(screen.getByTestId('chart-form-discard'));
+
+    expect(mockDeleteInsight).toHaveBeenCalledWith('new-insight');
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  test('Discard removes the blank insight it drafted and the ref to it', async () => {
+    draftsInsight('new-insight');
+    await renderForm();
+
+    clickNewBlank();
+    await screen.findByTestId('ref-insight-row-1');
+    fireEvent.click(screen.getByTestId('chart-form-discard'));
+
+    expect(mockDeleteInsight).toHaveBeenCalledTimes(1);
+    expect(mockDeleteInsight).toHaveBeenCalledWith('new-insight');
+    expect(screen.queryByTestId('ref-insight-row-1')).not.toBeInTheDocument();
+  });
+
+  test('a drafted insight that was edited since is kept', async () => {
+    draftsInsight('new-insight');
+    const form = () => (
+      <ChartEditForm chart={chartWithRefInsight} isCreate={false} onClose={jest.fn()} onSave={jest.fn()} onNavigateToEmbedded={jest.fn()} />
+    );
+    const { rerender } = render(form());
+    await screen.findByTestId('ref-insight-row-0');
+
+    clickNewBlank();
+    await screen.findByTestId('ref-insight-row-1');
+    mockDraftedInsights[0] = {
+      ...mockDraftedInsights[0],
+      config: { name: 'new-insight', props: { type: 'bar' } },
+    };
+    rerender(form());
+    fireEvent.click(screen.getByTestId('chart-form-discard'));
+
+    expect(mockDeleteInsight).not.toHaveBeenCalled();
+  });
+
+  test('a drafted insight the saved chart references is kept', async () => {
+    draftsInsight('new-insight');
+    draftsInsight('new-insight-2');
+    const { rerender } = render(
+      <ChartEditForm chart={chartWithRefInsight} isCreate={false} onClose={jest.fn()} onSave={jest.fn()} onNavigateToEmbedded={jest.fn()} />
+    );
+    await screen.findByTestId('ref-insight-row-0');
+
+    clickNewBlank();
+    await screen.findByTestId('ref-insight-row-1');
+    const saved = {
+      ...chartWithRefInsight,
+      config: { ...chartWithRefInsight.config, insights: ['ref(revenue_insight)', 'ref(new-insight)'] },
+    };
+    rerender(
+      <ChartEditForm chart={saved} isCreate={false} onClose={jest.fn()} onSave={jest.fn()} onNavigateToEmbedded={jest.fn()} />
+    );
+    clickNewBlank();
+    await screen.findByTestId('ref-insight-row-2');
+    fireEvent.click(screen.getByTestId('chart-form-discard'));
+
+    expect(mockDeleteInsight).toHaveBeenCalledTimes(1);
+    expect(mockDeleteInsight).toHaveBeenCalledWith('new-insight-2');
   });
 
   test('a failed draft with no message falls back to a generic error', async () => {
