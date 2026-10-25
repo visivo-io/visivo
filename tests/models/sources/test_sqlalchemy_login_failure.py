@@ -138,3 +138,22 @@ def test_test_connection_reports_login_failure_in_one_line():
     result = manager.test_connection("warehouse")
 
     assert result == {"source": "warehouse", "status": "connection_failed", "error": ENV_LINE}
+
+
+def test_get_schema_logs_login_failure_at_debug_only(mocker):
+    logger = mocker.patch("visivo.models.sources.sqlalchemy_source.Logger").instance.return_value
+
+    warehouse().get_schema()
+
+    logger.error.assert_not_called()
+    assert any(ENV_LINE in call.args[0] for call in logger.debug.call_args_list)
+
+
+def test_get_schema_logs_other_failures_at_error(mocker):
+    logger = mocker.patch("visivo.models.sources.sqlalchemy_source.Logger").instance.return_value
+
+    schema = warehouse(driver_text='could not translate host name "db.internal"').get_schema()
+
+    assert "could not translate host name" in schema["metadata"]["error"]
+    logger.error.assert_called_once()
+    assert "could not translate host name" in logger.error.call_args.args[0]

@@ -539,8 +539,10 @@ class SqlalchemySource(Source, ABC):
             return result
 
         except Exception as e:
-            message = self._login_failure_message(e) or str(e)
-            Logger.instance().debug(f"Error building schema for source {self.name}: {message}")
+            login_failure = self._login_failure_message(e)
+            message = login_failure or str(e)
+            log = Logger.instance().debug if login_failure else Logger.instance().error
+            log(f"Error building schema for source {self.name}: {message}")
             # Return minimal schema to avoid breaking downstream code. `errors`
             # is a list here as well as on the success path, so a caller has one
             # shape to check rather than two.
