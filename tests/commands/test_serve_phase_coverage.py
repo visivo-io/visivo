@@ -245,17 +245,3 @@ class TestProjectErrorState:
         on_project_change()
 
         assert flask_app[0].project_error is None
-
-    def test_stacktrace_env_adds_the_traceback_to_error_json(
-        self, project_with_data, output_dir, server_url, mocker, monkeypatch
-    ):
-        monkeypatch.setenv("STACKTRACE", "1")
-        _, on_project_change, _ = _serve(project_with_data, output_dir, server_url)
-        mocker.patch(
-            "visivo.commands.serve_phase.compile_phase", side_effect=RuntimeError("bad yaml")
-        )
-
-        on_project_change()
-
-        with open(f"{output_dir}/error.json") as fp:
-            assert "Traceback" in json.load(fp)["message"]

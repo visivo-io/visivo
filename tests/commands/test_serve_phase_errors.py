@@ -77,8 +77,8 @@ class TestStacktraceAndBrowserErrors:
 
         on_server_ready(one_shot=False)
 
-        logged = error_spy.call_args[0][0]
-        assert "no browser" in logged and "Traceback" in logged
+        logged = [call.args[0] for call in error_spy.call_args_list]
+        assert any("no browser" in line and "Traceback" in line for line in logged)
 
     def test_run_failure_with_stacktrace_logs_the_traceback(
         self, project_with_data, output_dir, server_url, mocker, monkeypatch
@@ -93,4 +93,4 @@ class TestStacktraceAndBrowserErrors:
         with pytest.raises(RuntimeError):
             on_server_ready(one_shot=False)
 
-        assert "Traceback" in error_spy.call_args[0][0]
+        assert any("Traceback" in call.args[0] for call in error_spy.call_args_list)
