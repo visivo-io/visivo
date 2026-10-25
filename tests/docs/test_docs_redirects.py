@@ -67,14 +67,13 @@ def _resolves(path):
     return key in _page_urls() or key.rstrip("/") in HOOK.REDIRECTS
 
 
-def _agent_text_sources():
-    sources = {p: p.read_text() for p in (REPO_ROOT / "visivo" / "agent").rglob("*.md")}
-    for py in (
+def _guarded_text_sources():
+    paths = [
+        *(REPO_ROOT / "visivo" / "agent").rglob("*.md"),
         REPO_ROOT / "visivo" / "agent" / "skills.py",
-        REPO_ROOT / "visivo" / "commands" / "init_phase.py",
-    ):
-        sources[py] = py.read_text()
-    return sources
+        *(REPO_ROOT / "visivo" / "commands").rglob("*.py"),
+    ]
+    return {p: p.read_text() for p in paths}
 
 
 def test_guessed_paths_redirect_to_real_pages():
@@ -85,9 +84,15 @@ def test_guessed_paths_redirect_to_real_pages():
         assert _normalize(source) not in pages, f"/{source}/ is a real page; drop the redirect"
 
 
-def test_every_docs_url_in_agent_material_resolves():
+def test_guard_scans_every_cli_command_module():
+    commands = set((REPO_ROOT / "visivo" / "commands").rglob("*.py"))
+    assert REPO_ROOT / "visivo" / "commands" / "init_phase.py" in commands
+    assert commands <= set(_guarded_text_sources())
+
+
+def test_every_docs_url_in_agent_and_cli_text_resolves():
     failures = []
-    for path, text in _agent_text_sources().items():
+    for path, text in _guarded_text_sources().items():
         for match in DOCS_URL.finditer(text):
             if not _resolves(match.group(1)):
                 failures.append(f"{path.relative_to(REPO_ROOT)}: {match.group(0)}")
