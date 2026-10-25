@@ -201,3 +201,61 @@ class TestWatcherScope:
         assert server.is_project_file(str(tmp_path / "project.visivo.yml"))
         assert server.is_project_file(str(tmp_path / "models.yml"))
         assert not server.is_project_file(str(tmp_path / "tmp.yml"))
+
+
+def _capture_flask_app(mocker):
+    from visivo.server.flask_app import FlaskApp
+
+    created = []
+
+    def build(*args, **kwargs):
+        created.append(FlaskApp(*args, **kwargs))
+        return created[0]
+
+    mocker.patch("visivo.commands.serve_phase.FlaskApp", side_effect=build)
+    return created
+
+
+class TestProjectErrorState:
+    def test_compile_failure_is_kept_on_the_app_and_success_clears_it(
+        self, project_with_data, output_dir, server_url, mocker
+    ):
+        flask_app = _capture_flask_app(mocker)
+        _, on_project_change, _ = _serve(project_with_data, output_dir, server_url)
+        compile_mock = mocker.patch(
+            "visivo.commands.serve_phase.compile_phase",
+            side_effect=RuntimeError("bad reference"),
+        )
+        on_project_change()
+        assert flask_app[0].project_error == "bad reference"
+
+        compile_mock.side_effect = None
+        compile_mock.return_value = ProjectFactory()
+        on_project_change()
+        assert flask_app[0].project_error is None
+
+    def test_a_failure_after_compile_is_not_a_validation_error(
+        self, project_with_data, output_dir, server_url, mocker
+    ):
+        flask_app = _capture_flask_app(mocker)
+        _, on_project_change, _ = _serve(project_with_data, output_dir, server_url, new=True)
+        mocker.patch("visivo.commands.serve_phase.compile_phase", return_value=ProjectFactory())
+        mocker.patch("visivo.commands.serve_phase.run_phase", side_effect=RuntimeError("run broke"))
+
+        on_project_change()
+
+        assert flask_app[0].project_error is None
+
+    def test_stacktrace_env_adds_the_traceback_to_error_json(
+        self, project_with_data, output_dir, server_url, mocker, monkeypatch
+    ):
+        monkeypatch.setenv("STACKTRACE", "1")
+        _, on_project_change, _ = _serve(project_with_data, output_dir, server_url)
+        mocker.patch(
+            "visivo.commands.serve_phase.compile_phase", side_effect=RuntimeError("bad yaml")
+        )
+
+        on_project_change()
+
+        with open(f"{output_dir}/error.json") as fp:
+            assert "Traceback" in json.load(fp)["message"]

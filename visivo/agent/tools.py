@@ -908,6 +908,41 @@ def _as_refusal(name, arguments, error):
     return ToolError(f"{name} failed{where}: {error}")
 
 
+_PROJECT_TOOL_VERBS = ("list_", "get_", "validate_", "write_")
+
+
+def _first_error(message):
+    """The first line that says what is wrong. Pydantic opens with a count
+    ("2 validation errors for Project"), which names nothing, so the line after
+    it is kept too."""
+    lines = [line.strip() for line in str(message).splitlines() if line.strip()]
+    if not lines:
+        return "unknown error"
+    if len(lines) > 1 and " validation error" in lines[0]:
+        return f"{lines[0]}: {lines[1]}"
+    return lines[0]
+
+
+def _with_validation_notice(app, name, result):
+    """Say so when the project being served is not the one on disk.
+
+    A hand edit that breaks validation leaves ``visivo serve`` on the last
+    project that compiled. Without a notice, list tools show that stale base
+    as if it were current and writes report ``draft`` for work that cannot
+    build, so an agent builds on a broken file without knowing it.
+    """
+    error = getattr(app, "project_error", None)
+    if not error or not name.startswith(_PROJECT_TOOL_VERBS) or name in _SPECIAL_TOOLS:
+        return result
+    notice = f"The project file currently fails validation: {_first_error(error)}"
+    if name.startswith("list_"):
+        return {
+            "notice": f"{notice}. This list reflects the last valid project, not the file on disk.",
+            "results": result,
+        }
+    return {**result, "notice": notice} if isinstance(result, dict) else result
+
+
 def call(app, name, arguments=None):
     """Invoke a tool by name, recording what happened.
 
@@ -943,7 +978,7 @@ def call(app, name, arguments=None):
         action_log().resolve(pending["id"], outcome="error", error=result.get("error"))
     else:
         action_log().resolve(pending["id"], image_url=_image_url_of(result))
-    return _with_attached_skills(name, result)
+    return _with_attached_skills(name, _with_validation_notice(app, name, result))
 
 
 # --- skills that ride along with a tool's first result ----------------------

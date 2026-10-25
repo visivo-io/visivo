@@ -50,6 +50,7 @@ class FlaskApp:
         self._working_dir = working_dir
         self.output_dir = output_dir
         self.hot_reload_server = None  # Will be set by serve_phase
+        self.project_error = None
         self._cached_defaults = None
         self._cached_theme = None
         # In-memory run registry for the run-on-save loop (mirrors the cloud Run
