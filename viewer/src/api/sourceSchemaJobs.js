@@ -16,14 +16,15 @@ const fetchWithContext = async (url, options, context) => {
 };
 
 /**
- * Parse error response body, handling both JSON {"message": "..."} and plain text.
+ * Parse error response body, handling JSON {"message": "..."}, JSON {"error": "..."}
+ * and plain text.
  */
 const parseErrorResponse = async response => {
   try {
     const text = await response.text();
     try {
       const json = JSON.parse(text);
-      return json.message || text;
+      return json.message || json.error || text;
     } catch {
       return text;
     }

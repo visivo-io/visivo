@@ -107,10 +107,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
 
             source = find_source(flask_app, source_name)
             if source is None:
-                return (
-                    jsonify({"message": f"Source '{source_name}' not found in project"}),
-                    404,
-                )
+                return jsonify({"error": f"Source '{source_name}' not found"}), 404
 
             config["source_type"] = source.type
 

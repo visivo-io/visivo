@@ -6,6 +6,7 @@ import re
 from visivo.models.base.context_string import ContextString
 from visivo.models.defaults import Defaults
 from visivo.query.patterns import REF_PROPERTY_PATTERN, extract_ref_names
+from visivo.server.managers.object_manager import ObjectStatus
 
 
 def from_manager(flask_app, manager_name, name):
@@ -39,7 +40,23 @@ def find_object(flask_app, manager_name, project_attr, name):
     return None
 
 
+def marked_for_deletion(flask_app, manager_name, name):
+    """True when the draft marks ``name`` for deletion in that manager."""
+    manager = getattr(flask_app, manager_name, None)
+    status = getattr(manager, "get_status", None)
+    if not callable(status):
+        return False
+    try:
+        return status(name) == ObjectStatus.DELETED
+    except Exception:
+        return False
+
+
 def find_source(flask_app, source_name):
+    """The source called ``source_name``, or ``None`` when it is unknown or the
+    draft marks it for deletion, which is the set ``list_sources`` serves."""
+    if source_name and marked_for_deletion(flask_app, "source_manager", source_name):
+        return None
     return find_object(flask_app, "source_manager", "sources", source_name)
 
 
