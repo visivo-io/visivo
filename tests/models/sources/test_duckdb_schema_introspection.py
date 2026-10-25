@@ -286,6 +286,14 @@ def test_granular_listing_sees_non_main_schema(saas_db):
     assert {t["name"] for t in source.get_tables("saas")} == {"orders", "data.v2"}
 
 
+def test_listing_columns_and_preview_default_to_the_db_schema(saas_db):
+    source = _source(saas_db, db_schema="analytics")
+
+    assert {t["name"] for t in source.get_tables("saas")} == {"fct_mrr", "v_users"}
+    assert [c["name"] for c in source.get_columns("saas", "fct_mrr")] == ["month", "mrr"]
+    assert source.get_table_preview("saas", "fct_mrr", limit=5)["row_count"] == 0
+
+
 def test_get_schema_reports_error_when_connection_fails(tmp_path):
     source = _source(tmp_path / "missing_dir" / "nope.duckdb")
 

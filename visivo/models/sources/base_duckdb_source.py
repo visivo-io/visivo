@@ -320,31 +320,33 @@ class BaseDuckdbSource(Source):
         self, database_name: str, schema_name: Optional[str] = None
     ) -> List[Dict[str, str]]:
         """Get tables and views, similar to existing _get_available_tables_from_duckdb()."""
-        schema_filter = f"= '{schema_name}'" if schema_name else "= 'main'"
+        schema = schema_name or self.get_default_context()["schema"]
 
         with self.connect(read_only=True) as connection:
-            result = connection.execute(f"""
+            result = connection.execute(
+                """
                 SELECT table_name, 'table' as type FROM information_schema.tables
-                WHERE table_schema {schema_filter}
+                WHERE table_schema = ?
                 AND table_name NOT LIKE 'duckdb_%' AND table_name NOT LIKE 'sqlite_%'
                 AND table_name NOT LIKE 'pragma_%'
                 UNION ALL
                 SELECT table_name, 'view' as type FROM information_schema.views
-                WHERE table_schema {schema_filter}
+                WHERE table_schema = ?
                 AND table_name NOT LIKE 'duckdb_%' AND table_name NOT LIKE 'sqlite_%'
                 AND table_name NOT LIKE 'pragma_%'
                 ORDER BY table_name
-            """)
+            """,
+                [schema, schema],
+            )
             return [{"name": row[0], "type": row[1]} for row in result.fetchall()]
 
     def get_columns(
         self, database_name: str, table_name: str, schema_name: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Use DESCRIBE, similar to existing _extract_table_schema_from_duckdb()."""
+        schema = schema_name or self.get_default_context()["schema"]
         with self.connect(read_only=True) as connection:
-            result = connection.execute(
-                f"DESCRIBE {self._quote_table(schema_name or 'main', table_name)}"
-            )
+            result = connection.execute(f"DESCRIBE {self._quote_table(schema, table_name)}")
             return [
                 {"name": row[0], "type": row[1], "nullable": row[2] == "YES"}
                 for row in result.fetchall()
