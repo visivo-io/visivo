@@ -730,11 +730,7 @@ def _build_child_info(
         else:
             file_path = project_file_path
             new_file_path = project_file_path
-        config = (
-            location_free_dump(obj, mode="json", exclude_none=True, exclude_defaults=True)
-            if obj
-            else {}
-        )
+        config = location_free_dump(obj, mode="json", exclude_none=True) if obj else {}
     elif status == ObjectStatus.DELETED:
         # Deleted objects use path from published version
         file_path = _get_file_path(published_obj, project_file_path)

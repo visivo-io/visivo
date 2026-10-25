@@ -56,8 +56,9 @@ def diff(old_dict, new_dict, full_dict=None):
     """Edits that turn ``old_dict`` into ``new_dict``.
 
     ``full_dict`` is the same object dumped with its defaults. A key the new
-    config leaves out is only a deletion when the full dump does not hold it
-    at the value the file already has: an explicit default is the user's text.
+    config leaves out keeps the file's text when the full dump holds the same
+    value, takes the full dump's value when it differs (a union discriminator
+    such as an input's ``type`` must stay written), and is deleted otherwise.
     """
     full_dict = full_dict if isinstance(full_dict, dict) else {}
     updates = {}
@@ -76,9 +77,10 @@ def diff(old_dict, new_dict, full_dict=None):
                 updates[key] = new_dict[key]
     for key in old_dict:
         if key not in new_dict:
-            if key in full_dict and full_dict[key] == old_dict[key]:
-                continue
-            updates[key] = DELETE
+            if key not in full_dict:
+                updates[key] = DELETE
+            elif full_dict[key] != old_dict[key]:
+                updates[key] = full_dict[key]
     return updates
 
 

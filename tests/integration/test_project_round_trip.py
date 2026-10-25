@@ -442,3 +442,37 @@ def test_a_one_field_input_commit_leaves_the_expression_alone(fresh_app, fresh_p
         lambda config: config.__setitem__("label", "Lowest X"),
     )
     assert changed == ['-    label: "Min X Value (Query Dropdown)"', '+    label: "Lowest X"']
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"name": "new_single_pick", "type": "single-select", "options": ["a", "b"]},
+        {"name": "new_multi_pick", "type": "multi-select", "options": ["a", "b"]},
+    ],
+)
+def test_a_committed_new_input_keeps_its_type_and_the_project_still_parses(
+    fresh_app, fresh_project, config
+):
+    client = fresh_app.app.test_client()
+    assert client.post(f"/api/inputs/{config['name']}/", json=config).status_code in (200, 201)
+
+    response = client.post("/api/commit/", json={})
+    assert response.status_code == 200, response.data
+
+    reparsed = _build_app(fresh_project)
+    committed = reparsed.input_manager.published_objects[config["name"]]
+    assert committed.type == config["type"]
+
+
+def test_changing_an_input_to_its_default_type_keeps_the_type_in_the_file(fresh_app, fresh_project):
+    _edit_and_commit(
+        fresh_app,
+        fresh_project,
+        "inputs",
+        "sort_direction",
+        lambda config: config.update(type="multi-select", display={"type": "dropdown"}),
+    )
+
+    reparsed = _build_app(fresh_project)
+    assert reparsed.input_manager.published_objects["sort_direction"].type == "multi-select"

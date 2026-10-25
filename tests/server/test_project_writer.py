@@ -181,8 +181,15 @@ def test_diff_keeps_a_key_the_file_sets_to_its_default():
 def test_diff_still_deletes_a_key_the_user_removed():
     old = {"name": "n", "align": "left"}
     target = dict(old)
-    apply_diff(target, diff(old, {"name": "n"}, {"name": "n", "align": "start"}))
+    apply_diff(target, diff(old, {"name": "n"}, {"name": "n"}))
     assert target == {"name": "n"}
+
+
+def test_diff_writes_a_changed_default_instead_of_deleting_it():
+    old = {"name": "n", "type": "single-select"}
+    target = dict(old)
+    apply_diff(target, diff(old, {"name": "n"}, {"name": "n", "type": "multi-select"}))
+    assert target == {"name": "n", "type": "multi-select"}
 
 
 def test_diff_deletions():
