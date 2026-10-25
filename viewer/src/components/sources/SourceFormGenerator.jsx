@@ -40,7 +40,7 @@ const SOURCE_SCHEMAS = {
   postgresql: {
     fields: [
       { name: 'host', label: 'Host', type: 'text', required: true, placeholder: 'localhost' },
-      { name: 'port', label: 'Port', type: 'number', default: 5432 },
+      { name: 'port', label: 'Port', type: 'port', default: 5432 },
       { name: 'database', label: 'Database', type: 'text', required: true },
       { name: 'username', label: 'Username', type: 'text', required: true },
       { name: 'password', label: 'Password', type: 'secret' },
@@ -51,7 +51,7 @@ const SOURCE_SCHEMAS = {
   mysql: {
     fields: [
       { name: 'host', label: 'Host', type: 'text', required: true, placeholder: 'localhost' },
-      { name: 'port', label: 'Port', type: 'number', default: 3306 },
+      { name: 'port', label: 'Port', type: 'port', default: 3306 },
       { name: 'database', label: 'Database', type: 'text', required: true },
       { name: 'username', label: 'Username', type: 'text', required: true },
       { name: 'password', label: 'Password', type: 'secret' },
@@ -122,7 +122,7 @@ const SOURCE_SCHEMAS = {
   clickhouse: {
     fields: [
       { name: 'host', label: 'Host', type: 'text', required: true, placeholder: 'localhost' },
-      { name: 'port', label: 'Port', type: 'number', default: 9000 },
+      { name: 'port', label: 'Port', type: 'port', default: 9000 },
       { name: 'database', label: 'Database', type: 'text', required: true },
       { name: 'username', label: 'Username', type: 'text', required: true },
       { name: 'password', label: 'Password', type: 'secret' },
@@ -132,7 +132,7 @@ const SOURCE_SCHEMAS = {
   redshift: {
     fields: [
       { name: 'host', label: 'Host', type: 'text', required: true },
-      { name: 'port', label: 'Port', type: 'number', default: 5439 },
+      { name: 'port', label: 'Port', type: 'port', default: 5439 },
       { name: 'database', label: 'Database', type: 'text', required: true },
       { name: 'username', label: 'Username', type: 'text', required: true },
       { name: 'password', label: 'Password', type: 'secret' },
@@ -152,6 +152,10 @@ const SOURCE_SCHEMAS = {
     ],
   },
 };
+
+// A port is a number or an ${env.NAME} reference, so it is a text box that
+// stores digits as a number and keeps anything else as typed.
+export const parsePortInput = text => (/^\d+$/.test(text) ? Number(text) : text);
 
 // Get schema for a source type (returns empty fields if type not found)
 export const getSourceSchema = type => {
@@ -327,7 +331,8 @@ const SourceFormGenerator = ({
             error={errors[field.name]}
           />
         ) : (
-        <div key={field.name} className="relative">
+        <div key={field.name}>
+          <div className="relative">
           <input
             type={getInputType(field)}
             id={field.name}
@@ -339,7 +344,9 @@ const SourceFormGenerator = ({
                   ? e.target.value
                     ? Number(e.target.value)
                     : ''
-                  : e.target.value;
+                  : field.type === 'port'
+                    ? parsePortInput(e.target.value)
+                    : e.target.value;
               handleFieldChange(field.name, val);
             }}
             placeholder={field.placeholder || ''}
@@ -380,6 +387,12 @@ const SourceFormGenerator = ({
             {field.label}
             {field.required && <span className="text-red-500 ml-0.5">*</span>}
           </label>
+          </div>
+          {field.type === 'port' && !errors[field.name] && (
+            <p className="mt-1 text-xs text-gray-500">
+              A number or an {toSecretRef('NAME')} reference.
+            </p>
+          )}
           {errors[field.name] && <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>}
         </div>
         )
