@@ -14,6 +14,7 @@ building takes minutes and the omission is visible in the arguments.
 """
 
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -62,23 +63,71 @@ def test_nuitka_ships_every_runtime_resource(resource, why):
     assert all(part in args for part in parts), f"build_nuitka.py does not ship {resource} — {why}"
 
 
-def test_every_data_file_in_the_package_is_covered_by_a_shipped_directory():
-    """Python files are traced by the freezer; anything else is not. A new data
-    file outside every declared directory fails here instead of in a release."""
+def _tracked_package_files(repo):
+    """Files under ``visivo/`` that git tracks, so local clutter never counts."""
+    try:
+        listed = subprocess.run(
+            ["git", "ls-files", "-z", "visivo"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError) as error:
+        pytest.skip(f"git cannot list the tracked package files here: {error}")
+    return [Path(rel) for rel in listed.split("\0") if rel]
+
+
+def _uncovered_data_files(rel_paths):
     uncovered = []
-    for path in PACKAGE.rglob("*"):
-        rel = path.relative_to(REPO).as_posix()
-        if not path.is_file() or path.suffix in {".py", ".pyc"}:
+    for path in rel_paths:
+        rel = path.as_posix()
+        if path.suffix in {".py", ".pyc"}:
             continue
-        if "__pycache__" in path.parts or "tests" in path.relative_to(PACKAGE).parts:
+        if "__pycache__" in path.parts or "tests" in path.parts[1:]:
             continue
         if rel in NOT_RUNTIME or any(rel.startswith(d + "/") for d in RUNTIME_DATA):
             continue
         uncovered.append(rel)
+    return uncovered
+
+
+def test_every_data_file_in_the_package_is_covered_by_a_shipped_directory():
+    """Python files are traced by the freezer; anything else is not. A new data
+    file outside every declared directory fails here instead of in a release."""
+    uncovered = _uncovered_data_files(_tracked_package_files(REPO))
     assert not uncovered, (
         f"Data files not shipped by build.py/build_nuitka.py: {uncovered[:5]}. "
         "Add their directory to RUNTIME_DATA and both build scripts."
     )
+
+
+def test_untracked_and_ignored_files_are_not_data_files(tmp_path):
+    def git(*args):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
+
+    git("init", "-q")
+    (tmp_path / ".gitignore").write_text(".DS_Store\n")
+    (tmp_path / "visivo" / "server" / "tmp").mkdir(parents=True)
+    (tmp_path / "visivo" / "rules.json").write_text("{}")
+    (tmp_path / "visivo" / ".DS_Store").write_text("")
+    (tmp_path / "visivo" / "server" / "tmp" / "worksheets.db").write_text("")
+    git("add", ".gitignore", "visivo/rules.json")
+
+    files = _tracked_package_files(tmp_path)
+
+    assert files == [Path("visivo/rules.json")]
+    assert _uncovered_data_files(files) == ["visivo/rules.json"]
+
+
+def test_the_data_file_check_skips_without_git(monkeypatch):
+    def no_git(*args, **kwargs):
+        raise FileNotFoundError("git")
+
+    monkeypatch.setattr(subprocess, "run", no_git)
+
+    with pytest.raises(pytest.skip.Exception, match="git cannot list"):
+        _tracked_package_files(REPO)
 
 
 class TestDirectoriesAreShippedWhole:
