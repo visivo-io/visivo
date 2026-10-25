@@ -110,6 +110,17 @@ class TestMarkdownManager:
         assert markdown.name is None
         assert markdown.content == "Inline content"
 
+    def test_a_markdown_marked_for_deletion_is_listed_as_deleted(self):
+        manager = MarkdownManager()
+        manager._published_objects["old"] = manager.validate_object(
+            {"name": "old", "content": "# Old"}
+        )
+        manager.mark_for_deletion("old")
+
+        listed = manager.get_all_markdowns_with_status()
+
+        assert [(m["name"], m["status"]) for m in listed] == [("old", ObjectStatus.DELETED.value)]
+
 
 class TestLiteralTemplateWarnings:
     def _validate(self, content):

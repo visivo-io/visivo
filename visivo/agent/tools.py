@@ -167,7 +167,7 @@ def _write_handler(type_key):
             result["change"] = outcome
         from visivo.agent.charting import lint
 
-        found = lint.warnings(app, type_key, config)
+        found = lint.warnings(app, type_key, config) + manager.warnings_for(obj)
         if type_key == "models":
             from visivo.agent.data_tools import probe_model_sql
 
@@ -256,7 +256,8 @@ _PER_TYPE = {
     "validate": (
         _CONFIG_SCHEMA,
         _validate_handler,
-        "Check a {singular} configuration without saving it. Returns whether it is valid.",
+        "Check a {singular} configuration without saving it. Returns whether it is valid, "
+        "and the warnings write_{singular} gives a config that is valid but reads wrong.",
     ),
     "write": (
         _CONFIG_SCHEMA,

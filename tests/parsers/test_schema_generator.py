@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from tests.support.utils import temp_file
 from jsonschema_rs import meta, ValidationError
 from visivo.parsers.schema_generator import generate_schema
@@ -22,3 +24,17 @@ def test_generate_schema_replaces_unsupported_javascript():
 
     tmp = temp_file(name="visivo_schema.json", contents=schema)
     assert tmp.exists()
+
+
+REPO = Path(__file__).parent.parent.parent
+
+
+def test_the_viewer_copy_of_the_project_schema_matches_the_generated_one():
+    generated = REPO / "visivo" / "src" / "visivo_project_schema.json"
+    viewer_copy = REPO / "viewer" / "src" / "schemas" / "visivo_project_schema.json"
+
+    same = viewer_copy.read_text() == generated.read_text()
+    assert same, (
+        "Run `python -m visivo.generate_project_schema_json` and copy "
+        "visivo/src/visivo_project_schema.json to viewer/src/schemas/."
+    )

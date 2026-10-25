@@ -577,3 +577,33 @@ class TestLayoutInputRefs:
         for tool in ("write_chart", "validate_chart"):
             result = call(integration_app, tool, {"config": chart})
             assert any("no input named `nope`" in w for w in result["warnings"]), tool
+
+
+class TestValidateWarnsWhatWriteWarns:
+    """validate_* is the dry run of write_*, so it returns the same warnings."""
+
+    CONFIGS = {
+        "input": TestDateRangeInputs().b17(),
+        "dashboard": {
+            "name": "d_missing_chart",
+            "rows": [{"items": [{"chart": "${ref(no_such_chart)}"}]}],
+        },
+        "metric": {"name": "m_dotted", "expression": "SUM(${ref(orders.amount)})"},
+        "dimension": {"name": "d_dotted", "expression": "${ref(orders.region)}"},
+        "markdown": {"name": "note", "content": "Revenue is {{ revenue }} today"},
+        "chart": {
+            "name": "c_missing_input",
+            "insights": [],
+            "layout": {"title": {"text": "${ref(nope)}"}},
+        },
+    }
+
+    @pytest.mark.parametrize("kind", sorted(CONFIGS))
+    def test_validate_and_write_return_the_same_warnings(self, integration_app, kind):
+        config = self.CONFIGS[kind]
+        validated = call(integration_app, f"validate_{kind}", {"config": config})
+        written = call(integration_app, f"write_{kind}", {"config": config})
+
+        assert validated["valid"] is True
+        assert validated["warnings"]
+        assert validated["warnings"] == written["warnings"]
