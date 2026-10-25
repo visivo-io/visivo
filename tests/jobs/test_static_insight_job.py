@@ -237,9 +237,7 @@ def test_static_action_write_failure_is_not_labelled_a_broken_reference(tmpdir):
     assert result.diagnostic.code == "unexpected_error"
 
 
-def test_an_insight_whose_filter_matches_no_rows_writes_an_empty_table(tmpdir):
-    """A zero-row result keeps its columns, so the viewer loads an empty table
-    instead of failing on a parquet with no columns."""
+def _filtered_sales_project(tmpdir, powertrain):
     import duckdb
     from visivo.models.interaction import InsightInteraction
 
@@ -254,22 +252,61 @@ def test_an_insight_whose_filter_matches_no_rows_writes_an_empty_table(tmpdir):
         props=InsightProps(
             type="pie", labels="?{${ref(sales).powertrain}}", values="?{sum(${ref(sales).units})}"
         ),
-        interactions=[InsightInteraction(filter="?{${ref(sales).powertrain} = 'bev'}")],
+        interactions=[
+            InsightInteraction(filter=f"?{{${{ref(sales).powertrain}} = '{powertrain}'}}")
+        ],
     )
     project = Project(name="p", sources=[source], models=[model], insights=[insight], dashboards=[])
     tmpdir.mkdir("main").mkdir("schemas").join("sales.json").write(
         json.dumps({model.name_hash(): {"powertrain": "VARCHAR", "units": "INTEGER"}})
     )
+    return project, insight
+
+
+def _parquet_rows(tmpdir, name):
+    import duckdb
+
+    artifact = _read_artifact(str(tmpdir), name)
+    table = duckdb.sql(
+        f"SELECT * FROM read_parquet('{artifact['files'][0]['signed_data_file_url']}')"
+    )
+    return artifact, table
+
+
+def test_an_insight_whose_filter_matches_no_rows_writes_an_empty_table(tmpdir):
+    """A zero-row result keeps its columns, so the viewer loads an empty table
+    instead of failing on a parquet with no columns."""
+    project, insight = _filtered_sales_project(tmpdir, "bev")
 
     result = action(insight, project.dag(), str(tmpdir))
 
     assert result.success is True, result.message
-    artifact = _read_artifact(str(tmpdir), "split")
-    table = duckdb.sql(
-        f"SELECT * FROM read_parquet('{artifact['files'][0]['signed_data_file_url']}')"
-    )
+    artifact, table = _parquet_rows(tmpdir, "split")
     assert sorted(table.columns) == sorted(artifact["props_mapping"].values())
     assert table.fetchall() == []
+
+
+def test_an_insight_with_rows_does_not_parse_its_pre_query(tmpdir, mocker):
+    """Column names are only needed for an empty result. A pre-query sqlglot
+    cannot parse must not fail an insight that returned rows."""
+    project, insight = _filtered_sales_project(tmpdir, "BEV")
+    parse = mocker.patch(
+        "visivo.jobs.run_insight_job._selected_column_names",
+        side_effect=AssertionError("parsed a pre-query that returned rows"),
+    )
+
+    result = action(insight, project.dag(), str(tmpdir))
+
+    assert result.success is True, result.message
+    parse.assert_not_called()
+    _, table = _parquet_rows(tmpdir, "split")
+    assert len(table.fetchall()) == 1
+
+
+def test_selected_column_names_is_none_when_sqlglot_cannot_parse():
+    from visivo.jobs.run_insight_job import _selected_column_names
+
+    assert _selected_column_names("SELECT (a FROM t", "duckdb") is None
 
 
 def test_selected_column_names_reads_the_aliases():

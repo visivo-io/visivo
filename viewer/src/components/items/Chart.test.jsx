@@ -697,6 +697,30 @@ describe('Chart — missing and empty data (VIS-1544)', () => {
     );
   });
 
+  test('a fetch that failed for another reason says the data could not be loaded', async () => {
+    chart.insights = [{ name: 'i1' }];
+    useStore.setState({
+      insightJobs: {
+        i1: {
+          name: 'i1',
+          data: null,
+          loadError: 'Failed to fetch insight jobs data: 500 INTERNAL SERVER ERROR.\n{}',
+          error: null,
+          pendingInputs: null,
+        },
+      },
+    });
+    render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+
+    const notice = await screen.findByTestId('chart_load_error_name');
+    expect(notice).toHaveTextContent("This chart's data could not be loaded");
+    expect(notice).toHaveTextContent('500 INTERNAL SERVER ERROR');
+    expect(notice).toHaveTextContent('Reload the page to try again.');
+    expect(notice).not.toHaveTextContent('has not been built');
+    expect(screen.queryByTestId('chart_build_error_name')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mock Plot')).not.toBeInTheDocument();
+  });
+
   test('a missing insight keeps the spinner while a run is building', () => {
     chart.insights = [{ name: 'i1' }];
     useStore.setState({ insightJobs: { i1: missing }, latestRun: { state: 'running' } });

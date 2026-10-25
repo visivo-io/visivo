@@ -97,11 +97,17 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     [chartInsightNames, insightsData]
   );
 
+  const loadError = useMemo(
+    () => chartInsightNames.map(name => insightsData[name]?.loadError).find(Boolean) || null,
+    [chartInsightNames, insightsData]
+  );
+
   const hasAllInsightData = useMemo(() => {
     if (!chartInsightNames.length) return true;
     return chartInsightNames.every(
       name =>
         insightsData[name]?.missing ||
+        insightsData[name]?.loadError ||
         (insightsData[name]?.data !== undefined &&
           insightsData[name]?.data !== null &&
           !insightsData[name]?.pendingInputs?.length)
@@ -135,8 +141,14 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     hasInsights && (!hasAllInsightData || (missingInsightNames.length > 0 && isRunActive));
   const isDataLoading = !shouldLoad || isInsightsWaiting;
   const showMissingNotice = !isDataLoading && missingInsightNames.length > 0;
+  const showLoadErrorNotice = !isDataLoading && !showMissingNotice && !!loadError;
   const showEmptyNotice =
-    !isDataLoading && !showMissingNotice && queryErrors.length === 0 && isEmptyResult;
+    !isDataLoading &&
+    !showMissingNotice &&
+    !showLoadErrorNotice &&
+    queryErrors.length === 0 &&
+    isEmptyResult;
+  const showNotice = showMissingNotice || showLoadErrorNotice || showEmptyNotice;
 
   const selectedPlotData = useMemo(() => {
     const data = [];
@@ -291,14 +303,14 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
   }, [plotlyOwnsSizing, isDataLoading]);
 
   useEffect(() => {
-    if (showMissingNotice || showEmptyNotice) setIsLoading(false);
-  }, [showMissingNotice, showEmptyNotice]);
+    if (showNotice) setIsLoading(false);
+  }, [showNotice]);
 
   if (isDataLoading) {
     return <Loading text={chart.name} width={itemWidth} />;
   }
 
-  if (showMissingNotice || showEmptyNotice) {
+  if (showNotice) {
     return (
       <ItemContainer
         className={hideToolbar ? 'h-full' : ''}
@@ -310,6 +322,7 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
             typeof chart.layout?.title === 'string' ? chart.layout.title : chart.layout?.title?.text
           }
           missingInsightNames={showMissingNotice ? missingInsightNames : []}
+          loadError={showLoadErrorNotice ? loadError : null}
         />
       </ItemContainer>
     );
