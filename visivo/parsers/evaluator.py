@@ -7,6 +7,7 @@ import json
 from visivo.constants import DEFAULT_RUN_ID
 
 from visivo.models.test_run import TestRun
+from visivo.query.patterns import extract_frontend_input_accessors
 from visivo.utils import merge_dicts, nested_dict_from_dotted_keys
 
 SUPPORTED_NUMPY_FUNCTIONS = [
@@ -54,6 +55,12 @@ def load_insight_data(output_dir: str, insight_name: str) -> dict:
     flat = dict(info.get("static_props") or {})
     query = info.get("query")
     if query:
+        inputs = sorted({name for name, _ in extract_frontend_input_accessors(query)})
+        if inputs:
+            raise ValueError(
+                f"Insight '{insight_name}' depends on inputs ({', '.join(inputs)}); "
+                "`visivo test` cannot evaluate insights that depend on inputs yet."
+            )
         connection = duckdb.connect(":memory:")
         try:
             for file_info in info.get("files") or []:

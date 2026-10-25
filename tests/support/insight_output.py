@@ -4,7 +4,7 @@ import os
 from visivo.jobs.parquet_io import write_dicts_to_parquet
 
 
-def write_insight_output(output_dir, name, props, static_props=None, run_id="main"):
+def write_insight_output(output_dir, name, props, static_props=None, run_id="main", query=None):
     """Writes what `visivo run` writes for a static-query insight: `insights/<name>.json`
     plus its parquet, with each prop bound to a hashed column name."""
     insights_dir = os.path.join(output_dir, run_id, "insights")
@@ -17,7 +17,7 @@ def write_insight_output(output_dir, name, props, static_props=None, run_id="mai
     info = {
         "name": name,
         "files": [{"name_hash": f"hash_{name}", "signed_data_file_url": parquet_path}],
-        "query": f'SELECT * FROM "hash_{name}"',
+        "query": query or f'SELECT * FROM "hash_{name}"',
         "props_mapping": columns,
         "static_props": static_props or {},
         "props_slices": {},

@@ -177,3 +177,22 @@ def test_if_condition_contributes_references():
         assertions=[">{ 1 == 1 }"],
     )
     assert [c.get_reference() for c in test.child_items()] == ["week"]
+
+
+def test_an_insight_that_depends_on_inputs_names_them(run_output):
+    project, output_dir = run_output
+    write_insight_output(
+        output_dir,
+        "week",
+        {"props.x": [1, 2], "props.y": [3, 4]},
+        query=(
+            "SELECT * FROM \"hash_week\" WHERE region = '${region.value}' "
+            "AND x BETWEEN ${price_range.min} AND ${price_range.max}"
+        ),
+    )
+    with pytest.raises(ValueError) as error:
+        check(project, output_dir, ">{ sum( ${ref(week).props.x} ) == 3 }")
+    assert str(error.value).endswith(
+        "Insight 'week' depends on inputs (price_range, region); "
+        "`visivo test` cannot evaluate insights that depend on inputs yet."
+    )
