@@ -1,10 +1,8 @@
 from flask import jsonify, request
 
-from visivo.models.validators import standalone_field_ref_error
 from pydantic import ValidationError
 from visivo.logger.logger import Logger
-from visivo.server.managers.object_manager import ObjectStatus
-from visivo.server.names import NameTakenError
+from visivo.server.managers.object_manager import ObjectStatus, SaveRefusedError
 
 
 def register_metrics_views(app, flask_app, output_dir):
@@ -64,19 +62,6 @@ def register_metrics_views(app, flask_app, output_dir):
             # Ensure name matches URL parameter
             metric_config["name"] = metric_name
 
-            # A save must not persist something the PROJECT will reject. Without
-            # a parent model this is project-level, and a project-level field
-            # reaches a source only by naming a model in its expression — so an
-            # expression with no `${ref()}` can never tie back. Caught here,
-            # while the user is looking at the field, instead of at commit as a
-            # whole-project parse failure about an object they just created.
-            if not parent_model:
-                ref_error = standalone_field_ref_error(
-                    metric_config.get("expression"), "metric", metric_name
-                )
-                if ref_error:
-                    return jsonify({"error": ref_error}), 400
-
             flask_app.metric_manager.save_from_config(metric_config, parent_model=parent_model)
             status = flask_app.metric_manager.get_status(metric_name)
             return (
@@ -89,8 +74,8 @@ def register_metrics_views(app, flask_app, output_dir):
                 ),
                 201 if status == ObjectStatus.NEW else 200,
             )
-        except NameTakenError as e:
-            return jsonify({"error": str(e)}), 409
+        except SaveRefusedError as e:
+            return jsonify({"error": str(e)}), e.status
         except ValidationError as e:
             Logger.instance().debug(f"Metric validation failed: {e}")
             first_error = e.errors()[0]

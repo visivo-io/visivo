@@ -7,6 +7,7 @@ from typing import Any, Dict, Generic, List, Optional, TypeVar
 from pydantic import BaseModel as PydanticBaseModel
 
 from visivo.models.base.context_string import ContextString
+from visivo.models.base.named_model import new_name_error
 from visivo.models.item import Item
 from visivo.models.row import Row
 from visivo.query.patterns import REF_FUNCTION_PATTERN, extract_ref_names
@@ -59,6 +60,18 @@ class ObjectStatus(str, Enum):
     PUBLISHED = "published"  # In published_objects only (no cached changes)
     DELETED = "deleted"  # Marked for deletion (None in cache, exists in published)
     RENAMED = "renamed"  # Cached under a new name; the published object holds the old one
+
+
+class SaveRefusedError(ValueError):
+    """A save the project would reject. ``status`` is the HTTP status a route answers."""
+
+    status = 400
+
+
+class NameTakenError(SaveRefusedError):
+    """A save under a name another object already holds."""
+
+    status = 409
 
 
 class ObjectManager(ABC, Generic[T]):
@@ -124,6 +137,37 @@ class ObjectManager(ABC, Generic[T]):
         """
         raise NotImplementedError
 
+    def save_error(self, obj: T) -> Optional[str]:
+        """Why ``obj`` breaks a rule of its type, or ``None``. Managers override this
+        for rules the project enforces at build or commit."""
+        return None
+
+    def check_save(self, name: Optional[str], obj: T) -> None:
+        """Refuse ``obj`` as ``name`` when the project would reject it.
+
+        Every writer passes here: ``save`` calls it, and the validate paths call it
+        without saving. A name the manager already holds skips the name grammar,
+        so a parsed project's older names stay editable.
+
+        Raises:
+            NameTakenError: If another object already holds ``name``
+            SaveRefusedError: If ``name`` is new and breaks the name grammar, or
+                ``save_error`` rejects the object
+        """
+        if obj is None:
+            return
+        if isinstance(name, str):
+            if name not in self._cached_objects and name not in self._published_objects:
+                bad_name = new_name_error(type(obj), name)
+                if bad_name:
+                    raise SaveRefusedError(bad_name)
+            clash = self.name_clash(name, obj) if self.name_clash else None
+            if clash:
+                raise NameTakenError(clash)
+        refusal = self.save_error(obj)
+        if refusal:
+            raise SaveRefusedError(refusal)
+
     def save(self, name: str, obj: T) -> None:
         """
         Save object to cache (draft state).
@@ -133,13 +177,9 @@ class ObjectManager(ABC, Generic[T]):
             obj: The object to save
 
         Raises:
-            NameTakenError: If an object of another type already holds ``name``
+            SaveRefusedError: If ``check_save`` refuses the object
         """
-        reason = self.name_clash(name, obj) if self.name_clash and obj is not None else None
-        if reason:
-            from visivo.server.names import NameTakenError
-
-            raise NameTakenError(reason)
+        self.check_save(name, obj)
         with self._lock:
             self._cached_objects[name] = obj
 

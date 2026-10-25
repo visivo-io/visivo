@@ -25,10 +25,12 @@ person reviews. Nothing here can publish.
 
 import os
 import tempfile
+from functools import partial
 
 from visivo.cloud_api import CloudApi, CloudApiError
 
 from visivo.logger.logger import Logger
+from visivo.server.model_sql_validation import dialect_for_model
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
 # A project's whole object set, once, at session start. Long enough for a big
@@ -127,6 +129,7 @@ class RemoteProject:
             manager = _hydrated(client, type_key)
             self._managers[type_key] = manager
             setattr(self, attribute, manager)
+        self.model_manager.dialect_lookup = partial(dialect_for_model, self)
 
     @property
     def managers(self):
