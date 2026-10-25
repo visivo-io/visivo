@@ -262,7 +262,9 @@ def _serve(project, output_dir, server_url, working_dir="."):
 def _skip_run(mocker):
     return mocker.patch(
         "visivo.commands.serve_phase.run_phase",
-        side_effect=lambda **kwargs: SimpleNamespace(project=kwargs["project"]),
+        side_effect=lambda **kwargs: SimpleNamespace(
+            project=kwargs["project"], failed_job_results=[]
+        ),
     )
 
 
