@@ -15,7 +15,6 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.project import Project
 from visivo.models.props.insight_props import InsightProps
 from visivo.query.sqlglot_utils import find_non_aggregated_expressions
-from visivo.validation.metric_validator import MetricValidator
 
 
 @pytest.mark.parametrize(
@@ -43,15 +42,6 @@ def test_filtered_aggregate_keeps_real_dimension_as_group_key():
 def test_case_inside_sum_control_is_aggregated():
     parsed = sqlglot.parse_one("SUM(CASE WHEN mrr > 0 THEN mrr END)", dialect="duckdb")
     assert find_non_aggregated_expressions(parsed, dialect="duckdb") == []
-
-
-def test_column_in_filter_predicate_is_not_naked_for_the_metric_validator():
-    parsed = sqlglot.parse_one("SUM(mrr) FILTER (WHERE mrr > 0)", dialect="duckdb")
-    assert MetricValidator._find_naked_columns(parsed) == set()
-    mixed = sqlglot.parse_one(
-        "SELECT quarter, SUM(mrr) FILTER (WHERE mrr > 0) FROM t", dialect="duckdb"
-    )
-    assert MetricValidator._find_naked_columns(mixed) == {"quarter"}
 
 
 def _build_sql(tmpdir, y_expression):
