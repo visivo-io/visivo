@@ -142,7 +142,7 @@ class TestAuthoringFromTheSliceAlone:
             integration_app,
             "validate_metric",
             # No hyphen: a metric name becomes a SQL identifier.
-            {"config": {"name": "from_slice", "expression": "sum(x)"}},
+            {"config": {"name": "from_slice", "expression": "sum(${ref(trips).x})"}},
         )
 
         assert result == {"valid": True}

@@ -1,9 +1,7 @@
 from flask import jsonify, request
 from pydantic import ValidationError
 from visivo.logger.logger import Logger
-from visivo.server.managers.object_manager import ObjectStatus
-from visivo.server.model_sql_validation import dialect_for_model, validate_model_sql
-from visivo.server.names import NameTakenError
+from visivo.server.managers.object_manager import ObjectStatus, SaveRefusedError
 
 
 def register_models_views(app, flask_app, output_dir):
@@ -42,14 +40,6 @@ def register_models_views(app, flask_app, output_dir):
             # Ensure name matches URL parameter
             model_config["name"] = model_name
 
-            problem = validate_model_sql(
-                model_config.get("sql"),
-                dialect_for_model(flask_app, model_config),
-                model_name,
-            )
-            if problem:
-                return jsonify({"error": problem}), 400
-
             model = flask_app.model_manager.save_from_config(model_config)
             status = flask_app.model_manager.get_status(model_name)
             return (
@@ -62,8 +52,8 @@ def register_models_views(app, flask_app, output_dir):
                 ),
                 201 if status == ObjectStatus.NEW else 200,
             )
-        except NameTakenError as e:
-            return jsonify({"error": str(e)}), 409
+        except SaveRefusedError as e:
+            return jsonify({"error": str(e)}), e.status
         except ValidationError as e:
             Logger.instance().debug(f"Model validation failed: {e}")
             first_error = e.errors()[0]
@@ -110,14 +100,6 @@ def register_models_views(app, flask_app, output_dir):
 
             # Ensure name matches URL parameter
             model_config["name"] = model_name
-
-            problem = validate_model_sql(
-                model_config.get("sql"),
-                dialect_for_model(flask_app, model_config),
-                model_name,
-            )
-            if problem:
-                return jsonify({"valid": False, "error": problem}), 400
 
             result = flask_app.model_manager.validate_config(model_config)
             if result.get("valid"):

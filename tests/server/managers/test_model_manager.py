@@ -149,7 +149,7 @@ class TestModelManager:
         manager._published_objects["published"] = published_model
 
         # Add cached model
-        config = {"name": "cached", "sql": "SELECT 1"}
+        config = {"name": "cached", "sql": "SELECT 1 AS x"}
         manager.save_from_config(config)
 
         result = manager.get_all_models_with_status()
@@ -179,7 +179,7 @@ class TestModelManager:
         model1 = SqlModelFactory.build(name="model1")
         manager._published_objects["model1"] = model1
 
-        config = {"name": "model2", "sql": "SELECT 1"}
+        config = {"name": "model2", "sql": "SELECT 1 AS x"}
         manager.save_from_config(config)
 
         result = manager.get_models_list()
@@ -190,7 +190,7 @@ class TestModelManager:
     def test_validate_config_valid(self):
         """Test validate_config with valid configuration."""
         manager = ModelManager()
-        config = {"name": "test", "sql": "SELECT 1"}
+        config = {"name": "test", "sql": "SELECT 1 AS x"}
 
         result = manager.validate_config(config)
 

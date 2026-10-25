@@ -184,3 +184,33 @@ def test_fields_limits_the_overlay_to_the_named_project_fields():
 
     assert "cached_model" in {m.name for m in project.models}
     assert "cached_metric" not in {m.name for m in project.metrics or []}
+
+
+class TestADraftReplacesOnlyTheObjectWithItsScope:
+    """A project-level draft and a model's inline field of the same name are two
+    objects. Swapping one for the other by name made preview compute the wrong
+    expression while the build used the right one."""
+
+    def _project_with_inline(self):
+        model = SqlModelFactory(
+            name="orders", metrics=[MetricFactory(name="total_units", expression="sum(units)")]
+        )
+        return _project(models=[model])
+
+    def test_a_project_level_draft_does_not_replace_the_inline_metric(self):
+        draft = MetricFactory(name="total_units", expression="sum(${ref(orders).amount})")
+
+        project = _overlay(_flask_app(self._project_with_inline(), metric={"total_units": draft}))
+
+        (inline,) = project.models[0].metrics
+        assert inline.expression == "sum(units)"
+        assert [m.expression for m in project.metrics] == ["sum(${ref(orders).amount})"]
+
+    def test_a_draft_of_the_inline_metric_replaces_it(self):
+        draft = _scoped(MetricFactory, "total_units", "max(units)")
+
+        project = _overlay(_flask_app(self._project_with_inline(), metric={"total_units": draft}))
+
+        (inline,) = project.models[0].metrics
+        assert inline.expression == "max(units)"
+        assert project.metrics in (None, [])
