@@ -8,14 +8,19 @@ from pydantic import ValidationError, TypeAdapter
 import json
 
 
-def _test_source_connection(source: Source, source_name: str) -> Dict[str, Any]:
-    """Common logic for testing a source connection."""
+def _test_source_connection(
+    source: Source, source_name: str, project_dir: Optional[str] = None
+) -> Dict[str, Any]:
+    """Common logic for testing a source connection.
+
+    ``project_dir`` is where a relative file-database path is looked for.
+    """
     try:
         Logger.instance().info(f"Testing connection for source: {source_name}")
 
         check_files = getattr(source, "check_database_files_exist", None)
         if check_files:
-            check_files()
+            check_files(project_dir)
 
         try:
             source.read_sql("SELECT 1 as test_column LIMIT 1")
@@ -31,7 +36,9 @@ def _test_source_connection(source: Source, source_name: str) -> Dict[str, Any]:
         return {"source": source_name, "status": "connection_failed", "error": str(e)}
 
 
-def validate_source_from_config(source_config: Dict[str, Any]) -> Dict[str, Any]:
+def validate_source_from_config(
+    source_config: Dict[str, Any], project_dir: Optional[str] = None
+) -> Dict[str, Any]:
     """Test a source connection from configuration using Pydantic models."""
     try:
         source_name = source_config.get("name", "test_source")
@@ -50,7 +57,7 @@ def validate_source_from_config(source_config: Dict[str, Any]) -> Dict[str, Any]
             }
 
         # Use common connection testing logic
-        result = _test_source_connection(source, source_name)
+        result = _test_source_connection(source, source_name, project_dir)
         return result
 
     except ValidationError as e:

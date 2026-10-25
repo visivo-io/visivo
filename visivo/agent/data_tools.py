@@ -7,8 +7,6 @@ bytes because they land in a model's context.
 """
 
 import json
-import os
-from pathlib import Path
 
 import sqlglot
 from sqlglot import exp
@@ -20,7 +18,6 @@ from visivo.jobs.run_model_data_job import (
     execute_and_get_result,
 )
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.sources.duckdb_source import DuckdbSource
 from visivo.models.validators.models_have_sources_validator import missing_source_message
 from visivo.query.patterns import extract_ref_names
 from visivo.query.schema_aggregator import SchemaAggregator
@@ -177,22 +174,20 @@ def _default_source(app):
     return sources[0] if len(sources) == 1 else None
 
 
-def missing_duckdb_file_warning(app, source):
-    """A warning when ``source`` is a DuckDB file that does not exist, or ``None``.
-    DuckDB creates an empty database on first write, so nothing fails loudly."""
-    database = getattr(source, "database", None)
-    if not isinstance(source, DuckdbSource) or not database or database == ":memory:":
+def missing_database_file_warning(app, source):
+    """The shared missing-file error for a SQLite or DuckDB ``source``, with a hint, or ``None``.
+    Connecting creates an empty database, so nothing else fails loudly."""
+    check_files = getattr(source, "check_database_files_exist", None)
+    if not check_files:
         return None
-    path = Path(database)
-    if not path.is_absolute():
-        path = Path(getattr(app, "_working_dir", None) or os.getcwd()) / path
-    if path.exists():
-        return None
-    return (
-        f"DuckDB file '{database}' does not exist (looked for {path}). DuckDB would create "
-        "an empty database there, so the source has no tables. Point `database` at the "
-        "existing file."
-    )
+    try:
+        check_files(getattr(app, "_working_dir", None))
+    except FileNotFoundError as error:
+        return (
+            f"{error}. Connecting would create an empty database there, so the source has "
+            "no tables. Point `database` at the existing file."
+        )
+    return None
 
 
 def sourceless_model_warning(app, model):
@@ -527,7 +522,7 @@ def _stored_schema(app, source):
 
 def _describe_source_handler(app, arguments):
     source = _source_argument(app, arguments, key="name")
-    missing = missing_duckdb_file_warning(app, source)
+    missing = missing_database_file_warning(app, source)
     if missing:
         return {
             "source": source.name,

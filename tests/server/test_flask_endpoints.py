@@ -91,7 +91,21 @@ class TestFlaskSourceEndpoints:
             job = self._await_job(response, "/api/source-connections/")
             assert job["status"] == "completed"
             assert job["result"]["status"] == "connected"
-            mock_test.assert_called_once_with(source_config)
+            mock_test.assert_called_once_with(
+                source_config, self.flask_app.source_manager.project_dir
+            )
+
+    def test_test_source_connection_looks_for_a_relative_file_in_the_project(self):
+        self.flask_app.source_manager.project_dir = self.temp_dir
+
+        response = self.client.post(
+            "/api/source-connections/",
+            json={"name": "d", "type": "duckdb", "database": "nope.duckdb"},
+        )
+
+        job = self._await_job(response, "/api/source-connections/")
+        assert job["result"]["status"] == "connection_failed"
+        assert job["result"]["error"] == f"File not found: {self.temp_dir}/nope.duckdb"
 
     def test_test_source_connection_failure(self):
         """Test POST /api/source-connections/ with connection failure."""
@@ -118,7 +132,9 @@ class TestFlaskSourceEndpoints:
             assert job["status"] == "completed"
             assert job["result"]["status"] == "connection_failed"
             assert "Connection timeout" in job["result"]["error"]
-            mock_test.assert_called_once_with(source_config)
+            mock_test.assert_called_once_with(
+                source_config, self.flask_app.source_manager.project_dir
+            )
 
     def test_test_source_connection_no_config(self):
         """Test POST /api/source-connections/ with missing config."""

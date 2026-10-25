@@ -1021,19 +1021,32 @@ class TestSetupMistakesAreWarnedAtWriteTime:
     def _duckdb(self, database):
         return {"name": "ducks", "type": "duckdb", "database": database}
 
+    def _file_warnings(self, result):
+        return [w for w in result.get("warnings", []) if "File not found" in w]
+
     def test_a_duckdb_file_that_does_not_exist(self, integration_app, tmp_path):
         missing = tmp_path / "nope.duckdb"
 
         result = call(integration_app, "write_source", {"config": self._duckdb(str(missing))})
 
-        (warning,) = [w for w in result["warnings"] if "DuckDB file" in w]
-        assert f"DuckDB file '{missing}' does not exist" in warning
+        (warning,) = self._file_warnings(result)
+        assert warning.startswith(f"File not found: {missing}. Connecting would create")
+        assert not missing.exists()
+
+    def test_a_sqlite_file_that_does_not_exist(self, integration_app, tmp_path):
+        missing = tmp_path / "nope.sqlite"
+        config = {"name": "lite", "type": "sqlite", "database": str(missing)}
+
+        result = call(integration_app, "write_source", {"config": config})
+
+        (warning,) = self._file_warnings(result)
+        assert warning.startswith(f"File not found: {missing}.")
         assert not missing.exists()
 
     def test_a_relative_path_is_looked_for_in_the_project(self, integration_app):
         result = call(integration_app, "write_source", {"config": self._duckdb("data/nope.db")})
 
-        (warning,) = [w for w in result["warnings"] if "DuckDB file" in w]
+        (warning,) = self._file_warnings(result)
         assert os.path.join(integration_app._working_dir, "data/nope.db") in warning
 
     def test_an_existing_duckdb_file_or_memory_is_fine(self, integration_app, tmp_path):
@@ -1041,7 +1054,7 @@ class TestSetupMistakesAreWarnedAtWriteTime:
         existing.write_bytes(b"")
         for database in (str(existing), ":memory:"):
             result = call(integration_app, "write_source", {"config": self._duckdb(database)})
-            assert not any("DuckDB file" in w for w in result.get("warnings", []))
+            assert not self._file_warnings(result)
 
     def test_describe_source_warns_instead_of_creating_the_file(self, integration_app, tmp_path):
         missing = tmp_path / "nope.duckdb"
@@ -1050,5 +1063,5 @@ class TestSetupMistakesAreWarnedAtWriteTime:
         result = call(integration_app, "describe_source", {"name": "ducks"})
 
         assert result["tables"] == []
-        assert f"DuckDB file '{missing}' does not exist" in result["warnings"][0]
+        assert result["warnings"][0].startswith(f"File not found: {missing}.")
         assert not missing.exists()

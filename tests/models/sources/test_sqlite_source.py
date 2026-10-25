@@ -1,3 +1,5 @@
+import re
+
 from visivo.models.sources.sqlite_source import SqliteSource
 from pydantic import ValidationError
 from tests.factories.model_factories import SourceFactory
@@ -70,3 +72,22 @@ def test_get_engine_still_creates_parent_for_a_new_database(tmp_path):
     source = SqliteSource(name="s", type="sqlite", database=str(target))
     source.read_sql("SELECT 1 AS x")
     assert target.exists()
+
+
+def test_check_database_files_exist_resolves_a_relative_path_in_the_project(tmp_path):
+    import sqlite3
+
+    sqlite3.connect(tmp_path / "local.db").close()
+    source = SqliteSource(name="s", type="sqlite", database="local.db")
+
+    source.check_database_files_exist(str(tmp_path))
+    with pytest.raises(FileNotFoundError, match=re.escape(f"File not found: {tmp_path / 'sub'}")):
+        source.check_database_files_exist(str(tmp_path / "sub"))
+
+
+def test_check_database_files_exist_reads_an_env_var_database(tmp_path, monkeypatch):
+    monkeypatch.setenv("VISIVO_TEST_SQLITE_DB", str(tmp_path / "from_env.db"))
+    source = SqliteSource(name="s", type="sqlite", database="${env.VISIVO_TEST_SQLITE_DB}")
+
+    with pytest.raises(FileNotFoundError, match="from_env.db"):
+        source.check_database_files_exist()

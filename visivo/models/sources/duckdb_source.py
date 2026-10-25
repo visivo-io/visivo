@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Literal, Optional, List, Any
 from visivo.models.base.base_model import BaseModel
 from visivo.models.sources.base_duckdb_source import BaseDuckdbSource
+from visivo.models.sources.database_file import DatabaseFileMixin
 from visivo.models.sources.source import ServerSource
 from pydantic import Field, PrivateAttr
 import click
@@ -28,7 +29,7 @@ class DuckdbAttachment(BaseModel):
     )
 
 
-class DuckdbSource(ServerSource, BaseDuckdbSource):
+class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
     """
     DuckdbSources hold the connection information to DuckDB data sources.
 

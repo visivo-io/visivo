@@ -166,9 +166,9 @@ def _write_handler(type_key):
 
         found = lint.warnings(app, type_key, config)
         if type_key == "sources":
-            from visivo.agent.data_tools import missing_duckdb_file_warning
+            from visivo.agent.data_tools import missing_database_file_warning
 
-            missing = missing_duckdb_file_warning(app, obj)
+            missing = missing_database_file_warning(app, obj)
             if missing:
                 found.append(missing)
         if type_key == "models":

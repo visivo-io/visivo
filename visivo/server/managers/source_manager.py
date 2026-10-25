@@ -235,7 +235,7 @@ class SourceManager(ObjectManager[Source]):
         if not source:
             return {"source": name, "status": "not_found", "error": f"Source '{name}' not found"}
 
-        return _test_source_connection(source, name)
+        return _test_source_connection(source, name, self.project_dir)
 
     def get_source_with_status(self, name: str) -> Optional[Dict[str, Any]]:
         """
