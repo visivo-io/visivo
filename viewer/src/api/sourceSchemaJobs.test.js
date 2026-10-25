@@ -1,7 +1,7 @@
 // Coverage for the source-schema job module: availability gating (dist mode has
 // no server), cached-schema reads, on-demand generation + status, the
 // fetch-or-generate orchestration, and table/column listing with 404→empty
-// semantics. Error bodies are parsed as JSON {message} or plain text.
+// semantics. Error bodies are parsed as JSON {message}, JSON {error} or plain text.
 import {
   fetchSourceSchemaJobs,
   fetchSourceSchema,
@@ -99,6 +99,13 @@ describe('generateSourceSchema', () => {
   it('throws on a non-ok response', async () => {
     apiFetch.mockResolvedValueOnce(fail(500, { message: 'no can do' }));
     await expect(generateSourceSchema('src')).rejects.toThrow(/Generating schema for 'src' failed/);
+  });
+
+  it('reads an {error} body as the message', async () => {
+    apiFetch.mockResolvedValueOnce(fail(404, { error: "Source 'gone' not found" }));
+    await expect(generateSourceSchema('gone')).rejects.toThrow(
+      "Generating schema for 'gone' failed (404): Source 'gone' not found"
+    );
   });
 });
 

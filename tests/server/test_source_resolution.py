@@ -64,6 +64,26 @@ class TestFindSource:
 
         assert res.find_source(app, "wh").name == "wh"
 
+    def test_a_source_marked_for_deletion_is_none(self):
+        from visivo.server.managers.source_manager import SourceManager
+
+        committed = DuckdbSourceFactory(name="gone")
+        manager = SourceManager()
+        manager._published_objects = {"gone": committed, "wh": DuckdbSourceFactory(name="wh")}
+        manager.mark_for_deletion("gone")
+        app = Mock()
+        app.source_manager = manager
+        app.project.sources = list(manager._published_objects.values())
+
+        assert res.find_source(app, "gone") is None
+        assert res.find_source(app, "wh").name == "wh"
+
+    def test_a_status_lookup_that_raises_is_not_a_deletion(self):
+        app = _app([], [DuckdbSourceFactory(name="wh")])
+        app.source_manager.get_status.side_effect = RuntimeError("boom")
+
+        assert res.find_source(app, "wh").name == "wh"
+
 
 class TestFindModel:
     def test_draft_then_committed(self):
