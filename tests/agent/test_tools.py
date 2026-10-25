@@ -223,6 +223,16 @@ class TestInlineMetricsAndDimensions:
         assert names == ["revenue"]
 
 
+@pytest.mark.parametrize("type_key", sorted(TYPE_TO_MANAGER))
+def test_no_list_tool_returns_an_object_marked_for_deletion(integration_app, type_key):
+    manager = getattr(integration_app, TYPE_TO_MANAGER[type_key])
+    manager._cached_objects["marked_for_deletion"] = None
+
+    listed = call(integration_app, f"list_{type_key}", {})
+
+    assert None not in listed
+
+
 class TestValidating:
     def test_a_good_config_validates_without_saving(self, integration_app):
         result = call(
