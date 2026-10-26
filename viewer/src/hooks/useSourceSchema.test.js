@@ -113,8 +113,11 @@ describe('useSourceSchema', () => {
     fetchSourceSchema.mockResolvedValue(TWO_TABLES);
     rerender({ name: 'other' });
 
-    await waitFor(() => expect(result.current.error).toBeNull());
-    expect(result.current.tables).toHaveLength(2);
+    // The hook clears `error` when the fetch STARTS, so waiting on that is
+    // waiting on an intermediate state — it only held because React 18
+    // happened to batch the two updates together.
+    await waitFor(() => expect(result.current.tables).toHaveLength(2));
+    expect(result.current.error).toBeNull();
   });
 
   it('refresh() refetches on demand', async () => {

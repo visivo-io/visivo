@@ -56,7 +56,11 @@ afterEach(() => {
   }
 });
 
-window.URL.createObjectURL = function () {};
+// Guarded so a `@jest-environment node` file can share this setup: the rest of
+// it is environment-agnostic, and this is the only line that is not.
+if (typeof window !== 'undefined') {
+  window.URL.createObjectURL = function () {};
+}
 
 jest.mock('react-plotly.js', () => props => {
   return <div>Mock Plot</div>;
