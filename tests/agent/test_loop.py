@@ -464,3 +464,41 @@ class TestTheWholePipeline:
             mode="json", exclude_none=True
         )
         assert call(integration_app, "validate_dashboard", {"config": config})["valid"] is True
+
+
+class TestWhatTheAgentIsToldAboutBuilds:
+    """The agent reported success over a failed build, and the instructions are
+    why: they said it could not run at all, while `write_*` starts a build
+    whenever the run trigger is automatic.
+    """
+
+    def _always_on(self):
+        from visivo.agent import skills
+
+        return skills.always_on_prompt()
+
+    def test_it_is_no_longer_told_it_cannot_run(self):
+        assert "cannot commit, run" not in INSTRUCTIONS
+        assert "cannot commit, run" not in self._always_on()
+
+    def test_both_readers_are_told_to_check_the_build(self):
+        """An MCP client reads the skills and never sees `INSTRUCTIONS`, so a
+        rule in only one of them instructs only one of the two agents."""
+        assert "check_runs" in INSTRUCTIONS
+        assert "check_runs" in self._always_on()
+
+    def test_both_readers_are_told_to_look_before_reporting_nothing(self):
+        """It told a user to upload a CSV on a project that had a source,
+        without calling `list_sources` once."""
+        assert "list_sources" in INSTRUCTIONS
+        assert "list_sources" in self._always_on()
+
+    def test_the_always_on_set_still_fits_its_budget(self):
+        from visivo.agent import skills
+
+        assert len(self._always_on().encode()) <= skills.MAX_ALWAYS_BYTES
+
+    def test_check_runs_is_a_tool_the_instructions_can_name(self):
+        """Prose telling the agent to call something it has not been given is
+        the one failure mode this cannot afford."""
+        assert "check_runs" in TOOLS

@@ -49,6 +49,13 @@ DATA_TOOLS = {
     "list_tables",
     "get_table",
 }
+# Looking at the build at all. The defect this measures is an agent that writes
+# a model, the build fails, and it reports success without ever asking.
+RUN_TOOLS = {
+    "check_runs",
+    "list_runs",
+    "get_run",
+}
 GUIDANCE_TOOLS = {
     "read_skill",
     "recommend_layout",
@@ -386,6 +393,24 @@ def count_visuals(node):
     return 0
 
 
+def final_run(serve):
+    """The state the turn left the project in — the measurement that matters.
+
+    A turn that ends on a failed run told the user it was done over a build
+    that does not work.
+    """
+    try:
+        listed = serve.tool("list_runs", {})
+    except Exception as error:
+        return {"error": str(error)}
+    latest = (listed or {}).get("latest") or {}
+    return {
+        "state": latest.get("state"),
+        "left_failed": latest.get("state") == "failed",
+        "error_json": latest.get("error_json"),
+    }
+
+
 def tool_stats(calls):
     names = [c["tool"] for c in calls]
     first_write = next((i for i, n in enumerate(names) if n.startswith("write_")), None)
@@ -404,6 +429,7 @@ def tool_stats(calls):
             c["input"].get("name") for c in calls if c["tool"] == "read_skill" and c.get("input")
         ],
         "validated": any(n.startswith("validate_") for n in names),
+        "checked_runs": sorted(set(names) & RUN_TOOLS),
     }
 
 
@@ -462,6 +488,7 @@ def run_one(serve, condition, item, model, run_dir, dataset):
         "calls": client["calls"],
         "object_counts": {k: len(v) for k, v in objects.items()},
         "dashboards": inspect_dashboards(serve, objects, run_dir),
+        "final_run": final_run(serve),
     }
     expected = item.get("dashboard")
     summary["expected_dashboard_built"] = (

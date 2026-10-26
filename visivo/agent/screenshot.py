@@ -39,9 +39,9 @@ import os
 import subprocess
 import sys
 import threading
-import time
 
 from visivo.agent.actions import log as action_log
+from visivo.agent.runs import wait_for_runs
 from visivo.agent.images import image_result
 from visivo.agent.tool_types import Tool, ToolError
 from visivo.logger.logger import Logger
@@ -64,7 +64,6 @@ _BROWSERS = threading.BoundedSemaphore(2)
 
 # How long to wait for the draft's run before capturing anyway. A capture of a
 # half-built dashboard is worth more than no capture plus an explanation.
-RUN_SETTLE_TIMEOUT_SECONDS = 90
 
 GOTO_TIMEOUT_MS = 60_000
 NETWORK_IDLE_TIMEOUT_MS = 30_000
@@ -90,6 +89,18 @@ def _playwright():
         raise BrowserUnavailable(
             "Screenshots need a headless browser, which is not installed. "
             "Install it with: pip install 'visivo[screenshot]'"
+        )
+
+
+def _pillow():
+    try:
+        from PIL import Image
+
+        return Image
+    except ImportError:
+        raise BrowserUnavailable(
+            "Screenshots need Pillow to downscale the capture, and it is not "
+            "installed. Install it with: pip install 'visivo[screenshot]'"
         )
 
 
@@ -234,9 +245,9 @@ def fit(png):
     and a 1280x1568 one both cost 1806 tokens (VIS-1482). Capturing small buys
     nothing.
     """
-    from PIL import Image
     from io import BytesIO
 
+    Image = _pillow()
     image = Image.open(BytesIO(png))
     width, height = image.size
     longest = max(width, height)
@@ -250,27 +261,6 @@ def fit(png):
     out = BytesIO()
     resized.save(out, format="PNG", optimize=True)
     return out.getvalue(), resized.width, resized.height, scale
-
-
-def wait_for_runs(app, timeout=RUN_SETTLE_TIMEOUT_SECONDS):
-    """Block while a run is in flight, so the capture is of built data.
-
-    Returns whether it settled. A timeout is not an error: the dashboard may
-    simply be slow, and a capture of it mid-build still shows the layout.
-    """
-    from visivo.server.managers.run_manager import ACTIVE_STATES
-
-    manager = getattr(app, "run_manager", None)
-    if manager is None:
-        return True
-
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        runs = manager.list(limit=1)
-        if not runs or runs[0].get("state") not in [s.value for s in ACTIVE_STATES]:
-            return True
-        time.sleep(0.5)
-    return False
 
 
 # --- the tool ---------------------------------------------------------------
@@ -384,6 +374,11 @@ def _screenshot_handler(app, arguments):
         url_to_load, cookie = _local_url(app, name), None
     else:
         url_to_load, cookie = _cloud_target(client, name)
+
+    # Both halves of the screenshot extra, before a browser launch and a
+    # full-page capture are spent on a turn that cannot finish.
+    _playwright()
+    _pillow()
 
     settled = wait_for_runs(app)
     png, width, height, scale = fit(capture(url_to_load, cookie=cookie, full_page=bool(full_page)))
