@@ -83,7 +83,7 @@ def register_project_views(app, flask_app, output_dir):
         finally:
             if flask_app.hot_reload_server:
                 Logger.instance().debug("Resuming file watcher after example load")
-                flask_app.app.project = Project()
+                flask_app.project = Project()
                 flask_app.hot_reload_server.resume_file_watcher()
                 flask_app.hot_reload_server.on_project_change()
                 Logger.instance().debug("Resumed file watcher after example load")
