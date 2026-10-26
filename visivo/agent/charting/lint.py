@@ -231,7 +231,12 @@ def _title_text(axis):
     return isinstance(text, str) and text.strip() != ""
 
 
-ITEM_MANAGERS = {"chart": "chart_manager", "table": "table_manager", "input": "input_manager"}
+ITEM_MANAGERS = {
+    "chart": "chart_manager",
+    "table": "table_manager",
+    "input": "input_manager",
+    "markdown": "markdown_manager",
+}
 
 
 def _dashboard_refs(app, config):
