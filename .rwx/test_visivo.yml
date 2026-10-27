@@ -325,6 +325,11 @@ tasks:
         # `visivo/` package directory and python puts cwd first on sys.path.
         run: |
           set -e
+          # Exported here rather than in an `env:` block: a background process
+          # takes no `env` key. The project's clickhouse and snowflake sources
+          # reference these, so compile fails to resolve them without.
+          export CLICKHOUSE_PASSWORD=clickhouse
+          export LOCAL_SNOWFLAKE_PASSWORD=test
           cd viewer && yarn deploy:local && cd ..
           VIEWER_BUILD="$PWD/viewer/build"
           VIEWER_PATH=$(cd /tmp && python -c "from visivo.utils import VIEWER_PATH; print(VIEWER_PATH)")
@@ -335,9 +340,6 @@ tasks:
           cd test-projects/integration
           visivo serve --port 8901 -s local-duckdb
         ready-check: curl -fsS http://localhost:8901/ >/dev/null
-        env:
-          CLICKHOUSE_PASSWORD: clickhouse
-          LOCAL_SNOWFLAKE_PASSWORD: test
     run: |
       cd viewer
       yarn playwright install --with-deps chromium
