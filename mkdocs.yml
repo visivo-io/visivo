@@ -133,6 +133,7 @@ nav:
       - Deployment: topics/deployments.md
       - Static Distribution: topics/static-distribution.md
       - Telemetry: topics/telemetry.md
+      - Network Access: topics/network-access.md
   - Concepts:
       - Overview: concepts/index.md
       - Architecture: concepts/architecture.md

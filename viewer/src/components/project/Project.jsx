@@ -23,9 +23,9 @@ import ThemeModeToggle from '../../theme/ThemeModeToggle';
  * deliberately the separate "consumer surface" and stays that way. Before
  * this hook was mounted here, committing from any `/workspace/...` tab hard-
  * reloaded every OTHER open tab sitting on `/project` or `/runs` (they never
- * set `window.__VISIVO_SOFT_RELOAD__`, so the injected `/hot-reload.js`
- * treated the commit-broadcast `reload` event as a real navigation and
- * called `window.location.reload()`), wiping any live client-side state
+ * set `window.__VISIVO_SOFT_RELOAD__`, so the hard-reload listener treated
+ * the commit-broadcast `reload` event as a real navigation and called
+ * `window.location.reload()`), wiping any live client-side state
  * there. Mounting the SAME hook the Workspace already uses is a mechanical,
  * behavior-preserving fix: it only sets a window flag + refetches the shared
  * store's collections on a backend recompile — it does not change `/project`

@@ -76,6 +76,83 @@ def test_create_project_with_file_upload(client):
         assert "dashboard" in data
 
 
+class _RecordingConnection:
+    """Records every statement, answers the few reads the upload path makes."""
+
+    def __init__(self, fail_on=None):
+        self.statements = []
+        self._fail_on = fail_on
+
+    def execute(self, sql):
+        self.statements.append(sql)
+        if self._fail_on and self._fail_on in sql:
+            raise Exception("Failed to download extension 'excel'")
+        return self
+
+    def fetchone(self):
+        return (0,)
+
+    def fetchall(self):
+        return [(0, "col1", "VARCHAR"), (1, "col2", "VARCHAR")]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+def _upload(client, monkeypatch, source_type, filename, body, fail_on=None):
+    conn = _RecordingConnection(fail_on=fail_on)
+    monkeypatch.setattr(
+        "visivo.server.views.project_views.create_source",
+        lambda **kwargs: mock.Mock(connect=lambda: conn),
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        upload = io.BytesIO(body)
+        res = client.post(
+            "/api/source/upload/",
+            data={
+                "source_type": source_type,
+                "source_name": "Uploaded Source",
+                "project_dir": tmpdir,
+                "file": (upload, filename),
+            },
+            content_type="multipart/form-data",
+        )
+    return res, conn
+
+
+def test_csv_upload_installs_no_duckdb_extension(client, monkeypatch):
+    """`INSTALL 'excel'` is a network fetch from extensions.duckdb.org. It used
+    to run for every upload, so the first-data-in flow failed offline on a file
+    type that never needed it."""
+    res, conn = _upload(client, monkeypatch, "csv", "test.csv", b"col1,col2\n1,2")
+
+    assert res.status_code == 200
+    installs = [sql for sql in conn.statements if "INSTALL" in sql or "LOAD" in sql]
+    assert installs == []
+
+
+def test_excel_upload_still_loads_the_extension(client, monkeypatch):
+    res, conn = _upload(client, monkeypatch, "xls", "test.xlsx", b"PK\x03\x04")
+
+    assert res.status_code == 200
+    assert "INSTALL 'excel'" in conn.statements
+    assert any("read_xlsx" in sql for sql in conn.statements)
+
+
+def test_an_unreachable_extension_says_so_instead_of_500ing(client, monkeypatch):
+    res, _ = _upload(
+        client, monkeypatch, "xls", "test.xlsx", b"PK\x03\x04", fail_on="INSTALL 'excel'"
+    )
+
+    assert res.status_code == 503
+    message = json.loads(res.data)["message"]
+    assert "extensions.duckdb.org" in message
+    assert "CSV" in message
+
+
 def test_create_sqlite_project_source_only(client):
     """Test POST /api/source/create with SQLite source."""
     with tempfile.TemporaryDirectory() as tmpdir:

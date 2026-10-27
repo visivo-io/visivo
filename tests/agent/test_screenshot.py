@@ -378,6 +378,50 @@ class TestWhenThereIsNoBrowser:
         assert installs.call_count == 1
         assert "--only-shell" in installs.call_args[0][0]
 
+    def test_a_packaged_build_refuses_instead_of_shelling_out(self, monkeypatch):
+        """In a frozen build `sys.executable` is the visivo binary, so
+        `-m playwright install` re-invokes the CLI with arguments it does not
+        understand. The refusal has to come before that, not after it fails."""
+        screenshot._installed.clear()
+        monkeypatch.setattr(screenshot, "is_frozen", lambda: True)
+
+        chromium = mock.MagicMock()
+        chromium.launch = mock.Mock(side_effect=Exception("Executable doesn't exist at /x/chrome"))
+        playwright = mock.MagicMock(chromium=chromium)
+        context = mock.MagicMock()
+        context.__enter__.return_value = playwright
+        context.__exit__.return_value = False
+        monkeypatch.setattr(screenshot, "_playwright", lambda: lambda: context)
+
+        installs = mock.Mock()
+        monkeypatch.setattr(screenshot.subprocess, "run", installs)
+
+        with pytest.raises(screenshot.BrowserUnavailable) as refusal:
+            screenshot.ensure_browser()
+
+        assert installs.call_count == 0
+        message = str(refusal.value)
+        assert "packaged build" in message
+        assert "PLAYWRIGHT_BROWSERS_PATH" in message
+
+    def test_a_packaged_build_still_uses_a_browser_it_can_find(self, monkeypatch):
+        """Refusing the DOWNLOAD is not refusing the feature — a packaged build
+        pointed at an existing Chromium captures normally."""
+        screenshot._installed.clear()
+        monkeypatch.setattr(screenshot, "is_frozen", lambda: True)
+
+        chromium = mock.MagicMock()
+        playwright = mock.MagicMock(chromium=chromium)
+        context = mock.MagicMock()
+        context.__enter__.return_value = playwright
+        context.__exit__.return_value = False
+        monkeypatch.setattr(screenshot, "_playwright", lambda: lambda: context)
+        monkeypatch.setattr(screenshot.subprocess, "run", mock.Mock())
+
+        screenshot.ensure_browser()
+
+        assert screenshot._installed.is_set()
+
     def test_a_failed_install_says_why(self, monkeypatch):
         screenshot._installed.clear()
 

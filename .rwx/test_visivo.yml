@@ -300,6 +300,52 @@ tasks:
       STACKTRACE: true
     filter: [visivo, viewer, test-projects/integration, scripts]
 
+  - key: offline-guard
+    # Keeps Phase 1 of "Complete Install" true. Every CDN fetch this project
+    # removed got in the same way: an import whose remote default nobody
+    # noticed, in a bundle nobody inspected. `monaco-editor` was a direct
+    # dependency for as long as the SQL editor existed and the editor was STILL
+    # re-downloaded from jsdelivr at runtime, which meant the editor hung
+    # forever offline. No unit test could see it, because none looked at the
+    # network.
+    #
+    # Same shape as test-dist-command: build the real bundle, serve it, drive it
+    # in a browser, assert on what it asked for. The allowlist lives in the
+    # script with a reason per host.
+    use: [visivo-install, node-modules]
+    background-processes:
+      - key: local-server
+        # Build the LOCAL viewer from this commit, then make `visivo serve` use
+        # it. Same trap as the dist task: `visivo` is pip-installed, so
+        # VIEWER_PATH resolves inside site-packages and `yarn deploy:local` only
+        # writes the checkout — without the copy this would test the last
+        # release's bundle.
+        #
+        # VIEWER_PATH is resolved from /tmp because the workspace root holds a
+        # `visivo/` package directory and python puts cwd first on sys.path.
+        run: |
+          set -e
+          cd viewer && yarn deploy:local && cd ..
+          VIEWER_BUILD="$PWD/viewer/build"
+          VIEWER_PATH=$(cd /tmp && python -c "from visivo.utils import VIEWER_PATH; print(VIEWER_PATH)")
+          echo "Installing freshly-built viewer into $VIEWER_PATH"
+          rm -rf "$VIEWER_PATH"
+          cp -R "$VIEWER_BUILD" "$VIEWER_PATH"
+          diff -q "$VIEWER_BUILD/index.html" "$VIEWER_PATH/index.html"
+          cd test-projects/integration
+          visivo serve --port 8901 -s local-duckdb
+        ready-check: curl -fsS http://localhost:8901/ >/dev/null
+        env:
+          CLICKHOUSE_PASSWORD: clickhouse
+          LOCAL_SNOWFLAKE_PASSWORD: test
+    run: |
+      cd viewer
+      yarn playwright install --with-deps chromium
+      node scripts/offline-guard.mjs http://localhost:8901 local_test_table
+    env:
+      STACKTRACE: true
+    filter: [visivo, viewer, test-projects/integration]
+
   - key: binary-init-smoke
     # Runs the PyInstaller bundle (dist/visivo/visivo) end-to-end against
     # `visivo init` in an empty directory — the exact path that crashed
