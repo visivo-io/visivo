@@ -604,13 +604,17 @@ class TestCommitWithoutProjectFile:
         response = client.post("/api/projects/id/commit/")
 
         assert response.status_code == 200, response.get_json()
-        assert response.get_json()["published_count"] == 1
+        # Two: the source, and the `defaults` it became — a project's first
+        # source adopts the default source (VIS-1653), and that has to reach
+        # the YAML or a model with no `source` fails to validate.
+        assert response.get_json()["published_count"] == 2
         project_file = os.path.join(working_dir, "project.visivo.yml")
         with open(project_file) as f:
             written = yaml.safe_load(f)
         assert written["name"] == os.path.basename(working_dir)
         assert [s["name"] for s in written["sources"]] == ["local_duck"]
         assert written["sources"][0]["type"] == "duckdb"
+        assert written["defaults"]["source_name"] == "local_duck"
 
     def test_a_second_commit_appends_to_the_created_file(self, serve_app):
         import os

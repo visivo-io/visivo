@@ -147,4 +147,13 @@ def inject_cached_objects(flask_app, project, fields=None):
         nested = replace_inline_definitions(project, inline_drafts) if inline_drafts else set()
         new_objects = [(name, deepcopy(obj)) for name, obj in drafts.items() if name not in nested]
         setattr(project, project_field, merge_objects_into_list(obj_list, new_objects))
+
+    # `defaults` is a draft too, it just has no manager. Without it a source
+    # created in the editor adopts the project default (VIS-1653) and the run
+    # still validates against the PUBLISHED defaults, so a model with no source
+    # fails on a project that, as drafted, is fine.
+    cached_defaults = getattr(flask_app, "_cached_defaults", None)
+    if cached_defaults is not None and (fields is None or "defaults" in fields):
+        project.defaults = cached_defaults
+
     renest_model_scoped_fields(project)
