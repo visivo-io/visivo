@@ -54,5 +54,3 @@ function AgentCapture({ src, dashboard }) {
 }
 
 export default AgentCapture;
-
-// touch: proving a viewer-only change no longer rebuilds the CLI binary
