@@ -6,6 +6,12 @@ on:
         commit-sha: ${{ event.git.sha }}
         pr-num: ${{ event.github.pull_request.pull_request.number }}
 
+concurrency-pools:
+  - id: visivo-io/visivo:docs-pr-${{ init.pr-num }}
+    if: ${{ init.pr-num != "" }}
+    capacity: 1
+    on-overflow: cancel-running
+
 base:
   image: ubuntu:22.04
   config: rwx/base 1.1.1
