@@ -34,7 +34,7 @@ YAML tells you. Look first.
    denominator)`. Restrict it to the rows where it means something (tips on
    card payments, churn on accounts that could churn).
 6. `infer_columns` on the SQL you mean to save, then `write_model`.
-   `profile_model` profiles a model a run has already built.
+   `profile_model` profiles a saved model, from its built data or its SQL.
 7. Deciding what to build? `score_candidates` with `models: [<model>]`
    proposes the metrics and dimensions to write first and a varied set of
    insights. Name the models; do not copy cards into the call.
