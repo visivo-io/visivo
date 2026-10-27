@@ -66,7 +66,11 @@ jest.mock('react-plotly.js', () => props => {
   return <div>Mock Plot</div>;
 });
 
+// react-markdown v10 throws on a className prop; the mock does the same.
 jest.mock('react-markdown', () => props => {
+  if ('className' in props) {
+    throw new Error('Unexpected `className` prop, remove it');
+  }
   return <div>{props.children}</div>;
 });
 
