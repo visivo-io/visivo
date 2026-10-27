@@ -988,3 +988,32 @@ class TestSchemaFromSqlQuotedSourceColumns:
         result = schema_from_sql("duckdb", sql, nested, "m", default_schema="main")
 
         assert result["m"] == {"b": "VARCHAR"}
+
+
+class TestSortExpressionError:
+    def test_a_parseable_sort_has_no_error(self):
+        from visivo.query.sqlglot_utils import sort_expression_error
+
+        assert sort_expression_error("${ref(m).x} DESC NULLS LAST") is None
+        assert sort_expression_error("sum(${ref(m).x}) ASC") is None
+
+    def test_unbalanced_parentheses_are_reported(self):
+        from visivo.query.sqlglot_utils import sort_expression_error
+
+        error = sort_expression_error("count(${ref(m).x} DESC")
+        assert error.startswith("Cannot parse sort expression 'count(${ref(m).x} DESC'")
+
+    def test_placeholders_map_back_to_the_original_patterns(self):
+        from visivo.query.sqlglot_utils import replace_template_patterns_with_placeholders
+
+        text, placeholders = replace_template_patterns_with_placeholders(
+            "${ref(a).b} + ${ref(c).d}"
+        )
+        assert text == "__PH0__ + __PH1__"
+        assert placeholders == {"__PH0__": "${ref(a).b}", "__PH1__": "${ref(c).d}"}
+
+    def test_an_input_may_supply_the_direction(self):
+        from visivo.query.sqlglot_utils import sort_expression_error
+
+        assert sort_expression_error("${ref(m).x} ${ref(direction).value}") is None
+        assert sort_expression_error("count(${ref(m).x} ${ref(direction).value}") is not None

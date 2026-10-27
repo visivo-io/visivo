@@ -412,7 +412,9 @@ class InsightQueryBuilder:
         self.alias_hashes = {}
         for key, statement in self.unresolved_query_statements:
             if key == "sort":
-                resolved_statement = self.field_resolver.resolve_sort(expression=statement)
+                resolved_statement = self.field_resolver.resolve_sort(
+                    expression=statement, strict=True
+                )
             elif key == "filter":
                 resolved_statement = self.field_resolver.resolve(expression=statement, alias=False)
             else:

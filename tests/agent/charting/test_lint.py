@@ -554,3 +554,65 @@ class TestTheWriteCarriesThem:
             integration_app, "write_markdown", {"config": {"name": "m", "content": "# hi"}}
         )
         assert "warnings" not in result
+
+
+class TestLayoutInputRefs:
+    def chart(self, layout):
+        return {"name": "c", "insights": [], "layout": layout}
+
+    def test_a_ref_to_a_missing_input_is_flagged(self):
+        found = lint.warnings(APP, "charts", self.chart({"title": {"text": "${ref(year).value}"}}))
+        assert len(found) == 1
+        assert "`layout.title.text`" in found[0] and "no input named `year`" in found[0]
+
+    def test_a_ref_to_an_existing_input_passes(self):
+        assert (
+            lint.warnings(APP, "charts", self.chart({"title": {"text": "${ref(d).value}"}})) == []
+        )
+
+    def test_text_without_a_ref_passes(self):
+        assert lint.warnings(APP, "charts", self.chart({"title": {"text": "Plain"}})) == []
+
+    def test_an_app_without_inputs_is_not_judged(self):
+        bare = SimpleNamespace()
+        assert lint.warnings(bare, "charts", self.chart({"title": "${ref(year).value}"})) == []
+
+    def test_write_and_validate_chart_both_warn(self, integration_app):
+        chart = {
+            "name": "c_missing_input",
+            "insights": [],
+            "layout": {"title": {"text": "${ref(nope)}"}},
+        }
+        for tool in ("write_chart", "validate_chart"):
+            result = call(integration_app, tool, {"config": chart})
+            assert any("no input named `nope`" in w for w in result["warnings"]), tool
+
+
+class TestValidateWarnsWhatWriteWarns:
+    """validate_* is the dry run of write_*, so it returns the same warnings."""
+
+    CONFIGS = {
+        "input": TestDateRangeInputs().b17(),
+        "dashboard": {
+            "name": "d_missing_chart",
+            "rows": [{"items": [{"chart": "${ref(no_such_chart)}"}]}],
+        },
+        "metric": {"name": "m_dotted", "expression": "SUM(${ref(orders.amount)})"},
+        "dimension": {"name": "d_dotted", "expression": "${ref(orders.region)}"},
+        "markdown": {"name": "note", "content": "Revenue is {{ revenue }} today"},
+        "chart": {
+            "name": "c_missing_input",
+            "insights": [],
+            "layout": {"title": {"text": "${ref(nope)}"}},
+        },
+    }
+
+    @pytest.mark.parametrize("kind", sorted(CONFIGS))
+    def test_validate_and_write_return_the_same_warnings(self, integration_app, kind):
+        config = self.CONFIGS[kind]
+        validated = call(integration_app, f"validate_{kind}", {"config": config})
+        written = call(integration_app, f"write_{kind}", {"config": config})
+
+        assert validated["valid"] is True
+        assert validated["warnings"]
+        assert validated["warnings"] == written["warnings"]

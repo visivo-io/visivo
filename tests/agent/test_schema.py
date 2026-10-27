@@ -231,3 +231,38 @@ class TestTypeKeysComeFromOneSource:
 
         for not_a_type in ("path", "name", "cli_version", "destinations", "alerts", "tests"):
             assert not_a_type not in _TYPE_KEYS
+
+
+class TestInlineOnlyFieldsStayInline:
+    def test_a_models_metrics_and_dimensions_are_objects_not_refs(self, slicer):
+        properties = slicer.for_type("models")["$defs"]["SqlModel"]["properties"]
+
+        for field, target in (("metrics", "Metric"), ("dimensions", "Dimension")):
+            assert properties[field]["items"] == {"$ref": f"#/$defs/{target}"}
+
+    def test_the_inline_types_travel_with_the_slice(self, slicer):
+        defs = slicer.for_type("models")["$defs"]
+
+        assert {"Metric", "Dimension"} <= set(defs)
+
+    def test_a_field_that_accepts_a_ref_string_still_points(self, slicer):
+        source = slicer.for_type("models")["$defs"]["SqlModel"]["properties"]["source"]
+
+        assert "A reference to an existing" in json.dumps(source)
+
+    def test_a_dashboard_input_still_points_at_a_ref(self, slicer):
+        item = slicer.for_type("dashboards")["$defs"]["Item"]["properties"]["input"]
+
+        assert "A reference to an existing SingleSelectInput" in json.dumps(item)
+
+
+class TestInsightSchemaMatchesTheModel:
+    def test_insight_schema_lists_no_layout_the_model_rejects(self, integration_app):
+        properties = call(integration_app, "get_schema", {"type": "insights"})["$defs"]["Insight"][
+            "properties"
+        ]
+        assert "layout" not in properties
+
+        config = {"name": "i", "props": {"type": "bar"}, "layout": {"title": "x"}}
+        with pytest.raises(ToolError, match="Extra inputs are not permitted"):
+            call(integration_app, "write_insight", {"config": config})

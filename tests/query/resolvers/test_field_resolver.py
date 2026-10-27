@@ -1330,3 +1330,30 @@ class TestFieldResolverB10SqlModelFallback:
         with pytest.raises(ValueError) as excinfo:
             resolver.resolve(expression)
         assert hint in str(excinfo.value)
+
+
+class TestResolveSortParseErrors:
+    @pytest.fixture
+    def resolver(self, tmpdir):
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(name="orders", sql="SELECT * FROM t", source="ref(test_source)")
+        project = Project(name="p", sources=[source], models=[model], dashboards=[])
+        schema_dir = tmpdir.mkdir("schemas")
+        schema_dir.join("orders.json").write(
+            json.dumps({model.name_hash(): {"amount": "DECIMAL", "date": "DATE"}})
+        )
+        return FieldResolver(dag=project.dag(), output_dir=str(tmpdir), native_dialect="duckdb")
+
+    def test_strict_raises_on_unbalanced_parentheses(self, resolver):
+        with pytest.raises(ValueError, match="Cannot parse sort expression"):
+            resolver.resolve_sort("count((${ref(orders).amount} DESC", strict=True)
+
+    def test_strict_raises_without_refs_too(self, resolver):
+        with pytest.raises(ValueError, match="Cannot parse sort expression"):
+            resolver.resolve_sort("count(( DESC", strict=True)
+
+    def test_a_valid_sort_is_unchanged_when_strict(self, resolver):
+        assert "DESC" in resolver.resolve_sort("${ref(orders).amount} DESC", strict=True)
+
+    def test_default_resolution_stays_lenient_for_derived_sorts(self, resolver):
+        assert resolver.resolve_sort("${ref(orders).amount} AS lbl")

@@ -167,6 +167,16 @@ class TestValidating:
         assert result == {"valid": True}
         assert "unsaved" not in integration_app.markdown_manager.cached_objects
 
+    def test_literal_template_syntax_validates_with_a_warning(self, integration_app):
+        result = call(
+            integration_app,
+            "validate_markdown",
+            {"config": {"name": "unsaved", "content": "Total ${ref(orders).total}"}},
+        )
+
+        assert result["valid"] is True
+        assert "render literally" in result["warnings"][0]
+
     def test_a_bad_one_reports_rather_than_raises(self, integration_app):
         """The agent can act on a reason; it cannot act on a traceback."""
         result = call(integration_app, "validate_markdown", {"config": {"name": "bad"}})
@@ -222,7 +232,12 @@ class TestNamesAreUniqueAcrossTypes:
 
         chart = {"name": "trips_by_day_chart", "insights": ["${ref(trips_by_day)}"]}
         assert call(integration_app, "write_chart", {"config": chart})["status"] == "draft"
-        assert call(integration_app, "validate_chart", {"config": chart}) == {"valid": True}
+        validated = call(integration_app, "validate_chart", {"config": chart})
+        assert validated["valid"] is True
+        assert (
+            validated["warnings"]
+            == call(integration_app, "write_chart", {"config": chart})["warnings"]
+        )
 
 
 class TestTheCallingContract:
@@ -376,3 +391,57 @@ class TestEveryFailureIsARefusal:
         with pytest.raises(ToolError) as raised:
             call(integration_app, "get_theme", {})
         assert raised.value is refusal
+
+
+class TestInsightChecksReachEveryWriter:
+    INDICATOR = {
+        "name": "mrr_kpi",
+        "props": {
+            "type": "indicator",
+            "value": "?{ SUM(${ref(trips).fare}) }",
+            "number": {"valueformat": ",.0f"},
+        },
+    }
+
+    def test_validate_insight_warns_about_a_column_valued_indicator(self, integration_app):
+        result = call(integration_app, "validate_insight", {"config": self.INDICATOR})
+
+        assert result["valid"] is True
+        assert any("[0]" in warning for warning in result["warnings"])
+
+    def test_write_insight_still_warns_the_same_way(self, integration_app):
+        written = call(integration_app, "write_insight", {"config": self.INDICATOR})
+
+        assert any("[0]" in warning for warning in written["warnings"])
+
+    def test_a_clean_insight_has_no_warnings_key(self, integration_app):
+        config = {
+            **self.INDICATOR,
+            "props": {**self.INDICATOR["props"], "value": "?{ SUM(${ref(trips).fare}) }[0]"},
+        }
+
+        assert call(integration_app, "validate_insight", {"config": config}) == {"valid": True}
+
+    UNBALANCED = {
+        "name": "bad_sort",
+        "props": {"type": "bar", "x": "?{ ${ref(trips).a} }", "y": "?{ sum(${ref(trips).b}) }"},
+        "interactions": [{"sort": "?{ sum(${ref(trips).b} DESC }"}],
+    }
+
+    def test_validate_insight_rejects_a_sort_that_does_not_parse(self, integration_app):
+        result = call(integration_app, "validate_insight", {"config": self.UNBALANCED})
+
+        assert result["valid"] is False
+        assert "Cannot parse sort expression" in result["error"]
+
+    def test_write_insight_rejects_it_and_stages_nothing(self, integration_app):
+        with pytest.raises(ToolError, match="Cannot parse sort expression"):
+            call(integration_app, "write_insight", {"config": self.UNBALANCED})
+
+        assert integration_app.insight_manager.get("bad_sort") is None
+
+    def test_the_http_save_rejects_it(self, integration_client):
+        body = {k: v for k, v in self.UNBALANCED.items() if k != "name"}
+        response = integration_client.post("/api/insights/bad_sort/", json=body)
+
+        assert response.status_code == 400
