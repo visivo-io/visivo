@@ -26,6 +26,7 @@ is what makes an autonomous loop safe to ship, because the blast radius of a
 hijacked agent is a draft someone can discard.
 """
 
+import re
 from typing import Dict, get_args
 
 from visivo.agent import images
@@ -36,7 +37,7 @@ from visivo.agent.schema import SchemaSlicer
 from visivo.agent.screenshot import SCREENSHOT_TOOLS
 from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
 from visivo.jobs.run_model_data_job import QueryTimeout
-from visivo.server.names import NameTakenError
+from visivo.server.managers.object_manager import NameTakenError, SaveRefusedError
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
 
@@ -54,6 +55,12 @@ def _manager(app, type_key):
 
 def _rename_hint(type_key, name):
     return f"Choose another name, e.g. '{name}_{_singular(type_key)}'."
+
+
+def _refusal_text(type_key, name, error):
+    if isinstance(error, NameTakenError):
+        return f"{error} {_rename_hint(type_key, name)}"
+    return f"Invalid {_singular(type_key)}: {error}"
 
 
 def _name_argument(arguments):
@@ -112,9 +119,10 @@ def _validate_handler(type_key):
         except Exception as error:
             return {"valid": False, "error": str(error)}
         name = config.get("name")
-        clash = manager.name_clash and isinstance(name, str) and manager.name_clash(name, obj)
-        if clash:
-            return {"valid": False, "error": f"{clash} {_rename_hint(type_key, name)}"}
+        try:
+            manager.check_save(name, obj)
+        except SaveRefusedError as error:
+            return {"valid": False, "error": _refusal_text(type_key, name, error)}
         return {"valid": True}
 
     return handler
@@ -141,8 +149,8 @@ def _write_handler(type_key):
         # Into the draft tier, never the filesystem. See the module docstring.
         try:
             manager.save(name, obj)
-        except NameTakenError as error:
-            raise ToolError(f"{error} {_rename_hint(type_key, name)}")
+        except SaveRefusedError as error:
+            raise ToolError(_refusal_text(type_key, name, error))
         # A person's edit reaches this through the after_request hook on
         # POST /api/<type>/<name>/. The agent saves in-process, so without this
         # its writes stage nothing (leaving the top bar on Deploy) and never
@@ -913,6 +921,21 @@ def _image_url_of(result):
     return value.get("image_url") if isinstance(value, dict) else None
 
 
+_ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
+
+
+def _without_ansi(value):
+    """``value`` with terminal color codes removed from every string in it. Parser
+    and driver errors carry them, and an agent reads them as literal noise."""
+    if isinstance(value, str):
+        return _ANSI.sub("", value)
+    if isinstance(value, dict):
+        return {key: _without_ansi(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_without_ansi(item) for item in value]
+    return value
+
+
 def _as_refusal(name, arguments, error):
     """Every handler failure reaches the agent as a ``ToolError``: a timeout
     as its own message, anything unexpected prefixed with the tool and the
@@ -949,9 +972,12 @@ def call(app, name, arguments=None):
     pending = action_log().record(name, obj=obj, outcome="pending")
 
     try:
-        result = tool.handler(app, arguments)
+        result = _without_ansi(tool.handler(app, arguments))
     except Exception as error:
         refusal = _as_refusal(name, arguments, error)
+        plain = _without_ansi(str(refusal))
+        if plain != str(refusal):
+            refusal = ToolError(plain)
         action_log().resolve(pending["id"], outcome="error", error=str(refusal))
         raise refusal
 

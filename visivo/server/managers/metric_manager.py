@@ -5,6 +5,7 @@ from pydantic import TypeAdapter, ValidationError
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.metric import Metric
+from visivo.models.validators import standalone_field_ref_error
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
@@ -21,6 +22,12 @@ class MetricManager(ObjectManager[Metric]):
     def __init__(self):
         super().__init__()
         self._metric_adapter = TypeAdapter(Metric)
+
+    def save_error(self, obj: Metric) -> Optional[str]:
+        """A project-level metric must name a model; a nested one is tied by nesting."""
+        if getattr(obj, "_parent_name", None):
+            return None
+        return standalone_field_ref_error(obj.expression, "metric", obj.name)
 
     def validate_object(self, obj_data: dict) -> Metric:
         """

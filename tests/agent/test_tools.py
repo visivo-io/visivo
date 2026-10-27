@@ -376,3 +376,135 @@ class TestEveryFailureIsARefusal:
         with pytest.raises(ToolError) as raised:
             call(integration_app, "get_theme", {})
         assert raised.value is refusal
+
+
+class TestProjectLevelFieldsMustReferenceAModel:
+    """A project-level metric or dimension with no `${ref()}` is refused where
+    it is written, not at commit, where it blocked every pending change."""
+
+    @pytest.mark.parametrize("kind", ["metric", "dimension"])
+    def test_write_refuses_and_stages_nothing(self, integration_app, kind):
+        config = {"name": "mrr_total", "expression": "SUM(mrr)"}
+        with pytest.raises(ToolError, match="must reference at least one model"):
+            call(integration_app, f"write_{kind}", {"config": config})
+        manager = getattr(integration_app, f"{kind}_manager")
+        assert manager.get("mrr_total") is None
+
+    @pytest.mark.parametrize("kind", ["metric", "dimension"])
+    def test_validate_reports_it(self, integration_app, kind):
+        config = {"name": "mrr_total", "expression": "SUM(mrr)"}
+        result = call(integration_app, f"validate_{kind}", {"config": config})
+        assert result["valid"] is False
+        assert "must reference at least one model" in result["error"]
+
+    def test_a_ref_is_accepted(self, integration_app):
+        config = {"name": "mrr_total", "expression": "SUM(${ref(trips).mrr})"}
+        assert call(integration_app, "validate_metric", {"config": config}) == {"valid": True}
+        assert call(integration_app, "write_metric", {"config": config})["status"] == "draft"
+
+    def test_the_http_save_refuses_it_too(self, integration_client, integration_app):
+        response = integration_client.post(
+            "/api/metrics/mrr_total/", json={"expression": "SUM(mrr)"}
+        )
+        assert response.status_code == 400
+        assert "must reference at least one model" in response.get_json()["error"]
+        assert integration_app.metric_manager.get("mrr_total") is None
+
+    def test_a_nested_field_needs_no_ref(self, integration_client, integration_app):
+        response = integration_client.post(
+            "/api/metrics/n/", json={"expression": "count(*)", "parentModel": "trips"}
+        )
+        assert response.status_code in (200, 201)
+
+
+class TestModelSqlThatDoesNotParse:
+    BROKEN = {"name": "m", "sql": "SELEC fare AS f FROM trips", "source": "${ref(taxi)}"}
+
+    def test_validate_model_rejects_it(self, integration_app):
+        result = call(integration_app, "validate_model", {"config": self.BROKEN})
+
+        assert result["valid"] is False
+        assert "has SQL that does not parse" in result["error"]
+
+    def test_valid_sql_still_validates(self, integration_app):
+        config = {**self.BROKEN, "sql": "SELECT fare AS f FROM trips"}
+
+        assert call(integration_app, "validate_model", {"config": config}) == {"valid": True}
+
+    def test_a_projection_without_a_name_is_rejected_like_the_http_route(self, integration_app):
+        config = {**self.BROKEN, "sql": "SELECT count(*) FROM trips"}
+
+        result = call(integration_app, "validate_model", {"config": config})
+
+        assert result["valid"] is False
+        assert "no alias" in result["error"]
+
+    def test_the_http_validate_route_agrees(self, integration_client):
+        response = integration_client.post(
+            "/api/models/m/validate/", json={"sql": self.BROKEN["sql"], "source": "${ref(taxi)}"}
+        )
+
+        assert response.status_code == 400
+
+    def test_write_model_refuses_it_and_saves_nothing(self, integration_app):
+        with pytest.raises(ToolError, match="Invalid model: .*has SQL that does not parse"):
+            call(integration_app, "write_model", {"config": self.BROKEN})
+
+        assert integration_app.model_manager.get("m") is None
+
+    def test_the_http_save_refuses_it_too(self, integration_app, integration_client):
+        response = integration_client.post(
+            "/api/models/m/", json={"sql": self.BROKEN["sql"], "source": "${ref(taxi)}"}
+        )
+
+        assert response.status_code == 400
+        assert "has SQL that does not parse" in response.get_json()["error"]
+        assert integration_app.model_manager.get("m") is None
+
+
+class TestToolTextCarriesNoTerminalColors:
+    COLORED = "bad \x1b[4mtoken\x1b[0m here \x1b[1;31mred\x1b[m"
+
+    def test_a_parse_error_is_plain_text(self, integration_app):
+        config = {"name": "m", "sql": "SELEC fare AS f FROM trips", "source": "${ref(taxi)}"}
+
+        result = call(integration_app, "validate_model", {"config": config})
+
+        assert "\x1b" not in result["error"]
+
+    def test_results_are_cleaned_at_any_depth(self, integration_app, monkeypatch):
+        from visivo.agent.tools import Tool
+
+        handler = lambda app, arguments: {"a": [self.COLORED, {"b": self.COLORED}], "n": 3}
+        monkeypatch.setitem(TOOLS, "colored", Tool("colored", "", {}, handler))
+
+        result = call(integration_app, "colored", {})
+
+        assert result == {"a": ["bad token here red", {"b": "bad token here red"}], "n": 3}
+
+    def test_refusals_are_cleaned(self, integration_app, monkeypatch):
+        from visivo.agent.tools import Tool
+
+        def handler(app, arguments):
+            raise ToolError(self.COLORED)
+
+        monkeypatch.setitem(TOOLS, "colored", Tool("colored", "", {}, handler))
+
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, "colored", {})
+
+        assert str(raised.value) == "bad token here red"
+
+    def test_unexpected_errors_are_cleaned(self, integration_app, monkeypatch):
+        from visivo.agent.tools import Tool
+
+        def handler(app, arguments):
+            raise RuntimeError(self.COLORED)
+
+        monkeypatch.setitem(TOOLS, "colored", Tool("colored", "", {}, handler))
+
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, "colored", {})
+
+        assert "\x1b" not in str(raised.value)
+        assert "bad token here red" in str(raised.value)

@@ -346,7 +346,7 @@ class TestWritingInCloud:
         result = tools.call(
             project,
             "write_model",
-            {"config": {"name": "notes", "sql": "select 1"}},
+            {"config": {"name": "notes", "sql": "select 1 as x"}},
         )
 
         assert result["name"] == "notes"
@@ -361,7 +361,7 @@ class TestWritingInCloud:
         result = tools.call(
             project,
             "write_model",
-            {"config": {"name": "notes", "sql": "select 1"}},
+            {"config": {"name": "notes", "sql": "select 1 as x"}},
         )
 
         assert "change" not in result
@@ -374,7 +374,7 @@ class TestWritingInCloud:
         result = tools.call(
             integration_app,
             "write_model",
-            {"config": {"name": "staged_notes", "sql": "select 1"}},
+            {"config": {"name": "staged_notes", "sql": "select 1 as x"}},
         )
 
         assert result["name"] == "staged_notes"

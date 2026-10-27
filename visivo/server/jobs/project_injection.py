@@ -42,7 +42,9 @@ def replace_inline_definitions(container, replacements, _seen=None):
     """Swap drafts in for objects defined inline under ``container``; return the names swapped.
 
     Appending them to the top-level list instead would duplicate the name, which
-    ``Project.traverse_names`` rejects. Walks declared fields only, never Plotly props.
+    ``Project.traverse_names`` rejects. A draft replaces only an object of the same
+    type and scope: a project-level metric is a different object from a model's
+    inline metric of the same name. Walks declared fields only, never Plotly props.
     """
     replaced = set()
     if _seen is None:
@@ -57,6 +59,8 @@ def replace_inline_definitions(container, replacements, _seen=None):
             return None
         draft = replacements[name]
         if type(draft) is not type(value):
+            return None
+        if getattr(draft, "_parent_name", None) != getattr(value, "_parent_name", None):
             return None
         replaced.add(name)
         return deepcopy(draft)
