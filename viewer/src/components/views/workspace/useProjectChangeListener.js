@@ -16,9 +16,9 @@ import { PROJECT_CHANGED } from '../../../events/topics';
  *     Build session and the backend dropped the drafts (Q15
  *     last-write-wins) — the store shows the external-edit banner and the
  *     canvas re-renders from the file's state via the refetch.
- *   - The hook also sets `window.__VISIVO_SOFT_RELOAD__` so the legacy
- *     `/hot-reload.js` script (injected when Flask serves the bundle) skips
- *     its `window.location.reload()` while the Workspace handles updates.
+ *   - The hook also sets `window.__VISIVO_SOFT_RELOAD__` so `useHardReload`
+ *     skips its `window.location.reload()` while the Workspace handles
+ *     updates.
  *
  * Subscribes through the event-source seam rather than opening its own socket
  * (VIS-1345): the run view and the agent tab want the same kind of "this is

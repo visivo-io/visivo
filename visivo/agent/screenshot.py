@@ -33,6 +33,10 @@ with the local one about what it is looking at.
 ``visivo[screenshot]`` brings the Playwright package; the 260MB browser is
 downloaded on first use. Visivo is a CLI someone installs to look at their own
 data, and most of them will never ask for a screenshot.
+
+A packaged build cannot do that download at all (see ``visivo.frozen``), so it
+refuses with the reason rather than shelling out to a `sys.executable` that is
+not an interpreter. A browser already on the machine still works.
 """
 
 import os
@@ -40,6 +44,7 @@ import subprocess
 import sys
 import threading
 
+from visivo.frozen import is_frozen
 from visivo.agent.actions import log as action_log
 from visivo.agent.runs import wait_for_runs
 from visivo.agent.images import image_result
@@ -116,8 +121,12 @@ def ensure_browser():
     until it is over.
 
     The PACKAGE is never installed here — that would mean writing to someone's
-    environment from inside a tool call, and the Nuitka runner binary cannot do
-    it at all.
+    environment from inside a tool call.
+
+    A packaged build refuses instead of downloading, because the download needs
+    an interpreter at `sys.executable` and there is a binary there. The launch
+    is still attempted first, so a packaged build with a browser already on the
+    machine works.
     """
     if _installed.is_set():
         return
@@ -131,6 +140,16 @@ def ensure_browser():
     except Exception as error:
         if "Executable doesn't exist" not in str(error):
             raise
+
+    if is_frozen():
+        raise BrowserUnavailable(
+            "Screenshots need Chromium, and this packaged build of Visivo cannot "
+            "download it: the download runs `python -m playwright install`, and in a "
+            "packaged build `sys.executable` is the visivo binary rather than a Python "
+            "interpreter. Install Chromium separately with "
+            "`pip install 'visivo[screenshot]' && playwright install --only-shell chromium`, "
+            "and point this build at it with PLAYWRIGHT_BROWSERS_PATH."
+        )
 
     Logger.instance().info("Downloading Chromium for dashboard screenshots (one-off, ~260MB)")
     action_log().record(
