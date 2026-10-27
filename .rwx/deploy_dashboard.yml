@@ -39,11 +39,17 @@ tasks:
   - key: github-cli
     call: github/install-cli 1.0.11
 
+  # README.md is in the filter because pyproject declares `readme` and a filter
+  # strips every workspace file it does not name, so omitting it fails the build.
   - key: install-visivo
     if: ${{ init.deploy }}
-    use: [python]
-    run: pip install git+https://github.com/visivo-io/visivo.git@${{ init.commit-sha }}
-    filter: [visivo]
+    use: [python, code]
+    run: pip install .
+    filter:
+      - pyproject.toml
+      - poetry.lock
+      - README.md
+      - visivo
 
   - key: install-visivo-for-archive
     if: ${{ init.archive }}
