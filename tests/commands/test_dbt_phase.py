@@ -13,7 +13,16 @@ from tests.factories.model_factories import DbtFactory, ProjectFactory
 runner = CliRunner()
 
 
-def setup_dbt(project, working_dir):
+def setup_dbt(
+    project,
+    working_dir,
+    project_settings=None,
+    manifest_dir="target",
+    dbt_dir=None,
+    profiles_dir=None,
+):
+    dbt_dir = dbt_dir or working_dir
+    profiles_dir = profiles_dir or working_dir
     temp_yml_file(
         dict=json.loads(project.model_dump_json()),
         name=PROJECT_FILE_NAME,
@@ -40,12 +49,16 @@ def setup_dbt(project, working_dir):
             }
         },
         name="profiles.yml",
-        output_dir=working_dir,
+        output_dir=profiles_dir,
     )
     temp_yml_file(
-        dict={"target-path": "target", "profile": "profile_name"},
+        dict=(
+            {"target-path": "target", "profile": "profile_name"}
+            if project_settings is None
+            else project_settings
+        ),
         name="dbt_project.yml",
-        output_dir=working_dir,
+        output_dir=dbt_dir,
     )
 
     temp_file(
@@ -61,8 +74,43 @@ def setup_dbt(project, working_dir):
             }
         ),
         name="manifest.json",
-        output_dir=f"{working_dir}/target",
+        output_dir=f"{dbt_dir}/{manifest_dir}",
     )
+
+
+@pytest.mark.parametrize("project_location", ["dbt", "dbt/dbt_project.yml", "dbt/"])
+@pytest.mark.parametrize("profiles_location", [None, "conf", "conf/profiles.yml"])
+def test_dbt_locations_accept_a_directory_or_a_file_path(project_location, profiles_location):
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    project = ProjectFactory(
+        dbt=DbtFactory(
+            dbt_project_yml_location=project_location, profiles_yml_location=profiles_location
+        )
+    )
+    setup_dbt(
+        project,
+        working_dir,
+        dbt_dir=f"{working_dir}/dbt",
+        profiles_dir=f"{working_dir}/conf" if profiles_location else working_dir,
+    )
+
+    dbt_phase(working_dir=working_dir, output_dir=output_dir, dbt_profile=None, dbt_target=None)
+
+    with open(f"{output_dir}/dbt.yml", "r") as file:
+        dbt_content = yaml.safe_load(file)
+    assert dbt_content["models"][0]["source"] == "ref(profile_name_target_name)"
+
+
+def test_dbt_project_in_the_working_directory_by_file_name():
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory(dbt_project_yml_location="dbt_project.yml"))
+    setup_dbt(project, working_dir)
+
+    dbt_phase(working_dir=working_dir, output_dir=output_dir, dbt_profile=None, dbt_target=None)
+
+    assert os.path.exists(f"{output_dir}/dbt.yml")
 
 
 def test_dbt_with_defaults():
@@ -71,18 +119,71 @@ def test_dbt_with_defaults():
     project = ProjectFactory(dbt=DbtFactory())
     setup_dbt(project, working_dir)
 
-    dbt_phase(
+    ran = dbt_phase(
         working_dir=working_dir,
         output_dir=output_dir,
         dbt_profile=None,
         dbt_target=None,
     )
 
+    assert ran is True
     assert os.path.exists(f"{output_dir}/dbt.yml")
     with open(f"{output_dir}/dbt.yml", "r") as file:
         dbt_content = yaml.safe_load(file)
         SnowflakeSource(**dbt_content["sources"][0])
         assert dbt_content["models"][0]["source"] == "ref(profile_name_target_name)"
+
+
+def _run_default(working_dir):
+    output_dir = temp_folder()
+    dbt_phase(
+        working_dir=working_dir,
+        output_dir=output_dir,
+        dbt_profile=None,
+        dbt_target=None,
+    )
+    return output_dir
+
+
+def test_dbt_without_target_path_defaults_to_target():
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(project, working_dir, project_settings={"profile": "profile_name"})
+
+    output_dir = _run_default(working_dir)
+
+    assert os.path.exists(f"{output_dir}/dbt.yml")
+
+
+def test_dbt_target_path_env_var_overrides(monkeypatch):
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(
+        project,
+        working_dir,
+        project_settings={"target-path": "ignored", "profile": "profile_name"},
+        manifest_dir="custom_out",
+    )
+    monkeypatch.setenv("DBT_TARGET_PATH", "custom_out")
+
+    output_dir = _run_default(working_dir)
+
+    assert os.path.exists(f"{output_dir}/dbt.yml")
+
+
+def test_dbt_set_target_path_is_still_honored():
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(
+        project,
+        working_dir,
+        project_settings={"target-path": "build", "profile": "profile_name"},
+        manifest_dir="build",
+    )
+
+    output_dir = _run_default(working_dir)
+
+    assert os.path.exists(f"{output_dir}/dbt.yml")
 
 
 def test_dbt_with_set_profile_and_target():
@@ -245,3 +346,43 @@ def test_dbt_with_unsupported_source_type():
             exc_info.value.message
             == f"Target type 'unsupported' is not supported.  Only ['postgresql', 'mysql', 'sqlite', 'snowflake'] are supported."
         )
+
+
+def test_dbt_phase_reports_it_did_not_run_without_an_enabled_block():
+    for dbt_config in (None, DbtFactory(enabled=False)):
+        output_dir = temp_folder()
+        working_dir = temp_folder()
+        project = ProjectFactory(dbt=dbt_config)
+        temp_yml_file(
+            dict=json.loads(project.model_dump_json(exclude_none=True)),
+            name=PROJECT_FILE_NAME,
+            output_dir=working_dir,
+        )
+
+        ran = dbt_phase(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            dbt_profile=None,
+            dbt_target=None,
+        )
+
+        assert ran is False
+        assert not os.path.exists(f"{output_dir}/dbt.yml")
+
+
+@pytest.mark.parametrize("missing", ["dbt_project.yml", "profiles.yml"])
+def test_dbt_phase_raises_when_a_dbt_file_is_missing(missing):
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    setup_dbt(ProjectFactory(dbt=DbtFactory()), working_dir)
+    os.remove(f"{working_dir}/{missing}")
+
+    with pytest.raises(click.ClickException) as exc_info:
+        dbt_phase(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            dbt_profile=None,
+            dbt_target=None,
+        )
+
+    assert exc_info.value.message == f"{missing} file not found at '{working_dir}/{missing}'"

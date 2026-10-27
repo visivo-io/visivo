@@ -104,6 +104,7 @@ def _generate_models(manifest, dbt_profile, dbt_target, dbt_prefix):
 
 
 def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
+    """Write the dbt sources and models file. Returns False when no enabled `dbt:` block exists."""
     from visivo.logger.logger import Logger
     from visivo.parsers.parser_factory import ParserFactory
     from visivo.discovery.discover import Discover
@@ -120,16 +121,12 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         dbt = None
 
     if dbt and dbt.enabled:
-        dbt_root = working_dir
-        if dbt.dbt_project_yml_location:
-            dbt_root = f"{working_dir}/{dbt.dbt_project_yml_location}"
+        dbt_root = dbt.dbt_project_dir(working_dir)
         dbt_project_file = f"{dbt_root}/dbt_project.yml"
         if not os.path.exists(dbt_project_file):
             raise click.ClickException(f"dbt_project.yml file not found at '{dbt_project_file}'")
 
-        profiles_file = f"{working_dir}/profiles.yml"
-        if dbt.profiles_yml_location:
-            profiles_file = f"{working_dir}/{dbt.profiles_yml_location}/profiles.yml"
+        profiles_file = dbt.profiles_file(working_dir)
 
         if not os.path.exists(profiles_file):
             raise click.ClickException(f"profiles.yml file not found at '{profiles_file}'")
@@ -157,7 +154,10 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         if not dbt_target:
             dbt_target = profiles[dbt_profile]["target"]
 
-        manifest_file = f"{dbt_root}/{dbt_project['target-path']}/manifest.json"
+        target_path = (
+            os.environ.get("DBT_TARGET_PATH") or dbt_project.get("target-path") or "target"
+        )
+        manifest_file = os.path.join(dbt_root, target_path, "manifest.json")
         if not os.path.exists(manifest_file):
             raise click.ClickException(
                 f"Manifest file not found at '{manifest_file}'. You might need to 'dbt compile'."
@@ -186,5 +186,7 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         Logger.instance().debug(
             f"dbt base visivo sources written to {relative_output_file}: {sources_written}"
         )
-    else:
-        Logger.instance().debug(f"dbt is not enabled.")
+        return True
+
+    Logger.instance().debug("dbt is not enabled.")
+    return False
