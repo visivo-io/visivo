@@ -9,6 +9,15 @@ on:
         deploy: ${{ event.github.pull_request.pull_request.merged == false && event.github.pull_request.pull_request.state == 'open' }}
         archive: ${{ event.github.pull_request.pull_request.state == 'closed' }}
 
+# Scoped to the deploy half. This workflow also runs on `closed`, where it
+# archives the preview stage — cancelling that would leave a dashboard
+# deployed with nothing left to clean it up.
+concurrency-pools:
+  - id: visivo-io/visivo:deploy-dashboard-pr-${{ init.pr-num }}
+    if: ${{ init.deploy }}
+    capacity: 1
+    on-overflow: cancel-running
+
 base:
   image: ubuntu:22.04
   config: rwx/base 1.1.1
