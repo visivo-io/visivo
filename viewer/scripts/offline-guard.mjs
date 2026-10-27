@@ -44,6 +44,7 @@ const ALLOWED = [
   // Telemetry. Fire-and-forget, off for Visivo's own developers, and disabled
   // outright under CI by the serve-time flag — so it should not appear here at
   // all. Allowed so a telemetry change is never what breaks this test.
+  'e.visivo.io',
   'us.i.posthog.com',
   'app.posthog.com',
 ];
