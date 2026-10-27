@@ -47,7 +47,20 @@ const formatTimestamp = date => {
 /**
  * The text a cell shows for a non-null value.
  */
-export const formatCellText = (value, columnType) => {
+const nameTokens = columnName =>
+  String(columnName || '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/);
+
+const isYearColumn = columnName => nameTokens(columnName).includes('year');
+
+const isYearValue = value => {
+  const num = typeof value === 'bigint' ? Number(value) : value;
+  return Number.isInteger(num) && num >= 1000 && num <= 9999;
+};
+
+export const formatCellText = (value, columnType, columnName) => {
   // Handle date/timestamp columns first — values may arrive as epoch numbers
   if (columnType === COLUMN_TYPES.DATE || columnType === COLUMN_TYPES.TIMESTAMP) {
     let date;
@@ -59,6 +72,10 @@ export const formatCellText = (value, columnType) => {
     if (!isNaN(date.getTime())) {
       return columnType === COLUMN_TYPES.DATE ? formatDateOnly(date) : formatTimestamp(date);
     }
+  }
+
+  if (isYearColumn(columnName) && isYearValue(value)) {
+    return String(value);
   }
 
   if (typeof value === 'bigint') {
@@ -90,11 +107,11 @@ export const formatCellText = (value, columnType) => {
   return str;
 };
 
-const formatValue = (value, columnType) => {
+const formatValue = (value, columnType, columnName) => {
   if (value === null || value === undefined) {
     return <span className="text-secondary-400 italic">null</span>;
   }
-  return formatCellText(value, columnType);
+  return formatCellText(value, columnType, columnName);
 };
 
 const getAlignmentClass = columnType => {
@@ -125,7 +142,7 @@ const getTitleText = (value, columnType) => {
   return String(value);
 };
 
-const DataTableCell = ({ value, columnType }) => {
+const DataTableCell = ({ value, columnType, columnName }) => {
   const isNull = value === null || value === undefined;
 
   return (
@@ -133,7 +150,7 @@ const DataTableCell = ({ value, columnType }) => {
       className={`px-3 py-2 text-sm truncate ${isNull ? 'text-center' : getAlignmentClass(columnType)}`}
       title={isNull ? 'null' : getTitleText(value, columnType)}
     >
-      {formatValue(value, columnType)}
+      {formatValue(value, columnType, columnName)}
     </div>
   );
 };

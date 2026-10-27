@@ -33,7 +33,7 @@ function buildLeafColumnDef(col, { sorting, onSortChange, onColumnProfileRequest
       />
     ),
     cell: ({ getValue }) => (
-      <DataTableCell value={getValue()} columnType={col.normalizedType} />
+      <DataTableCell value={getValue()} columnType={col.normalizedType} columnName={col.name} />
     ),
     size: calculateColumnWidth(col.displayName || col.name, col.normalizedType),
     minSize: MIN_RESIZE_WIDTH,
