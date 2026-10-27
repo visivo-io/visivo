@@ -80,17 +80,36 @@ tasks:
       - poetry.lock
       - pyproject.toml
 
+  # Both of these were unfiltered, so any change anywhere rebuilt the wheel
+  # and the PyInstaller binary — and because a task's cache key includes its
+  # dependencies', that invalidated every integration lane below whose own
+  # `filter:` was therefore doing nothing.
+  #
+  # README.md is in the filter because `readme = "README.md"` in pyproject:
+  # `poetry build`, and `poetry install` without --no-root, both read it. A
+  # filter strips every workspace file it does not name, so leaving it out
+  # fails the build rather than merely over-caching.
   - key: visivo-pip-install
     use: cli-dependencies
     run: |
       poetry install --with dev
       poetry build
       pip install dist/visivo-*-py3-none-any.whl
+    filter:
+      - pyproject.toml
+      - poetry.lock
+      - README.md
+      - visivo
 
   - key: visivo-install
     use: visivo-pip-install
     run: |
       poetry run build
+    filter:
+      - pyproject.toml
+      - poetry.lock
+      - README.md
+      - visivo
 
   - key: test-cli
     use: [cli-dependencies]
