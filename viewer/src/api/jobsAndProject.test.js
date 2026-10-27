@@ -164,6 +164,23 @@ describe('insightJobs api', () => {
     expect(apiFetch.mock.calls[0][0]).toContain('run_id=custom-run');
   });
 
+  it('returns [] when the server has none of the requested insights', async () => {
+    apiFetch.mockResolvedValueOnce(ok([]));
+    await expect(fetchInsightJobs('proj-1', ['a'], undefined, 1)).resolves.toEqual([]);
+  });
+
+  it('keeps the HTTP status on the error it throws', async () => {
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'NOT FOUND',
+      text: async () => 'No insight files found',
+    });
+    await expect(fetchInsightJobs('proj-1', ['a'], undefined, 1)).rejects.toMatchObject({
+      status: 404,
+    });
+  });
+
   it('throws after exhausting retries when the server returns no valid jobs', async () => {
     apiFetch.mockResolvedValueOnce(ok([{ name: 'a' }])); // missing files/query/props_mapping
     await expect(fetchInsightJobs('proj-1', ['a'], undefined, 1)).rejects.toThrow(

@@ -8,6 +8,8 @@ import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 import { useDashboardTheme } from '../../theme/DashboardThemeContext';
 import { seriesColorway } from '../../theme/seriesColors';
+import { ACTIVE_RUN_STATES } from '../../stores/runStore';
+import ChartNotice from './ChartNotice';
 
 const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false, plotlyConfig, onRelayout, seriesOrder }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -90,15 +92,30 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     })
   );
 
+  const missingInsightNames = useMemo(
+    () => chartInsightNames.filter(name => insightsData[name]?.missing),
+    [chartInsightNames, insightsData]
+  );
+
+  const loadError = useMemo(
+    () => chartInsightNames.map(name => insightsData[name]?.loadError).find(Boolean) || null,
+    [chartInsightNames, insightsData]
+  );
+
   const hasAllInsightData = useMemo(() => {
     if (!chartInsightNames.length) return true;
     return chartInsightNames.every(
       name =>
-        insightsData[name]?.data !== undefined &&
-        insightsData[name]?.data !== null &&
-        !insightsData[name]?.pendingInputs?.length
+        insightsData[name]?.missing ||
+        insightsData[name]?.loadError ||
+        (insightsData[name]?.data !== undefined &&
+          insightsData[name]?.data !== null &&
+          !insightsData[name]?.pendingInputs?.length)
     );
   }, [chartInsightNames, insightsData]);
+
+  // A missing insight may be the one a queued or running run is building.
+  const isRunActive = useStore(state => ACTIVE_RUN_STATES.includes(state.latestRun?.state));
 
   // A query that fails in the browser (DuckDB-WASM) still resolves the insight,
   // with `data: []` and an `error`. Without this the chart drew empty axes and
@@ -108,8 +125,30 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     [chartInsightNames, insightsData]
   );
 
-  const isInsightsWaiting = hasInsights && !hasAllInsightData;
+  // Every insight ran its query and none returned a row. A static insight
+  // (no query) draws from its props alone, so it never counts as empty.
+  const isEmptyResult = useMemo(
+    () =>
+      chartInsightNames.length > 0 &&
+      chartInsightNames.every(name => {
+        const insight = insightsData[name];
+        return insight?.query && Array.isArray(insight.data) && insight.data.length === 0;
+      }),
+    [chartInsightNames, insightsData]
+  );
+
+  const isInsightsWaiting =
+    hasInsights && (!hasAllInsightData || (missingInsightNames.length > 0 && isRunActive));
   const isDataLoading = !shouldLoad || isInsightsWaiting;
+  const showMissingNotice = !isDataLoading && missingInsightNames.length > 0;
+  const showLoadErrorNotice = !isDataLoading && !showMissingNotice && !!loadError;
+  const showEmptyNotice =
+    !isDataLoading &&
+    !showMissingNotice &&
+    !showLoadErrorNotice &&
+    queryErrors.length === 0 &&
+    isEmptyResult;
+  const showNotice = showMissingNotice || showLoadErrorNotice || showEmptyNotice;
 
   const selectedPlotData = useMemo(() => {
     const data = [];
@@ -263,8 +302,30 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     };
   }, [plotlyOwnsSizing, isDataLoading]);
 
+  useEffect(() => {
+    if (showNotice) setIsLoading(false);
+  }, [showNotice]);
+
   if (isDataLoading) {
     return <Loading text={chart.name} width={itemWidth} />;
+  }
+
+  if (showNotice) {
+    return (
+      <ItemContainer
+        className={hideToolbar ? 'h-full' : ''}
+        id={itemNameToSlug(chart.name)}
+      >
+        <ChartNotice
+          chartName={chart.name}
+          chartTitle={
+            typeof chart.layout?.title === 'string' ? chart.layout.title : chart.layout?.title?.text
+          }
+          missingInsightNames={showMissingNotice ? missingInsightNames : []}
+          loadError={showLoadErrorNotice ? loadError : null}
+        />
+      </ItemContainer>
+    );
   }
 
   return (

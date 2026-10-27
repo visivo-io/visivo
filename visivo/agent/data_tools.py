@@ -468,6 +468,12 @@ def _preview_insight_handler(app, arguments):
         inputs_substituted=substituted,
         execution_time_ms=result.get("execution_time_ms"),
     )
+    if not result["rows"]:
+        payload["warnings"] = [
+            "The query returned 0 rows, so the chart would be empty. Check filter values "
+            "against the data (string matches are case-sensitive) with profile_columns "
+            "or preview_table."
+        ]
     return _within_bytes(payload)
 
 

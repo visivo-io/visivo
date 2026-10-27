@@ -34,7 +34,14 @@ beforeEach(() => {
     name: 'name',
     insights: [],
   };
-  useStore.setState({ insightJobs: {}, inputJobs: {}, insights: [] });
+  useStore.setState({
+    insightJobs: {},
+    inputJobs: {},
+    insights: [],
+    runs: [],
+    latestRun: null,
+    polledProjectId: null,
+  });
 });
 
 describe('Chart', () => {
@@ -610,5 +617,175 @@ describe('Chart — a container resize reaches Plotly (M28)', () => {
       await waitFor(() => expect(capturedData).not.toBeNull());
       expect(capturedData.map(trace => trace.name)).toEqual(['New accounts', 'Churned accounts']);
     });
+  });
+
+});
+
+describe('Chart — missing and empty data (VIS-1544)', () => {
+  const missing = { name: 'i1', data: null, missing: true, error: null, pendingInputs: null };
+
+  test('an insight with no built output shows a notice instead of a spinner', async () => {
+    chart.insights = [{ name: 'i1' }];
+    useStore.setState({ insightJobs: { i1: missing } });
+    render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+
+    const notice = await screen.findByTestId('chart_build_error_name');
+    expect(notice).toHaveTextContent("This chart's data has not been built");
+    expect(notice).toHaveTextContent("insight 'i1'");
+    expect(notice).toHaveTextContent('Run the project to build it.');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mock Plot')).not.toBeInTheDocument();
+  });
+
+  test("the notice shows the run's error and links to the Runs page", async () => {
+    chart.insights = [{ name: 'i1' }];
+    useStore.setState({
+      insightJobs: { i1: missing },
+      polledProjectId: 'p1',
+      runs: [
+        {
+          id: 'startup',
+          state: 'failed',
+          dag_filter: '+EV Sales Overview+',
+          is_superseded: false,
+          created_at: '2026-10-24T08:00:00Z',
+          error_json: {
+            phase: 'run',
+            diagnostics: [
+              {
+                message: 'Binder Error: column "region" not found\nLINE 1: ...',
+                object: { type: 'insight', name: 'i1' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+
+    const notice = await screen.findByTestId('chart_build_error_name');
+    expect(notice).toHaveTextContent("This chart's data failed to build");
+    expect(notice).toHaveTextContent('Binder Error: column "region" not found');
+    expect(notice).not.toHaveTextContent('LINE 1');
+    expect(screen.getByRole('link', { name: 'Open the Runs page' })).toHaveAttribute(
+      'href',
+      '/runs'
+    );
+  });
+
+  test('an upstream failure names the object that failed', async () => {
+    chart.insights = [{ name: 'i1' }];
+    useStore.setState({
+      insightJobs: { i1: missing },
+      runs: [
+        {
+          id: 'r1',
+          state: 'failed',
+          dag_filter: '+i1+',
+          is_superseded: false,
+          created_at: '2026-10-24T08:00:00Z',
+          error_json: {
+            diagnostics: [{ message: 'no such table', object: { type: 'model', name: 'm1' } }],
+          },
+        },
+      ],
+    });
+    render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+
+    expect(await screen.findByTestId('chart_build_error_name')).toHaveTextContent(
+      "'m1': no such table"
+    );
+  });
+
+  test('a fetch that failed for another reason says the data could not be loaded', async () => {
+    chart.insights = [{ name: 'i1' }];
+    useStore.setState({
+      insightJobs: {
+        i1: {
+          name: 'i1',
+          data: null,
+          loadError: 'Failed to fetch insight jobs data: 500 INTERNAL SERVER ERROR.\n{}',
+          error: null,
+          pendingInputs: null,
+        },
+      },
+    });
+    render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+
+    const notice = await screen.findByTestId('chart_load_error_name');
+    expect(notice).toHaveTextContent("This chart's data could not be loaded");
+    expect(notice).toHaveTextContent('500 INTERNAL SERVER ERROR');
+    expect(notice).toHaveTextContent('Reload the page to try again.');
+    expect(notice).not.toHaveTextContent('has not been built');
+    expect(screen.queryByTestId('chart_build_error_name')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mock Plot')).not.toBeInTheDocument();
+  });
+
+  test('a missing insight keeps the spinner while a run is building', () => {
+    chart.insights = [{ name: 'i1' }];
+    useStore.setState({ insightJobs: { i1: missing }, latestRun: { state: 'running' } });
+    render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading...');
+    expect(screen.queryByTestId('chart_build_error_name')).not.toBeInTheDocument();
+  });
+
+  test('the notice keeps the chart title', async () => {
+    chart.insights = [{ name: 'i1' }];
+    chart.layout = { title: { text: 'Units by region' } };
+    useStore.setState({ insightJobs: { i1: missing } });
+    render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+
+    await screen.findByTestId('chart_build_error_name');
+    expect(screen.getByText('Units by region')).toBeInTheDocument();
+  });
+
+  test('a plain string title is kept too', async () => {
+    chart.insights = [{ name: 'i1' }];
+    chart.layout = { title: 'Units' };
+    useStore.setState({ insightJobs: { i1: missing } });
+    render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+
+    await screen.findByTestId('chart_build_error_name');
+    expect(screen.getByText('Units')).toBeInTheDocument();
+  });
+
+  test('a query that returned no rows shows "No rows match"', async () => {
+    chart.insights = [{ name: 'i1' }];
+    useStore.setState({
+      insightJobs: {
+        i1: { data: [], query: 'SELECT * FROM "m1"', props_mapping: {}, error: null },
+      },
+    });
+    render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+
+    expect(await screen.findByTestId('chart_empty_name')).toHaveTextContent('No rows match');
+    expect(screen.queryByText('Mock Plot')).not.toBeInTheDocument();
+  });
+
+  test('a static insight with no query still draws', async () => {
+    chart.insights = [{ name: 'i1' }];
+    useStore.setState({
+      insightJobs: {
+        i1: { data: [], query: null, static_props: { z: [[1]] }, type: 'heatmap', error: null },
+      },
+    });
+    render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+
+    expect(await screen.findByText('Mock Plot')).toBeInTheDocument();
+    expect(screen.queryByTestId('chart_empty_name')).not.toBeInTheDocument();
+  });
+
+  test('one empty insight beside one with rows still draws', async () => {
+    chart.insights = [{ name: 'i1' }, { name: 'i2' }];
+    useStore.setState({
+      insightJobs: {
+        i1: { data: [], query: 'SELECT 1', props_mapping: {}, error: null },
+        i2: { data: [{ x: 1 }], query: 'SELECT 1', props_mapping: { 'props.x': 'x' } },
+      },
+    });
+    render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+
+    expect(await screen.findByText('Mock Plot')).toBeInTheDocument();
   });
 });
