@@ -184,6 +184,15 @@ def _write_handler(type_key):
                     "Call preview_insight to see the rows, fix the props, and write the "
                     "insight again."
                 ]
+        if type_key == "inputs":
+            from visivo.agent.data_tools import probe_input
+
+            problems = probe_input(app, obj)
+            if problems:
+                found += [f"The input's query fails ({problem})." for problem in problems] + [
+                    "Its widget shows no options until the query runs. Fix the query, "
+                    "selecting one column from a model that builds, and write the input again."
+                ]
         if found:
             result["warnings"] = found
         return result

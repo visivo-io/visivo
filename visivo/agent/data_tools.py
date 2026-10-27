@@ -197,6 +197,55 @@ def probe_model_sql(app, model):
     return None
 
 
+def probe_input(app, input_obj):
+    """The source's error for each query an input runs to fill its widget;
+    ``[]`` when they run or the input has none.
+
+    An input write validates its shape, not its queries, and the run that
+    would fail is asynchronous, so an agent learned of a broken options query
+    only from an empty dropdown. A query that times out is not judged.
+    """
+    from copy import deepcopy
+
+    from visivo.jobs.run_input_job import _execute_query_for_options
+    from visivo.server.jobs.project_injection import inject_cached_objects
+
+    queries = list(_query_strings(input_obj, ""))
+    if not queries:
+        return []
+    project = deepcopy(app.project)
+    inject_cached_objects(app, project)
+    project.invalidate_dag_cache()
+    dag = project.dag()
+    found = []
+    for path, query in queries:
+        try:
+            _execute_query_for_options(
+                query.get_value(),
+                dag,
+                input_obj.name,
+                app.output_dir,
+                timeout_s=AGENT_QUERY_TIMEOUT_S,
+            )
+        except QueryTimeout:
+            continue
+        except Exception as error:
+            found.append(f"`{path}`: {str(error).strip()[:400]}")
+    return found
+
+
+def _query_strings(node, path):
+    from pydantic import BaseModel
+
+    from visivo.models.base.query_string import QueryString
+
+    if isinstance(node, QueryString):
+        yield path, node
+    elif isinstance(node, BaseModel):
+        for field in type(node).model_fields:
+            yield from _query_strings(getattr(node, field), f"{path}.{field}" if path else field)
+
+
 # A preview that cannot run server-side, rather than one that failed.
 _UNJUDGED_PREVIEWS = {"requires_client_lane", "multi_source", "model_not_run"}
 
@@ -445,7 +494,13 @@ def _preview_insight_handler(app, arguments):
     limit = _clamp(arguments, "limit", MAX_PREVIEW_INSIGHT_ROWS)
 
     substituted = {}
-    config = substitute_inputs(app, config, input_values, substituted)
+    try:
+        config = substitute_inputs(app, config, input_values, substituted)
+    except ValueError as error:
+        raise ToolError(
+            f"{error} Or pass 'input_values' with a selection for the input, "
+            'e.g. {"region": "West"}.'
+        )
     try:
         result = execute_draft_insight(
             app,
