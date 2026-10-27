@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FaChevronDown, FaTimes, FaCheck } from 'react-icons/fa';
 import PortalDropdownMenu from './PortalDropdownMenu';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 import { DropdownButton, DropdownLabel, SearchInput } from '../../styled/DropdownButton';
 
 /**
@@ -27,6 +28,7 @@ const MultiSelectDropdown = ({
   const dropdownRef = useRef(null);
   const menuRef = useRef(null);
   const searchInputRef = useRef(null);
+  const triggerRef = useRef(null);
 
   // Convert propSelectedValues to internal format for display
   const selectedItems = useMemo(() => {
@@ -77,10 +79,6 @@ const MultiSelectDropdown = ({
     }
 
     switch (e.key) {
-      case 'Escape':
-        setIsOpen(false);
-        setHighlightedIndex(-1);
-        break;
       case 'ArrowDown':
         e.preventDefault();
         setHighlightedIndex(prev => (prev < filteredOptions.length - 1 ? prev + 1 : 0));
@@ -99,6 +97,12 @@ const MultiSelectDropdown = ({
         break;
     }
   };
+
+  useEscapeToClose(isOpen, () => {
+    setIsOpen(false);
+    setHighlightedIndex(-1);
+    triggerRef.current?.focus();
+  });
 
   const toggleSelection = option => {
     const currentValues = selectedItems.map(item => item.id);
@@ -149,6 +153,7 @@ const MultiSelectDropdown = ({
       {label && <DropdownLabel>{label}</DropdownLabel>}
       <div className="relative" ref={dropdownRef}>
         <DropdownButton
+          ref={triggerRef}
           onClick={() => {
             setIsOpen(!isOpen);
             if (!isOpen) {

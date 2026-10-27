@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PiFunnel, PiCaretDown, PiCheck, PiX, PiSquaresFour, PiDatabase } from 'react-icons/pi';
 import { getTypeDef } from './LibraryRow';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 /**
  * LibraryFilter — the Library's filter control: a compact dropdown trigger plus
@@ -45,23 +46,20 @@ const LibraryFilter = ({
 }) => {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const toggleRef = useRef(null);
 
-  // Close on outside pointer-down / Escape (mirrors the Library "+ New" menu).
   useEffect(() => {
     if (!open) return undefined;
     const onPointerDown = e => {
       if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
     };
-    const onKeyDown = e => {
-      if (e.key === 'Escape') setOpen(false);
-    };
     document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
+    return () => document.removeEventListener('mousedown', onPointerDown);
   }, [open]);
+  useEscapeToClose(open, () => {
+    setOpen(false);
+    toggleRef.current?.focus();
+  });
 
   const isActive = sel => value.some(v => v.kind === sel.kind && v.value === sel.value);
   const countFor = sel => (sel.kind === 'group' ? groupCounts[sel.value] : typeCounts[sel.value]) ?? 0;
@@ -102,6 +100,7 @@ const LibraryFilter = ({
       data-testid="library-filter"
     >
       <button
+        ref={toggleRef}
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}

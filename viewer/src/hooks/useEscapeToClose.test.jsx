@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
-import useEscapeToClose from './useEscapeToClose';
+import useEscapeToClose, { hasOpenEscapeLayer } from './useEscapeToClose';
 
 const pressEscape = (target = document) => {
   const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
@@ -152,5 +152,13 @@ describe('useEscapeToClose', () => {
     renderHook(() => useEscapeToClose(true, undefined));
     const event = pressEscape();
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('reports whether any layer is open', () => {
+    expect(hasOpenEscapeLayer()).toBe(false);
+    const { unmount } = renderHook(() => useEscapeToClose(true, jest.fn()));
+    expect(hasOpenEscapeLayer()).toBe(true);
+    unmount();
+    expect(hasOpenEscapeLayer()).toBe(false);
   });
 });

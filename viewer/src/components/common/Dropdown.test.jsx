@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import Dropdown from './Dropdown';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 const setup = props =>
   render(
@@ -69,5 +70,27 @@ describe('common Dropdown', () => {
     fireEvent.click(screen.getByText('plain'));
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByText('Body')).not.toBeInTheDocument();
+  });
+
+  it('inside another layer, the first Escape closes only the dropdown', () => {
+    const Modal = () => {
+      const [open, setOpen] = useState(true);
+      useEscapeToClose(open, () => setOpen(false));
+      if (!open) return null;
+      return (
+        <div data-testid="modal">
+          <Dropdown trigger={<button>Open menu</button>}>
+            <div>Body</div>
+          </Dropdown>
+        </div>
+      );
+    };
+    render(<Modal />);
+    fireEvent.click(screen.getByText('Open menu'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByText('Body')).not.toBeInTheDocument();
+    expect(screen.getByTestId('modal')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('modal')).not.toBeInTheDocument();
   });
 });

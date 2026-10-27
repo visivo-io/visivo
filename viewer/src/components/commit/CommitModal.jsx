@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ModalOverlay, ModalWrapper } from '../styled/Modal';
 import useStore from '../../stores/store';
 import PendingChangesList from './PendingChangesList';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 const CommitModal = () => {
   const commitModalOpen = useStore(state => state.commitModalOpen);
@@ -24,6 +25,8 @@ const CommitModal = () => {
   const discardChanges = useStore(state => state.discardChanges);
   const discardLoading = useStore(state => state.discardLoading);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+
+  useEscapeToClose(commitModalOpen, () => !commitLoading && closeCommitModal());
 
   if (!commitModalOpen) return null;
 

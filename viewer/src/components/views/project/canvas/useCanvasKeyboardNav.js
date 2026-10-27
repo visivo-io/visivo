@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { hasOpenEscapeLayer } from '../../../../hooks/useEscapeToClose';
 import {
   buildBreadcrumbSegments,
   computeSiblingKey,
@@ -133,6 +134,7 @@ const useCanvasKeyboardNav = ({
 
       switch (e.key) {
         case 'Escape':
+          if (hasOpenEscapeLayer()) return;
           e.preventDefault();
           select('dashboard');
           return;

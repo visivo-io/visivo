@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 /**
  * AddModelMention — an `@`-mention model search to add a model to the ERD canvas
@@ -19,6 +20,8 @@ const AddModelMention = ({ models = [], excludeNames = [], onAdd, testId = 'erd-
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const inputRef = useRef(null);
+  const skipFocusOpenRef = useRef(false);
   const colors = getTypeColors('model');
   const Icon = getTypeIcon('model');
 
@@ -42,6 +45,14 @@ const AddModelMention = ({ models = [], excludeNames = [], onAdd, testId = 'erd-
     document.addEventListener('pointerdown', onDocPointer, true);
     return () => document.removeEventListener('pointerdown', onDocPointer, true);
   }, [open]);
+  useEscapeToClose(open, () => {
+    setOpen(false);
+    if (inputRef.current && document.activeElement !== inputRef.current) {
+      skipFocusOpenRef.current = true;
+      inputRef.current.focus();
+      skipFocusOpenRef.current = false;
+    }
+  });
 
   const choose = name => {
     setQuery('');
@@ -61,6 +72,7 @@ const AddModelMention = ({ models = [], excludeNames = [], onAdd, testId = 'erd-
           <Icon style={{ fontSize: 14 }} className={`shrink-0 ${colors.text}`} aria-hidden="true" />
         )}
         <input
+          ref={inputRef}
           type="text"
           data-testid={`${testId}-input`}
           value={query}
@@ -68,7 +80,9 @@ const AddModelMention = ({ models = [], excludeNames = [], onAdd, testId = 'erd-
             setQuery(e.target.value);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            if (!skipFocusOpenRef.current) setOpen(true);
+          }}
           placeholder="@ add model…"
           className="w-40 bg-transparent text-[12px] outline-none placeholder:text-gray-300"
         />

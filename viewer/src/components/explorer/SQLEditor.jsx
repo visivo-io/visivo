@@ -37,6 +37,7 @@ const SQLEditor = ({
   const handleRunRef = useRef(null);
   const handleCancelRef = useRef(null);
   const isRunningRef = useRef(false);
+  const queryRunningKeyRef = useRef(null);
   // SQL and source actually sent, snapshotted at execute time like
   // `runContextRef` below (the editor may change while the job runs).
   const runSqlRef = useRef(null);
@@ -101,6 +102,10 @@ const SQLEditor = ({
       setElapsedMs((prev) => prev + 100);
     }, 100);
     return () => clearInterval(interval);
+  }, [isRunning]);
+
+  useEffect(() => {
+    queryRunningKeyRef.current?.set(isRunning);
   }, [isRunning]);
 
   // Update SQL when initialValue changes
@@ -216,11 +221,21 @@ const SQLEditor = ({
         }
       });
 
-      editor.addCommand(monaco.KeyCode.Escape, () => {
-        if (isRunningRef.current) {
-          handleCancelRef.current();
-        }
-      });
+      // Escape is claimed only while a query runs; otherwise it reaches Monaco's
+      // widgets and then any open layer.
+      queryRunningKeyRef.current = editor.createContextKey(
+        'visivoQueryRunning',
+        isRunningRef.current
+      );
+      editor.addCommand(
+        monaco.KeyCode.Escape,
+        () => {
+          if (isRunningRef.current) {
+            handleCancelRef.current();
+          }
+        },
+        'visivoQueryRunning'
+      );
 
       // Auto-focus on mount (nice default when a model tab first opens),
       // but never steal focus from something the user is already editing.

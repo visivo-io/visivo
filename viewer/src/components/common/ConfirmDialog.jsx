@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ModalOverlay, ModalWrapper } from '../styled/Modal';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 /**
  * ConfirmDialog + useConfirm — the brand replacement for `window.confirm()`.
@@ -34,16 +35,17 @@ const ConfirmDialog = ({
 }) => {
   const confirmRef = useRef(null);
 
+  useEscapeToClose(open, () => onCancel?.());
+
   useEffect(() => {
     if (!open) return undefined;
     confirmRef.current?.focus();
     const onKey = e => {
-      if (e.key === 'Escape') onCancel?.();
-      else if (e.key === 'Enter') onConfirm?.();
+      if (e.key === 'Enter') onConfirm?.();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onCancel, onConfirm]);
+  }, [open, onConfirm]);
 
   if (!open) return null;
 

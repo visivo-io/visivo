@@ -3,6 +3,7 @@ import { PiMagnifyingGlass, PiSidebar } from 'react-icons/pi';
 import Library from './library/Library';
 import ViewSwitcher from './ViewSwitcher';
 import useStore from '../../../stores/store';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './library/LibraryRow';
 
 /**
@@ -65,13 +66,7 @@ const LeftRailOverlay = ({ onClose }) => {
     if (activeTabId !== openedWith.current) onClose();
   }, [activeTabId, onClose]);
 
-  useEffect(() => {
-    const onKey = e => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscapeToClose(true, onClose);
 
   return (
     <div

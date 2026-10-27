@@ -7,6 +7,7 @@ import { formatRefExpression } from '../../../../utils/refString';
 import { generateUniqueName } from '../../../../utils/uniqueName';
 import { useModelColumns } from './useModelColumns';
 import Select from '../../../common/Select';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 /**
  * JoinOperatorPopover — the authoring surface of the Relations ERD (VIS-1006).
@@ -92,6 +93,12 @@ const EndpointPicker = ({ side, models, columnsByModel = {}, value, onChange, te
           onChange={e => {
             setQuery(e.target.value);
           }}
+          onKeyDown={e => {
+            if (e.key === 'Escape' && query) {
+              e.preventDefault();
+              setQuery('');
+            }
+          }}
           placeholder="@model"
           className="w-full bg-transparent text-[12px] outline-none placeholder:text-gray-300"
         />
@@ -175,19 +182,15 @@ const JoinOperatorPopover = ({
       if (inSelectMenu(e.target)) return;
       onClose && onClose();
     };
-    const onKey = e => {
-      if (e.key === 'Escape') onClose && onClose();
-    };
     const onScroll = () => onClose && onClose();
     document.addEventListener('pointerdown', onDocPointer, true);
-    document.addEventListener('keydown', onKey);
     window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('pointerdown', onDocPointer, true);
-      document.removeEventListener('keydown', onKey);
       window.removeEventListener('scroll', onScroll, true);
     };
   }, [onClose]);
+  useEscapeToClose(true, () => onClose && onClose());
 
   const builtCondition = useMemo(() => {
     if (!a.model || !a.column || !b.model || !b.column) return '';

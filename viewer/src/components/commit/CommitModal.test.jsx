@@ -100,6 +100,26 @@ describe('CommitModal', () => {
     expect(screen.getByTestId('commit-modal-discard')).toBeEnabled();
   });
 
+  it('Escape closes the modal like the X button', () => {
+    render(<CommitModal />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(mockState.closeCommitModal).toHaveBeenCalledTimes(1);
+  });
+
+  it('Escape does nothing while a commit is in flight, like the disabled X', () => {
+    mockState.commitLoading = true;
+    render(<CommitModal />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(mockState.closeCommitModal).not.toHaveBeenCalled();
+  });
+
+  it('ignores Escape while closed', () => {
+    mockState.commitModalOpen = false;
+    render(<CommitModal />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(mockState.closeCommitModal).not.toHaveBeenCalled();
+  });
+
   it('Discard confirms inline, then drops the draft cache and closes (Q14)', async () => {
     mockState.pendingChanges = [
       { type: 'model', name: 'orders', status: 'NEW' },

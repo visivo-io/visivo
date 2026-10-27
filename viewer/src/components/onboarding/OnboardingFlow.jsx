@@ -14,6 +14,7 @@ import SourceEditForm from '../views/common/SourceEditForm';
 import useStore from '../../stores/store';
 import logo from '../../images/logo.png';
 import { useViewerNavigate } from '../../hooks/useViewerNavigate';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 function buildSteps() {
   return [
@@ -69,6 +70,9 @@ export default function OnboardingFlow() {
   const [sampleLoadingText, setSampleLoadingText] = useState('');
   const [errorMessage, setErrorMessage] = useState(null);
   const [sourceSaving, setSourceSaving] = useState(false);
+
+  useEscapeToClose(showSourceModal, () => !sourceSaving && setShowSourceModal(false));
+  useEscapeToClose(showSkipConfirm, () => setShowSkipConfirm(false));
 
   const fire = useCallback((event, props = {}) => {
     fireEvent(event, { role: role || null, ...props });

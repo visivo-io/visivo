@@ -9,6 +9,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ReferencePicker from './ReferencePicker';
 import useStore from '../../../../stores/store';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 const seedCharts = () => {
   useStore.setState({
@@ -72,6 +73,41 @@ describe('ReferencePicker (VIS-792)', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  test('Escape typed in the search box closes the picker', () => {
+    const onClose = jest.fn();
+    render(<ReferencePicker type="chart" onSelect={jest.fn()} onClose={onClose} />);
+    fireEvent.keyDown(screen.getByTestId('reference-picker-search'), { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('over another open layer, Escape closes the picker first, then that layer', () => {
+    const onOuterClose = jest.fn();
+    const Outer = ({ children }) => {
+      useEscapeToClose(true, onOuterClose);
+      return children;
+    };
+    const Harness = () => {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <Outer>
+          <button type="button" data-testid="open-picker" onClick={() => setOpen(true)}>
+            open
+          </button>
+          {open && (
+            <ReferencePicker type="chart" onSelect={jest.fn()} onClose={() => setOpen(false)} />
+          )}
+        </Outer>
+      );
+    };
+    render(<Harness />);
+    fireEvent.click(screen.getByTestId('open-picker'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('reference-picker')).not.toBeInTheDocument();
+    expect(onOuterClose).not.toHaveBeenCalled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onOuterClose).toHaveBeenCalledTimes(1);
   });
 
   test('empty state shows a prominent create CTA when no objects of the type exist', () => {

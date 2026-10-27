@@ -293,6 +293,18 @@ describe('CanvasAddRow — populated canvas (D-7)', () => {
       expect(screen.queryByTestId('row-template-menu')).not.toBeInTheDocument();
     });
 
+    test('Escape with focus outside the menu dismisses it and refocuses the trigger', () => {
+      render(<Harness dashboardName="dash" />);
+      const trigger = screen.getByTestId('canvas-add-row-end-button');
+      trigger.focus();
+      fireEvent.click(trigger);
+      expect(screen.getByTestId('row-template-menu')).toBeInTheDocument();
+      document.body.focus();
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+      expect(screen.queryByTestId('row-template-menu')).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+    });
+
     test('Escape inside the menu dismisses it (empty-canvas CTA)', () => {
       setDashboards([{ name: 'empty-dash', config: { rows: [] } }]);
       render(<Harness dashboardName="empty-dash" />);

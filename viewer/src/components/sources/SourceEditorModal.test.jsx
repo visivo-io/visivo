@@ -279,5 +279,32 @@ describe('SourceEditorModal', () => {
       fireEvent.click(container.firstChild); // the overlay itself
       expect(closeSourceModal).toHaveBeenCalledTimes(1);
     });
+
+    it('closes on Escape through the same handler as Cancel', () => {
+      const { closeSourceModal } = seedStore();
+      render(<SourceEditorModal />);
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(closeSourceModal).toHaveBeenCalledTimes(1);
+    });
+
+    it('Escape in the open type menu closes only the menu, the next closes the modal', () => {
+      const { closeSourceModal } = seedStore();
+      render(<SourceEditorModal />);
+      const combo = within(screen.getByTestId('source-type-select')).getByRole('combobox');
+      fireEvent.mouseDown(combo);
+      expect(screen.getAllByRole('option').length).toBeGreaterThan(0);
+      fireEvent.keyDown(combo, { key: 'Escape' });
+      expect(screen.queryByRole('option')).not.toBeInTheDocument();
+      expect(closeSourceModal).not.toHaveBeenCalled();
+      fireEvent.keyDown(combo, { key: 'Escape' });
+      expect(closeSourceModal).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores Escape while closed', () => {
+      const { closeSourceModal } = seedStore({ sourceModalOpen: false });
+      render(<SourceEditorModal />);
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(closeSourceModal).not.toHaveBeenCalled();
+    });
   });
 });

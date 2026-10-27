@@ -9,6 +9,12 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import OpenObjectContextMenu from './OpenObjectContextMenu';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
+
+const EscapeLayer = ({ onClose, children = null }) => {
+  useEscapeToClose(true, onClose);
+  return children;
+};
 
 const OBJ = { type: 'chart', name: 'revenue_chart' };
 
@@ -69,6 +75,29 @@ describe('OpenObjectContextMenu', () => {
 
     fireEvent.pointerDown(document.body);
     expect(onDismiss).toHaveBeenCalledTimes(2);
+  });
+
+  test('opened over another layer, Escape dismisses only the menu; the next one closes that layer', () => {
+    const onDismiss = jest.fn();
+    const layerClose = jest.fn();
+    const { rerender } = render(<EscapeLayer onClose={layerClose} />);
+    const menu = <OpenObjectContextMenu x={0} y={0} obj={OBJ} onDismiss={onDismiss} />;
+    rerender(<EscapeLayer onClose={layerClose}>{menu}</EscapeLayer>);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(layerClose).not.toHaveBeenCalled();
+
+    rerender(<EscapeLayer onClose={layerClose} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(layerClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('Escape without an onDismiss is harmless', () => {
+    render(<OpenObjectContextMenu x={0} y={0} obj={OBJ} />);
+    expect(() => fireEvent.keyDown(document, { key: 'Escape' })).not.toThrow();
+    expect(screen.getByTestId('open-object-ctx-menu')).toBeInTheDocument();
   });
 
   test('dismisses on scroll', () => {

@@ -4,6 +4,7 @@ import { render, screen, fireEvent, act, waitFor, within } from '@testing-librar
 import '@testing-library/jest-dom';
 import InsightBuildSection from './InsightBuildSection';
 import useStore from '../../../stores/store';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 import { saveAsMetric } from './saveAsMetricFlow';
 import { INTERACTION_TYPE_OPTIONS } from '../../../schemas/interactionHelp';
 
@@ -1080,6 +1081,24 @@ describe('InsightBuildSection', () => {
       fireEvent.keyDown(input, { key: 'Escape' });
       expect(renameInsight).not.toHaveBeenCalled();
       expect(input).toHaveValue('test_insight');
+    });
+
+    it('Escape in the name field reverts it and leaves the layer under it open', async () => {
+      const layerClose = jest.fn();
+      const EscapeLayer = ({ children }) => {
+        useEscapeToClose(true, layerClose);
+        return children;
+      };
+      render(
+        <EscapeLayer>
+          <InsightBuildSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+        </EscapeLayer>
+      );
+      const input = await screen.findByTestId('insight-rename-input-test_insight');
+      fireEvent.change(input, { target: { value: 'abandoned' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(input).toHaveValue('test_insight');
+      expect(layerClose).not.toHaveBeenCalled();
     });
 
     it('a NAME_COLLISION error shows inline and keeps the buffered name', async () => {

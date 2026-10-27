@@ -6,6 +6,7 @@ import { defaultLevels } from '../../../utils/dashboardUtils';
 import SelectionChip from '../workspace/SelectionChip';
 import { FormInput, FormTextarea, FormAlert } from '../../styled/FormComponents';
 import { Button } from '../../styled/Button';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 /**
  * LevelEditForm — VIS-807 (Track M M-2b).
@@ -76,6 +77,8 @@ const LevelEditForm = ({ index, onSaved }) => {
       setConfirmingDelete(false);
     }
   }, [level]);
+
+  useEscapeToClose(confirmingDelete, () => setConfirmingDelete(false));
 
   const chipName = level?.title || `Level ${index + 1}`;
 

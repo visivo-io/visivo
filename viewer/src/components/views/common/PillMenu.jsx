@@ -16,6 +16,7 @@ import { inferColumnTypes } from '../../../utils/inferColumnTypes';
 import { getSourceDialect } from '../../../stores/explorerStore';
 import { useModelColumns } from '../workspace/relations/useModelColumns';
 import { menuPolicyFor } from './SchemaEditor/utils/slotShape';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 // The Index row models the same slice shapes the standalone SliceMenu did.
 // `draft.slice` stays the literal expression (`[0]`, `[3]`, `[1:5]`, `''`);
@@ -235,6 +236,8 @@ function Divider() {
  *   only for `kind: 'aggregate'` pills; undefined keeps it disabled.
  * @param {() => void} props.onRemove - clear this slot's value.
  * @param {boolean} [props.disabled]
+ * @param {object} [props.returnFocusRef] - element to focus when Escape closes
+ *   the menu; defaults to the chevron trigger.
  *
  * T4 (pills-buildrail #10): exposes an imperative `open()` (via `ref` +
  * `useImperativeHandle`) so the pill BODY (not just this chevron) can also
@@ -262,11 +265,17 @@ const PillMenu = React.forwardRef(
       onSaveAsMetric,
       onRemove,
       disabled = false,
+      returnFocusRef,
     },
     ref
   ) => {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
+
+  useEscapeToClose(open, () => {
+    setOpen(false);
+    (returnFocusRef?.current || triggerRef.current)?.focus();
+  });
 
   // VIS-1241: the menu is a FORM now, not a list of instant commands. Every
   // click used to commit and close, so changing an aggregation AND an index
@@ -559,7 +568,10 @@ const PillMenuPopover = ({
       // it — leaving it stuck open, so the user's next chevron click only
       // appeared to do nothing (it toggled the already-open menu shut).
       onClick={e => e.stopPropagation()}
-      onKeyDown={e => e.stopPropagation()}
+      // Escape must still reach the document listener that closes the top layer.
+      onKeyDown={e => {
+        if (e.key !== 'Escape') e.stopPropagation();
+      }}
     >
       {/* Header — source/field + type (06 §4's anatomy) */}
       <div className="px-3 py-2 border-b border-gray-100">

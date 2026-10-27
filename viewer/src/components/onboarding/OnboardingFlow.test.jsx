@@ -267,6 +267,22 @@ describe('OnboardingFlow', () => {
       expect(screen.queryByTestId('onb-source-modal')).not.toBeInTheDocument();
     });
 
+    test('Escape closes the source modal, but not while a save is in flight', async () => {
+      renderFlow();
+      goToDataStep();
+      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId('onb-source-modal')).not.toBeInTheDocument();
+      expect(screen.getByTestId('onb-step-data')).toBeInTheDocument();
+
+      global.fetch = jest.fn(() => new Promise(() => {}));
+      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      fireEvent.click(screen.getByText('mock-connect'));
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
+    });
+
     test('a file-based source uploads the file and finalizes with its dashboard', async () => {
       global.fetch = jest.fn(url => {
         if (url === '/api/source/create/') {
@@ -409,6 +425,16 @@ describe('OnboardingFlow', () => {
       fireEvent.click(screen.getByTestId('onb-welcome-skip'));
       expect(screen.getByText('Skip onboarding?')).toBeInTheDocument();
       fireEvent.click(screen.getByText('Cancel'));
+      expect(screen.queryByText('Skip onboarding?')).not.toBeInTheDocument();
+      expect(screen.getByTestId('onb-step-welcome')).toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    test('Escape cancels the skip confirm and keeps the user on welcome', () => {
+      renderFlow();
+      fireEvent.click(screen.getByTestId('onb-welcome-skip'));
+      expect(screen.getByText('Skip onboarding?')).toBeInTheDocument();
+      fireEvent.keyDown(document, { key: 'Escape' });
       expect(screen.queryByText('Skip onboarding?')).not.toBeInTheDocument();
       expect(screen.getByTestId('onb-step-welcome')).toBeInTheDocument();
       expect(mockNavigate).not.toHaveBeenCalled();

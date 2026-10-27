@@ -186,6 +186,7 @@ const ChartBuildSection = ({ isExpanded, onToggleExpand }) => {
                 e.preventDefault();
                 commitRename();
               } else if (e.key === 'Escape') {
+                e.preventDefault();
                 setRenameError(null);
                 setRenameValue(chartName || '');
                 setIsEditing(false);

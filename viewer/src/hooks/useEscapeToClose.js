@@ -28,6 +28,8 @@ const remove = layer => {
   if (stack.length === 0) document.removeEventListener('keydown', onKeyDown);
 };
 
+export const hasOpenEscapeLayer = () => stack.length > 0;
+
 export default function useEscapeToClose(open, onClose) {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;

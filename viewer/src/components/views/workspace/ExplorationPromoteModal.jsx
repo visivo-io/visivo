@@ -9,6 +9,7 @@ import { validateName } from '../common/namedModel';
 import { suggestPromoteNames } from './promoteNaming';
 import FieldSwapOfferBanner from './FieldSwapOfferBanner';
 import Select from '../../common/Select';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 const TIER_HEADING = { model: 'MODELS', field: 'FIELDS', insight: 'INSIGHTS', chart: 'CHART' };
 const TIER_ORDER = ['model', 'field', 'insight', 'chart'];
@@ -554,6 +555,10 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     onClose?.();
   }, [promotedField, setWorkspaceSemanticLayerFocusIntent, openWorkspaceTab, onClose]);
 
+  useEscapeToClose(true, () => {
+    if (!promoting) onClose?.();
+  });
+
   return (
     <div
       data-testid="exploration-promote-modal"
@@ -643,6 +648,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
                                 onKeyDown={e => {
                                   if (e.key === 'Enter') e.currentTarget.blur();
                                   else if (e.key === 'Escape') {
+                                    e.preventDefault();
                                     setNameDrafts(prev => new Map(prev).set(key, row.name));
                                     setNameErrors(prev => {
                                       const next = new Map(prev);

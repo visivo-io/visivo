@@ -1,6 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import InlineRenameInput from './InlineRenameInput';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
+
+const EscapeLayer = ({ onClose, children = null }) => {
+  useEscapeToClose(true, onClose);
+  return children;
+};
 
 describe('InlineRenameInput', () => {
   test('pre-fills the current name and focuses/selects it', () => {
@@ -36,6 +42,22 @@ describe('InlineRenameInput', () => {
     fireEvent.keyDown(input, { key: 'Escape' });
     expect(onCommit).not.toHaveBeenCalled();
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  test('Escape cancels only the rename — the layer under it stays open', () => {
+    const onCancel = jest.fn();
+    const layerClose = jest.fn();
+    render(
+      <EscapeLayer onClose={layerClose}>
+        <InlineRenameInput name="Scratch" onCommit={jest.fn()} onCancel={onCancel} />
+      </EscapeLayer>
+    );
+    const notCancelled = fireEvent.keyDown(screen.getByTestId('inline-rename-input'), {
+      key: 'Escape',
+    });
+    expect(onCancel).toHaveBeenCalled();
+    expect(notCancelled).toBe(false);
+    expect(layerClose).not.toHaveBeenCalled();
   });
 
   test('the X button cancels without committing', () => {

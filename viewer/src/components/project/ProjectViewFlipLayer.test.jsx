@@ -29,27 +29,25 @@ jest.mock('copy-to-clipboard', () => ({
 
 // Mock the in-place flip card to a marker carrying its subject + the box it was
 // positioned at + an Expand button that invokes the passed onExpand (so we
-// assert the View-mode deep link), plus a close button.
-jest.mock('./ItemFlipCard', () => ({
-  obj,
-  box,
-  onClose,
-  onExpand,
-  testIdPrefix,
-}) => (
-  <div
-    data-testid={`${testIdPrefix}`}
-    data-subject={`${obj.type}:${obj.name}`}
-    data-box={box ? `${box.top},${box.left},${box.width},${box.height}` : ''}
-  >
-    <button data-testid={`${testIdPrefix}-close`} onClick={onClose}>
-      close
-    </button>
-    <button data-testid={`${testIdPrefix}-expand`} onClick={onExpand}>
-      expand
-    </button>
-  </div>
-));
+// assert the View-mode deep link), plus a close button. It keeps the real
+// card's Escape-to-close contract.
+jest.mock('./ItemFlipCard', () => ({ obj, box, onClose, onExpand, testIdPrefix }) => {
+  require('../../hooks/useEscapeToClose').default(true, onClose);
+  return (
+    <div
+      data-testid={`${testIdPrefix}`}
+      data-subject={`${obj.type}:${obj.name}`}
+      data-box={box ? `${box.top},${box.left},${box.width},${box.height}` : ''}
+    >
+      <button data-testid={`${testIdPrefix}-close`} onClick={onClose}>
+        close
+      </button>
+      <button data-testid={`${testIdPrefix}-expand`} onClick={onExpand}>
+        expand
+      </button>
+    </div>
+  );
+});
 
 const CONFIG = {
   rows: [
@@ -191,6 +189,23 @@ describe('ProjectViewFlipLayer kebab (VIS-788)', () => {
     expect(
       screen.queryByTestId('view-item-menu-list-row.0.item.0')
     ).not.toBeInTheDocument();
+  });
+
+  test('Escape closes a kebab menu opened over a flipped card, then flips the card back', () => {
+    render(<Host />);
+    hover('r0i0');
+    openMenu('row.0.item.0');
+    fireEvent.click(action('flip', 'row.0.item.0'));
+    openMenu('row.0.item.0');
+    expect(screen.getByTestId('view-item-menu-list-row.0.item.0')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('view-item-menu-list-row.0.item.0')).not.toBeInTheDocument();
+    expect(screen.getByTestId('view-flip-card-row.0.item.0')).toBeInTheDocument();
+    expect(menuButton('row.0.item.0')).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('view-flip-card-row.0.item.0')).not.toBeInTheDocument();
   });
 
   test('menu closes on outside click', () => {
