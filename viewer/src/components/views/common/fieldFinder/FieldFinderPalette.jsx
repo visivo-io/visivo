@@ -9,6 +9,7 @@ import {
 import { getValueAtPath } from '../SchemaEditor/utils/schemaUtils';
 import { rankFields, curatedEntries } from './fieldFinderIndex';
 import { readMru, bumpMru, subscribeMru } from './fieldFinderMru';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 /**
  * FieldFinderPalette (VIS-1021)
@@ -261,20 +262,7 @@ export default function FieldFinderPalette({
     [revealCompound]
   );
 
-  // Esc is heard on the document so it still closes the palette after Tab has
-  // moved focus out of the dialog element.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  useEffect(() => {
-    const onDocKeyDown = e => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onCloseRef.current?.();
-      }
-    };
-    document.addEventListener('keydown', onDocKeyDown);
-    return () => document.removeEventListener('keydown', onDocKeyDown);
-  }, []);
+  useEscapeToClose(true, () => onClose?.());
 
   const onKeyDown = e => {
     if (e.key === 'ArrowDown') {
