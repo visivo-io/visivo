@@ -19,7 +19,7 @@ refused, only repaired.
 - **Intent → family**, strongest first: kpi → kpi; trend → line, financial; compare → bar, table_pivot, polar, heatmap; rank → bar; composition → area, bar, hierarchy, part_of_whole; distribution → distribution, density2d, heatmap; relationship → xy, density2d, multivariate; flow → flow; change → line, financial, waterfall; geo → geo_region, geo_point, geo_density; detail → table_pivot, table.
 - **Semantics → family:** `part_of_whole` → area, part_of_whole, ternary_smith, table_pivot; `cumulative` → area; `ordered_stages` → funnel (required); `signed_contributions` → waterfall (required); `hierarchy` → hierarchy; `exact_values` → table, table_pivot; `totals_required` → table_pivot.
 - **Maps:** geo_region needs a region Plotly knows (iso3, country_name, us_state) or `boundaries_available`.
-- **Cardinality:** one 1 · few 2–7 · some 8–20 · many 21–100 · high 101+. Split a `few` dimension; from `some` up, an input. An identifier, or a lookup list at `high`, is a table; a chart over a `many`/`high` list pairs with `detail_table_below`.
+- **Cardinality** is the card's distinct-value count: split a column of up to 7 values; from 8 values up, an input. An identifier, or a lookup list of 101 or more values, is a table; a chart over a list of 21 or more values pairs with `detail_table_below`.
 - **Repairs**, each entry trying its own in order: `top_n_other`, `input_filter`, `small_multiples`, `regrain`, `scattergl`, `dominant_category`, `bucket`, `collapse_rare`, `sample`, `grid_bucket`, `aggregate_to_centroid`.
 <!-- rules:end -->
 

@@ -256,9 +256,9 @@ export const SAMPLES = {
   'ev-sales': {
     name: 'ev-sales',
     title: 'EV Sales',
-    desc: 'US electric vehicle adoption by state, model, and quarter.',
+    desc: 'Electric vehicle adoption by region, powertrain, and quarter.',
     art: 'bars-warm',
-    schema: 'duckdb · 14 charts',
+    schema: 'duckdb · 5 charts',
     apiKey: 'ev-sales',
   },
   'github-releases': {
@@ -266,7 +266,7 @@ export const SAMPLES = {
     title: 'GitHub Releases',
     desc: 'Release cadence and contributors across popular OSS repos.',
     art: 'line-up',
-    schema: 'duckdb · 9 charts',
+    schema: 'duckdb · 5 charts',
     apiKey: 'github-releases',
   },
   'college-football': {
@@ -274,7 +274,7 @@ export const SAMPLES = {
     title: 'College Football',
     desc: 'Win probability + expected points across seasons.',
     art: 'scatter',
-    schema: 'csv · 12 charts',
+    schema: 'duckdb · 5 charts',
     apiKey: 'college-football',
   },
 };

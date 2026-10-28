@@ -343,14 +343,18 @@ def test_dist_errors_without_data(setup_project, output_dir, dist_dir):
 
     result = runner.invoke(dist, ["--output-dir", output_dir, "--dist-dir", dist_dir])
 
+    assert result.exit_code != 0
     assert "Error creating dist" in result.output
     assert "Try running `visivo run`" in result.output
+    assert "Created dist folder" not in result.output
 
 
 def test_dist_errors_with_invalid_working_dir(output_dir, dist_dir):
     result = runner.invoke(dist, ["--output-dir", "nonexistent_dir", "--dist-dir", dist_dir])
 
+    assert result.exit_code != 0
     assert "Error creating dist" in result.output
+    assert "Created dist folder" not in result.output
 
 
 def test_dist_errors_with_invalid_project_file(output_dir, dist_dir):
@@ -358,7 +362,39 @@ def test_dist_errors_with_invalid_project_file(output_dir, dist_dir):
 
     result = runner.invoke(dist, ["--output-dir", output_dir, "--dist-dir", dist_dir])
 
+    assert result.exit_code != 0
     assert "Error creating dist" in result.output
+    assert "Created dist folder" not in result.output
+
+
+def test_dist_success_says_what_is_included_and_how_to_serve(setup_project, output_dir, dist_dir):
+    _, working_dir = setup_project
+    from visivo.commands.run import run
+
+    assert runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"]).exit_code == 0
+    result = runner.invoke(
+        dist,
+        ["-w", working_dir, "-s", "source", "--output-dir", output_dir, "--dist-dir", dist_dir],
+    )
+    assert result.exit_code == 0
+    assert "Created dist folder" in result.output
+    assert "Only work saved to project files is included" in result.output
+    assert f"python -m http.server --directory {dist_dir}" in result.output
+    assert "file://" in result.output
+    assert "deployment root" not in result.output.lower()
+
+
+def test_dist_names_the_deployment_root_only_when_one_is_set(setup_project, output_dir, dist_dir):
+    _, working_dir = setup_project
+    from visivo.commands.run import run
+
+    assert runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"]).exit_code == 0
+    result = runner.invoke(
+        dist,
+        ["-w", working_dir, "-s", "source", "-o", output_dir, "-d", dist_dir, "-dr", "docs"],
+    )
+    assert result.exit_code == 0
+    assert "Setting deployment root to /docs in index.html" in result.output
 
 
 class TestDeploymentRoot:
@@ -579,3 +615,12 @@ def test_dist_writes_an_empty_models_manifest_when_there_are_none(
 
     with open(os.path.join(dist_dir, "data", "models.json")) as f:
         assert json.load(f) == []
+
+
+def test_dist_with_stacktrace_env_reraises_the_original_error(
+    setup_project, output_dir, dist_dir, monkeypatch
+):
+    monkeypatch.setenv("STACKTRACE", "1")
+    result = runner.invoke(dist, ["--output-dir", output_dir, "--dist-dir", dist_dir])
+    assert result.exit_code != 0
+    assert isinstance(result.exception, FileNotFoundError)

@@ -43,21 +43,24 @@ CARDINALITY_BUCKETS: Tuple[Tuple[CardinalityBucket, int], ...] = (
 )
 
 
-BUCKET_REPRESENTATIVES: Dict[str, int] = {
-    "one": 1,
-    "few": 4,
-    "some": 14,
-    "many": 50,
-    "high": 500,
-}
-
-
 def bucket_for(cardinality):
-    """``few`` for 2–7 distinct values, ``some`` for 8–20, and so on."""
+    """The range a distinct-value count falls in: ``few`` for 2–7, ``some``
+    for 8–20, and so on. Rules compare ranges; cards carry only the count."""
     for name, upper in CARDINALITY_BUCKETS:
         if cardinality <= upper:
             return name
     return "high"
+
+
+def bucket_bounds(bucket):
+    """``(low, high)`` distinct-value counts of a range; ``high`` is None for
+    the open top range."""
+    low = 0
+    for name, upper in CARDINALITY_BUCKETS:
+        if name == bucket:
+            return low + 1, upper
+        low = upper
+    return low + 1, None
 
 
 GeoKind = Literal["iso3", "iso2", "country_name", "us_state", "fips", "latlon", "custom"]
@@ -149,7 +152,6 @@ class ShapeCard(_Strict):
     column: str
     role: Role
     cardinality: int = Field(ge=0)
-    cardinality_bucket: Optional[CardinalityBucket] = None
     null_pct: float = Field(default=0, ge=0, le=1)
     time_grain: Optional[TimeGrain] = None
     time_span_points: Optional[int] = Field(default=None, ge=0)
@@ -170,43 +172,28 @@ class ShapeCard(_Strict):
     def axis_points(self):
         return self.time_span_points or self.cardinality
 
+    def bucket(self):
+        return bucket_for(self.cardinality)
+
     @model_validator(mode="before")
     @classmethod
-    def _accept_bucket_names(cls, data):
-        """``cardinality`` is a distinct-value count, but a bucket name
-        (``few``, ``some``...) is accepted for it, or given alone as
-        ``cardinality_bucket``, and stands for a representative count."""
-        if not isinstance(data, dict):
-            return data
-        data = dict(data)
-        buckets = ", ".join(BUCKET_REPRESENTATIVES)
-        value = data.get("cardinality")
-        if isinstance(value, str) and value.strip().lower() in BUCKET_REPRESENTATIVES:
-            bucket = value.strip().lower()
-            data["cardinality"] = BUCKET_REPRESENTATIVES[bucket]
-            data.setdefault("cardinality_bucket", bucket)
-        elif isinstance(value, str):
-            try:
-                int(value)
-            except ValueError:
-                raise ValueError(
-                    f"cardinality must be a whole number (the distinct-value count) "
-                    f"or one of {buckets}; got {value!r}"
-                )
-        elif value is None and data.get("cardinality_bucket") in BUCKET_REPRESENTATIVES:
-            data["cardinality"] = BUCKET_REPRESENTATIVES[data["cardinality_bucket"]]
+    def _no_bucket_field(cls, data):
+        if isinstance(data, dict) and "cardinality_bucket" in data:
+            raise ValueError(
+                "a card has no cardinality_bucket; pass the distinct-value count "
+                "from profile_columns as cardinality"
+            )
         return data
 
-    @model_validator(mode="after")
-    def _derive_bucket(self):
-        derived = bucket_for(self.cardinality)
-        if self.cardinality_bucket is None:
-            self.cardinality_bucket = derived
-        elif self.cardinality_bucket != derived:
+    @field_validator("cardinality", mode="before")
+    @classmethod
+    def _count_only(cls, value):
+        if isinstance(value, str) and not value.strip().isdigit():
             raise ValueError(
-                f"cardinality {self.cardinality} is '{derived}', not '{self.cardinality_bucket}'"
+                "cardinality is the column's distinct-value count from profile_columns "
+                f"(a whole number), not a range name; got {value!r}"
             )
-        return self
+        return value
 
 
 # --- what the agent asks -----------------------------------------------------
@@ -217,6 +204,9 @@ class MetricSpec(_Strict):
     agg: Aggregation
     card: Optional[ShapeCard] = None
     unit: Optional[str] = None
+    # A metric the project defines, on the context model or at project level.
+    # Its expression already aggregates, so a skeleton refs it bare.
+    defined: Optional[Literal["model", "project"]] = None
 
 
 class Semantics(_Strict):
@@ -801,14 +791,11 @@ DefaultRule = Literal[
 
 class InputMatch(_Strict):
     role: List[Role] = Field(min_length=1)
-    bucket: List[CardinalityBucket] = Field(default_factory=list)
     n_min: Optional[int] = Field(default=None, ge=0)
     n_max: Optional[int] = Field(default=None, ge=0)
 
     def admits(self, card):
         if card.role not in self.role:
-            return False
-        if self.bucket and card.cardinality_bucket not in self.bucket:
             return False
         if self.n_min is not None and card.cardinality < self.n_min:
             return False

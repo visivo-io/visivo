@@ -5,7 +5,7 @@ one_liner: Scatter-plot matrix of several numeric columns; every pairwise relati
 use_when:
   - "`intent: relationship` over several numeric columns with no single x/y pair singled out (fare, distance, minutes, tip)."
   - "Few enough rows to plot every point (sampled if needed) and an analyst audience screening for correlations before choosing one scatter."
-  - "A `few` categorical to compare clusters across every pair: `split`."
+  - "A categorical of 2–7 values to compare clusters across every pair: `split`."
 avoid_when:
   - A single pair of numeric columns; that is one scatter, larger and with real axes.
   - "Too many columns; the panel count grows with the square and each panel shrinks to a few pixels, so pick the ones that matter or use parcoords."
@@ -33,7 +33,7 @@ example: |
       interactions:
         - split: ?{ ${ref(trips_sample).payment_type} }
 variations:
-  - when: "a `few` categorical should color the clusters"
+  - when: "a categorical of 2–7 values should color the clusters"
     then: "`split` (one colored series per value, shared panels)"
   - when: "the mirrored upper half and the diagonal add nothing"
     then: "`showupperhalf: false` and `diagonal.visible: false` cut the panel count in half"

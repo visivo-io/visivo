@@ -1,11 +1,11 @@
 import click
 from visivo.commands.options import working_dir, output_dir, source
 from visivo.commands.parse_project_phase import parse_project_phase
-from visivo.commands.list_phase import list_phase
+from visivo.commands.list_phase import list_phase, OBJECT_TYPES
 
 
 @click.command()
-@click.argument("object_type", type=click.Choice(["sources", "models", "insights"]))
+@click.argument("object_type", type=click.Choice(OBJECT_TYPES))
 @working_dir
 @output_dir
 @source

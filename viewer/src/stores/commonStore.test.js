@@ -38,15 +38,11 @@ jest.mock('../schemas/visivo_project_schema.json', () => ({
 // Mirrors the KEY constant in components/onboarding/onboardingState.js
 const ONBOARDING_STATE_KEY = 'visivo.onboarding.v1';
 
-const setLocation = (search = '', pathname = '/') => {
-  delete window.location;
-  window.location = {
-    href: `http://localhost${pathname}${search}`,
-    pathname,
-    search,
-    hash: '',
-  };
-};
+// `window.location` cannot be deleted or redefined, so the old helper's
+// assignment was silently doing nothing and every case read the real URL.
+// Navigating is how jsdom actually changes it.
+const setLocation = (search = '', pathname = '/') =>
+  window.history.replaceState({}, '', `${pathname}${search}`);
 
 const loadStore = () => {
   let useStore;
@@ -323,12 +319,10 @@ describe('commonStore slice actions', () => {
     test('isOnboardingRequested is false when reading the URL throws', () => {
       // A location whose `search` getter throws exercises the guard that
       // keeps onboarding routing from ever breaking store creation.
-      delete window.location;
-      window.location = {};
-      Object.defineProperty(window.location, 'search', {
-        get() {
-          throw new Error('no location');
-        },
+      // The guard catches anything thrown while reading the URL; the real
+      // location cannot be made to throw, so the parse is what throws here.
+      jest.spyOn(global, 'URLSearchParams').mockImplementation(() => {
+        throw new Error('no location');
       });
 
       const store = createHarness();

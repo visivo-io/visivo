@@ -38,7 +38,7 @@ variations:
     then: "numeric `marker.colors` + `marker.colorscale`, exactly as on treemap"
   - when: "the tree is deeper than the outer ring can label"
     then: "`maxdepth: 2` with click-to-zoom; the centre becomes the breadcrumb"
-  - when: "the same hierarchy is compared across a `few` groups"
+  - when: "the same hierarchy is compared across 2–7 groups"
     then: "small multiples of sunbursts placed with `domain`, never a `split`"
 limits:
   series_ideal: 1

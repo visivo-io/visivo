@@ -513,22 +513,16 @@ class TestTheTools:
                 {"cards": [{"model": "m", "column": "x", "role": "nope", "cardinality": 1}]},
             )
 
-    def test_recommend_inputs_tool_accepts_a_bucket_name_and_names_the_type_otherwise(
-        self, integration_app
-    ):
+    def test_recommend_inputs_refuses_a_range_name_with_a_plain_message(self, integration_app):
         from visivo.agent.tools import ToolError, call
 
-        card_with_bucket = {**REGION, "cardinality": "few"}
-        result = call(
-            integration_app, "recommend_inputs", {"cards": [card_with_bucket], "insights": INSIGHTS}
-        )
-        assert result["inputs"][0]["name"] == "region"
-        with pytest.raises(ToolError, match="cardinality must be a whole number"):
-            call(
-                integration_app,
-                "recommend_inputs",
-                {"cards": [{**REGION, "cardinality": "lots"}], "insights": INSIGHTS},
-            )
+        card = {"model": "m", "column": "region", "role": "categorical", "cardinality": "some"}
+        with pytest.raises(ToolError) as error:
+            call(integration_app, "recommend_inputs", {"cards": [card]})
+        message = str(error.value)
+        assert "card for column 'region' is invalid" in message
+        assert "distinct-value count from profile_columns" in message
+        assert "validation error" not in message.lower()
 
     def test_check_input_wiring_is_registered(self, integration_app):
         from visivo.agent.tools import ToolError, call
@@ -573,80 +567,11 @@ class TestHelpers:
         result = recommend_inputs([parsed_card], [parsed_insight])
         assert result["inputs"][0]["wiring"][0]["insight"] == "revenue-by-category"
 
-    def test_input_match_checks_bucket_before_counts(self):
+    def test_input_match_checks_the_count_range(self):
         from visivo.agent.charting.schema import InputMatch, ShapeCard
 
-        match = InputMatch(role=["categorical"], bucket=["few"], n_max=5)
+        match = InputMatch(role=["categorical"], n_min=2, n_max=5)
         assert match.admits(ShapeCard(column="c", role="categorical", cardinality=4))
-        assert not match.admits(ShapeCard(column="c", role="categorical", cardinality=12))
+        assert not match.admits(ShapeCard(column="c", role="categorical", cardinality=1))
+        assert not match.admits(ShapeCard(column="c", role="categorical", cardinality=6))
         assert not match.admits(ShapeCard(column="c", role="time", cardinality=4))
-
-
-TOP = tops("North", "South", "East", "West", "Mid", "Far")
-
-
-class TestCardinalityBuckets:
-    """A card may carry a bucket name where the tool schema asks for a count."""
-
-    @pytest.mark.parametrize(
-        "bucket, widget",
-        [("few", "tabs"), ("some", "chips")],
-    )
-    def test_bucket_name_in_cardinality_picks_the_same_input_as_a_count(self, bucket, widget):
-        entry = one([card("region", "categorical", bucket, top_n=TOP)])
-        assert entry["display"] == widget
-
-    def test_bucket_name_matches_a_representative_count(self):
-        by_name = one([card("region", "categorical", "some", top_n=TOP)])
-        by_count = one([card("region", "categorical", 14, top_n=TOP)])
-        assert by_name == by_count
-
-    def test_bucket_given_alone_as_cardinality_bucket(self):
-        raw = {
-            "model": "sales",
-            "column": "region",
-            "role": "categorical",
-            "cardinality_bucket": "few",
-            "top_n": TOP,
-        }
-        assert one([raw]) == one([card("region", "categorical", 4, top_n=TOP)])
-
-    def test_bucket_name_is_case_insensitive(self):
-        assert one([card("region", "categorical", " Few ", top_n=TOP)]) == one(
-            [card("region", "categorical", 4, top_n=TOP)]
-        )
-
-    def test_numeric_string_is_still_a_count(self):
-        assert one([card("region", "categorical", "4", top_n=TOP)]) == one(
-            [card("region", "categorical", 4, top_n=TOP)]
-        )
-
-    def test_unknown_word_gets_a_plain_error_naming_the_expected_type(self):
-        with pytest.raises(InputsError) as error:
-            recommend_inputs([card("region", "categorical", "lots")], INSIGHTS)
-        message = str(error.value)
-        assert "region" in message
-        assert "whole number" in message
-        assert "few" in message and "some" in message
-        assert "pydantic" not in message.lower()
-        assert "validation error" not in message.lower()
-
-    def test_other_invalid_fields_also_get_a_plain_error(self):
-        with pytest.raises(InputsError) as error:
-            recommend_inputs([card("region", "categorical", -1)], INSIGHTS)
-        assert "cardinality" in str(error.value)
-        assert "validation error" not in str(error.value).lower()
-
-    def test_conflicting_bucket_and_count_is_an_error(self):
-        with pytest.raises(InputsError) as error:
-            recommend_inputs(
-                [card("region", "categorical", "few", cardinality_bucket="many")], INSIGHTS
-            )
-        assert "few" in str(error.value) or "many" in str(error.value)
-
-    def test_an_existing_card_object_passes_through_untouched(self):
-        from visivo.agent.charting.schema import ShapeCard
-
-        built = ShapeCard(column="c", role="categorical", cardinality="few")
-        assert ShapeCard.model_validate(built) is built or built.cardinality == 4
-        assert built.cardinality_bucket == "few"

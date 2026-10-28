@@ -83,11 +83,33 @@ def _dump(obj):
 # --- the generated per-type tools ------------------------------------------
 
 
+_INLINE_ON_MODELS = ("metrics", "dimensions")
+
+
 def _list_handler(type_key):
     def handler(app, arguments):
-        return [_dump(obj) for obj in _manager(app, type_key).get_all_objects_list()]
+        objects = [obj for obj in _manager(app, type_key).get_all_objects_list() if obj is not None]
+        if type_key not in _INLINE_ON_MODELS:
+            return [_dump(obj) for obj in objects]
+        return _with_inline_children(app, type_key, objects)
 
     return handler
+
+
+def _with_inline_children(app, type_key, objects):
+    """Project-level objects plus those defined inside models, each inline one
+    tagged with its ``model``. A draft model replaces its published children."""
+    drafted = _manager(app, "models").cached_objects
+    listed = []
+    for obj in objects:
+        parent = getattr(obj, "_parent_name", None)
+        if parent in drafted:
+            continue
+        listed.append(_dump(obj) | ({"model": parent} if parent else {}))
+    for model_name, model in drafted.items():
+        for child in getattr(model, type_key, None) or []:
+            listed.append(_dump(child) | {"model": model_name})
+    return listed
 
 
 def _get_handler(type_key):
@@ -307,9 +329,7 @@ def _get_schema_handler(app, arguments):
         raise ToolError(f"No type '{requested}'. Available: " + ", ".join(slicer.type_keys()))
 
 
-# Run logs are the whole build output and an agent does not need the part that
-# went well — a failure explains itself at the end.
-RUN_LOG_TAIL = 4000
+from visivo.agent.runs import LOG_TAIL as RUN_LOG_TAIL
 
 
 def _run_entry(app, run, with_logs=False):
@@ -341,6 +361,12 @@ def _get_run_handler(app, arguments):
             raise ToolError("No runs yet.")
         run = app.run_manager.get(listed[0]["id"])
     return _run_entry(app, run, with_logs=True)
+
+
+def _check_runs_handler(app, arguments):
+    from visivo.agent import runs
+
+    return runs.verdict(app)
 
 
 def _theme_config(app):
@@ -438,7 +464,33 @@ def _recommend_charts_handler(app, arguments):
             f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in error.errors()[:5]
         )
         raise ToolError(f"Invalid request: {problems}")
+    _mark_defined_metrics(app, request)
     return compact(recommend(request))
+
+
+def _mark_defined_metrics(app, request):
+    """Flag each request metric the project defines: its expression already
+    aggregates, so a skeleton must not wrap it in another aggregate."""
+    from visivo.server.source_resolution import find_model
+
+    model_name = request.context.model
+    model = find_model(app, model_name)
+    on_model = {m.name for m in getattr(model, "metrics", None) or []}
+    manager = getattr(app, "metric_manager", None)
+    for metric in request.metrics:
+        if metric.defined:
+            continue
+        if metric.name in on_model:
+            metric.defined = "model"
+            continue
+        found = manager.get(metric.name) if manager is not None else None
+        if found is None:
+            continue
+        parent = getattr(found, "_parent_name", None)
+        if not parent:
+            metric.defined = "project"
+        elif parent == model_name:
+            metric.defined = "model"
 
 
 def _recommend_inputs_handler(app, arguments):
@@ -595,7 +647,7 @@ _HAND_WRITTEN = {
             "properties": {
                 "cards": {
                     "type": "array",
-                    "description": "Shape cards with a 'model' field: {model, column, role, cardinality, top_n?, stats?, time_grain?, null_pct?}. cardinality is the distinct-value count (an integer); a bucket name (one, few, some, many, high) is also accepted.",
+                    "description": "Shape cards with a 'model' field: {model, column, role, cardinality, top_n?, stats?, time_grain?, null_pct?}. cardinality is the column's distinct-value count from profile_columns.",
                     "items": {"type": "object"},
                 },
                 "insights": {
@@ -825,6 +877,20 @@ _HAND_WRITTEN = {
         ),
         input_schema={"type": "object", "properties": {}},
         handler=_list_runs_handler,
+    ),
+    "check_runs": Tool(
+        name="check_runs",
+        description=(
+            "Whether the project builds. Waits for a build in flight to finish, "
+            "then reports whether the newest run succeeded, with the "
+            "diagnostics and log tail of one that did not. Call this before you "
+            "say a change is done: a write that changes data starts a build, "
+            "and until it finishes nobody knows whether what you wrote works. "
+            "`ok` is true only when nothing is still building and the newest "
+            "run succeeded."
+        ),
+        input_schema={"type": "object", "properties": {}},
+        handler=_check_runs_handler,
     ),
     "get_run": Tool(
         name="get_run",

@@ -11,6 +11,12 @@ import { seriesColorway } from '../../theme/seriesColors';
 
 const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false, plotlyConfig, onRelayout, seriesOrder }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
+  // Plotly rejects the plot promise with 'Map error.' when a basemap style,
+  // its glyphs or its tiles cannot be fetched. Without this the user gets a
+  // grey rectangle and no reason — and the default theme sets a
+  // `carto-positron` basemap, so it is the common case offline, not an edge.
+  // Tiles are a world basemap; they are never going to be bundled.
+  const [basemapFailed, setBasemapFailed] = useState(false);
 
   const chartInsightNames = useMemo(() => {
     if (!chart.insights?.length) return [];
@@ -285,6 +291,19 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
           </p>
         </div>
       )}
+      {basemapFailed && (
+        <div
+          role="alert"
+          data-testid={`chart_basemap_error_${chart.name}`}
+          className="absolute inset-x-3 top-10 z-10 rounded-md border border-amber-500/60 bg-(--vt-surface) px-3 py-2 text-xs text-(--vt-text) shadow-sm"
+        >
+          <p className="font-semibold text-amber-600">Map background unavailable</p>
+          <p className="mt-1">
+            Map tiles are fetched from the network and are not part of your Visivo install. The
+            chart's data is plotted, but without its basemap.
+          </p>
+        </div>
+      )}
       <Plot
         key={`chart_${chart.name}`}
         data-testid={`chart_${chart.name}`}
@@ -295,6 +314,10 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
         style={{ width: '100%', height: '100%' }}
         onAfterPlot={() => {
           setIsLoading(false);
+          setBasemapFailed(false);
+        }}
+        onError={error => {
+          if (String(error?.message ?? error).includes('Map error')) setBasemapFailed(true);
         }}
         onRelayout={onRelayout}
       />
