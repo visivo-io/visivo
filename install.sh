@@ -100,9 +100,13 @@ main() {
             echo "Error: macOS version $MACOS_VERSION is not supported. Requires macOS 15 or later." >&2
             exit 1
         fi
-        PLATFORM=darwin-x86
-        if [ "$(uname -m)" = "arm64" ]; then
+        if [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ]; then
             PLATFORM="darwin-arm64"
+        else
+            echo "Error: Visivo has no build for Intel Macs." >&2
+            echo "Install it with pip in a Python 3.12 or newer virtual environment instead:" >&2
+            echo "  python3 -m venv .venv && source .venv/bin/activate && pip install visivo" >&2
+            exit 1
         fi
         ;;
     MINGW*|CYGWIN*|MSYS*) PLATFORM=windows-x86;;
@@ -168,7 +172,7 @@ main() {
   curl -# -L "$DOWNLOAD_URL" -o "$VISIVO_DIR/visivo.zip"
 
   echo "Extracting..."
-  unzip -o "$VISIVO_DIR/visivo.zip" -d "$VISIVO_BIN_DIR"
+  unzip -q -o "$VISIVO_DIR/visivo.zip" -d "$VISIVO_BIN_DIR"
   chmod +x "$VISIVO_BIN_DIR/visivo"
 
   # Add to PATH
@@ -177,11 +181,11 @@ main() {
   echo ""
   echo "Installation complete!"
   
-  # Show installed version
-  if [ -n "$VERSION" ]; then
-    echo "Installed Visivo version: $VERSION"
+  INSTALLED_VERSION=$("$VISIVO_BIN_DIR/visivo" --version 2>/dev/null | head -n 1 || true)
+  if [ -n "$INSTALLED_VERSION" ]; then
+    echo "Installed Visivo version: $INSTALLED_VERSION"
   else
-    echo "Installed latest Visivo version"
+    echo "Installed Visivo, but could not read its version."
   fi
   
   if [ "$PROFILE_UPDATED" -eq 1 ]; then

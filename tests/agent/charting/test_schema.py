@@ -57,20 +57,54 @@ class TestCardinalityBuckets:
 
 
 class TestShapeCard:
-    def test_the_bucket_is_derived_from_cardinality(self):
-        assert (
-            ShapeCard(column="borough", role="categorical", cardinality=5).cardinality_bucket
-            == "few"
-        )
+    def test_the_range_is_derived_from_the_count(self):
+        card = ShapeCard(column="borough", role="categorical", cardinality=5)
 
-    def test_a_stated_bucket_that_disagrees_is_rejected(self):
-        with pytest.raises(ValidationError, match="is 'few'"):
-            ShapeCard(column="b", role="categorical", cardinality=5, cardinality_bucket="high")
+        assert card.bucket() == "few"
+        assert "cardinality_bucket" not in card.model_dump()
 
-    def test_a_stated_bucket_that_agrees_is_kept(self):
-        card = ShapeCard(column="b", role="categorical", cardinality=5, cardinality_bucket="few")
+    @pytest.mark.parametrize(
+        "count, bucket",
+        [
+            (0, "one"),
+            (1, "one"),
+            (2, "few"),
+            (7, "few"),
+            (8, "some"),
+            (20, "some"),
+            (21, "many"),
+            (100, "many"),
+            (101, "high"),
+        ],
+    )
+    def test_each_range_edge(self, count, bucket):
+        assert ShapeCard(column="b", role="categorical", cardinality=count).bucket() == bucket
 
-        assert card.cardinality_bucket == "few"
+    @pytest.mark.parametrize(
+        "bucket, bounds",
+        [
+            ("one", (1, 1)),
+            ("few", (2, 7)),
+            ("some", (8, 20)),
+            ("many", (21, 100)),
+            ("high", (101, None)),
+        ],
+    )
+    def test_bucket_bounds(self, bucket, bounds):
+        from visivo.agent.charting.schema import bucket_bounds
+
+        assert bucket_bounds(bucket) == bounds
+
+    def test_a_range_name_is_not_a_count(self):
+        with pytest.raises(ValidationError, match="distinct-value count from profile_columns"):
+            ShapeCard(column="b", role="categorical", cardinality="some")
+
+    def test_a_numeric_string_is_still_a_count(self):
+        assert ShapeCard(column="b", role="categorical", cardinality=" 12 ").cardinality == 12
+
+    def test_a_card_has_no_bucket_field(self):
+        with pytest.raises(ValidationError, match="a card has no cardinality_bucket"):
+            ShapeCard(column="b", role="categorical", cardinality=5, cardinality_bucket="few")
 
     def test_an_unknown_role_is_rejected(self):
         with pytest.raises(ValidationError):

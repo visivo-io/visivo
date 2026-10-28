@@ -86,7 +86,7 @@ class TestTheInteractivitySkills:
 
     def test_the_rules_block_quotes_the_file(self):
         text = render.interactivity_rules_markdown()
-        assert "| categorical/geo_region | few (n –5) |" in text and "`global_filter`" in text
+        assert "| categorical/geo_region | 2–5 |" in text and "`global_filter`" in text
         assert "4 inputs at most" in text and "snake_case" in text
 
 
@@ -179,8 +179,9 @@ class TestChooseAChart:
         assert "geo → geo_region, geo_point, geo_density" in text
         assert "`ordered_stages` → funnel (required)" in text
         assert "(iso3, country_name, us_state)" in text
-        assert "one 1 · few 2–7 · some 8–20 · many 21–100 · high 101+" in text
-        assert "from `some` up, an input" in text
+        assert "distinct-value count: split a column of up to 7 values" in text
+        assert "from 8 values up, an input" in text
+        assert "101 or more values, is a table" in text and "21 or more values pairs" in text
         assert "`top_n_other`, `input_filter`" in text and "`clip_p99`" not in text
 
     def test_a_new_intent_clause_lands_in_the_tree(self):

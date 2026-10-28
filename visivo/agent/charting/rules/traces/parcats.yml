@@ -4,7 +4,7 @@ status: niche
 one_liner: Parallel sets; ribbons show how rows split across several categorical attributes in turn. Sankey without node indices.
 use_when:
   - "Several categorical attributes of the same rows (borough → payment type → company) and the question is how the population splits across them."
-  - "Each attribute has few values (`few`) and a count or additive metric weights the ribbons."
+  - "Each attribute has 2–7 values and a count or additive metric weights the ribbons."
   - "A sankey-like view where the axes are attributes, not stages of a flow, so building node/link indices would be artificial."
 avoid_when:
   - "A true from→to flow between nodes of one kind (pickup borough → dropoff borough); sankey models it, parcats repeats the categories per axis."

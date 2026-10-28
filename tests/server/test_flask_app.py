@@ -76,6 +76,83 @@ def test_create_project_with_file_upload(client):
         assert "dashboard" in data
 
 
+class _RecordingConnection:
+    """Records every statement, answers the few reads the upload path makes."""
+
+    def __init__(self, fail_on=None):
+        self.statements = []
+        self._fail_on = fail_on
+
+    def execute(self, sql):
+        self.statements.append(sql)
+        if self._fail_on and self._fail_on in sql:
+            raise Exception("Failed to download extension 'excel'")
+        return self
+
+    def fetchone(self):
+        return (0,)
+
+    def fetchall(self):
+        return [(0, "col1", "VARCHAR"), (1, "col2", "VARCHAR")]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+def _upload(client, monkeypatch, source_type, filename, body, fail_on=None):
+    conn = _RecordingConnection(fail_on=fail_on)
+    monkeypatch.setattr(
+        "visivo.server.views.project_views.create_source",
+        lambda **kwargs: mock.Mock(connect=lambda: conn),
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        upload = io.BytesIO(body)
+        res = client.post(
+            "/api/source/upload/",
+            data={
+                "source_type": source_type,
+                "source_name": "Uploaded Source",
+                "project_dir": tmpdir,
+                "file": (upload, filename),
+            },
+            content_type="multipart/form-data",
+        )
+    return res, conn
+
+
+def test_csv_upload_installs_no_duckdb_extension(client, monkeypatch):
+    """`INSTALL 'excel'` is a network fetch from extensions.duckdb.org. It used
+    to run for every upload, so the first-data-in flow failed offline on a file
+    type that never needed it."""
+    res, conn = _upload(client, monkeypatch, "csv", "test.csv", b"col1,col2\n1,2")
+
+    assert res.status_code == 200
+    installs = [sql for sql in conn.statements if "INSTALL" in sql or "LOAD" in sql]
+    assert installs == []
+
+
+def test_excel_upload_still_loads_the_extension(client, monkeypatch):
+    res, conn = _upload(client, monkeypatch, "xls", "test.xlsx", b"PK\x03\x04")
+
+    assert res.status_code == 200
+    assert "INSTALL 'excel'" in conn.statements
+    assert any("read_xlsx" in sql for sql in conn.statements)
+
+
+def test_an_unreachable_extension_says_so_instead_of_500ing(client, monkeypatch):
+    res, _ = _upload(
+        client, monkeypatch, "xls", "test.xlsx", b"PK\x03\x04", fail_on="INSTALL 'excel'"
+    )
+
+    assert res.status_code == 503
+    message = json.loads(res.data)["message"]
+    assert "extensions.duckdb.org" in message
+    assert "CSV" in message
+
+
 def test_create_sqlite_project_source_only(client):
     """Test POST /api/source/create with SQLite source."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -535,3 +612,45 @@ def test_deploys_follow_the_host_this_serve_is_bound_to(output_dir):
     assert mock_get.call_args.args[0].startswith("https://app.development.visivo.io")
     # And the token looked up is the one for THAT deployment, not production's.
     assert token.call_args.kwargs["host"] == "https://app.development.visivo.io"
+
+
+def test_load_example_resets_served_project_before_change_handler(output_dir, monkeypatch):
+    """VIS-1582: the change handler diffs the compiled project against the served one.
+
+    Loading an example parses it into the served project first. If the served
+    project is not then reset, the handler compares the example with itself,
+    sees no change and never builds the insights.
+    """
+    flask_app = FlaskApp(os.path.abspath(output_dir), ProjectFactory())
+    flask_app.app.config["TESTING"] = True
+    seen = {}
+
+    def on_project_change():
+        seen["same_as_example"] = flask_app.matches_served_project(example)
+
+    example = ProjectFactory(name="example_project")
+    flask_app.hot_reload_server = MagicMock()
+    flask_app.hot_reload_server.on_project_change.side_effect = on_project_change
+    parser = MagicMock()
+    parser.parse.return_value = example
+    monkeypatch.setattr(
+        "visivo.commands.init_phase.load_example_project", lambda *a, **k: "project.visivo.yml"
+    )
+    monkeypatch.setattr(
+        "visivo.server.views.project_views.Discover",
+        lambda **kwargs: MagicMock(project_file="project.visivo.yml", files=[]),
+    )
+    monkeypatch.setattr(
+        "visivo.server.views.project_views.ParserFactory",
+        lambda: MagicMock(build=lambda **kwargs: parser),
+    )
+
+    response = flask_app.app.test_client().post(
+        "/api/project/load_example/",
+        data=json.dumps({"project_name": "demo", "project_dir": output_dir}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    flask_app.hot_reload_server.on_project_change.assert_called_once()
+    assert seen["same_as_example"] is False

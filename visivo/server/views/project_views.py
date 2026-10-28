@@ -83,7 +83,7 @@ def register_project_views(app, flask_app, output_dir):
         finally:
             if flask_app.hot_reload_server:
                 Logger.instance().debug("Resuming file watcher after example load")
-                flask_app.app.project = Project()
+                flask_app.project = Project()
                 flask_app.hot_reload_server.resume_file_watcher()
                 flask_app.hot_reload_server.on_project_change()
                 Logger.instance().debug("Resumed file watcher after example load")
@@ -167,12 +167,32 @@ def register_project_views(app, flask_app, output_dir):
         )
 
         with source.connect() as conn:
-            conn.execute("INSTALL 'excel'")
-            conn.execute("LOAD 'excel'")
-
             if source_type == SourceTypeEnum.csv:
                 load_csv(conn, file_path, table_name)
             elif source_type == SourceTypeEnum.excel:
+                # `INSTALL 'excel'` fetches the extension from
+                # extensions.duckdb.org. It used to run for every upload,
+                # including CSV, which made the first-data-in flow fail offline
+                # on a file type that never needed it.
+                try:
+                    conn.execute("INSTALL 'excel'")
+                    conn.execute("LOAD 'excel'")
+                except Exception as error:
+                    return (
+                        jsonify(
+                            {
+                                "message": (
+                                    "Reading .xlsx needs DuckDB's 'excel' extension, which "
+                                    "could not be loaded: "
+                                    f"{str(error).strip()[:200]}. DuckDB downloads it from "
+                                    "extensions.duckdb.org on first use, so this needs network "
+                                    "access once. Save the file as CSV and upload that instead "
+                                    "to stay offline."
+                                )
+                            }
+                        ),
+                        503,
+                    )
                 conn.execute(
                     f"CREATE TABLE \"{table_name}\" AS SELECT * FROM read_xlsx('{file_path}')"
                 )

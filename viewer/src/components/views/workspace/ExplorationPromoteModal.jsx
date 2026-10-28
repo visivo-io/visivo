@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PiCheckCircle, PiXCircle, PiCircleNotch, PiPencilSimple } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import { useGuardedAsync } from '../../../hooks/useGuardedAsync';
@@ -132,8 +132,19 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   const setWorkspaceSemanticLayerFocusIntent = useStore(s => s.setWorkspaceSemanticLayerFocusIntent);
 
   const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState([]);
-  const [selected, setSelected] = useState(() => new Set());
+  const [rows, setRowsState] = useState([]);
+  const [selected, setSelectedState] = useState(() => new Set());
+  const rowsRef = useRef([]);
+  const selectedRef = useRef(new Set());
+  const pendingRenameRef = useRef(null);
+  const setRows = useCallback(next => {
+    rowsRef.current = next;
+    setRowsState(next);
+  }, []);
+  const setSelected = useCallback(next => {
+    selectedRef.current = next;
+    setSelectedState(next);
+  }, []);
   const [promoting, setPromoting] = useState(false);
   const [error, setError] = useState(null);
   const [reclassificationOffers, setReclassificationOffers] = useState([]);
@@ -210,17 +221,31 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
       }
 
       if (cancelled) return;
+      built = built.map(r => ({ ...r, id: rowKey(r) }));
       setRows(built);
       setNameDrafts(prev => mergeNameDrafts(prev, built));
-      setSelected(new Set(built.filter(r => r.valid).map(rowKey)));
+      setSelected(new Set(built.filter(r => r.valid).map(r => r.id)));
       setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setRows, setSelected]);
 
   const handleNameCommit = useCallback(
+    (row, rawNextName) => {
+      const run = commitName(row, rawNextName);
+      pendingRenameRef.current = run;
+      run.finally(() => {
+        if (pendingRenameRef.current === run) pendingRenameRef.current = null;
+      });
+      return run;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const commitName = useCallback(
     async (row, rawNextName) => {
       const key = rowKey(row);
       const nextName = (rawNextName || '').trim();
@@ -250,20 +275,19 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
       }
       // Rebuild so downstream rows (a chart referencing the just-renamed
       // insight) pick up the refs the store rename already rewrote.
-      const built = await buildPromoteChecklist(useStore.getState);
+      const rebuilt = await buildPromoteChecklist(useStore.getState);
+      const prevRows = rowsRef.current;
+      const built = rebuilt.map(r => {
+        const renamed = r.type === row.type && r.name === nextName;
+        const prior = renamed
+          ? row
+          : prevRows.find(p => p.type === r.type && p.name === r.name);
+        return { ...r, id: prior?.id ?? rowKey(r) };
+      });
       setRows(built);
       setNameDrafts(prev => mergeNameDrafts(prev, built, key));
-      // The renamed row's prior checked state lives under its OLD key; every
-      // other row's key is unchanged.
-      setSelected(prevSelected => {
-        const next = new Set();
-        built.forEach(r => {
-          const newKey = rowKey(r);
-          const priorKey = r.type === row.type && r.name === nextName ? key : newKey;
-          if (prevSelected.has(priorKey) && r.valid) next.add(newKey);
-        });
-        return next;
-      });
+      const prevSelected = selectedRef.current;
+      setSelected(new Set(built.filter(r => r.valid && prevSelected.has(r.id)).map(r => r.id)));
       setNameErrors(prev => {
         const nextErrors = new Map(prev);
         nextErrors.delete(key);
@@ -271,19 +295,19 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
       });
       setRenamingKey(null);
     },
-    []
+    [setRows, setSelected]
   );
 
-  const toggle = useCallback((row) => {
-    if (!row.valid) return;
-    setSelected(prev => {
-      const next = new Set(prev);
-      const key = rowKey(row);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
+  const toggle = useCallback(
+    row => {
+      if (!row.valid) return;
+      const next = new Set(selectedRef.current);
+      if (next.has(row.id)) next.delete(row.id);
+      else next.add(row.id);
+      setSelected(next);
+    },
+    [setSelected]
+  );
 
   const grouped = useMemo(() => {
     const g = {};
@@ -303,10 +327,17 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
   const handlePromote = useCallback(async () => {
     setPromoting(true);
     setError(null);
-    const selection = Array.from(selected).map(key => {
-      const idx = key.indexOf(':');
-      return { type: key.slice(0, idx), name: key.slice(idx + 1) };
-    });
+    if (pendingRenameRef.current) {
+      try {
+        await pendingRenameRef.current;
+      } catch {
+        // a failed rename already surfaced its error inline
+      }
+    }
+    const currentSelected = selectedRef.current;
+    const selection = rowsRef.current
+      .filter(r => currentSelected.has(r.id))
+      .map(r => ({ type: r.type, name: r.name }));
     const result = await promoteExploration(explorationId, selection);
 
     // Decide the outcome BEFORE any setState, so the offer/failure path's state
@@ -354,7 +385,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
     if (result.reclassificationOffers?.length > 0) {
       setReclassificationOffers(result.reclassificationOffers);
     }
-  }, [selected, promoteExploration, explorationId, returnTo, dashboards, onClose]);
+  }, [promoteExploration, explorationId, returnTo, dashboards, onClose]);
 
   const dismissOffer = useCallback(index => {
     setReclassificationOffers(prev => prev.filter((_, i) => i !== index));
@@ -601,7 +632,7 @@ const ExplorationPromoteModal = ({ explorationId, onClose }) => {
                     const colors = getTypeColors(row.type);
                     const Icon = getTypeIcon(row.type);
                     const key = rowKey(row);
-                    const checked = selected.has(key);
+                    const checked = selected.has(row.id);
                     const renamable = isRenamableRow(row);
                     const nameError = nameErrors.get(key);
                     return (

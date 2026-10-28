@@ -269,29 +269,8 @@ class TestTheToolOnTheLocalPath:
 
 class TestWaitingForTheData:
     """A draft save triggers a run. Capturing before it settles screenshots
-    spinners however patiently the page is polled."""
-
-    def test_it_waits_while_a_run_is_in_flight(self, integration_app, monkeypatch):
-        from visivo.server.managers.run_manager import RunState
-
-        states = [RunState.RUNNING.value, RunState.RUNNING.value, RunState.SUCCEEDED.value]
-        monkeypatch.setattr(
-            integration_app.run_manager, "list", lambda limit=1: [{"state": states.pop(0)}]
-        )
-        monkeypatch.setattr(screenshot.time, "sleep", lambda _s: None)
-
-        assert screenshot.wait_for_runs(integration_app) is True
-        assert states == []
-
-    def test_a_run_that_never_finishes_does_not_block_forever(self, integration_app, monkeypatch):
-        from visivo.server.managers.run_manager import RunState
-
-        monkeypatch.setattr(
-            integration_app.run_manager, "list", lambda limit=1: [{"state": RunState.RUNNING.value}]
-        )
-        monkeypatch.setattr(screenshot.time, "sleep", lambda _s: None)
-
-        assert screenshot.wait_for_runs(integration_app, timeout=0.05) is False
+    spinners however patiently the page is polled. The waiting itself is
+    `visivo.agent.runs.wait_for_runs` and is tested there."""
 
     def test_an_unsettled_run_is_reported_with_the_image(
         self, integration_app, browser, monkeypatch
@@ -329,6 +308,47 @@ class TestWhenThereIsNoBrowser:
         with pytest.raises(screenshot.BrowserUnavailable, match=r"visivo\[screenshot\]"):
             screenshot._playwright()
 
+    def test_a_missing_pillow_says_how_to_get_it_too(self, monkeypatch):
+        """The cloud runner shipped Playwright but not Pillow, so a capture
+        got all the way through a browser launch and a full-page screenshot
+        and then died on `No module named 'PIL'`."""
+        import builtins
+
+        real_import = builtins.__import__
+
+        def no_pillow(name, *args, **kwargs):
+            if name == "PIL" or name.startswith("PIL."):
+                raise ImportError("No module named 'PIL'")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", no_pillow)
+
+        with pytest.raises(screenshot.BrowserUnavailable, match=r"visivo\[screenshot\]"):
+            screenshot._pillow()
+
+    def test_a_missing_package_is_found_before_a_browser_is_launched(
+        self, integration_app, monkeypatch
+    ):
+        """Spending a launch and a capture on a turn that cannot finish is the
+        expensive way to learn the image is wrong."""
+        launched = []
+        monkeypatch.setattr(screenshot, "capture", lambda *a, **kw: launched.append(1) or b"png")
+        monkeypatch.setattr(
+            screenshot,
+            "_pillow",
+            lambda: (_ for _ in ()).throw(screenshot.BrowserUnavailable("no pillow")),
+        )
+        name = [
+            d.name
+            for d in integration_app.dashboard_manager.get_all_objects_list()
+            if getattr(d, "name", None)
+        ][0]
+
+        with pytest.raises(ToolError):
+            call(integration_app, "screenshot_dashboard", {"name": name})
+
+        assert launched == []
+
     def test_a_missing_browser_is_installed_once(self, monkeypatch):
         """The 260MB download blocks the first call. Doing it per call would
         make every capture a minute long."""
@@ -357,6 +377,50 @@ class TestWhenThereIsNoBrowser:
 
         assert installs.call_count == 1
         assert "--only-shell" in installs.call_args[0][0]
+
+    def test_a_packaged_build_refuses_instead_of_shelling_out(self, monkeypatch):
+        """In a frozen build `sys.executable` is the visivo binary, so
+        `-m playwright install` re-invokes the CLI with arguments it does not
+        understand. The refusal has to come before that, not after it fails."""
+        screenshot._installed.clear()
+        monkeypatch.setattr(screenshot, "is_frozen", lambda: True)
+
+        chromium = mock.MagicMock()
+        chromium.launch = mock.Mock(side_effect=Exception("Executable doesn't exist at /x/chrome"))
+        playwright = mock.MagicMock(chromium=chromium)
+        context = mock.MagicMock()
+        context.__enter__.return_value = playwright
+        context.__exit__.return_value = False
+        monkeypatch.setattr(screenshot, "_playwright", lambda: lambda: context)
+
+        installs = mock.Mock()
+        monkeypatch.setattr(screenshot.subprocess, "run", installs)
+
+        with pytest.raises(screenshot.BrowserUnavailable) as refusal:
+            screenshot.ensure_browser()
+
+        assert installs.call_count == 0
+        message = str(refusal.value)
+        assert "packaged build" in message
+        assert "PLAYWRIGHT_BROWSERS_PATH" in message
+
+    def test_a_packaged_build_still_uses_a_browser_it_can_find(self, monkeypatch):
+        """Refusing the DOWNLOAD is not refusing the feature — a packaged build
+        pointed at an existing Chromium captures normally."""
+        screenshot._installed.clear()
+        monkeypatch.setattr(screenshot, "is_frozen", lambda: True)
+
+        chromium = mock.MagicMock()
+        playwright = mock.MagicMock(chromium=chromium)
+        context = mock.MagicMock()
+        context.__enter__.return_value = playwright
+        context.__exit__.return_value = False
+        monkeypatch.setattr(screenshot, "_playwright", lambda: lambda: context)
+        monkeypatch.setattr(screenshot.subprocess, "run", mock.Mock())
+
+        screenshot.ensure_browser()
+
+        assert screenshot._installed.is_set()
 
     def test_a_failed_install_says_why(self, monkeypatch):
         screenshot._installed.clear()

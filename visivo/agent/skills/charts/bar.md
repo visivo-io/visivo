@@ -16,7 +16,7 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 - One categorical, boolean or discrete-numeric dimension, compared across one or a few metrics.
 - Ranking (`intent: rank`): sort by the metric and the bar order carries the message.
 - Time as discrete totals (months, quarters) rather than a continuous trend.
-- A second `few` dimension, stacked when the parts make a whole and grouped when they are compared.
+- A second dimension of 2–7 values, stacked when the parts make a whole and grouped when they are compared.
 
 **Avoid when**
 - Too many categories to label; use a table or a top-N + Other. Labels overlap first, then the bars vanish.
@@ -31,11 +31,11 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 **Gotchas**
 - A bar with no `sort` is in storage order; rank charts need `- sort: ?{ <metric> DESC }`.
 - `barmode` lives on the chart `layout`, not the insight; a split bar without it defaults to grouped.
-- A split on a `some`/`many` column multiplies the bars silently; read the cardinality bucket first.
+- A split on a column of more than 7 values multiplies the bars silently; read the column's cardinality first.
 - Series take colorway colours by order, not by value; to give a series a fixed colour (a brand colour, or the same one on every dashboard), pin it with `marker.color: ?{ CASE <col> WHEN 'Uber' THEN '#1f1f1f' ... END }`. A constant `marker.color` paints every series one colour.
 
 **Variations**
-- When second `few` dimension: `split`; set chart `layout.barmode: stack` for part-of-whole, `group` otherwise.
+- When a second dimension of 2–7 values: `split`; set chart `layout.barmode: stack` for part-of-whole, `group` otherwise.
 - When long category labels: `orientation: h` with the category on `y`.
 - When a second metric with another unit: the `bar_line_dual_axis` pairing: the second metric as a line on its own right-hand axis.
 - When exact values wanted: `text: ?{ <metric> }` + `textposition: outside`, up to `text_labels.max_marks` bars; past it the labels turn vertical and shrink.

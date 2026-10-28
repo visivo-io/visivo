@@ -18,7 +18,7 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 - `intent: flow` or `semantics.ordered_stages` with branching (a funnel that splits).
 - A modest number of nodes per side and of links, after the small links are collapsed.
 - Several categorical attributes of the same rows (borough → payment type → company) and the question is how the population splits across them.
-- Each attribute has few values (`few`) and a count or additive metric weights the ribbons.
+- Each attribute has 2–7 values and a count or additive metric weights the ribbons.
 - A sankey-like view where the axes are attributes, not stages of a flow, so building node/link indices would be artificial.
 
 **Avoid when**
@@ -49,7 +49,7 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 
 **Variations**
 - When the flow has three stages: chain them: links for stage1→stage2 and stage2→stage3 in one model, with node indices shared.
-- When a `few` categorical describes the links: `link.color` from a CASE (the legitimate color case).
+- When a categorical of 2–7 values describes the links: `link.color` from a CASE (the legitimate color case).
 - When many small links clutter the diagram: `collapse_rare` in SQL, folding the smallest links into Other.
 
 **Other uses**

@@ -2,6 +2,7 @@ from visivo.utils import DIST_PATH
 from visivo.models.base.named_model import alpha_hash
 from visivo.logger.logger import Logger
 import traceback
+import click
 
 
 def normalize_deployment_root(deployment_root):
@@ -333,7 +334,8 @@ def dist_phase(
         shutil.copytree(DIST_PATH, dist_dir, dirs_exist_ok=True)
 
         index_html_path = os.path.join(dist_dir, "index.html")
-        Logger.instance().info(f"Setting deployment root to {deployment_root} in index.html")
+        if deployment_root:
+            Logger.instance().info(f"Setting deployment root to {deployment_root} in index.html")
         if os.path.exists(index_html_path):
             with open(index_html_path, "r") as f:
                 content = f.read()
@@ -373,3 +375,4 @@ def dist_phase(
         if os.environ.get("STACKTRACE"):
             Logger.instance().error(f"{traceback.format_exc()}")
             raise e
+        raise click.exceptions.Exit(1)

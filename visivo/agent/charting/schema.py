@@ -44,11 +44,23 @@ CARDINALITY_BUCKETS: Tuple[Tuple[CardinalityBucket, int], ...] = (
 
 
 def bucket_for(cardinality):
-    """``few`` for 2–7 distinct values, ``some`` for 8–20, and so on."""
+    """The range a distinct-value count falls in: ``few`` for 2–7, ``some``
+    for 8–20, and so on. Rules compare ranges; cards carry only the count."""
     for name, upper in CARDINALITY_BUCKETS:
         if cardinality <= upper:
             return name
     return "high"
+
+
+def bucket_bounds(bucket):
+    """``(low, high)`` distinct-value counts of a range; ``high`` is None for
+    the open top range."""
+    low = 0
+    for name, upper in CARDINALITY_BUCKETS:
+        if name == bucket:
+            return low + 1, upper
+        low = upper
+    return low + 1, None
 
 
 GeoKind = Literal["iso3", "iso2", "country_name", "us_state", "fips", "latlon", "custom"]
@@ -140,7 +152,6 @@ class ShapeCard(_Strict):
     column: str
     role: Role
     cardinality: int = Field(ge=0)
-    cardinality_bucket: Optional[CardinalityBucket] = None
     null_pct: float = Field(default=0, ge=0, le=1)
     time_grain: Optional[TimeGrain] = None
     time_span_points: Optional[int] = Field(default=None, ge=0)
@@ -161,16 +172,28 @@ class ShapeCard(_Strict):
     def axis_points(self):
         return self.time_span_points or self.cardinality
 
-    @model_validator(mode="after")
-    def _derive_bucket(self):
-        derived = bucket_for(self.cardinality)
-        if self.cardinality_bucket is None:
-            self.cardinality_bucket = derived
-        elif self.cardinality_bucket != derived:
+    def bucket(self):
+        return bucket_for(self.cardinality)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_bucket_field(cls, data):
+        if isinstance(data, dict) and "cardinality_bucket" in data:
             raise ValueError(
-                f"cardinality {self.cardinality} is '{derived}', not '{self.cardinality_bucket}'"
+                "a card has no cardinality_bucket; pass the distinct-value count "
+                "from profile_columns as cardinality"
             )
-        return self
+        return data
+
+    @field_validator("cardinality", mode="before")
+    @classmethod
+    def _count_only(cls, value):
+        if isinstance(value, str) and not value.strip().isdigit():
+            raise ValueError(
+                "cardinality is the column's distinct-value count from profile_columns "
+                f"(a whole number), not a range name; got {value!r}"
+            )
+        return value
 
 
 # --- what the agent asks -----------------------------------------------------
@@ -181,6 +204,9 @@ class MetricSpec(_Strict):
     agg: Aggregation
     card: Optional[ShapeCard] = None
     unit: Optional[str] = None
+    # A metric the project defines, on the context model or at project level.
+    # Its expression already aggregates, so a skeleton refs it bare.
+    defined: Optional[Literal["model", "project"]] = None
 
 
 class Semantics(_Strict):
@@ -765,14 +791,11 @@ DefaultRule = Literal[
 
 class InputMatch(_Strict):
     role: List[Role] = Field(min_length=1)
-    bucket: List[CardinalityBucket] = Field(default_factory=list)
     n_min: Optional[int] = Field(default=None, ge=0)
     n_max: Optional[int] = Field(default=None, ge=0)
 
     def admits(self, card):
         if card.role not in self.role:
-            return False
-        if self.bucket and card.cardinality_bucket not in self.bucket:
             return False
         if self.n_min is not None and card.cardinality < self.n_min:
             return False

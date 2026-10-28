@@ -63,6 +63,30 @@ const run = over => ({
 
 const logQueryOpts = () => useQuery.mock.calls.find(([opts]) => opts.queryKey[0] === 'runLog')?.[0];
 
+const diagnosticsErrorJson = {
+  phase: 'run',
+  diagnostics: [
+    {
+      severity: 'error',
+      phase: 'run',
+      code: 'query_execution_failed',
+      message: 'no such table: orders',
+      object: { type: 'model', name: 'orders' },
+      hint: 'Check the model SQL, then run again.',
+      related: [],
+    },
+    {
+      severity: 'error',
+      phase: 'run',
+      code: 'dependency_failed',
+      message: "Skipped insight 'revenue' because its dependency 'orders' failed.",
+      object: { type: 'insight', name: 'revenue' },
+      related: [],
+    },
+  ],
+};
+
+
 beforeEach(() => {
   useQuery.mockReset();
   mockQueryClient.invalidateQueries.mockClear();
@@ -137,29 +161,6 @@ describe('RunsView is self-contained (6c-T2 dark-on-dark hardening)', () => {
 });
 
 describe('RunsView — RunDetail diagnostics', () => {
-  const diagnosticsErrorJson = {
-    phase: 'run',
-    diagnostics: [
-      {
-        severity: 'error',
-        phase: 'run',
-        code: 'query_execution_failed',
-        message: 'no such table: orders',
-        object: { type: 'model', name: 'orders' },
-        hint: 'Check the model SQL, then run again.',
-        related: [],
-      },
-      {
-        severity: 'error',
-        phase: 'run',
-        code: 'dependency_failed',
-        message: "Skipped insight 'revenue' because its dependency 'orders' failed.",
-        object: { type: 'insight', name: 'revenue' },
-        related: [],
-      },
-    ],
-  };
-
   test('a diagnostics-carrying failure renders one entry per failed job, with object and hint', () => {
     mockQueries({
       runs: [run({ state: 'failed', error_json: diagnosticsErrorJson })],
@@ -399,6 +400,83 @@ describe('RunsView staged panel', () => {
     expect(screen.getByRole('button', { name: 'Run all' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Run changes' })).toBeDisabled();
     expect(screen.getByText('No changes waiting to run')).toBeInTheDocument();
+  });
+
+  test('nothing staged and the latest run succeeded: says everything built', () => {
+    setup({ stagedChanges: [] });
+    mockQueries({ runs: [run({ state: 'succeeded' })] });
+    render(<RunsView />);
+    expect(screen.getByText('No changes waiting to run')).toBeInTheDocument();
+    expect(screen.getByText(/Everything built/)).toBeInTheDocument();
+    expect(screen.queryByTestId('runs-last-run-failed')).not.toBeInTheDocument();
+  });
+
+  test('nothing staged but the latest run failed: says so with the failed job count, never "Everything built"', () => {
+    setup({ stagedChanges: [] });
+    mockQueries({ runs: [run({ state: 'failed', error_json: diagnosticsErrorJson })] });
+    render(<RunsView />);
+    expect(screen.getByText('Last run failed — 2 jobs failed')).toBeInTheDocument();
+    expect(screen.queryByText(/Everything built/)).not.toBeInTheDocument();
+    expect(screen.queryByText('No changes waiting to run')).not.toBeInTheDocument();
+  });
+
+  test('a failed run without diagnostics still says it failed, without a count', () => {
+    setup({ stagedChanges: [] });
+    mockQueries({ runs: [run({ state: 'failed', error_json: { phase: 'run' } })] });
+    render(<RunsView />);
+    expect(screen.getByText('Last run failed')).toBeInTheDocument();
+  });
+
+  test('a single failed job is singular', () => {
+    setup({ stagedChanges: [] });
+    mockQueries({
+      runs: [
+        run({
+          state: 'failed',
+          error_json: { phase: 'run', diagnostics: [diagnosticsErrorJson.diagnostics[0]] },
+        }),
+      ],
+    });
+    render(<RunsView />);
+    expect(screen.getByText('Last run failed — 1 job failed')).toBeInTheDocument();
+  });
+
+  test('the failure link expands the failed run', () => {
+    setup({ stagedChanges: [] });
+    mockQueries({
+      runs: [run({ id: 'r-bad', state: 'failed', error_json: diagnosticsErrorJson })],
+      log: { state: 'failed', logs: 'boom', error_json: diagnosticsErrorJson },
+    });
+    render(<RunsView />);
+    expect(screen.queryByTestId('run-detail-diagnostics')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show what went wrong' }));
+    expect(screen.getByTestId('run-detail-diagnostics')).toBeInTheDocument();
+  });
+
+  test('changes staged and the latest run failed: keeps the count and also flags the failure', () => {
+    setup();
+    mockQueries({ runs: [run({ state: 'failed', error_json: diagnosticsErrorJson })] });
+    render(<RunsView />);
+    expect(screen.getByText('2 changes waiting to run')).toBeInTheDocument();
+    expect(screen.getByTestId('runs-last-run-failed')).toHaveTextContent(
+      'Last run failed — 2 jobs failed'
+    );
+  });
+
+  test('nothing staged while a run is in progress: does not claim everything built', () => {
+    setup({ stagedChanges: [] });
+    mockQueries({ runs: [run({ state: 'running' })] });
+    render(<RunsView />);
+    expect(screen.getByText('A run is in progress')).toBeInTheDocument();
+    expect(screen.queryByText(/Everything built/)).not.toBeInTheDocument();
+  });
+
+  test('nothing staged after a canceled run: does not claim everything built', () => {
+    setup({ stagedChanges: [] });
+    mockQueries({ runs: [run({ state: 'canceled' })] });
+    render(<RunsView />);
+    expect(screen.getByText('Last run was canceled')).toBeInTheDocument();
+    expect(screen.queryByText(/Everything built/)).not.toBeInTheDocument();
   });
 
   test('Run all triggers a deliberate full rebuild (empty filter)', async () => {

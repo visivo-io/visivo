@@ -494,9 +494,88 @@ describe('RightRailEditPanel dashboard editing (#46 — working copy, explicit s
     fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
     expect(liveConfig().rows[0].height).toBe('large');
 
-    fireEvent.click(screen.getByTestId('form-footer-cancel')); // Discard
+    fireEvent.click(screen.getByTestId('form-footer-cancel')); // Discard asks first
+    expect(liveConfig().rows[0].height).toBe('large');
+    expect(screen.getByText(/Discard all unsaved changes/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Confirm Discard'));
     expect(liveConfig().rows[0].height).toBe('medium');
     expect(screen.getByTestId('form-footer-save')).toBeDisabled();
+    expect(screen.queryByText(/Discard all unsaved changes/)).not.toBeInTheDocument();
+  });
+
+  test('cancelling the Discard confirm keeps the unsaved layout', async () => {
+    resetStore({ workspaceOutlineSelectedKey: 'row.0' });
+    renderPanel();
+
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+
+    fireEvent.click(screen.getByTestId('form-footer-cancel'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(liveConfig().rows[0].height).toBe('large');
+    expect(screen.queryByText(/Discard all unsaved changes/)).not.toBeInTheDocument();
+    expect(screen.getByTestId('form-footer-save')).not.toBeDisabled();
+  });
+
+  test('Discard replaces a pending Delete confirm', async () => {
+    resetStore({ workspaceOutlineSelectedKey: 'row.0' });
+    renderPanel();
+
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+
+    fireEvent.click(screen.getByTitle('Delete'));
+    expect(screen.getByText(/Delete this dashboard/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('form-footer-cancel'));
+    expect(screen.queryByText(/Delete this dashboard/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Discard all unsaved changes/)).toBeInTheDocument();
+    expect(screen.queryByTitle('Delete')).not.toBeInTheDocument();
+  });
+
+  describe('dashboard delete and save results', () => {
+    let realActions;
+    beforeEach(() => {
+      const { deleteDashboard, closeWorkspaceTab } = useStore.getState();
+      realActions = { deleteDashboard, closeWorkspaceTab };
+    });
+    afterEach(() => act(() => useStore.setState(realActions)));
+
+    test('Confirm Delete removes the dashboard and closes its tab', async () => {
+      const deleteDashboard = jest.fn(() => Promise.resolve({ success: true }));
+      const closeWorkspaceTab = jest.fn();
+      resetStore({ workspaceOutlineSelectedKey: 'row.0', deleteDashboard, closeWorkspaceTab });
+      renderPanel();
+
+      fireEvent.click(screen.getByTitle('Delete'));
+      fireEvent.click(screen.getByText('Confirm Delete'));
+      await waitFor(() => expect(closeWorkspaceTab).toHaveBeenCalledWith('dashboard:simple-dashboard'));
+      expect(deleteDashboard).toHaveBeenCalledWith('simple-dashboard');
+      expect(screen.queryByText(/Delete this dashboard/)).not.toBeInTheDocument();
+    });
+
+    test('a failed delete shows the error and closes the confirm', async () => {
+      const deleteDashboard = jest.fn(() => Promise.resolve({ success: false, error: 'locked' }));
+      const closeWorkspaceTab = jest.fn();
+      resetStore({ workspaceOutlineSelectedKey: 'row.0', deleteDashboard, closeWorkspaceTab });
+      renderPanel();
+
+      fireEvent.click(screen.getByTitle('Delete'));
+      fireEvent.click(screen.getByText('Confirm Delete'));
+      expect(await screen.findByText('locked')).toBeInTheDocument();
+      expect(closeWorkspaceTab).not.toHaveBeenCalled();
+      expect(screen.queryByText(/Delete this dashboard/)).not.toBeInTheDocument();
+    });
+
+    test('a failed save shows the error', async () => {
+      const saveDashboard = jest.fn(() => Promise.resolve({ success: false, error: 'disk full' }));
+      resetStore({ workspaceOutlineSelectedKey: 'row.0', saveDashboard });
+      renderPanel();
+
+      selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+      fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
+      fireEvent.click(screen.getByTestId('form-footer-save'));
+      expect(await screen.findByText(/disk full/)).toBeInTheDocument();
+    });
   });
 
   test('an invalid working copy still updates optimistically but surfaces the gate errors', async () => {

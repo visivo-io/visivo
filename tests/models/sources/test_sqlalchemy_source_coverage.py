@@ -6,10 +6,17 @@ get_schemas / get_tables / get_columns / get_table_preview methods.
 """
 
 import sqlite3
+from datetime import datetime, time
+from decimal import Decimal
 
+import click
+import polars as pl
+import psycopg2
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.pool import NullPool
 
+from visivo.models.sources.postgresql_source import PostgresqlSource
 from visivo.models.sources.sqlite_source import Attachment, SqliteSource
 
 
@@ -327,3 +334,165 @@ class TestConnectionSideEffects:
 
         connection = source.get_connection()
         connection.close()
+
+
+class FailingDefaultSchemaInspector(FakeInspector):
+    @property
+    def default_schema_name(self):
+        raise RuntimeError("no default schema")
+
+
+def unreachable_postgres():
+    def refuse():
+        raise psycopg2.OperationalError("server closed the connection")
+
+    source = PostgresqlSource(name="pg", type="postgresql", database="prod")
+    source._engine = create_engine("postgresql+psycopg2://", creator=refuse, poolclass=NullPool)
+    return source
+
+
+class TestWriteDataframe:
+    def test_decimal_datetime_and_time_columns_round_trip(self, sqlite_db):
+        frame = pl.DataFrame(
+            {
+                "amount": pl.Series([Decimal("1.25")], dtype=pl.Decimal(10, 2)),
+                "seen_at": [datetime(2026, 1, 2, 3, 4, 5)],
+                "opens": [time(9, 30)],
+            }
+        )
+
+        sqlite_db.write_dataframe("readings", frame)
+
+        columns = {c["name"]: c["type"] for c in sqlite_db.get_columns("main", "readings")}
+        assert columns == {"amount": "NUMERIC", "seen_at": "DATETIME", "opens": "TIME"}
+        assert sqlite_db.read_sql("select count(*) as n from readings") == [{"n": 1}]
+
+    def test_write_failure_names_the_table_and_source(self, sqlite_db):
+        with pytest.raises(click.ClickException) as exc:
+            sqlite_db.write_dataframe(
+                "customer_orders", pl.DataFrame({"name": ["Ada"]}), replace=False
+            )
+
+        assert exc.value.message.startswith(
+            "Error writing table 'customer_orders' to sqlite source 'shop':"
+        )
+
+
+class TestTableExists:
+    def test_reports_present_and_missing_tables(self, sqlite_db):
+        assert sqlite_db.table_exists("customers") is True
+        assert sqlite_db.table_exists("no_such_table") is False
+
+    def test_unreachable_server_reports_missing(self):
+        assert unreachable_postgres().table_exists("customers") is False
+
+
+class TestIntrospectPerDatabaseFailures:
+    def test_single_connection_records_a_failed_database(self, sqlite_db, mocker):
+        mocker.patch.object(
+            SqliteSource, "_introspect_database", side_effect=RuntimeError("db unreadable")
+        )
+
+        databases = sqlite_db._introspect_via_single_connection(
+            sqlite_db.get_engine(), [sqlite_db.database]
+        )
+
+        assert databases == [{"name": sqlite_db.database, "error": "db unreadable"}]
+
+    def test_multiple_connections_records_a_failed_database(self, sqlite_db, mocker):
+        mocker.patch.object(
+            SqliteSource, "_introspect_database", side_effect=RuntimeError("db unreadable")
+        )
+
+        databases = sqlite_db._introspect_via_multiple_connections([sqlite_db.database])
+
+        assert databases == [{"name": sqlite_db.database, "error": "db unreadable"}]
+
+
+class TestIntrospectPostgresPath:
+    def test_postgres_dialect_introspects_each_database_on_its_own_engine(self, mocker):
+        source = unreachable_postgres()
+        mocker.patch.object(PostgresqlSource, "list_databases", return_value=["prod"])
+
+        meta = source.introspect()
+
+        assert [db["name"] for db in meta["databases"]] == ["prod"]
+        assert "server closed the connection" in meta["databases"][0]["error"]
+
+
+class TestGetSchemaPartialFailures:
+    def test_unresolvable_default_schema_is_recorded_and_scan_continues(self, sqlite_db, mocker):
+        inspector = FailingDefaultSchemaInspector(tables=["events"], columns=["id"])
+        mocker.patch("visivo.models.sources.sqlalchemy_source.inspect", return_value=inspector)
+
+        schema = sqlite_db.get_schema()
+
+        errors = schema["metadata"]["errors"]
+        assert "could not resolve default schema: no default schema" in errors
+        assert "error" not in schema["metadata"]
+
+    def test_table_that_fails_to_build_is_skipped_and_recorded(self, sqlite_db, mocker):
+        mocker.patch.object(
+            SqliteSource, "_build_table_schema", side_effect=RuntimeError("unmappable column")
+        )
+
+        schema = sqlite_db.get_schema()
+
+        assert schema["tables"] == {}
+        assert "could not build schema for customers: unmappable column" in (
+            schema["metadata"]["errors"]
+        )
+
+    def test_table_with_no_schema_is_skipped(self, sqlite_db, mocker):
+        mocker.patch.object(SqliteSource, "_build_table_schema", return_value=None)
+
+        schema = sqlite_db.get_schema()
+
+        assert schema["tables"] == {}
+        assert schema["metadata"]["total_tables"] == 0
+
+
+class TestColumnsByTableFallback:
+    def test_unlistable_schema_yields_no_columns_and_an_error(self, sqlite_db):
+        errors = []
+
+        columns = sqlite_db._columns_by_table(FakeInspector(table_names_error=True), "s", errors)
+
+        assert columns == {}
+        assert errors[-1] == "could not list tables in schema s: no table names"
+
+    def test_failures_name_three_sample_tables_and_count_the_rest(self, sqlite_db):
+        errors = []
+        inspector = FakeInspector(tables=["a", "b", "c", "d", "e"], columns_error=True)
+
+        assert sqlite_db._columns_by_table(inspector, None, errors) == {}
+
+        assert errors[-1] == (
+            "could not reflect columns for 5 table(s) in default (a, b, c and 2 more): no columns"
+        )
+
+
+class TestConciseError:
+    def test_long_first_line_is_truncated_with_an_ellipsis(self):
+        message = SqliteSource._concise_error(RuntimeError("x" * 500 + "\nsecond line"))
+
+        assert len(message) == 200
+        assert message.endswith("…")
+
+
+class TestAvailableTablesForSchemaErrors:
+    class Boom:
+        def get_table_names(self, schema=None):
+            raise RuntimeError("cannot list")
+
+    def test_requested_tables_with_unlistable_schemas_yield_none(self, tmp_path):
+        source = SqliteSource(name="s", type="sqlite", database=str(tmp_path / "s.sqlite"))
+        source.db_schema = "main"
+
+        assert source._get_available_tables_for_schema(self.Boom(), table_names=["a"]) == []
+
+    def test_all_tables_with_unlistable_db_schema_yield_none(self, tmp_path):
+        source = SqliteSource(name="s", type="sqlite", database=str(tmp_path / "s.sqlite"))
+        source.db_schema = "main"
+
+        assert source._get_available_tables_for_schema(self.Boom(), table_names=None) == []

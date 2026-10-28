@@ -30,6 +30,8 @@ tasks:
   - key: code
     call: git/clone 2.0.8
     with:
+      # diff-stats runs `git fetch origin main` to size the PR.
+      preserve-git-dir: true
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
       github-token: ${{ github.token }}
@@ -78,24 +80,44 @@ tasks:
       - poetry.lock
       - pyproject.toml
 
+  # Both of these were unfiltered, so any change anywhere rebuilt the wheel
+  # and the PyInstaller binary — and because a task's cache key includes its
+  # dependencies', that invalidated every integration lane below whose own
+  # `filter:` was therefore doing nothing.
+  #
+  # README.md is in the filter because `readme = "README.md"` in pyproject:
+  # `poetry build`, and `poetry install` without --no-root, both read it. A
+  # filter strips every workspace file it does not name, so leaving it out
+  # fails the build rather than merely over-caching.
   - key: visivo-pip-install
     use: cli-dependencies
     run: |
       poetry install --with dev
       poetry build
       pip install dist/visivo-*-py3-none-any.whl
+    filter:
+      - pyproject.toml
+      - poetry.lock
+      - README.md
+      - visivo
 
   - key: visivo-install
     use: visivo-pip-install
     run: |
       poetry run build
+    filter:
+      - pyproject.toml
+      - poetry.lock
+      - README.md
+      - visivo
 
   - key: test-cli
     use: [cli-dependencies]
     run: |
       trap 'curl -X POST -H "Content-Type: application/json" -d @.report.json ${{ secrets.PYTEST_RESULTS_WEBHOOK }}' EXIT
       poetry install --with dev
-      poetry run pytest --json-report
+      poetry run pytest --json-report \
+        --cov=visivo --cov-report=json:coverage-python.json
     env:
       STACKTRACE: true
 
@@ -133,7 +155,9 @@ tasks:
     use: node-modules
     run: |
       cd viewer
-      yarn test --json --testLocationInResults --outputFile jest.json
+      yarn test --json --testLocationInResults --outputFile jest.json \
+        --coverage --coverageReporters=json-summary \
+        --coverageDirectory=../coverage-js
     filter: [viewer, visivo]
     outputs:
       test-results:
@@ -275,6 +299,54 @@ tasks:
     env:
       STACKTRACE: true
     filter: [visivo, viewer, test-projects/integration, scripts]
+
+  - key: offline-guard
+    # Keeps Phase 1 of "Complete Install" true. Every CDN fetch this project
+    # removed got in the same way: an import whose remote default nobody
+    # noticed, in a bundle nobody inspected. `monaco-editor` was a direct
+    # dependency for as long as the SQL editor existed and the editor was STILL
+    # re-downloaded from jsdelivr at runtime, which meant the editor hung
+    # forever offline. No unit test could see it, because none looked at the
+    # network.
+    #
+    # Same shape as test-dist-command: build the real bundle, serve it, drive it
+    # in a browser, assert on what it asked for. The allowlist lives in the
+    # script with a reason per host.
+    use: [visivo-install, node-modules]
+    background-processes:
+      - key: local-server
+        # Build the LOCAL viewer from this commit, then make `visivo serve` use
+        # it. Same trap as the dist task: `visivo` is pip-installed, so
+        # VIEWER_PATH resolves inside site-packages and `yarn deploy:local` only
+        # writes the checkout — without the copy this would test the last
+        # release's bundle.
+        #
+        # VIEWER_PATH is resolved from /tmp because the workspace root holds a
+        # `visivo/` package directory and python puts cwd first on sys.path.
+        run: |
+          set -e
+          # Exported here rather than in an `env:` block: a background process
+          # takes no `env` key. The project's clickhouse and snowflake sources
+          # reference these, so compile fails to resolve them without.
+          export CLICKHOUSE_PASSWORD=clickhouse
+          export LOCAL_SNOWFLAKE_PASSWORD=test
+          cd viewer && yarn deploy:local && cd ..
+          VIEWER_BUILD="$PWD/viewer/build"
+          VIEWER_PATH=$(cd /tmp && python -c "from visivo.utils import VIEWER_PATH; print(VIEWER_PATH)")
+          echo "Installing freshly-built viewer into $VIEWER_PATH"
+          rm -rf "$VIEWER_PATH"
+          cp -R "$VIEWER_BUILD" "$VIEWER_PATH"
+          diff -q "$VIEWER_BUILD/index.html" "$VIEWER_PATH/index.html"
+          cd test-projects/integration
+          visivo serve --port 8901 -s local-duckdb
+        ready-check: curl -fsS http://localhost:8901/ >/dev/null
+    run: |
+      cd viewer
+      yarn playwright install --with-deps chromium
+      node scripts/offline-guard.mjs http://localhost:8901 local_test_table
+    env:
+      STACKTRACE: true
+    filter: [visivo, viewer, test-projects/integration]
 
   - key: binary-init-smoke
     # Runs the PyInstaller bundle (dist/visivo/visivo) end-to-end against
@@ -464,3 +536,278 @@ tasks:
       - test-projects/dbt
     env:
       STACKTRACE: true
+
+  # The PR-summary comment. It lives here, next to the suites whose
+  # coverage it reports, because `use:` layers a dependency's filesystem
+  # and RWX artifacts do not cross runs — as a separate workflow it had to
+  # re-run both suites to see their coverage.
+  - key: github-cli
+    call: github/install-cli 1.0.11
+    if: ${{ init.pr-num != "" }}
+
+  - key: diff-stats
+    use: code
+    if: ${{ init.pr-num != "" }}
+    run: |
+      git fetch origin main
+      git diff --numstat origin/main...HEAD > /tmp/numstat.txt
+
+      BE_PROD_ADD=0; BE_PROD_DEL=0; BE_PROD_FILES=0
+      FE_PROD_ADD=0; FE_PROD_DEL=0; FE_PROD_FILES=0
+      BE_TEST_UNIT_ADD=0; BE_TEST_UNIT_DEL=0; BE_TEST_UNIT_FILES=0
+      BE_TEST_INT_ADD=0; BE_TEST_INT_DEL=0; BE_TEST_INT_FILES=0
+      BE_TEST_E2E_ADD=0; BE_TEST_E2E_DEL=0; BE_TEST_E2E_FILES=0
+      FE_TEST_UNIT_ADD=0; FE_TEST_UNIT_DEL=0; FE_TEST_UNIT_FILES=0
+      FE_TEST_E2E_ADD=0; FE_TEST_E2E_DEL=0; FE_TEST_E2E_FILES=0
+      OTHER_ADD=0; OTHER_DEL=0; OTHER_FILES=0
+
+      > /tmp/be_prod_files.txt
+      > /tmp/fe_prod_files.txt
+
+      while IFS=$'\t' read -r added deleted filepath; do
+        [ "$added" = "-" ] && continue
+
+        # Resolve git rename syntax "dir/{old => new}/file" → "dir/new/file"
+        # so existence checks below match the post-rename location.
+        if echo "$filepath" | grep -q '{.* => .*}'; then
+          filepath=$(echo "$filepath" | sed 's|{[^}]* => \([^}]*\)}|\1|')
+        fi
+
+        if echo "$filepath" | grep -qE '^tests/integration/'; then
+          BE_TEST_INT_ADD=$((BE_TEST_INT_ADD + added))
+          BE_TEST_INT_DEL=$((BE_TEST_INT_DEL + deleted))
+          BE_TEST_INT_FILES=$((BE_TEST_INT_FILES + 1))
+        elif echo "$filepath" | grep -qE '^tests/sandbox/'; then
+          BE_TEST_E2E_ADD=$((BE_TEST_E2E_ADD + added))
+          BE_TEST_E2E_DEL=$((BE_TEST_E2E_DEL + deleted))
+          BE_TEST_E2E_FILES=$((BE_TEST_E2E_FILES + 1))
+        elif echo "$filepath" | grep -qE '^tests/'; then
+          BE_TEST_UNIT_ADD=$((BE_TEST_UNIT_ADD + added))
+          BE_TEST_UNIT_DEL=$((BE_TEST_UNIT_DEL + deleted))
+          BE_TEST_UNIT_FILES=$((BE_TEST_UNIT_FILES + 1))
+        elif echo "$filepath" | grep -qE '^viewer/e2e/'; then
+          FE_TEST_E2E_ADD=$((FE_TEST_E2E_ADD + added))
+          FE_TEST_E2E_DEL=$((FE_TEST_E2E_DEL + deleted))
+          FE_TEST_E2E_FILES=$((FE_TEST_E2E_FILES + 1))
+        elif echo "$filepath" | grep -qE '^viewer/src/.*\.test\.(js|jsx)$'; then
+          FE_TEST_UNIT_ADD=$((FE_TEST_UNIT_ADD + added))
+          FE_TEST_UNIT_DEL=$((FE_TEST_UNIT_DEL + deleted))
+          FE_TEST_UNIT_FILES=$((FE_TEST_UNIT_FILES + 1))
+        elif echo "$filepath" | grep -qE '^visivo/.*\.py$'; then
+          BE_PROD_ADD=$((BE_PROD_ADD + added))
+          BE_PROD_DEL=$((BE_PROD_DEL + deleted))
+          BE_PROD_FILES=$((BE_PROD_FILES + 1))
+          # Skip deleted files — coverage lookup has nothing to report on them.
+          [ -f "$filepath" ] && echo "$filepath" >> /tmp/be_prod_files.txt
+        elif echo "$filepath" | grep -qE '^viewer/src/'; then
+          FE_PROD_ADD=$((FE_PROD_ADD + added))
+          FE_PROD_DEL=$((FE_PROD_DEL + deleted))
+          FE_PROD_FILES=$((FE_PROD_FILES + 1))
+          # Skip deleted files — coverage lookup has nothing to report on them.
+          [ -f "$filepath" ] && echo "$filepath" >> /tmp/fe_prod_files.txt
+        else
+          OTHER_ADD=$((OTHER_ADD + added))
+          OTHER_DEL=$((OTHER_DEL + deleted))
+          OTHER_FILES=$((OTHER_FILES + 1))
+        fi
+      done < /tmp/numstat.txt
+
+      cat > .diff_stats.env << STATSEOF
+      BE_PROD_ADD=${BE_PROD_ADD}
+      BE_PROD_DEL=${BE_PROD_DEL}
+      BE_PROD_FILES=${BE_PROD_FILES}
+      FE_PROD_ADD=${FE_PROD_ADD}
+      FE_PROD_DEL=${FE_PROD_DEL}
+      FE_PROD_FILES=${FE_PROD_FILES}
+      BE_TEST_UNIT_ADD=${BE_TEST_UNIT_ADD}
+      BE_TEST_UNIT_DEL=${BE_TEST_UNIT_DEL}
+      BE_TEST_UNIT_FILES=${BE_TEST_UNIT_FILES}
+      BE_TEST_INT_ADD=${BE_TEST_INT_ADD}
+      BE_TEST_INT_DEL=${BE_TEST_INT_DEL}
+      BE_TEST_INT_FILES=${BE_TEST_INT_FILES}
+      BE_TEST_E2E_ADD=${BE_TEST_E2E_ADD}
+      BE_TEST_E2E_DEL=${BE_TEST_E2E_DEL}
+      BE_TEST_E2E_FILES=${BE_TEST_E2E_FILES}
+      FE_TEST_UNIT_ADD=${FE_TEST_UNIT_ADD}
+      FE_TEST_UNIT_DEL=${FE_TEST_UNIT_DEL}
+      FE_TEST_UNIT_FILES=${FE_TEST_UNIT_FILES}
+      FE_TEST_E2E_ADD=${FE_TEST_E2E_ADD}
+      FE_TEST_E2E_DEL=${FE_TEST_E2E_DEL}
+      FE_TEST_E2E_FILES=${FE_TEST_E2E_FILES}
+      OTHER_ADD=${OTHER_ADD}
+      OTHER_DEL=${OTHER_DEL}
+      OTHER_FILES=${OTHER_FILES}
+      STATSEOF
+
+      cp /tmp/be_prod_files.txt .be_prod_files.txt
+      cp /tmp/fe_prod_files.txt .fe_prod_files.txt
+
+  - key: post-comment
+    use: [diff-stats, test-cli, viewer-test, github-cli, code]
+    if: ${{ init.pr-num != "" }}
+    run: |
+      source .diff_stats.env
+
+      # === Parse Python coverage for changed backend files ===
+      PY_COVERAGE_ROWS=""
+      if [ -f coverage-python.json ] && [ -s .be_prod_files.txt ]; then
+        while IFS= read -r filepath; do
+          [ -z "$filepath" ] && continue
+          COV_PCT=$(python3 -c "
+      import json, sys
+      with open('coverage-python.json') as f:
+          data = json.load(f)
+      target = '${filepath}'
+      for key, val in data.get('files', {}).items():
+          if key.endswith(target) or key.endswith(target.lstrip('./')):
+              summary = val.get('summary', {})
+              total = summary.get('num_statements', 0)
+              covered = summary.get('covered_lines', 0)
+              pct = round(100 * covered / total, 1) if total > 0 else 100.0
+              print(pct)
+              sys.exit(0)
+      print('N/A')
+      " 2>/dev/null || echo "N/A")
+
+          if [ "$COV_PCT" = "N/A" ]; then
+            PY_COVERAGE_ROWS="${PY_COVERAGE_ROWS}| \`${filepath}\` | No data | :grey_question: |
+      "
+          else
+            IS_LOW=$(python3 -c "print('YES' if float('${COV_PCT}') < 50 else 'NO')" 2>/dev/null || echo "NO")
+            if [ "$IS_LOW" = "YES" ]; then
+              PY_COVERAGE_ROWS="${PY_COVERAGE_ROWS}| \`${filepath}\` | ${COV_PCT}% | :warning: Low |
+      "
+            else
+              PY_COVERAGE_ROWS="${PY_COVERAGE_ROWS}| \`${filepath}\` | ${COV_PCT}% | :white_check_mark: |
+      "
+            fi
+          fi
+        done < .be_prod_files.txt
+      fi
+
+      # === Parse JS coverage for changed frontend files ===
+      JS_COVERAGE_ROWS=""
+      if [ -f coverage-js/coverage-summary.json ] && [ -s .fe_prod_files.txt ]; then
+        while IFS= read -r filepath; do
+          [ -z "$filepath" ] && continue
+          RELATIVE_PATH=$(echo "$filepath" | sed 's|^viewer/||')
+          COV_PCT=$(python3 -c "
+      import json, sys
+      with open('coverage-js/coverage-summary.json') as f:
+          data = json.load(f)
+      target = '${RELATIVE_PATH}'
+      for key, val in data.items():
+          if key == 'total':
+              continue
+          if key.endswith(target) or target in key:
+              pct = val.get('lines', {}).get('pct', 'N/A')
+              print(pct)
+              sys.exit(0)
+      print('N/A')
+      " 2>/dev/null || echo "N/A")
+
+          if [ "$COV_PCT" = "N/A" ]; then
+            JS_COVERAGE_ROWS="${JS_COVERAGE_ROWS}| \`${filepath}\` | No data | :grey_question: |
+      "
+          else
+            IS_LOW=$(python3 -c "print('YES' if float('${COV_PCT}') < 50 else 'NO')" 2>/dev/null || echo "NO")
+            if [ "$IS_LOW" = "YES" ]; then
+              JS_COVERAGE_ROWS="${JS_COVERAGE_ROWS}| \`${filepath}\` | ${COV_PCT}% | :warning: Low |
+      "
+            else
+              JS_COVERAGE_ROWS="${JS_COVERAGE_ROWS}| \`${filepath}\` | ${COV_PCT}% | :white_check_mark: |
+      "
+            fi
+          fi
+        done < .fe_prod_files.txt
+      fi
+
+      # === Compute totals ===
+      TOTAL_PROD_ADD=$((BE_PROD_ADD + FE_PROD_ADD))
+      TOTAL_PROD_DEL=$((BE_PROD_DEL + FE_PROD_DEL))
+      TOTAL_PROD_FILES=$((BE_PROD_FILES + FE_PROD_FILES))
+      TOTAL_TEST_ADD=$((BE_TEST_UNIT_ADD + BE_TEST_INT_ADD + BE_TEST_E2E_ADD + FE_TEST_UNIT_ADD + FE_TEST_E2E_ADD))
+      TOTAL_TEST_DEL=$((BE_TEST_UNIT_DEL + BE_TEST_INT_DEL + BE_TEST_E2E_DEL + FE_TEST_UNIT_DEL + FE_TEST_E2E_DEL))
+      TOTAL_TEST_FILES=$((BE_TEST_UNIT_FILES + BE_TEST_INT_FILES + BE_TEST_E2E_FILES + FE_TEST_UNIT_FILES + FE_TEST_E2E_FILES))
+
+      # === Build PR comment markdown ===
+      cat > /tmp/pr_comment.md << 'HEADER'
+      <!-- pr-summary -->
+      ## PR Change Summary
+
+      ### Production Code Changes
+      HEADER
+
+      cat >> /tmp/pr_comment.md << EOF
+      | Category | Files | Lines Added | Lines Removed |
+      |----------|------:|------------:|--------------:|
+      | **Backend (Python)** | ${BE_PROD_FILES} | +${BE_PROD_ADD} | -${BE_PROD_DEL} |
+      | **Frontend (JS/React)** | ${FE_PROD_FILES} | +${FE_PROD_ADD} | -${FE_PROD_DEL} |
+      | **Total Production** | **${TOTAL_PROD_FILES}** | **+${TOTAL_PROD_ADD}** | **-${TOTAL_PROD_DEL}** |
+
+      ### Testing Code Changes
+
+      | Category | Files | Lines Added | Lines Removed |
+      |----------|------:|------------:|--------------:|
+      | Backend Unit | ${BE_TEST_UNIT_FILES} | +${BE_TEST_UNIT_ADD} | -${BE_TEST_UNIT_DEL} |
+      | Backend Integration | ${BE_TEST_INT_FILES} | +${BE_TEST_INT_ADD} | -${BE_TEST_INT_DEL} |
+      | Backend E2E/Sandbox | ${BE_TEST_E2E_FILES} | +${BE_TEST_E2E_ADD} | -${BE_TEST_E2E_DEL} |
+      | Frontend Unit | ${FE_TEST_UNIT_FILES} | +${FE_TEST_UNIT_ADD} | -${FE_TEST_UNIT_DEL} |
+      | Frontend E2E | ${FE_TEST_E2E_FILES} | +${FE_TEST_E2E_ADD} | -${FE_TEST_E2E_DEL} |
+      | **Total Testing** | **${TOTAL_TEST_FILES}** | **+${TOTAL_TEST_ADD}** | **-${TOTAL_TEST_DEL}** |
+      EOF
+
+      if [ "$OTHER_FILES" -gt 0 ]; then
+        cat >> /tmp/pr_comment.md << EOF
+
+      > **Other files** (config, docs, scripts): ${OTHER_FILES} files (+${OTHER_ADD} / -${OTHER_DEL})
+      EOF
+      fi
+
+      # === Coverage gap section ===
+      if [ -n "$PY_COVERAGE_ROWS" ] || [ -n "$JS_COVERAGE_ROWS" ]; then
+        cat >> /tmp/pr_comment.md << 'COVSECTION'
+
+      ### Unit Test Coverage — Changed Production Files
+      COVSECTION
+
+        if [ -n "$PY_COVERAGE_ROWS" ]; then
+          cat >> /tmp/pr_comment.md << EOF
+
+      **Backend (Python)**
+      | File | Line Coverage | Status |
+      |------|-------------:|--------|
+      ${PY_COVERAGE_ROWS}
+      EOF
+        fi
+
+        if [ -n "$JS_COVERAGE_ROWS" ]; then
+          cat >> /tmp/pr_comment.md << EOF
+
+      **Frontend (JS/React)**
+      | File | Line Coverage | Status |
+      |------|-------------:|--------|
+      ${JS_COVERAGE_ROWS}
+      EOF
+        fi
+      fi
+
+      cat >> /tmp/pr_comment.md << 'FOOTER'
+
+      ---
+      <sub>Generated by PR Summary workflow</sub>
+      FOOTER
+
+      # === Post or update the PR comment using marker ===
+      COMMENT_ID=$(gh api "repos/visivo-io/visivo/issues/${{ init.pr-num }}/comments" \
+        --jq '.[] | select(.body | contains("<!-- pr-summary -->")) | .id' 2>/dev/null | head -1)
+
+      if [ -n "$COMMENT_ID" ]; then
+        gh api "repos/visivo-io/visivo/issues/comments/${COMMENT_ID}" \
+          -X PATCH \
+          -F "body=@/tmp/pr_comment.md"
+      else
+        gh pr comment ${{ init.pr-num }} -F /tmp/pr_comment.md
+      fi
+    env:
+      GH_TOKEN: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
