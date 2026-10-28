@@ -1774,6 +1774,113 @@ describe('promoteExploration', () => {
     ]);
   });
 
+  test('a failed model save skips its dependent insight and chart instead of saving dangling refs', async () => {
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow(),
+      checklistRow({
+        type: 'insight',
+        tier: 'insight',
+        name: 'churn',
+        config: { props: { type: 'scatter', x: '?{${ref(orders_q).a}}' } },
+      }),
+      checklistRow({
+        type: 'chart',
+        tier: 'chart',
+        name: 'churn_chart',
+        config: { insights: ['ref(churn)'] },
+      }),
+      checklistRow({
+        type: 'insight',
+        tier: 'insight',
+        name: 'unrelated',
+        config: { props: { type: 'bar' } },
+      }),
+    ]);
+    const saveModel = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    const saveInsight = jest.fn().mockResolvedValue({ success: true });
+    const saveChart = jest.fn().mockResolvedValue({ success: true });
+    seedRecord();
+    act(() => {
+      useStore.setState({ saveModel, saveInsight, saveChart });
+    });
+    explorationsApi.recordPromotion.mockResolvedValue(wireExploration());
+
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [
+        { type: 'model', name: 'orders_q' },
+        { type: 'insight', name: 'churn' },
+        { type: 'chart', name: 'churn_chart' },
+        { type: 'insight', name: 'unrelated' },
+      ]);
+    });
+
+    expect(saveModel).toHaveBeenCalledTimes(1);
+    expect(saveInsight).toHaveBeenCalledTimes(1);
+    expect(saveInsight).toHaveBeenCalledWith('unrelated', { props: { type: 'bar' } });
+    expect(saveChart).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    const byName = Object.fromEntries(result.results.map(r => [r.name, r]));
+    expect(byName.orders_q.error).toBe('boom');
+    expect(byName.churn.success).toBe(false);
+    expect(byName.churn.error).toMatch(/"orders_q".*not saved/);
+    expect(byName.churn_chart.error).toMatch(/"churn".*not saved/);
+    expect(byName.unrelated.success).toBe(true);
+  });
+
+  test('a selected row that vanished from the checklist blocks its dependents', async () => {
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow({
+        type: 'insight',
+        tier: 'insight',
+        name: 'churn',
+        config: { props: { x: '?{${ref(old_name).a}}' } },
+      }),
+    ]);
+    const saveInsight = jest.fn().mockResolvedValue({ success: true });
+    seedRecord();
+    act(() => {
+      useStore.setState({ saveInsight });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [
+        { type: 'model', name: 'old_name' },
+        { type: 'insight', name: 'churn' },
+      ]);
+    });
+    expect(saveInsight).not.toHaveBeenCalled();
+    expect(result.results.every(r => !r.success)).toBe(true);
+  });
+
+  test('a field whose parent model failed to save is skipped', async () => {
+    buildPromoteChecklist.mockResolvedValue([
+      checklistRow(),
+      checklistRow({
+        type: 'metric',
+        tier: 'field',
+        name: 'rev',
+        parentModel: 'orders_q',
+        config: { expression: 'sum(a)', parentModel: 'orders_q' },
+      }),
+    ]);
+    const saveModel = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    const saveMetric = jest.fn().mockResolvedValue({ success: true });
+    seedRecord();
+    act(() => {
+      useStore.setState({ saveModel, saveMetric });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().promoteExploration('exp_1', [
+        { type: 'model', name: 'orders_q' },
+        { type: 'metric', name: 'rev' },
+      ]);
+    });
+    expect(saveMetric).not.toHaveBeenCalled();
+    expect(result.results.find(r => r.name === 'rev').error).toMatch(/orders_q/);
+  });
+
   test('a row whose save action is not registered on the store fails cleanly (defensive guard)', async () => {
     buildPromoteChecklist.mockResolvedValue([checklistRow()]);
     seedRecord();
