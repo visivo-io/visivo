@@ -58,6 +58,7 @@ describe('useProjectChangeListener (VIS-808)', () => {
 
     expect(useStore.getState().refreshFromProjectChange).toHaveBeenCalledWith({
       draftsDropped: false,
+      droppedDrafts: [],
     });
   });
 
@@ -67,10 +68,14 @@ describe('useProjectChangeListener (VIS-808)', () => {
     try {
       renderHook(() => useProjectChangeListener());
 
-      getSocket()._handlers.project_changed({ drafts_dropped: true });
+      getSocket()._handlers.project_changed({
+        drafts_dropped: true,
+        dropped_drafts: [{ type: 'model', name: 'orders' }],
+      });
 
       expect(useStore.getState().refreshFromProjectChange).toHaveBeenCalledWith({
         draftsDropped: true,
+        droppedDrafts: [{ type: 'model', name: 'orders' }],
       });
       expect(events.map(e => e.eventName)).toContain('external_edit_overwrite');
     } finally {

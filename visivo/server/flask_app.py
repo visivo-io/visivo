@@ -29,6 +29,10 @@ from visivo.server.names import name_clash
 from visivo.server.constants import resolve_host
 
 
+def _settings_dump(setting):
+    return None if setting is None else setting.model_dump(mode="json", exclude_none=True)
+
+
 class FlaskApp:
 
     def __init__(self, output_dir, project: Project, working_dir=None, host=None, port=None):
@@ -46,7 +50,6 @@ class FlaskApp:
         self._project_json = (
             Serializer(project=project).dereference().model_dump_json(exclude_none=True)
         )
-        self._served_project_dump = project.model_dump_json(exclude_none=True, warnings=False)
         self._project = project
 
         self._working_dir = working_dir
@@ -127,20 +130,23 @@ class FlaskApp:
 
         register_views(self.app, self, output_dir)
 
+    def _object_managers_by_type(self):
+        return {
+            "source": self.source_manager,
+            "model": self.model_manager,
+            "dimension": self.dimension_manager,
+            "metric": self.metric_manager,
+            "relation": self.relation_manager,
+            "insight": self.insight_manager,
+            "input": self.input_manager,
+            "markdown": self.markdown_manager,
+            "chart": self.chart_manager,
+            "table": self.table_manager,
+            "dashboard": self.dashboard_manager,
+        }
+
     def _all_object_managers(self):
-        return [
-            self.source_manager,
-            self.model_manager,
-            self.dimension_manager,
-            self.metric_manager,
-            self.relation_manager,
-            self.insight_manager,
-            self.input_manager,
-            self.markdown_manager,
-            self.chart_manager,
-            self.table_manager,
-            self.dashboard_manager,
-        ]
+        return list(self._object_managers_by_type().values())
 
     def adopt_default_source(self, source_name: str) -> bool:
         """Make ``source_name`` the project default when there is none yet.
@@ -186,25 +192,33 @@ class FlaskApp:
             self.changed_project_settings()
         )
 
-    def clear_draft_caches(self) -> None:
-        """Drop every draft cache (Q15 last-write-wins on external YAML edits)."""
-        for manager in self._all_object_managers():
-            manager.clear_cache()
-        self._cached_defaults = None
-        self._cached_theme = None
+    def drop_stale_drafts(self, project: Project) -> list:
+        """Drop the drafts that ``project``, freshly compiled from disk, conflicts with.
 
-    def matches_served_project(self, project: Project) -> bool:
-        """True when ``project`` serializes identically to the currently served project.
-
-        Used by the watcher recompile to tell a genuine external YAML edit
-        (which drops drafts, last-write-wins) apart from a no-op save/touch that
-        recompiles to the same project (drafts must be preserved). Compares the
-        full project dump, because the dereferenced ``_project_json`` empties the
-        top-level models and sources and would miss an edit to them.
+        Each manager drops only the drafts whose own object changed on disk, so
+        drafts of untouched objects survive a file edit. Draft ``defaults`` and
+        ``theme`` drop when that setting changed on disk. Returns
+        ``[{"type", "name"}]`` for each dropped draft that held a change.
         """
-        return (
-            project.model_dump_json(exclude_none=True, warnings=False) == self._served_project_dump
-        )
+        dag = project.dag()
+        dropped = [
+            {"type": type_name, "name": name}
+            for type_name, manager in self._object_managers_by_type().items()
+            for name in manager.drop_stale_drafts(dag)
+        ]
+        changed_settings = self.changed_project_settings()
+        for key in ("defaults", "theme"):
+            cache_attr = f"_cached_{key}"
+            if getattr(self, cache_attr) is None:
+                continue
+            if _settings_dump(getattr(project, key, None)) == _settings_dump(
+                getattr(self.project, key, None)
+            ):
+                continue
+            setattr(self, cache_attr, None)
+            if key in changed_settings:
+                dropped.append({"type": key, "name": key})
+        return dropped
 
     @property
     def project(self):
@@ -216,7 +230,6 @@ class FlaskApp:
         self._project_json = (
             Serializer(project=value).dereference().model_dump_json(exclude_none=True)
         )
-        self._served_project_dump = value.model_dump_json(exclude_none=True, warnings=False)
         self._project = value
         # Reload object managers with new project DAG (preserves cached objects)
         dag = value.dag()

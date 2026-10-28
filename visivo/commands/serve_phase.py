@@ -38,15 +38,11 @@ def serve_phase(
     server = None  # Will be set later
 
     def on_project_change(one_shot=False):
-        def emit_project_changed(drafts_dropped):
-            # Soft-refresh signal for the Workspace SPA (VIS-808 / Q15): the
-            # viewer refetches instead of hard-reloading, and shows the
-            # external-edit banner when drafts were dropped. The legacy
-            # "reload" event (full page refresh) is emitted separately by the
-            # watcher wrapper / publish endpoint.
+        def emit_project_changed(dropped_drafts):
             if app.hot_reload_server:
                 app.hot_reload_server.socketio.emit(
-                    "project_changed", {"drafts_dropped": drafts_dropped}
+                    "project_changed",
+                    {"drafts_dropped": bool(dropped_drafts), "dropped_drafts": dropped_drafts},
                 )
 
         try:
@@ -60,20 +56,13 @@ def serve_phase(
                 no_deprecation_warnings=no_deprecation_warnings,
             )
 
-            # Q15 last-write-wins: a genuine external YAML edit makes any
-            # in-flight draft edits stale, so drop them BEFORE serving the
-            # recompiled project. But the watcher fires on ANY .yml write —
-            # including a touch / no-op save that recompiles to the exact
-            # project already being served. Those must PRESERVE drafts, so only
-            # drop when the newly compiled project actually differs from the
-            # served one. A publish clears the caches before calling this, so
-            # drafts_dropped is only True for genuinely external edits during a
-            # dirty Build session.
-            drafts_dropped = app.has_draft_changes() and not app.matches_served_project(project)
-            if drafts_dropped:
-                app.clear_draft_caches()
+            # Drop only the drafts this file edit conflicts with, before the
+            # run, so a commit during the run cannot overwrite the edit.
+            dropped_drafts = app.drop_stale_drafts(project)
+            if dropped_drafts:
+                names = ", ".join(f"{d['type']} '{d['name']}'" for d in dropped_drafts)
                 Logger.instance().info(
-                    "External project change with unsaved drafts — drafts dropped (last-write-wins)."
+                    f"The project files changed under unsaved drafts. Dropped drafts: {names}."
                 )
 
             changed_dag_filter = project.dag().get_diff_dag_filter(
@@ -88,7 +77,7 @@ def serve_phase(
                 # change (the canvas would silently lose the published edit).
                 app.project = project
                 Logger.instance().info("No data changes to the project. Refreshed metadata.")
-                emit_project_changed(drafts_dropped)
+                emit_project_changed(dropped_drafts)
                 return
 
             runner = run_phase(
@@ -113,7 +102,7 @@ def serve_phase(
             from visivo.server.jobs.save_run_executor import mark_staged_built
 
             mark_staged_built(app, changed_dag_filter)
-            emit_project_changed(drafts_dropped)
+            emit_project_changed(dropped_drafts)
             if one_shot:
                 Logger.instance().success("Closing server...")
             else:

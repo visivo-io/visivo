@@ -265,9 +265,15 @@ describe('commitStore (VIS-806)', () => {
         has_changes: false,
       });
 
-      await useStore.getState().refreshFromProjectChange({ draftsDropped: true });
+      await useStore.getState().refreshFromProjectChange({
+        draftsDropped: true,
+        droppedDrafts: [{ type: 'model', name: 'orders' }],
+      });
 
       expect(useStore.getState().externalEditBannerVisible).toBe(true);
+      expect(useStore.getState().externalEditDroppedDrafts).toEqual([
+        { type: 'model', name: 'orders' },
+      ]);
       expect(fetchProject).toHaveBeenCalled();
       expect(fetcherStubs.fetchDashboards).toHaveBeenCalled();
     });
