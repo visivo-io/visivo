@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef } from 'react';
+import { envRefName, toEnvRef } from '../../utils/contextString';
 
-// Wraps a secret's name in the reference syntax visivo resolves at query time
-// (query/patterns.py ENV_VAR_CONTEXT_PATTERN), and reads one back out.
-const SECRET_REF = /^\$\{\s*env\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}$/;
-export const toSecretRef = key => `\${env.${key}}`;
-export const secretRefName = value => (value || '').match(SECRET_REF)?.[1] ?? '';
+// The `${env.NAME}` grammar lives in utils/contextString.js with the rest of it
+// (and mirrors query/patterns.py). Re-exported under the names this corner of
+// the app already used, so nothing else has to care where it moved.
+export const toSecretRef = toEnvRef;
+export const secretRefName = envRefName;
 
 /**
  * Choose which account secret a source field reads from.
@@ -32,7 +33,7 @@ const SecretPicker = ({
   secretsUrl,
   onRefreshSecrets,
 }) => {
-  const selected = secretRefName(value);
+  const selected = envRefName(value);
   const hasSecrets = secretKeys.length > 0;
 
   // Held in a ref so the window listener subscribes once rather than
@@ -71,7 +72,7 @@ const SecretPicker = ({
           id={field.name}
           name={field.name}
           value={selected}
-          onChange={e => onChange(field.name, e.target.value ? toSecretRef(e.target.value) : '')}
+          onChange={e => onChange(field.name, e.target.value ? toEnvRef(e.target.value) : '')}
           onFocus={refresh}
           onMouseDown={refresh}
           className={controlClass}
