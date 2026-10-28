@@ -25,7 +25,7 @@ const btnStyle = (bg, disabled) => ({
 const reasonStyle = {
   color: 'rgba(255,255,255,.6)',
   fontSize: 12,
-  maxWidth: 340,
+  maxWidth: 'min(340px, 25vw)',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
