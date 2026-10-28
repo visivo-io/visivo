@@ -56,7 +56,8 @@ describe('BranchingControls', () => {
         can_edit: false,
         can_branch: true,
         edit_action: 'branch_required',
-        edit_reason: "This project's default stage tracks 'main', which takes changes through pull requests.",
+        edit_reason:
+          "This project's default branch tracks 'main', which takes changes through pull requests.",
       },
     });
     render(<BranchingControls />);

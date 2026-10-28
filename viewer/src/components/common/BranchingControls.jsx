@@ -97,12 +97,22 @@ const BranchingControls = () => {
         </span>
       )}
       {canEdit && (
-        <button onClick={onEdit} disabled={busy} title="Edit — create a draft" style={btnStyle(PRIMARY, busy)}>
+        <button
+          onClick={onEdit}
+          disabled={busy}
+          title="Edit — create a draft"
+          style={btnStyle(PRIMARY, busy)}
+        >
           <PiPencil size={15} /> Edit
         </button>
       )}
       {canBranch && (
-        <button onClick={onBranch} disabled={busy} title="Branch — new branch" style={btnStyle('transparent', busy)}>
+        <button
+          onClick={onBranch}
+          disabled={busy}
+          title="Branch — new branch"
+          style={btnStyle('transparent', busy)}
+        >
           <FiGitBranch size={15} /> Branch
         </button>
       )}
