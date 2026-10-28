@@ -523,10 +523,9 @@ def _check_input_wiring_handler(app, arguments):
 def _model_dialects(app, cards, named):
     """``({model: dialect}, [models no source resolved for])``: each model's
     own source (draft first), else ``named``, else the project's default."""
-    from visivo.server.source_resolution import find_model, find_source, source_for_model
+    from visivo.server.source_resolution import default_source, find_model, source_for_model
 
-    defaults = getattr(getattr(app, "project", None), "defaults", None)
-    default = find_source(app, getattr(defaults, "source_name", None))
+    default = default_source(app)
     dialects, unresolved = {}, []
     models = {c.get("model") for c in cards or [] if isinstance(c, dict) and c.get("model")}
     for name in sorted(models):

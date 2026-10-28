@@ -20,7 +20,8 @@ class _Runs:
 
 def _app(source):
     app = Mock()
-    app.project.find_source.return_value = source
+    app.source_manager.get.return_value = source
+    app.project.sources = []
     return app
 
 
@@ -61,3 +62,23 @@ def test_an_unknown_source_fails_the_job():
 
     status, detail = runs.statuses[-1]
     assert status == RunStatus.FAILED and "ghost" in detail["error"]
+
+
+def test_a_draft_source_is_built(monkeypatch):
+    seen = {}
+
+    def fake(**kwargs):
+        seen.update(kwargs)
+        return Mock(success=True, message="ok")
+
+    monkeypatch.setattr(executor, "run_source_schema_action", fake)
+    draft = Mock(type="duckdb")
+    app = Mock()
+    app.source_manager.get.side_effect = lambda n: draft if n == "draft_wh" else None
+    app.project.sources = []
+    runs = _Runs()
+
+    executor.execute_source_schema_job("job", {"source_name": "draft_wh"}, app, "/out", runs)
+
+    assert seen["source_to_build"] is draft
+    assert runs.statuses[-1][0] == RunStatus.COMPLETED

@@ -9,6 +9,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import SourceErd from './SourceErd';
+import useStore from '../../../../stores/store';
 import {
   setGlobalURLConfig,
   createURLConfig,
@@ -237,5 +238,51 @@ describe('SourceErd (VIS-1005)', () => {
       document.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
     });
     expect(screen.queryByTestId('erd-table-ctx-menu')).not.toBeInTheDocument();
+  });
+});
+
+describe('SourceErd reloads when the schema can have changed (VIS-1550)', () => {
+  beforeEach(() => {
+    useStore.setState({ lastCommittedAt: null, workspaceSourceOutlineDataCache: {} });
+  });
+
+  test('a commit reloads a canvas that had no schema to show', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: SRC, has_cached_schema: false }]);
+    render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
+    expect(await screen.findByTestId('source-erd-connection-failed')).toBeInTheDocument();
+
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: SRC, has_cached_schema: true }]);
+    act(() => {
+      useStore.setState({ lastCommittedAt: Date.now() });
+    });
+
+    expect(await screen.findByTestId('source-erd-node-orders')).toBeInTheDocument();
+  });
+
+  test('the Data tab generating the schema reloads the canvas', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: SRC, has_cached_schema: false }]);
+    render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
+    expect(await screen.findByTestId('source-erd-connection-failed')).toBeInTheDocument();
+
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: SRC, has_cached_schema: true }]);
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineData(SRC, { hasCachedSchema: true });
+    });
+
+    expect(await screen.findByTestId('source-erd-node-orders')).toBeInTheDocument();
+  });
+
+  test('a reload of the same source keeps its diagram up while it loads', async () => {
+    render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
+    expect(await screen.findByTestId('source-erd-node-orders')).toBeInTheDocument();
+
+    fetchSourceSchemaJobs.mockImplementation(() => new Promise(() => {}));
+    act(() => {
+      useStore.setState({ lastCommittedAt: Date.now() });
+    });
+
+    await waitFor(() => expect(fetchSourceSchemaJobs).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId('source-erd-node-orders')).toBeInTheDocument();
+    expect(screen.queryByTestId('source-erd-loading')).not.toBeInTheDocument();
   });
 });

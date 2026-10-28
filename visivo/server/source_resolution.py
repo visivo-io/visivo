@@ -4,7 +4,9 @@ the uncommitted draft if there is one, else the committed object."""
 import re
 
 from visivo.models.base.context_string import ContextString
+from visivo.models.defaults import Defaults
 from visivo.query.patterns import REF_PROPERTY_PATTERN, extract_ref_names
+from visivo.server.managers.object_manager import ObjectStatus
 
 
 def from_manager(flask_app, manager_name, name):
@@ -38,8 +40,36 @@ def find_object(flask_app, manager_name, project_attr, name):
     return None
 
 
+def marked_for_deletion(flask_app, manager_name, name):
+    """True when the draft marks ``name`` for deletion in that manager."""
+    manager = getattr(flask_app, manager_name, None)
+    status = getattr(manager, "get_status", None)
+    if not callable(status):
+        return False
+    try:
+        return status(name) == ObjectStatus.DELETED
+    except Exception:
+        return False
+
+
 def find_source(flask_app, source_name):
+    """The source called ``source_name``, or ``None`` when it is unknown or the
+    draft marks it for deletion, which is the set ``list_sources`` serves."""
+    if source_name and marked_for_deletion(flask_app, "source_manager", source_name):
+        return None
     return find_object(flask_app, "source_manager", "sources", source_name)
+
+
+def list_sources(flask_app):
+    """Every source the editor sees: drafts included, sources marked for deletion left out."""
+    manager = getattr(flask_app, "source_manager", None)
+    lister = getattr(manager, "get_sources_list", None)
+    if callable(lister):
+        try:
+            return list(lister())
+        except Exception:
+            pass
+    return list(getattr(getattr(flask_app, "project", None), "sources", None) or [])
 
 
 def find_model(flask_app, model_name):
@@ -74,13 +104,29 @@ def referenced_source_name(model):
     return None
 
 
+def default_source_name(flask_app):
+    """``defaults.source_name``, from the draft defaults if there are any."""
+    defaults = getattr(flask_app, "_cached_defaults", None)
+    if not isinstance(defaults, Defaults):
+        defaults = getattr(getattr(flask_app, "project", None), "defaults", None)
+    name = getattr(defaults, "source_name", None)
+    return name if isinstance(name, str) and name else None
+
+
+def default_source(flask_app):
+    return find_source(flask_app, default_source_name(flask_app))
+
+
 def source_for_model(flask_app, model, output_dir):
     """The source a model reads from, for a committed or a draft model.
 
     The DAG walk is the normal answer; an uncommitted model is not in the DAG,
-    so the name the model itself carries is tried next.
+    so the name the model itself carries is tried next, and a SQL model that
+    names no source reads from ``defaults.source_name``, as it would once
+    committed.
     """
     from visivo.jobs.utils import get_source_for_model
+    from visivo.models.models.sql_model import SqlModel
 
     try:
         source = get_source_for_model(model, flask_app.project.dag(), output_dir)
@@ -88,5 +134,7 @@ def source_for_model(flask_app, model, output_dir):
         source = None
     if source is not None:
         return source
+    if isinstance(model, SqlModel) and model.source is None:
+        return default_source(flask_app)
     referenced = referenced_source_name(model)
     return find_source(flask_app, referenced) if referenced else None

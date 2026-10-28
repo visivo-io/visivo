@@ -31,7 +31,14 @@ from visivo.server.services.profiling_service import (
     ProfilingService,
     profiling_service_for,
 )
-from visivo.server.source_resolution import find_model, find_source, from_manager, source_for_model
+from visivo.server.source_resolution import (
+    default_source,
+    default_source_name,
+    find_model,
+    find_source,
+    from_manager,
+    source_for_model,
+)
 from visivo.server.temporal_json import isoformat_temporal_values
 
 DATA_NOTICE = (
@@ -165,9 +172,8 @@ def guard_read_only(sql, dialect, limit):
 def _default_source(app):
     """The source a model without one runs on: ``defaults.source_name``, else the
     project's only source."""
-    name = getattr(getattr(app.project, "defaults", None), "source_name", None)
-    if name:
-        return find_source(app, name)
+    if default_source_name(app):
+        return default_source(app)
     sources = app.source_manager.get_all_objects_list()
     return sources[0] if len(sources) == 1 else None
 

@@ -18,6 +18,7 @@ from unittest.mock import Mock
 from flask import Flask
 
 from visivo.constants import DEFAULT_RUN_ID
+from visivo.models.defaults import Defaults
 from visivo.server.views.model_schema_views import register_model_schema_views
 from tests.factories.model_factories import DuckdbSourceFactory, SqlModelFactory
 
@@ -270,6 +271,31 @@ class TestUncommittedModels:
 
         assert resp.status_code == 200
         assert resp.get_json()["source_name"] == "wh"
+
+    def test_an_uncommitted_model_without_a_source_uses_the_project_default(
+        self, output_dir, source
+    ):
+        """VIS-1550: a draft model with no ``source:`` 400'd ("No source
+        resolved") because only the DAG applied ``defaults.source_name``."""
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        model = SqlModelFactory(name="no_source", sql="SELECT id FROM orders", source=None)
+        flask_app = Mock()
+        flask_app.project.models = []
+        flask_app.project.sources = [source]
+        flask_app.project.dag.return_value = None
+        flask_app.project.defaults = Defaults(source_name="wh")
+        flask_app._cached_defaults = None
+        flask_app.model_manager.get.side_effect = lambda n: model if n == "no_source" else None
+        flask_app.source_manager.get.side_effect = lambda n: source if n == "wh" else None
+        register_model_schema_views(app, flask_app, output_dir)
+        _write_source_schema(output_dir, "wh", ORDERS)
+
+        resp = app.test_client().post("/api/model-schemas/no_source/")
+
+        assert resp.status_code == 200
+        assert resp.get_json()["source_name"] == "wh"
+        assert [c["name"] for c in resp.get_json()["columns"]] == ["id"]
 
     def test_a_genuinely_missing_model_still_404s(self, draft_client):
         """The draft lookup must not turn "not found" into something else."""
