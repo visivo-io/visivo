@@ -71,7 +71,7 @@ class TestGoldenA_BoroughByCompany:
 
         best = top(request)
         assert best.family == "bar" and best.trace_type == "bar"
-        assert "second `few` dimension" in best.encodings, "the entry's variations"
+        assert "a second dimension of 2–7 values" in best.encodings, "the entry's variations"
 
     def test_line_is_rejected_for_want_of_an_ordered_axis(self):
         response = recommend(RecommendRequest(metrics=[RIDES], dimensions=[BOROUGH, COMPANY_3]))

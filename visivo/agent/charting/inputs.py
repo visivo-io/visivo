@@ -15,7 +15,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from visivo.agent.charting.rules import load_insight_design, load_interactivity
 from visivo.agent.charting.schema import ShapeCard
@@ -258,6 +258,14 @@ class _Builder:
         return wired, unwired
 
 
+def _plain_card_error(raw, error):
+    problems = []
+    for item in error.errors():
+        field = ".".join(str(part) for part in item["loc"]) or "card"
+        problems.append(f"{field}: {item['msg'].removeprefix('Value error, ')}")
+    return f"card for column {raw.get('column', '?')!r} is invalid ({'; '.join(problems)})"
+
+
 def _parse_cards(cards):
     parsed = []
     for raw in cards:
@@ -266,7 +274,10 @@ def _parse_cards(cards):
             continue
         if not isinstance(raw, dict) or "model" not in raw:
             raise InputsError("each card needs a 'model' alongside its shape-card fields")
-        parsed.append(InputCard(**raw))
+        try:
+            parsed.append(InputCard(**raw))
+        except ValidationError as error:
+            raise InputsError(_plain_card_error(raw, error))
     return parsed
 
 
@@ -282,7 +293,7 @@ def _priority(entry, card):
     within a tie the input that drives more insights wins."""
     return (
         ROLE_PRIORITY.get(card.role, 9),
-        BUCKET_ORDER.get(card.cardinality_bucket, 9),
+        BUCKET_ORDER.get(card.bucket(), 9),
         -len(entry["wiring"]),
         card.null_pct,
         card.column,

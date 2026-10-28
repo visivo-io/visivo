@@ -1,11 +1,11 @@
 ---
 name: split_switcher
-summary: Two or more `few` categoricals the reader would compare by in turn.
+summary: Two or more categoricals of 2–7 values the reader would compare by in turn.
 ---
 
 # Split Switcher
 
-**When:** two or more `few` categoricals the reader would compare by in turn.
+**When:** two or more categoricals of 2–7 values the reader would compare by in turn.
 
 **Wiring:** `split: CASE WHEN '${ref(I).value}' = '<A>' THEN ${ref(M).A} ELSE ${ref(M).B} END`
 

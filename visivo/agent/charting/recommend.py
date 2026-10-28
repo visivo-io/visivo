@@ -64,7 +64,7 @@ def _axis(request):
 
 def _lookup_dimension(request):
     return any(
-        d.role == "identifier" or (d.role in _LOOKUP_ROLES and d.cardinality_bucket == "high")
+        d.role == "identifier" or (d.role in _LOOKUP_ROLES and d.bucket() == "high")
         for d in request.dimensions
     )
 
@@ -98,7 +98,7 @@ def _time_columns(request):
 
 def _dims_small(request):
     return bool(request.dimensions) and all(
-        d.cardinality_bucket in ("one", "few", "some") for d in request.dimensions
+        d.bucket() in ("one", "few", "some") for d in request.dimensions
     )
 
 
@@ -152,9 +152,7 @@ _CROSS_IN = re.compile(r"^cross cells in \((\d+), (\d+)\]$")
 
 _SIMPLE = {
     "series <= ideal": lambda r, f: f.ideal is not None and f.series <= f.ideal,
-    "two few dimensions": lambda r, f: sum(
-        1 for d in r.dimensions if d.cardinality_bucket in ("one", "few")
-    )
+    "two few dimensions": lambda r, f: sum(1 for d in r.dimensions if d.bucket() in ("one", "few"))
     == 2,
     "identifier or high cardinality": lambda r, f: _lookup_dimension(r),
     "dimensions small": lambda r, f: _dims_small(r),
@@ -667,8 +665,7 @@ def _encodings(rule, member, tables):
 def _wants_detail_table(request):
     """A chart over a long list of lookup values needs the rows behind it."""
     return any(
-        d.role in _LOOKUP_ROLES and d.cardinality_bucket in ("many", "high")
-        for d in request.dimensions
+        d.role in _LOOKUP_ROLES and d.bucket() in ("many", "high") for d in request.dimensions
     )
 
 

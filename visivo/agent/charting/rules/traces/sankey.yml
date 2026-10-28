@@ -34,7 +34,7 @@ example: |
 variations:
   - when: "the flow has three stages"
     then: "chain them: links for stage1→stage2 and stage2→stage3 in one model, with node indices shared"
-  - when: "a `few` categorical describes the links"
+  - when: "a categorical of 2–7 values describes the links"
     then: "`link.color` from a CASE (the legitimate color case)"
   - when: "many small links clutter the diagram"
     then: "`collapse_rare` in SQL, folding the smallest links into Other"

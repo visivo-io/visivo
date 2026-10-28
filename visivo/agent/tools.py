@@ -647,7 +647,7 @@ _HAND_WRITTEN = {
             "properties": {
                 "cards": {
                     "type": "array",
-                    "description": "Shape cards with a 'model' field: {model, column, role, cardinality, top_n?, stats?, time_grain?, null_pct?}.",
+                    "description": "Shape cards with a 'model' field: {model, column, role, cardinality, top_n?, stats?, time_grain?, null_pct?}. cardinality is the column's distinct-value count from profile_columns.",
                     "items": {"type": "object"},
                 },
                 "insights": {
