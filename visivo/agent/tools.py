@@ -464,7 +464,33 @@ def _recommend_charts_handler(app, arguments):
             f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in error.errors()[:5]
         )
         raise ToolError(f"Invalid request: {problems}")
+    _mark_defined_metrics(app, request)
     return compact(recommend(request))
+
+
+def _mark_defined_metrics(app, request):
+    """Flag each request metric the project defines: its expression already
+    aggregates, so a skeleton must not wrap it in another aggregate."""
+    from visivo.server.source_resolution import find_model
+
+    model_name = request.context.model
+    model = find_model(app, model_name)
+    on_model = {m.name for m in getattr(model, "metrics", None) or []}
+    manager = getattr(app, "metric_manager", None)
+    for metric in request.metrics:
+        if metric.defined:
+            continue
+        if metric.name in on_model:
+            metric.defined = "model"
+            continue
+        found = manager.get(metric.name) if manager is not None else None
+        if found is None:
+            continue
+        parent = getattr(found, "_parent_name", None)
+        if not parent:
+            metric.defined = "project"
+        elif parent == model_name:
+            metric.defined = "model"
 
 
 def _recommend_inputs_handler(app, arguments):

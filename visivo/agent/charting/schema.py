@@ -181,6 +181,9 @@ class MetricSpec(_Strict):
     agg: Aggregation
     card: Optional[ShapeCard] = None
     unit: Optional[str] = None
+    # A metric the project defines, on the context model or at project level.
+    # Its expression already aggregates, so a skeleton refs it bare.
+    defined: Optional[Literal["model", "project"]] = None
 
 
 class Semantics(_Strict):

@@ -421,6 +421,78 @@ class TestAWriteStagesAndRuns:
         assert "agent-manual" in self._staged_names(integration_app)
 
 
+class TestRecommendChartsKnowsTheProjectsMetrics:
+    """The tool flags a metric the project defines, so its KPI skeleton refs the
+    metric instead of aggregating an aggregate."""
+
+    SUBS = {"name": "subs", "sql": "select 1 as mrr", "source": "ref(source)"}
+
+    def _value(self, app, name="total_mrr"):
+        result = call(
+            app,
+            "recommend_charts",
+            {
+                "metrics": [{"name": name, "agg": "sum"}],
+                "intent": "kpi",
+                "context": {"model": "subs"},
+            },
+        )
+        kpi = next(r for r in result["recommendations"] if r["family"] == "kpi")
+        return next(
+            line.split("value: ", 1)[1]
+            for line in kpi["yaml_skeleton"].splitlines()
+            if "value:" in line
+        )
+
+    def test_a_metric_inline_on_the_model(self, integration_app):
+        model = {**self.SUBS, "metrics": [{"name": "total_mrr", "expression": "sum(mrr)"}]}
+        call(integration_app, "write_model", {"config": model})
+
+        assert self._value(integration_app) == "?{ ${ref(subs).total_mrr} }[0]"
+
+    def test_a_draft_metric_scoped_to_the_model(self, integration_app, integration_client):
+        call(integration_app, "write_model", {"config": self.SUBS})
+        integration_client.post(
+            "/api/metrics/total_mrr/", json={"expression": "sum(mrr)", "parentModel": "subs"}
+        )
+
+        assert self._value(integration_app) == "?{ ${ref(subs).total_mrr} }[0]"
+
+    def test_a_project_level_metric(self, integration_app):
+        call(integration_app, "write_model", {"config": self.SUBS})
+        config = {"name": "total_mrr", "expression": "sum(${ref(subs).mrr})"}
+        call(integration_app, "write_metric", {"config": config})
+
+        assert self._value(integration_app) == "?{ ${ref(total_mrr)} }[0]"
+
+    def test_a_metric_scoped_to_another_model_is_a_column_here(
+        self, integration_app, integration_client
+    ):
+        integration_client.post(
+            "/api/metrics/total_mrr/", json={"expression": "sum(mrr)", "parentModel": "other"}
+        )
+
+        assert self._value(integration_app) == "?{ SUM(${ref(subs).total_mrr}) }[0]"
+
+    def test_a_column_is_aggregated(self, integration_app):
+        call(integration_app, "write_model", {"config": self.SUBS})
+
+        assert self._value(integration_app, "mrr") == "?{ SUM(${ref(subs).mrr}) }[0]"
+
+    def test_a_flag_the_caller_set_is_kept(self, integration_app):
+        result = call(
+            integration_app,
+            "recommend_charts",
+            {
+                "metrics": [{"name": "total_mrr", "agg": "sum", "defined": "project"}],
+                "intent": "kpi",
+                "context": {"model": "subs"},
+            },
+        )
+        kpi = next(r for r in result["recommendations"] if r["family"] == "kpi")
+        assert "value: ?{ ${ref(total_mrr)} }[0]" in kpi["yaml_skeleton"]
+
+
 class TestEveryFailureIsARefusal:
     def _with_handler(self, monkeypatch, name, handler):
         from visivo.agent import tools
