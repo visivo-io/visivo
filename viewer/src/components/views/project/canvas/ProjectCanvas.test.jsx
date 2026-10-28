@@ -32,11 +32,18 @@ let mockBrokenRefArgs = null;
 let mockEmptySlotPath = null;
 
 jest.mock('../../../project/Dashboard', () => {
-  const Mock = ({ projectId, dashboardName, renderBrokenRef, onEmptySlotClick }) => (
+  const Mock = ({
+    projectId,
+    dashboardName,
+    stackBreakpoint,
+    renderBrokenRef,
+    onEmptySlotClick,
+  }) => (
     <div
       data-testid="dashboard-new-mock"
       data-project-id={projectId}
       data-dashboard-name={dashboardName}
+      data-stack-breakpoint={stackBreakpoint}
     >
       {mockBrokenRefArgs && typeof renderBrokenRef === 'function'
         ? renderBrokenRef(mockBrokenRefArgs)
@@ -83,6 +90,15 @@ describe('ProjectCanvas (VIS-767 / VIS-768)', () => {
     const dashboard = screen.getByTestId('dashboard-new-mock');
     expect(dashboard).toHaveAttribute('data-project-id', 'proj-42');
     expect(dashboard).toHaveAttribute('data-dashboard-name', 'revenue');
+  });
+
+  test('stacks only below a phone-width pane so a ~700px desktop pane keeps side-by-side items', () => {
+    renderWithRouter(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
+    const breakpoint = Number(
+      screen.getByTestId('dashboard-new-mock').getAttribute('data-stack-breakpoint')
+    );
+    expect(breakpoint).toBeLessThan(702);
+    expect(breakpoint).toBeGreaterThanOrEqual(390);
   });
 
   test('mounts the editing-affordance overlay layer (VIS-768)', () => {
