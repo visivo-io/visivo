@@ -155,9 +155,12 @@ tasks:
     use: node-modules
     run: |
       cd viewer
-      yarn test --json --testLocationInResults --outputFile jest.json \
+      yarn test --maxWorkers=2 --workerIdleMemoryLimit=512MB \
+        --json --testLocationInResults --outputFile jest.json \
         --coverage --coverageReporters=json-summary \
         --coverageDirectory=../coverage-js
+    env:
+      NODE_OPTIONS: --max-old-space-size=2048
     filter: [viewer, visivo]
     outputs:
       test-results:
