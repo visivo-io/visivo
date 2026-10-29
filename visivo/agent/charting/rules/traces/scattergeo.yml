@@ -41,7 +41,7 @@ variations:
     then: "`locations` + `locationmode` (`ISO-3`, `USA-states`, `country names`); bubbles sit on the region centroid"
   - when: "a metric per place"
     then: "`marker.size` from `sqrt(count)` with `marker.sizemode: diameter`, scaled into ~6–40 px"
-  - when: "a categorical with `few` values"
+  - when: "a categorical with 2–7 values"
     then: "`split` (theme-colored series), not `marker.color`"
   - when: "the points cover one country or continent"
     then: "chart `layout.geo.scope` and `layout.geo.projection.type`, or `layout.geo.fitbounds: locations` to zoom to the data"

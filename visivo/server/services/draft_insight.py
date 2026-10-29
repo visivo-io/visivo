@@ -12,9 +12,11 @@ from visivo.constants import DEFAULT_RUN_ID
 from visivo.jobs.run_model_data_job import execute_and_get_result
 from visivo.jobs.utils import get_source_for_model
 from visivo.logger.logger import Logger
+from visivo.models.inputs.types.multi_select import MultiSelectInput
 from visivo.query.accessor_validator import get_accessor_sample_value
 from visivo.query.insight.draft_overlay import DraftOverlayError, build_draft_overlay
 from visivo.query.insight.insight_query_builder import get_sample_value_for_input
+from visivo.query.input_validator import get_input_options
 from visivo.query.patterns import extract_input_accessors, replace_input_accessors
 from visivo.server.source_resolution import find_input
 from visivo.server.services.insight_draft_helpers import (
@@ -178,10 +180,25 @@ def render_input_value(value, accessor):
     return sql_literal(element)
 
 
-def default_selection(input_obj):
+def all_options(input_obj, output_dir):
+    """Every option of a list-based multi-select, or ``None`` when they cannot be
+    read (a range input, or a query whose options have not been run)."""
+    if isinstance(input_obj.options, list) and input_obj.options:
+        return list(input_obj.options)
+    if output_dir is None or getattr(input_obj, "range", None):
+        return None
+    try:
+        return get_input_options(input_obj, output_dir) or None
+    except (FileNotFoundError, ValueError):
+        return None
+
+
+def default_selection(input_obj, output_dir=None):
     """What the viewer selects on first load, when the input states it as
     literals: a single-select's ``value``, a multi-select's ``values``, or a
-    range's ``[start, end]``. ``None`` when the default is a query or absent.
+    range's ``[start, end]``. A multi-select whose default is ``values: all``,
+    or that has none, selects every option. ``None`` when the default is a
+    query or absent.
 
     The parse-time sampler is not a stand-in for this: it exists to make SQL
     parse, so it returns the default ``start`` for both ``.min`` and ``.max`` of
@@ -194,6 +211,10 @@ def default_selection(input_obj):
         )
 
     default = getattr(getattr(input_obj, "display", None), "default", None)
+    if isinstance(input_obj, MultiSelectInput) and (
+        default is None or getattr(default, "values", None) == "all"
+    ):
+        return all_options(input_obj, output_dir)
     if default is None:
         return None
     value = getattr(default, "value", None)
@@ -223,8 +244,10 @@ def substitute_inputs(flask_app, node, input_values, substituted):
                 rendered_for[key] = None
             elif name in input_values:
                 rendered_for[key] = render_input_value(input_values[name], accessor)
-            elif default_selection(input_obj) is not None:
-                rendered_for[key] = render_input_value(default_selection(input_obj), accessor)
+            elif default_selection(input_obj, flask_app.output_dir) is not None:
+                rendered_for[key] = render_input_value(
+                    default_selection(input_obj, flask_app.output_dir), accessor
+                )
             else:
                 rendered_for[key] = str(
                     get_sample_value_for_input(input_obj, flask_app.output_dir, accessor)

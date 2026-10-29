@@ -412,7 +412,7 @@ def _propose_metrics(model, cards, doc, layer, warnings):
     ]
     unknown, unsupported = [], []
     for card in cards:
-        if card.cardinality_bucket == "one":
+        if card.bucket() == "one":
             continue
         rule = doc.metric_rule(card)
         for agg in rule.aggs:
@@ -1575,7 +1575,7 @@ def _stats_wanted(models, stats, max_rows, doc, layer, pivot_columns):
 
 
 def _drop_reason(card):
-    if card.cardinality_bucket == "one":
+    if card.bucket() == "one":
         return "one value: nothing to compare"
     if card.role == "text":
         return "free text is a label, not a dimension"

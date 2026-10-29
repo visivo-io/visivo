@@ -92,7 +92,7 @@ const LevelGroupHeader = ({
   return (
     <header
       data-testid={testId}
-      className="group/level relative mb-2 flex items-center gap-2 rounded-md py-1 pl-1 pr-1.5"
+      className="group/level relative mb-2 flex flex-wrap items-center gap-2 rounded-md py-1 pl-1 pr-1.5"
     >
       <button
         type="button"

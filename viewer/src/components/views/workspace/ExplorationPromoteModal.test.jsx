@@ -132,6 +132,57 @@ describe('ExplorationPromoteModal', () => {
     ).not.toBeChecked();
   });
 
+  test('saving after a rename sends the new name for the renamed row and keeps dependents selected', async () => {
+    const renameModelTab = jest.fn();
+    const promoteExploration = jest
+      .fn()
+      .mockResolvedValue({ success: true, results: [], reclassificationOffers: [] });
+    useStore.setState({ renameModelTab, promoteExploration });
+    buildPromoteChecklist
+      .mockResolvedValueOnce([row(), row({ tier: 'insight', type: 'insight', name: 'sibling_insight' })])
+      .mockResolvedValueOnce([
+        row({ name: 'daily_orders' }),
+        row({ tier: 'insight', type: 'insight', name: 'sibling_insight' }),
+      ]);
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+    fireEvent.change(input, { target: { value: 'daily_orders' } });
+    fireEvent.blur(input);
+    await screen.findByTestId('promote-row-model-daily_orders-name-input');
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+    await waitFor(() => expect(promoteExploration).toHaveBeenCalled());
+    expect(promoteExploration.mock.calls[0][1]).toEqual([
+      { type: 'model', name: 'daily_orders' },
+      { type: 'insight', name: 'sibling_insight' },
+    ]);
+  });
+
+  test('clicking Save while a rename is still rebuilding waits and sends the new name', async () => {
+    const renameModelTab = jest.fn();
+    const promoteExploration = jest
+      .fn()
+      .mockResolvedValue({ success: true, results: [], reclassificationOffers: [] });
+    useStore.setState({ renameModelTab, promoteExploration });
+    let release;
+    buildPromoteChecklist
+      .mockResolvedValueOnce([row()])
+      .mockImplementationOnce(
+        () => new Promise(resolve => (release = () => resolve([row({ name: 'daily_orders' })])))
+      );
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+    fireEvent.change(input, { target: { value: 'daily_orders' } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(renameModelTab).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+    expect(promoteExploration).not.toHaveBeenCalled();
+    await act(async () => {
+      release();
+    });
+    await waitFor(() => expect(promoteExploration).toHaveBeenCalled());
+    expect(promoteExploration.mock.calls[0][1]).toEqual([{ type: 'model', name: 'daily_orders' }]);
+  });
+
   test('shows a loading state while the checklist builds', () => {
     buildPromoteChecklist.mockReturnValue(new Promise(() => {})); // never resolves
     render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);

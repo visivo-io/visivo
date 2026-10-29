@@ -1,6 +1,8 @@
 """Chart skeletons: each member's example rewritten to the request's model,
 metrics and dimensions, and always a valid Insight wrapped in a Chart."""
 
+import re
+
 import pytest
 import yaml
 
@@ -713,3 +715,39 @@ class TestNames:
         assert insight(skeleton)["name"] == "rows-by-borough-company-and-payment"
         title = skeleton["charts"][0]["layout"]["title"]["text"]
         assert title == "Rows by borough, company and payment"
+
+
+class TestTheExamplesUnit:
+    """The indicator example ends its number in ' rides'. That is the example's
+    data, so it must not follow into a request about something else."""
+
+    def test_no_unit_means_no_suffix(self, members):
+        skeleton, adapted = build(members["indicator"], metrics=[REVENUE])
+
+        assert adapted
+        assert "number" not in insight(skeleton)["props"]
+        assert "rides" not in str(skeleton)
+
+    def test_the_metrics_own_unit_becomes_the_suffix(self, members):
+        metric = {"name": "revenue", "agg": "sum", "unit": "USD"}
+        skeleton, _ = build(members["indicator"], metrics=[metric])
+
+        assert insight(skeleton)["props"]["number"] == {"suffix": " USD"}
+
+    def test_a_percent_unit_has_no_space(self, members):
+        metric = {"name": "share", "agg": "avg", "unit": "%"}
+        skeleton, _ = build(members["indicator"], metrics=[metric])
+
+        assert insight(skeleton)["props"]["number"] == {"suffix": "%"}
+
+    def test_the_other_number_props_stay(self, members):
+        example = re.sub(
+            r'^( *)suffix: " rides"$',
+            r'\1suffix: " rides"\n\1valueformat: ",.0f"',
+            members["indicator"].example,
+            flags=re.M,
+        )
+        member = members["indicator"].model_copy(update={"example": example})
+        skeleton, _ = build(member, metrics=[REVENUE])
+
+        assert insight(skeleton)["props"]["number"] == {"valueformat": ",.0f"}

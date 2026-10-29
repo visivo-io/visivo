@@ -35,7 +35,7 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 - `count(distinct user)` per stage, not `count(*)`; repeat events inflate later stages and break monotonicity.
 
 **Variations**
-- When a `few` categorical (a segment) should be compared: `split` with `layout.funnelmode: group`; the counts stay comparable per stage.
+- When a categorical of 2–7 values (a segment) should be compared: `split` with `layout.funnelmode: group`; the counts stay comparable per stage.
 - When the message is percent of the first stage: `textinfo: value+percent initial`.
 - When the stages hold amounts rather than counts: the same props; say the unit in the axis title.
 

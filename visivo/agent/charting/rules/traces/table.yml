@@ -3,10 +3,10 @@ family: table
 status: preferred
 one_liner: "Exact values in rows: the detail view a dashboard ends with, or a pivot grid you can read numbers off."
 use_when:
-  - "Identifier-level detail: any dimension with role `identifier`, or a lookup role at `high` cardinality (zones, drivers, invoices); never a chart."
+  - "Identifier-level detail: any dimension with role `identifier`, or a lookup role with more than 100 values (zones, drivers, invoices); never a chart."
   - "More metrics than a grouped bar can compare, or mixed types per row (text, numbers, dates); exact values (money reconciliation, rankings with ties)."
   - "Pivot: two categoricals with more cells than a heatmap can show and totals required, or periods × category when the figures matter."
-  - "`intent: detail`, or as the `detail_table_below` companion of a chart whose dimension is `many`/`high`."
+  - "`intent: detail`, or as the `detail_table_below` companion of a chart whose dimension has more than 20 values."
 avoid_when:
   - A few metrics across categories a bar can label; a bar compares them faster.
   - A trend over many periods; that is a line, and a wide pivot overflows.

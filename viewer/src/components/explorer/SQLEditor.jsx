@@ -124,6 +124,7 @@ const SQLEditor = ({
     let queryText = sql;
 
     if (editor) {
+      queryText = editor.getValue();
       const selection = editor.getSelection();
       if (selection && !selection.isEmpty()) {
         queryText = editor.getModel().getValueInRange(selection);

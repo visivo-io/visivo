@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import PortalDropdownMenu from './PortalDropdownMenu';
 import { FaCalendarAlt, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { DropdownLabel } from '../../styled/DropdownButton';
 import useEscapeToClose from '../../../hooks/useEscapeToClose';
@@ -42,6 +43,8 @@ const DateRangeInput = ({
   const endRef = useRef(null);
   const startTriggerRef = useRef(null);
   const endTriggerRef = useRef(null);
+  const startMenuRef = useRef(null);
+  const endMenuRef = useRef(null);
 
   // Convert options to Date objects and sort
   useEffect(() => {
@@ -99,10 +102,13 @@ const DateRangeInput = ({
   // Handle click outside to close dropdowns
   useEffect(() => {
     const handleClickOutside = event => {
-      if (startRef.current && !startRef.current.contains(event.target)) {
+      const inside = (ref, menuRef) =>
+        (ref.current && ref.current.contains(event.target)) ||
+        (menuRef.current && menuRef.current.contains(event.target));
+      if (!inside(startRef, startMenuRef)) {
         setIsStartOpen(false);
       }
-      if (endRef.current && !endRef.current.contains(event.target)) {
+      if (!inside(endRef, endMenuRef)) {
         setIsEndOpen(false);
       }
     };
@@ -216,7 +222,7 @@ const DateRangeInput = ({
     return paddedDays;
   };
 
-  const renderDatePicker = (isOpen, onSelect, selectedDate, otherDate, viewMonth, setViewMonth) => {
+  const renderDatePicker = (isOpen, anchorRef, menuRef, onSelect, selectedDate, otherDate, viewMonth, setViewMonth) => {
     if (!isOpen) return null;
 
     const calendarDays = generateCalendarDays(viewMonth);
@@ -225,7 +231,7 @@ const DateRangeInput = ({
     const canGoNext = maxDate && isBefore(endOfMonth(viewMonth), endOfMonth(maxDate));
 
     return (
-      <div className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[280px]">
+      <PortalDropdownMenu anchorRef={anchorRef} menuRef={menuRef} maxHeight={360} minWidth={280}>
         {/* Month/Year Navigation Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100">
           <button
@@ -308,7 +314,7 @@ const DateRangeInput = ({
         {dateOptions.length === 0 && (
           <div className="p-4 text-sm text-gray-500 text-center">No dates available</div>
         )}
-      </div>
+      </PortalDropdownMenu>
     );
   };
 
@@ -350,6 +356,8 @@ const DateRangeInput = ({
           </button>
           {renderDatePicker(
             isStartOpen,
+            startRef,
+            startMenuRef,
             handleStartSelect,
             startDate,
             endDate,
@@ -385,6 +393,8 @@ const DateRangeInput = ({
           </button>
           {renderDatePicker(
             isEndOpen,
+            endRef,
+            endMenuRef,
             handleEndSelect,
             endDate,
             startDate,

@@ -567,3 +567,69 @@ class TestPendingProjectValidation:
 
         broken = SimpleNamespace(project=None)
         assert _validate_pending_project(broken) is None
+
+
+class TestCommitWithoutProjectFile:
+    """`visivo serve` in a folder with no project.visivo.yml (VIS-1616)."""
+
+    @pytest.fixture
+    def serve_app(self):
+        import os
+
+        from tests.support.utils import temp_folder
+        from visivo.models.project import Project
+
+        working_dir = os.path.abspath(temp_folder())
+        project = Project(name="Quickstart Visivo", sources=[], models=[], dashboards=[])
+        app = FlaskApp(working_dir, project, working_dir=working_dir)
+        app.app.config["TESTING"] = True
+        return app, working_dir
+
+    def _save_duckdb_source(self, client, working_dir, name):
+        response = client.post(
+            f"/api/sources/{name}/",
+            json={"type": "duckdb", "database": f"{working_dir}/{name}.duckdb"},
+        )
+        assert response.status_code == 201, response.get_json()
+
+    def test_commit_creates_the_project_file_and_writes_the_source(self, serve_app):
+        import os
+
+        import yaml
+
+        app, working_dir = serve_app
+        client = app.app.test_client()
+        self._save_duckdb_source(client, working_dir, "local_duck")
+
+        response = client.post("/api/projects/id/commit/")
+
+        assert response.status_code == 200, response.get_json()
+        # Two: the source, and the `defaults` it became — a project's first
+        # source adopts the default source (VIS-1653), and that has to reach
+        # the YAML or a model with no `source` fails to validate.
+        assert response.get_json()["published_count"] == 2
+        project_file = os.path.join(working_dir, "project.visivo.yml")
+        with open(project_file) as f:
+            written = yaml.safe_load(f)
+        assert written["name"] == os.path.basename(working_dir)
+        assert [s["name"] for s in written["sources"]] == ["local_duck"]
+        assert written["sources"][0]["type"] == "duckdb"
+        assert written["defaults"]["source_name"] == "local_duck"
+
+    def test_a_second_commit_appends_to_the_created_file(self, serve_app):
+        import os
+
+        import yaml
+
+        app, working_dir = serve_app
+        client = app.app.test_client()
+        self._save_duckdb_source(client, working_dir, "first_duck")
+        assert client.post("/api/projects/id/commit/").status_code == 200
+        self._save_duckdb_source(client, working_dir, "second_duck")
+
+        response = client.post("/api/projects/id/commit/")
+
+        assert response.status_code == 200, response.get_json()
+        with open(os.path.join(working_dir, "project.visivo.yml")) as f:
+            written = yaml.safe_load(f)
+        assert [s["name"] for s in written["sources"]] == ["first_duck", "second_duck"]

@@ -6,6 +6,7 @@ import SQLEditor from './SQLEditor';
 // Mock Monaco editor — selection state is configurable per-test
 let mockSelectionIsEmpty = true;
 let mockSelectedText = '';
+let mockEditorValue = '';
 
 const mockQueryRunningKey = { set: jest.fn() };
 
@@ -14,6 +15,7 @@ const mockEditor = {
   getModel: () => ({
     getValueInRange: () => mockSelectedText,
   }),
+  getValue: () => mockEditorValue,
   addCommand: jest.fn(),
   createContextKey: jest.fn(() => mockQueryRunningKey),
   focus: jest.fn(),
@@ -39,6 +41,7 @@ const mockMonaco = {
 
 jest.mock('@monaco-editor/react', () => {
   const MockedEditor = ({ value, onChange, onMount, options }) => {
+    mockEditorValue = value;
     // Call onMount synchronously to simulate editor mounting
     if (onMount) {
       setTimeout(() => onMount(mockEditor, mockMonaco), 0);
@@ -576,6 +579,18 @@ describe('SQLEditor', () => {
       });
 
       expect(mockExecuteQuery).toHaveBeenCalledWith('test_source', 'SELECT 1');
+    });
+
+    it('Cmd+Enter runs the editor text even when React state lags behind it', async () => {
+      render(<SQLEditor initialValue="select 1 group al" sourceName="test_source" />);
+      await waitFor(() => expect(mockEditor.addCommand).toHaveBeenCalledTimes(2));
+
+      mockEditorValue = 'select 1 group by all';
+      act(() => {
+        getRunCommand()();
+      });
+
+      expect(mockExecuteQuery).toHaveBeenCalledWith('test_source', 'select 1 group by all');
     });
 
     it('Cmd+Enter is ignored while a query is running', async () => {
