@@ -57,6 +57,16 @@ sources:
   # - name: my_db
   #   type: sqlite
   #   database: /path/to/file.db
+  #
+  ## Credentials come from environment variables, never from YAML. Copy
+  ## `.env.example` to `.env` and fill it in.
+  # - name: my_postgres
+  #   type: postgresql
+  #   host: ${{env.PG_HOST}}
+  #   port: ${{env.PG_PORT}}
+  #   database: ${{env.PG_DATABASE}}
+  #   username: ${{env.PG_USER}}
+  #   password: ${{env.PG_PASSWORD}}
 
 models:
   ## A Model is a SQL query saved against a Source.
@@ -103,7 +113,13 @@ target/
 """
 
 ENV_EXAMPLE_CONTENT = """\
-# Put data-source secrets here. Reference in YAML as ${ env_var('NAME') }.
+# Put data-source secrets here. Reference in YAML as ${env.NAME}.
+# Copy this file to .env and fill in the values.
+PG_HOST=
+PG_PORT=5432
+PG_DATABASE=
+PG_USER=
+PG_PASSWORD=
 """
 
 

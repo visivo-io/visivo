@@ -1,6 +1,7 @@
 """Tests for `visivo.commands.init_phase` scaffolding output."""
 
 import os
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,6 +14,7 @@ from visivo.commands.init_phase import (
     init_phase,
 )
 from visivo.models.project import Project
+from visivo.parsers.parser_factory import ParserFactory
 from tests.support.utils import temp_folder
 
 
@@ -168,3 +170,37 @@ def test_scaffold_teaches_the_chart_wrapper_not_bare_insights_on_items():
     exactly that shape."""
     assert "chart: ${ref(revenue_chart)}" in SCAFFOLD_TEMPLATE.format(project_name="x")
     assert "insight: ${ref(" not in SCAFFOLD_TEMPLATE.format(project_name="x")
+
+
+def _env_names_in(text):
+    return set(re.findall(r"\$\{env\.([A-Za-z_][A-Za-z0-9_]*)\}", text))
+
+
+def test_scaffold_uses_only_the_implemented_env_var_syntax(monkeypatch):
+    """Every file init writes names env vars as ${env.NAME}; the project loads
+    once the variables its examples name are set."""
+    tmp = temp_folder()
+    project_dir = os.path.join(tmp, "env-syntax-project")
+    os.makedirs(project_dir, exist_ok=True)
+    init_phase(project_dir)
+
+    for name in ("project.visivo.yml", ".env.example", "AGENTS.md"):
+        assert "env_var(" not in Path(project_dir, name).read_text(), name
+
+    project_file = Path(project_dir, "project.visivo.yml")
+    project_file.write_text(_uncomment_examples(project_file.read_text()))
+    needed = _env_names_in(project_file.read_text())
+    assert {"PG_HOST", "PG_PORT"} <= needed
+
+    env_example = Path(project_dir, ".env.example").read_text()
+    declared = {
+        line.split("=", 1)[0] for line in env_example.splitlines() if "=" in line and line[0] != "#"
+    }
+    assert needed <= declared
+    for name in needed:
+        monkeypatch.setenv(name, "5432" if name == "PG_PORT" else f"value-{name}")
+
+    project = ParserFactory().build(project_file=project_file, files=[]).parse()
+    postgres = next(s for s in project.sources if s.name == "my_postgres")
+    assert postgres.get_port() == 5432
+    assert postgres.get_host() == "value-PG_HOST"

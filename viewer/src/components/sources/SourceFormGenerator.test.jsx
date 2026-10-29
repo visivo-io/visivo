@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SourceFormGenerator, {
   getSourceSchema,
+  parsePortInput,
   secretRefName,
   toSecretRef,
 } from './SourceFormGenerator';
@@ -128,6 +129,56 @@ describe('schemas match the visivo source models', () => {
     }
     const bq = getSourceSchema('bigquery').fields.find(f => f.name === 'credentials_base64');
     expect(bq.type).toBe('secret');
+  });
+});
+
+describe('port field', () => {
+  test('shows an env var reference instead of a blank box', () => {
+    renderForm({ values: { port: rawRef('PG_PORT') } });
+    const port = screen.getByLabelText('Port');
+    expect(port).toHaveAttribute('type', 'text');
+    expect(port).toHaveValue(rawRef('PG_PORT'));
+  });
+
+  test('keeps a typed env var reference as text', () => {
+    const onChange = jest.fn();
+    renderForm({ values: { port: 5432 }, onChange });
+    fireEvent.change(screen.getByLabelText('Port'), { target: { value: rawRef('OTHER_PORT') } });
+    expect(onChange).toHaveBeenLastCalledWith({ port: rawRef('OTHER_PORT') });
+  });
+
+  test('stores typed digits as a number', () => {
+    const onChange = jest.fn();
+    renderForm({ values: { port: rawRef('PG_PORT') }, onChange });
+    fireEvent.change(screen.getByLabelText('Port'), { target: { value: '6543' } });
+    expect(onChange).toHaveBeenLastCalledWith({ port: 6543 });
+  });
+
+  test.each(['mysql', 'clickhouse', 'redshift'])('is a text field for %s too', sourceType => {
+    renderForm({ sourceType, values: { port: rawRef('DB_PORT') } });
+    expect(screen.getByLabelText('Port')).toHaveValue(rawRef('DB_PORT'));
+  });
+
+  test('says it takes a number or a reference, unless it shows an error', () => {
+    const { rerender } = renderForm();
+    expect(screen.getByText(`A number or an ${rawRef('NAME')} reference.`)).toBeInTheDocument();
+    rerender(
+      <SourceFormGenerator
+        sourceType="postgresql"
+        values={{}}
+        onChange={() => {}}
+        errors={{ port: 'Port is invalid' }}
+      />
+    );
+    expect(screen.queryByText(/A number or an/)).not.toBeInTheDocument();
+    expect(screen.getByText('Port is invalid')).toBeInTheDocument();
+  });
+
+  test('parsePortInput turns only whole digit strings into numbers', () => {
+    expect(parsePortInput('5432')).toBe(5432);
+    expect(parsePortInput('')).toBe('');
+    expect(parsePortInput('54a')).toBe('54a');
+    expect(parsePortInput(rawRef('PG_PORT'))).toBe(rawRef('PG_PORT'));
   });
 });
 

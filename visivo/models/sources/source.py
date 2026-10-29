@@ -1,6 +1,6 @@
 from typing import Optional, Dict, List, Any
 from visivo.models.base.named_model import NamedModel
-from visivo.models.base.base_model import StringOrEnvVar, SecretStrOrEnvVar
+from visivo.models.base.base_model import StringOrEnvVar, SecretStrOrEnvVar, IntOrEnvVar
 from visivo.models.base.env_var_string import EnvVarString
 from visivo.models.sources.seed import Seed
 from abc import ABC, abstractmethod
@@ -157,7 +157,7 @@ class ServerSource(Source):
     """
 
     host: Optional[StringOrEnvVar] = Field(None, description="The host url of the database.")
-    port: Optional[int] = Field(None, description="The port of the database.")
+    port: Optional[IntOrEnvVar] = Field(None, description="The port of the database.")
     database: StringOrEnvVar = Field(
         ..., description="The database that the Visivo project will use in queries."
     )
@@ -203,6 +203,16 @@ class ServerSource(Source):
         """Get the resolved host value."""
         return self._resolve_field(self.host)
 
+    def get_port(self) -> Optional[int]:
+        """Get the resolved port, converting an env var value to an integer."""
+        port = self._resolve_field(self.port)
+        if port is None:
+            return None
+        try:
+            return int(port)
+        except (TypeError, ValueError):
+            raise ValueError(f"Port for {self.type} source '{self.name}' is not an integer: {port}")
+
     def get_database(self) -> str:
         """Get the resolved database value."""
         return self._resolve_field(self.database)
@@ -222,7 +232,7 @@ class ServerSource(Source):
             host=self.get_host(),
             username=self.get_username(),
             password=self.get_password(),
-            port=self.port,
+            port=self.get_port(),
             drivername=self.get_dialect(),
             database=self.get_database(),
             query=None,
