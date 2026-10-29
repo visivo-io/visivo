@@ -64,7 +64,7 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 **Variations**
 - When a third numeric measure to show per cell: `z: ?{ tip_amount }` with `histfunc: avg`; the color becomes the average, not the count.
 - When the counts are heavily skewed: `zsmooth: best` is cosmetic; a log color (`z` = ln(count) via a pre-binned heatmap) is honest.
-- When a `few` categorical to compare: small multiples (one chart per value); never `split`, the grids overlap.
+- When a categorical of 2–7 values to compare: small multiples (one chart per value); never `split`, the grids overlap.
 
 **Placement:** `medium` height, 6 of 12 columns, as a `relationship`; pair with `scatter_overlay`, `chart_beside(histogram)`, `detail_table_below`.
 **Mobile:** Half-width becomes full width; keep the bins coarse enough that cells stay tappable.

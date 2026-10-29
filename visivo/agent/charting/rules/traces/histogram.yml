@@ -4,7 +4,7 @@ status: preferred
 one_liner: The shape of one numeric column, binned; compare a few groups by overlaying or stacking.
 use_when:
   - One numeric_continuous or numeric_discrete column and the question is "how is it distributed".
-  - A few groups to compare (`few` categorical) as overlaid or stacked histograms.
+  - A few groups to compare (a categorical of 2–7 values) as overlaid or stacked histograms.
   - Spotting skew, outliers, bimodality before choosing an average vs a median for the KPIs.
 other_uses:
   - use: A cumulative distribution (CDF), e.g. the share of trips under a given distance.
@@ -33,7 +33,7 @@ example: |
         - filter: ?{ ${ref(trips).trip_distance} > 0 }
         - split: ?{ ${ref(trips).payment_type} }
 variations:
-  - when: "a second `few` dimension"
+  - when: "a second dimension of 2–7 values"
     then: "`split` with the chart `layout.barmode: overlay` and `opacity: 0.6`, or `barmode: stack`"
   - when: "comparing groups of different size"
     then: "`histnorm: percent` so shapes compare, not totals"

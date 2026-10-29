@@ -271,7 +271,7 @@ fork the palette in a single component.
 
 ### After EVERY code edit:
 - **Python edits** → `poetry run pytest tests/ -x --tb=short -q` (fail-fast, quiet)
-- **JS edits** → `cd viewer && source ~/.nvm/nvm.sh; nvm use; yarn test --watchAll=false --testPathPattern="<changed-component>"`
+- **JS edits** → `cd viewer && source ~/.nvm/nvm.sh; nvm use; yarn test --watchAll=false --testPathPatterns="<changed-component>"`
 - **Always** run `yarn lint` after JS changes
 - **Python formatting** → `poetry run black --check visivo/` after Python changes
 

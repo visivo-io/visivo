@@ -104,3 +104,163 @@ class TestTheseAreReadsOnly:
         call(integration_app, "get_run", {})
 
         assert len(runs.list()) == before
+
+
+class TestCheckRuns:
+    """The done-check. A write that changes data starts a build on a background
+    thread, so asking straight after a write only ever sees `queued` — and
+    there is no sleep tool to wait with.
+    """
+
+    def test_a_clean_project_is_ok(self, integration_app, runs):
+        result = call(integration_app, "check_runs", {})
+
+        assert result["ok"] is True
+        assert result["runs"] == 0
+
+    def test_a_succeeded_run_is_ok(self, integration_app, runs):
+        run = runs.create(dag_filter="+orders+")
+        runs.set_state(run.id, RunState.SUCCEEDED, logs="built")
+
+        result = call(integration_app, "check_runs", {})
+
+        assert result["ok"] is True
+        assert result["state"] == "succeeded"
+        assert result["run_id"] == run.id
+
+    def test_a_failed_run_is_not_ok_and_says_why(self, integration_app, runs):
+        run = runs.create(dag_filter="+orders+")
+        runs.set_state(
+            run.id,
+            RunState.FAILED,
+            logs="orders " + "." * 50 + " FAILED: no column 'total'",
+            error_json={
+                "phase": "run",
+                "diagnostics": [{"code": "query_execution_failed", "message": "no column 'total'"}],
+            },
+        )
+
+        result = call(integration_app, "check_runs", {})
+
+        assert result["ok"] is False
+        assert result["state"] == "failed"
+        assert result["diagnostics"][0]["code"] == "query_execution_failed"
+        assert "no column 'total'" in result["logs"]
+
+    def test_it_waits_for_a_build_in_flight(self, integration_app, runs):
+        """The run the agent most needs a verdict on is the one its own write
+        just started."""
+        import threading
+
+        run = runs.create(dag_filter="+orders+")
+
+        def finish():
+            runs.set_state(run.id, RunState.SUCCEEDED, logs="built")
+
+        threading.Timer(0.6, finish).start()
+
+        result = call(integration_app, "check_runs", {})
+
+        assert result["settled"] is True
+        assert result["ok"] is True
+
+    def test_a_build_that_never_settles_is_not_a_failure(self, integration_app, runs):
+        """A slow build is still a build. Reporting it as failed would have the
+        agent 'fix' something that was fine."""
+        from visivo.agent import runs as run_helpers
+
+        run = runs.create(dag_filter="+orders+")
+        runs.set_state(run.id, RunState.RUNNING)
+
+        result = run_helpers.verdict(integration_app, timeout=0.1)
+
+        assert result["settled"] is False
+        assert result["ok"] is False
+        assert result["state"] == "running"
+        assert "diagnostics" not in result
+
+    def test_the_log_is_tailed_like_get_run(self, integration_app, runs):
+        run = runs.create(dag_filter="+orders+")
+        runs.set_state(
+            run.id,
+            RunState.FAILED,
+            logs="x" * (RUN_LOG_TAIL + 500) + "the actual error",
+            error_json={"phase": "run"},
+        )
+
+        result = call(integration_app, "check_runs", {})
+
+        assert len(result["logs"]) == RUN_LOG_TAIL
+        assert result["logs"].endswith("the actual error")
+        assert result["logs_truncated"] is True
+
+    def test_it_works_against_a_cloud_run_manager(self, integration_app, runs):
+        """Cloud hands the tools a `RemoteRunManager`. If this needed a branch,
+        the cloud agent would disagree with the local one about whether the
+        project builds."""
+        from visivo.agent.remote import RemoteRunManager
+
+        class _Client:
+            def runs(self):
+                return [
+                    {
+                        "id": "cloud-1",
+                        "state": "failed",
+                        "logs": "FAILED: no column 'total'",
+                        "error_json": {"diagnostics": [{"code": "query_execution_failed"}]},
+                    }
+                ]
+
+        integration_app.run_manager = RemoteRunManager(_Client())
+
+        result = call(integration_app, "check_runs", {})
+
+        assert result["ok"] is False
+        assert result["diagnostics"][0]["code"] == "query_execution_failed"
+        assert "no column 'total'" in result["logs"]
+
+    def test_it_starts_no_run(self, integration_app, runs):
+        runs.create(dag_filter="+x+")
+        runs.set_state(runs.list()[0]["id"], RunState.SUCCEEDED)
+        before = len(runs.list())
+
+        call(integration_app, "check_runs", {})
+
+        assert len(runs.list()) == before
+
+
+class TestWaitingForABuild:
+    """Shared by `check_runs` and the screenshot tool, which must not disagree
+    about whether the data is built yet."""
+
+    def test_it_waits_while_a_run_is_in_flight(self, integration_app, runs, monkeypatch):
+        from visivo.agent import runs as run_helpers
+
+        states = [RunState.RUNNING.value, RunState.RUNNING.value, RunState.SUCCEEDED.value]
+        monkeypatch.setattr(
+            integration_app.run_manager, "list", lambda limit=1: [{"state": states.pop(0)}]
+        )
+        monkeypatch.setattr(run_helpers.time, "sleep", lambda _s: None)
+
+        assert run_helpers.wait_for_runs(integration_app) is True
+        assert states == []
+
+    def test_a_run_that_never_finishes_does_not_block_forever(
+        self, integration_app, runs, monkeypatch
+    ):
+        from visivo.agent import runs as run_helpers
+
+        monkeypatch.setattr(
+            integration_app.run_manager, "list", lambda limit=1: [{"state": RunState.RUNNING.value}]
+        )
+        monkeypatch.setattr(run_helpers.time, "sleep", lambda _s: None)
+
+        assert run_helpers.wait_for_runs(integration_app, timeout=0.05) is False
+
+    def test_a_server_with_no_run_manager_is_not_blocked(self, integration_app):
+        """Minimal harnesses and any surface without runs still work."""
+        from visivo.agent import runs as run_helpers
+
+        integration_app.run_manager = None
+
+        assert run_helpers.wait_for_runs(integration_app) is True

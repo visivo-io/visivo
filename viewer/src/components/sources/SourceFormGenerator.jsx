@@ -168,6 +168,10 @@ const SECRET_REF = /^\$\{\s*env\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}$/;
 export const toSecretRef = key => `\${env.${key}}`;
 export const secretRefName = value => (value || '').match(SECRET_REF)?.[1] ?? '';
 
+const ENV_VAR_DOCS_URL = 'https://docs.visivo.io/topics/environment-variables/';
+const toEnvName = name => name.toUpperCase().replace(/^CREDENTIALS_BASE64$/, 'SERVICE_ACCOUNT_KEY');
+const envRefExample = name => `\${env.${toEnvName(name)}}`;
+
 // A secret-bearing field in cloud: pick one of the account's secret names, or
 // name a new one. Either way the config stores a ${env.NAME} reference — the
 // value itself lives in the secret store and is injected into the run.
@@ -394,6 +398,21 @@ const SourceFormGenerator = ({
             </p>
           )}
           {errors[field.name] && <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>}
+          {field.type === 'secret' && (
+            <p className="mt-1 text-xs text-gray-500" data-testid={`${field.name}-env-hint`}>
+              Keep this out of the project file: enter{' '}
+              <code className="font-mono">{envRefExample(field.name)}</code> and set the
+              variable in your environment or .env file.{' '}
+              <a
+                href={ENV_VAR_DOCS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-500 hover:underline"
+              >
+                Learn more
+              </a>
+            </p>
+          )}
         </div>
         )
       )}

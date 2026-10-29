@@ -3,7 +3,7 @@ family: distribution
 status: preferred
 one_liner: Compare the distribution of a numeric column across groups with medians, quartiles and outliers.
 use_when:
-  - One numeric column by a `few`/`some` categorical (trip minutes by borough, fare by payment type).
+  - One numeric column by a categorical of 2–20 values (trip minutes by borough, fare by payment type).
   - Too many groups for overlaid histograms, which turn to mud; a box per group stays readable.
   - Outliers matter and should be visible as points rather than clipped away.
 other_uses:
@@ -35,7 +35,7 @@ example: |
       interactions:
         - filter: ?{ ${ref(trips).trip_minutes} > 0 }
 variations:
-  - when: "a second `few` dimension"
+  - when: "a second dimension of 2–7 values"
     then: "`split` with the chart `layout.boxmode: group`"
   - when: "time on x at a coarse grain such as month"
     then: "one box per period shows how the distribution drifts"

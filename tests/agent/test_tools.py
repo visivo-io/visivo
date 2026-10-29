@@ -112,6 +112,21 @@ class TestNothingReachesTheFilesystem:
 
         assert _project_files(output_dir) == before
 
+    def test_a_project_file_written_in_a_sibling_folder_is_not_ours(self, output_dir):
+        """Parallel test workers share the parent temp directory."""
+        before = _project_files(output_dir)
+        sibling = os.path.join(os.path.dirname(os.path.abspath(output_dir)), "sibling-worker")
+        os.makedirs(sibling, exist_ok=True)
+        stray = os.path.join(sibling, "project.visivo.yml")
+        try:
+            with open(stray, "w") as handle:
+                handle.write("name: other\n")
+
+            assert _project_files(output_dir) == before
+        finally:
+            os.remove(stray)
+            os.rmdir(sibling)
+
 
 class TestReading:
     def test_list_returns_the_published_objects(self, integration_app):
@@ -139,6 +154,98 @@ class TestReading:
         )
 
         assert call(integration_app, "get_markdown", {"name": "agent-note"})["content"] == "# hello"
+
+
+class TestInlineMetricsAndDimensions:
+    """Metrics and dimensions written inside a model belong in the list tools,
+    tagged with the model, or an agent that just wrote them cannot find them."""
+
+    @pytest.fixture
+    def app_with_inline(self, output_dir):
+        from tests.factories.model_factories import (
+            DimensionFactory,
+            MetricFactory,
+            ProjectFactory,
+            SourceFactory,
+            SqlModelFactory,
+        )
+        from visivo.commands.utils import create_file_database
+        from visivo.server.flask_app import FlaskApp
+
+        abs_output_dir = os.path.abspath(output_dir)
+        source = SourceFactory(database=f"{abs_output_dir}/test.sqlite")
+        model = SqlModelFactory(
+            name="orders",
+            metrics=[MetricFactory(name="revenue")],
+            dimensions=[DimensionFactory(name="order_month")],
+        )
+        project = ProjectFactory(
+            sources=[source],
+            models=[model],
+            metrics=[MetricFactory(name="global_total", expression="SUM(${ref(orders).x})")],
+        )
+        create_file_database(url=source.url(), output_dir=abs_output_dir)
+        return FlaskApp(abs_output_dir, project, working_dir=abs_output_dir)
+
+    def _write_model(self, app, metrics, dimensions):
+        config = {
+            "name": "agent_orders",
+            "sql": "select 1 as amount",
+            "source": "ref(source)",
+            "metrics": metrics,
+            "dimensions": dimensions,
+        }
+        call(app, "write_model", {"config": config})
+
+    def test_a_written_models_children_are_listed_with_the_model(self, integration_app):
+        self._write_model(
+            integration_app,
+            [{"name": "total_amount", "expression": "SUM(amount)"}],
+            [{"name": "amount_band", "expression": "amount > 0"}],
+        )
+
+        metrics = call(integration_app, "list_metrics", {})
+        dimensions = call(integration_app, "list_dimensions", {})
+
+        assert [(m["name"], m["model"]) for m in metrics] == [("total_amount", "agent_orders")]
+        assert [(d["name"], d["model"]) for d in dimensions] == [("amount_band", "agent_orders")]
+
+    def test_published_inline_children_carry_their_model(self, app_with_inline):
+        metrics = {m["name"]: m for m in call(app_with_inline, "list_metrics", {})}
+        dimensions = call(app_with_inline, "list_dimensions", {})
+
+        assert metrics["revenue"]["model"] == "orders"
+        assert "model" not in metrics["global_total"]
+        assert [(d["name"], d["model"]) for d in dimensions] == [("order_month", "orders")]
+
+    def test_a_draft_model_replaces_its_published_children(self, app_with_inline):
+        orders = app_with_inline.model_manager.get("orders")
+        config = orders.model_dump(exclude_none=True, mode="json")
+        config["metrics"] = [{"name": "order_count", "expression": "COUNT(*)"}]
+        config["dimensions"] = []
+        call(app_with_inline, "write_model", {"config": config})
+
+        names = sorted(m["name"] for m in call(app_with_inline, "list_metrics", {}))
+
+        assert names == ["global_total", "order_count"]
+        assert call(app_with_inline, "list_dimensions", {}) == []
+
+    def test_a_deleted_metric_is_not_listed(self, app_with_inline):
+        app_with_inline.metric_manager.mark_for_deletion("global_total")
+
+        names = [m["name"] for m in call(app_with_inline, "list_metrics", {})]
+
+        assert names == ["revenue"]
+
+
+@pytest.mark.parametrize("type_key", sorted(TYPE_TO_MANAGER))
+def test_no_list_tool_returns_an_object_marked_for_deletion(integration_app, type_key):
+    manager = getattr(integration_app, TYPE_TO_MANAGER[type_key])
+    manager._cached_objects["marked_for_deletion"] = None
+
+    listed = call(integration_app, f"list_{type_key}", {})
+
+    assert None not in listed
 
 
 class TestValidating:
@@ -228,10 +335,11 @@ class TestTheCallingContract:
 
 
 def _project_files(output_dir):
-    """Every project file and its bytes, for a byte-identical comparison."""
-    root = os.path.dirname(os.path.abspath(output_dir))
+    """Every project file and its bytes under the test's own folder, for a
+    byte-identical comparison. Never its parent: that temp directory is shared
+    with other test processes."""
     found = {}
-    for directory, _, names in os.walk(root):
+    for directory, _, names in os.walk(os.path.abspath(output_dir)):
         for name in names:
             if name.endswith((".visivo.yml", ".visivo.yaml")):
                 path = os.path.join(directory, name)
@@ -311,6 +419,78 @@ class TestAWriteStagesAndRuns:
         assert requested == []
         assert result["change"] == "staged"
         assert "agent-manual" in self._staged_names(integration_app)
+
+
+class TestRecommendChartsKnowsTheProjectsMetrics:
+    """The tool flags a metric the project defines, so its KPI skeleton refs the
+    metric instead of aggregating an aggregate."""
+
+    SUBS = {"name": "subs", "sql": "select 1 as mrr", "source": "ref(source)"}
+
+    def _value(self, app, name="total_mrr"):
+        result = call(
+            app,
+            "recommend_charts",
+            {
+                "metrics": [{"name": name, "agg": "sum"}],
+                "intent": "kpi",
+                "context": {"model": "subs"},
+            },
+        )
+        kpi = next(r for r in result["recommendations"] if r["family"] == "kpi")
+        return next(
+            line.split("value: ", 1)[1]
+            for line in kpi["yaml_skeleton"].splitlines()
+            if "value:" in line
+        )
+
+    def test_a_metric_inline_on_the_model(self, integration_app):
+        model = {**self.SUBS, "metrics": [{"name": "total_mrr", "expression": "sum(mrr)"}]}
+        call(integration_app, "write_model", {"config": model})
+
+        assert self._value(integration_app) == "?{ ${ref(subs).total_mrr} }[0]"
+
+    def test_a_draft_metric_scoped_to_the_model(self, integration_app, integration_client):
+        call(integration_app, "write_model", {"config": self.SUBS})
+        integration_client.post(
+            "/api/metrics/total_mrr/", json={"expression": "sum(mrr)", "parentModel": "subs"}
+        )
+
+        assert self._value(integration_app) == "?{ ${ref(subs).total_mrr} }[0]"
+
+    def test_a_project_level_metric(self, integration_app):
+        call(integration_app, "write_model", {"config": self.SUBS})
+        config = {"name": "total_mrr", "expression": "sum(${ref(subs).mrr})"}
+        call(integration_app, "write_metric", {"config": config})
+
+        assert self._value(integration_app) == "?{ ${ref(total_mrr)} }[0]"
+
+    def test_a_metric_scoped_to_another_model_is_a_column_here(
+        self, integration_app, integration_client
+    ):
+        integration_client.post(
+            "/api/metrics/total_mrr/", json={"expression": "sum(mrr)", "parentModel": "other"}
+        )
+
+        assert self._value(integration_app) == "?{ SUM(${ref(subs).total_mrr}) }[0]"
+
+    def test_a_column_is_aggregated(self, integration_app):
+        call(integration_app, "write_model", {"config": self.SUBS})
+
+        assert self._value(integration_app, "mrr") == "?{ SUM(${ref(subs).mrr}) }[0]"
+
+    def test_a_flag_the_caller_set_is_kept(self, integration_app):
+        result = call(
+            integration_app,
+            "recommend_charts",
+            {
+                "metrics": [{"name": "total_mrr", "agg": "sum", "defined": "project"}],
+                "intent": "kpi",
+                "context": {"model": "subs"},
+            },
+        )
+        kpi = next(r for r in result["recommendations"] if r["family"] == "kpi")
+        assert "value: ?{ ${ref(total_mrr)} }[0]" in kpi["yaml_skeleton"]
 
 
 class TestEveryFailureIsARefusal:

@@ -484,7 +484,7 @@ def penalty(cards, values=None, rules=None):
         if card.null_pct > scoring.high_nulls:
             factor *= scoring.penalties.high_nulls
             reasons.append(f"{card.column} is {card.null_pct:.0%} null")
-        if card.cardinality_bucket == "one":
+        if card.bucket() == "one":
             factor *= scoring.penalties.cardinality_one
             reasons.append(f"{card.column} has one value")
     if is_constant(values):
@@ -504,11 +504,11 @@ def tag_dimension(card, rules=None, interactivity=None):
         return "axis", None
     if card.role == "identifier":
         return "key", None
-    if card.role in ("text", "geo_point") or card.cardinality_bucket == "one":
+    if card.role in ("text", "geo_point") or card.bucket() == "one":
         return "dropped", None
     if card.role == "numeric_continuous":
         return "measure", None
-    rank, at = BUCKET_ORDER[card.cardinality_bucket], BUCKET_ORDER[threshold]
+    rank, at = BUCKET_ORDER[card.bucket()], BUCKET_ORDER[threshold]
     if rank < at:
         return "split_candidate", None
     if rank == at and top_n_keep(card, doc) is not None:

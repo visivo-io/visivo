@@ -525,7 +525,7 @@ describe('CenterPanel', () => {
       render(<CenterPanel />);
       const topRow = screen.getByTestId('center-panel-top-row');
       expect(topRow).toHaveAttribute('data-auto-height', 'false');
-      expect(topRow.style.flex).toBe('0.5'); // the mocked usePanelResize ratio
+      expect(topRow.style.flex).toBe('0.5 1 0%'); // the mocked usePanelResize ratio, as the expanded shorthand
     });
 
     it('dragging the vertical divider hands control to the manual ratio from then on', () => {
@@ -533,7 +533,7 @@ describe('CenterPanel', () => {
       expect(screen.getByTestId('center-panel-top-row')).toHaveAttribute('data-auto-height', 'true');
       fireEvent.mouseDown(screen.getByTestId('horizontal-divider'));
       expect(screen.getByTestId('center-panel-top-row')).toHaveAttribute('data-auto-height', 'false');
-      expect(screen.getByTestId('center-panel-top-row').style.flex).toBe('0.5');
+      expect(screen.getByTestId('center-panel-top-row').style.flex).toBe('0.5 1 0%');
     });
 
     it('narrow mode on the Chart tab (no editor in the row) uses the ratio split, not line-count', () => {
@@ -551,7 +551,7 @@ describe('CenterPanel', () => {
         fireEvent.click(screen.getByTestId('toggle-chart'));
         const topRow = screen.getByTestId('center-panel-top-row');
         expect(topRow).toHaveAttribute('data-auto-height', 'false');
-        expect(topRow.style.flex).toBe('0.5');
+        expect(topRow.style.flex).toBe('0.5 1 0%');
       } finally {
         global.ResizeObserver = MockResizeObserver;
       }

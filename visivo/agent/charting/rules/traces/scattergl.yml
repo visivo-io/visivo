@@ -30,7 +30,7 @@ example: |
       interactions:
         - filter: ?{ ${ref(trips).trip_distance} between 0 and 50 }
 variations:
-  - when: "a second `few` categorical, or a third numeric measure per point"
+  - when: "a second categorical of 2–7 values, or a third numeric measure per point"
     then: "as in scatter: `split` for the categorical, `marker.size` for the numeric"
   - when: "too many points even for WebGL"
     then: "sample in SQL (`using sample 10%`) or bin to a `histogram2d`"

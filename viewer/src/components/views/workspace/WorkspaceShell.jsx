@@ -18,6 +18,10 @@ import useStore from '../../../stores/store';
 // tests; `WorkspaceShell` is the only runtime caller.
 export const RAIL_COLLAPSED_WIDTH = 48;
 export const CENTER_MIN_WIDTH = 480;
+const DRAG_HANDLES_WIDTH = 10;
+
+export const centerMinWidthCss = rightRailWidth =>
+  `min(${CENTER_MIN_WIDTH}px, calc(100% - ${rightRailWidth + DRAG_HANDLES_WIDTH}px))`;
 
 /**
  * computeAutoCollapse — stateless: given the shell's measured width and the
@@ -150,7 +154,7 @@ const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
             <div className="flex min-h-0 flex-1">
               <main
                 className="flex flex-1 flex-col"
-                style={{ minWidth: CENTER_MIN_WIDTH }}
+                style={{ minWidth: centerMinWidthCss(rightCollapsed ? RAIL_COLLAPSED_WIDTH : rightWidth) }}
                 data-testid="workspace-middle-container"
               >
                 {/* H-2: external-edit warning — top of the canvas area,

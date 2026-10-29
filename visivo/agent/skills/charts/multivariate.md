@@ -19,7 +19,7 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 - Ranking trade-offs across many measures where a splom would need too many panels.
 - `intent: relationship` over several numeric columns with no single x/y pair singled out (fare, distance, minutes, tip).
 - Few enough rows to plot every point (sampled if needed) and an analyst audience screening for correlations before choosing one scatter.
-- A `few` categorical to compare clusters across every pair: `split`.
+- A categorical of 2–7 values to compare clusters across every pair: `split`.
 
 **Avoid when**
 - Too few numeric columns to form a profile; a scatter is clearer.

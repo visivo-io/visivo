@@ -506,12 +506,23 @@ class TestTheTools:
             call(integration_app, "recommend_inputs", {"cards": []})
         with pytest.raises(ToolError, match="model"):
             call(integration_app, "recommend_inputs", {"cards": [{"column": "x"}]})
-        with pytest.raises(ToolError, match="recommend_inputs failed"):
+        with pytest.raises(ToolError, match=r"card for column 'x' is invalid \(role: "):
             call(
                 integration_app,
                 "recommend_inputs",
                 {"cards": [{"model": "m", "column": "x", "role": "nope", "cardinality": 1}]},
             )
+
+    def test_recommend_inputs_refuses_a_range_name_with_a_plain_message(self, integration_app):
+        from visivo.agent.tools import ToolError, call
+
+        card = {"model": "m", "column": "region", "role": "categorical", "cardinality": "some"}
+        with pytest.raises(ToolError) as error:
+            call(integration_app, "recommend_inputs", {"cards": [card]})
+        message = str(error.value)
+        assert "card for column 'region' is invalid" in message
+        assert "distinct-value count from profile_columns" in message
+        assert "validation error" not in message.lower()
 
     def test_check_input_wiring_is_registered(self, integration_app):
         from visivo.agent.tools import ToolError, call
@@ -556,10 +567,11 @@ class TestHelpers:
         result = recommend_inputs([parsed_card], [parsed_insight])
         assert result["inputs"][0]["wiring"][0]["insight"] == "revenue-by-category"
 
-    def test_input_match_checks_bucket_before_counts(self):
+    def test_input_match_checks_the_count_range(self):
         from visivo.agent.charting.schema import InputMatch, ShapeCard
 
-        match = InputMatch(role=["categorical"], bucket=["few"], n_max=5)
+        match = InputMatch(role=["categorical"], n_min=2, n_max=5)
         assert match.admits(ShapeCard(column="c", role="categorical", cardinality=4))
-        assert not match.admits(ShapeCard(column="c", role="categorical", cardinality=12))
+        assert not match.admits(ShapeCard(column="c", role="categorical", cardinality=1))
+        assert not match.admits(ShapeCard(column="c", role="categorical", cardinality=6))
         assert not match.admits(ShapeCard(column="c", role="time", cardinality=4))

@@ -182,28 +182,59 @@ describe('port field', () => {
   });
 });
 
-describe('form states', () => {
-  test('asks for a source type before showing fields', () => {
+describe('environment variable hint', () => {
+  test('a local password field shows the env reference syntax and a docs link', () => {
+    renderForm();
+    const hint = screen.getByTestId('password-env-hint');
+    expect(hint).toHaveTextContent(rawRef('PASSWORD'));
+    expect(screen.getByRole('link', { name: 'Learn more' })).toHaveAttribute(
+      'href',
+      'https://docs.visivo.io/topics/environment-variables/'
+    );
+  });
+
+  test('the bigquery key field gets its own variable name', () => {
+    renderForm({ sourceType: 'bigquery' });
+    expect(screen.getByTestId('credentials_base64-env-hint')).toHaveTextContent(
+      rawRef('SERVICE_ACCOUNT_KEY')
+    );
+  });
+
+  test('plain text fields and the cloud picker show no hint', () => {
+    renderForm();
+    expect(screen.queryByTestId('host-env-hint')).not.toBeInTheDocument();
+    renderForm({ secretsRequired: true, secretKeys: [] });
+    expect(screen.getAllByTestId('password-env-hint')).toHaveLength(1);
+  });
+});
+
+describe('plain field behavior', () => {
+  test('typing calls onChange, numbers are coerced and cleared to empty', async () => {
+    const onChange = jest.fn();
+    renderForm({ onChange });
+    await userEvent.type(screen.getByLabelText(/^Host/), 'a');
+    expect(onChange).toHaveBeenLastCalledWith({ host: 'a' });
+    const port = screen.getByLabelText('Port');
+    await userEvent.clear(port);
+    expect(onChange).toHaveBeenLastCalledWith({ port: '' });
+    await userEvent.type(port, '7');
+    expect(onChange).toHaveBeenLastCalledWith({ port: 54327 });
+  });
+
+  test('the eye button reveals and re-masks the password', async () => {
+    renderForm();
+    const input = screen.getByLabelText('Password');
+    expect(input).toHaveAttribute('type', 'password');
+    await userEvent.click(screen.getByTitle('Show'));
+    expect(input).toHaveAttribute('type', 'text');
+    await userEvent.click(screen.getByTitle('Hide'));
+    expect(input).toHaveAttribute('type', 'password');
+  });
+
+  test('no source type and unknown source type render a message', () => {
     renderForm({ sourceType: '' });
-    expect(
-      screen.getByText('Select a source type to configure connection settings')
-    ).toBeInTheDocument();
-  });
-
-  test('says so when a source type has no form', () => {
-    renderForm({ sourceType: 'mystery' });
-    expect(
-      screen.getByText('Configuration schema not available for source type: mystery')
-    ).toBeInTheDocument();
-  });
-
-  test('the eye button shows and hides a local password', () => {
-    renderForm({ values: { password: 'hunter2' } });
-    const password = screen.getByLabelText('Password');
-    expect(password).toHaveAttribute('type', 'password');
-    fireEvent.click(screen.getByTitle('Show'));
-    expect(password).toHaveAttribute('type', 'text');
-    fireEvent.click(screen.getByTitle('Hide'));
-    expect(password).toHaveAttribute('type', 'password');
+    expect(screen.getByText(/Select a source type/)).toBeInTheDocument();
+    renderForm({ sourceType: 'nope' });
+    expect(screen.getByText(/schema not available/)).toBeInTheDocument();
   });
 });
