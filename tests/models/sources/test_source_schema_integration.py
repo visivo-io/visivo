@@ -164,14 +164,11 @@ class TestSourceSchemaIntegration:
             assert metadata["total_tables"] == 3
             assert metadata["total_columns"] > 0
 
-            # Verify tables exist
+            db = metadata["database"]
             tables = schema["tables"]
-            assert "users" in tables
-            assert "products" in tables
-            assert "orders" in tables
+            assert set(tables) == {f"{db}.main.users", f"{db}.main.products", f"{db}.main.orders"}
 
-            # Verify users table schema
-            users_table = tables["users"]
+            users_table = tables[f"{db}.main.users"]
             assert "columns" in users_table
             assert "metadata" in users_table
 
@@ -201,13 +198,9 @@ class TestSourceSchemaIntegration:
             sqlglot_schema = schema["sqlglot_schema"]
             assert isinstance(sqlglot_schema, MappingSchema)
 
-            # Verify tables are in SQLGlot schema
-            schema_tables = sqlglot_schema.mapping
-            assert "users" in schema_tables
-            assert "products" in schema_tables
-            assert "orders" in schema_tables
+            schema_tables = sqlglot_schema.mapping[db]["main"]
+            assert set(schema_tables) == {"users", "products", "orders"}
 
-            # Verify columns are in SQLGlot schema for users table
             users_schema_columns = schema_tables["users"]
             assert "id" in users_schema_columns
             assert "name" in users_schema_columns
@@ -235,22 +228,11 @@ class TestSourceSchemaIntegration:
             # Get schema for specific tables only
             schema = source.get_schema(table_names=["users", "products"])
 
-            # Verify only requested tables are included
-            tables = schema["tables"]
-            assert "users" in tables
-            assert "products" in tables
-            assert "orders" not in tables  # Should be filtered out
-
-            # Verify metadata reflects filtered count
             metadata = schema["metadata"]
+            db = metadata["database"]
+            assert set(schema["tables"]) == {f"{db}.main.users", f"{db}.main.products"}
             assert metadata["total_tables"] == 2
-
-            # Verify SQLGlot schema only includes filtered tables
-            sqlglot_schema = schema["sqlglot_schema"]
-            schema_tables = sqlglot_schema.mapping
-            assert "users" in schema_tables
-            assert "products" in schema_tables
-            assert "orders" not in schema_tables
+            assert set(schema["sqlglot_schema"].mapping[db]["main"]) == {"users", "products"}
 
         finally:
             if os.path.exists(db_path):
@@ -472,10 +454,10 @@ class TestSourceSchemaIntegration:
             source = DuckdbSource(name="test_types", database=db_path, type="duckdb")
             schema = source.get_schema()
 
-            # Verify table exists
-            assert "data_types_test" in schema["tables"]
+            key = f"{schema['metadata']['database']}.main.data_types_test"
+            assert key in schema["tables"]
 
-            columns = schema["tables"]["data_types_test"]["columns"]
+            columns = schema["tables"][key]["columns"]
 
             # Verify each data type is correctly represented
             assert "INTEGER" in columns["int_col"]["type"]
@@ -548,8 +530,8 @@ class TestSourceSchemaIntegration:
             assert metadata["total_tables"] >= 0  # Should have at least the CSV view
 
             # The CSV source should create a view with the source name
-            if "test_csv" in schema["tables"]:
-                csv_table = schema["tables"]["test_csv"]
+            if "memory.main.test_csv" in schema["tables"]:
+                csv_table = schema["tables"]["memory.main.test_csv"]
                 assert "columns" in csv_table
 
                 csv_columns = csv_table["columns"]
@@ -561,7 +543,7 @@ class TestSourceSchemaIntegration:
                 # Verify SQLGlot schema includes the table
                 sqlglot_schema = schema["sqlglot_schema"]
                 assert isinstance(sqlglot_schema, MappingSchema)
-                assert "test_csv" in sqlglot_schema.mapping
+                assert "test_csv" in sqlglot_schema.mapping["memory"]["main"]
             else:
                 # If we don't find the table, the test should fail to highlight the issue
                 assert (
@@ -599,8 +581,8 @@ class TestSourceSchemaIntegration:
             assert metadata["total_tables"] >= 0  # Should have at least the Excel view
 
             # The Excel source should create a view with the source name
-            if "test_excel" in schema["tables"]:
-                excel_table = schema["tables"]["test_excel"]
+            if "memory.main.test_excel" in schema["tables"]:
+                excel_table = schema["tables"]["memory.main.test_excel"]
                 assert "columns" in excel_table
 
                 excel_columns = excel_table["columns"]
@@ -612,7 +594,7 @@ class TestSourceSchemaIntegration:
                 # Verify SQLGlot schema includes the table
                 sqlglot_schema = schema["sqlglot_schema"]
                 assert isinstance(sqlglot_schema, MappingSchema)
-                assert "test_excel" in sqlglot_schema.mapping
+                assert "test_excel" in sqlglot_schema.mapping["memory"]["main"]
             else:
                 # If we don't find the table, the test should fail to highlight the issue
                 assert (
@@ -679,11 +661,9 @@ class TestSourceSchemaIntegration:
             assert metadata["total_tables"] == 1
 
             # The CSV source should create a view with the source name (including hyphen)
-            assert (
-                "csv-source" in schema["tables"]
-            ), f"CSV table 'csv-source' not found in schema. Available tables: {list(schema['tables'].keys())}"
+            assert list(schema["tables"]) == ["memory.main.csv-source"]
 
-            csv_table = schema["tables"]["csv-source"]
+            csv_table = schema["tables"]["memory.main.csv-source"]
             assert "columns" in csv_table
 
             csv_columns = csv_table["columns"]
@@ -695,7 +675,7 @@ class TestSourceSchemaIntegration:
             # Verify SQLGlot schema includes the table
             sqlglot_schema = schema["sqlglot_schema"]
             assert isinstance(sqlglot_schema, MappingSchema)
-            assert "csv-source" in sqlglot_schema.mapping
+            assert "csv-source" in sqlglot_schema.mapping["memory"]["main"]
 
         finally:
             if os.path.exists(csv_path):
@@ -728,11 +708,9 @@ class TestSourceSchemaIntegration:
             assert metadata["total_tables"] == 1
 
             # The Excel source should create a view with the source name (including hyphen)
-            assert (
-                "excel-source" in schema["tables"]
-            ), f"Excel table 'excel-source' not found in schema. Available tables: {list(schema['tables'].keys())}"
+            assert list(schema["tables"]) == ["memory.main.excel-source"]
 
-            excel_table = schema["tables"]["excel-source"]
+            excel_table = schema["tables"]["memory.main.excel-source"]
             assert "columns" in excel_table
 
             excel_columns = excel_table["columns"]
@@ -741,15 +719,9 @@ class TestSourceSchemaIntegration:
             for col in expected_columns:
                 assert col in excel_columns, f"Column '{col}' not found in Excel schema"
 
-            # Verify SQLGlot schema includes the table (might be quoted due to hyphen)
             sqlglot_schema = schema["sqlglot_schema"]
             assert isinstance(sqlglot_schema, MappingSchema)
-            # Check if table is in SQLGlot mapping (may be quoted)
-            mapping_keys = list(sqlglot_schema.mapping.keys())
-            has_excel_table = "excel-source" in mapping_keys or '"excel-source"' in mapping_keys
-            assert (
-                has_excel_table
-            ), f"Excel table not found in SQLGlot mapping. Keys: {mapping_keys}"
+            assert "excel-source" in sqlglot_schema.mapping["memory"]["main"]
 
         finally:
             if os.path.exists(excel_path):

@@ -143,7 +143,7 @@ class TestSourceSchemaAction:
         result = action(source_to_build=source, output_dir=temp_folder())
 
         assert result.success, result.message
-        assert "seeded_table" in source.get_schema()["tables"]
+        assert "seed_source.main.seeded_table" in source.get_schema()["tables"]
 
     def test_seed_count_is_reported(self):
         source = seeded_source(

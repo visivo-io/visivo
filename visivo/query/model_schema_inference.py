@@ -20,7 +20,7 @@ rather than an error. Compiling a draft insight against a never-built model used
 to fail for exactly this reason.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from sqlglot import exp
 
@@ -31,16 +31,11 @@ from visivo.query.sqlglot_utils import schema_from_sql
 def sqlglot_schema_to_datatypes(sqlglot_schema_data: Dict[str, Any]) -> Dict[str, Any]:
     """Convert a stored ``sqlglot_schema`` block into SQLGlot ``DataType`` objects.
 
-    The stored block comes in two shapes and both are load-bearing — a source
-    with named schemas nests one level deeper than one without:
-
-    * nested: ``{schema: {table: {column: type_string}}}``
-    * flat:   ``{table: {column: type_string}}``
-
-    They are told apart by looking at whether the first leaf is itself a dict,
-    since a type is always a string. Anything that does not fit either shape is
-    skipped rather than raising: a malformed entry for one table should cost
-    that table's columns, not the whole inference.
+    The block nests to any depth: ``{table: {column: type}}``,
+    ``{schema: {table: ...}}`` or ``{database: {schema: {table: ...}}}``. A level
+    whose first value is a dict holds more levels; otherwise it holds columns,
+    since a type is always a string. A malformed entry is skipped rather than
+    raising: it costs that table's columns, not the whole inference.
     """
     schema: Dict[str, Any] = {}
 
@@ -51,22 +46,35 @@ def sqlglot_schema_to_datatypes(sqlglot_schema_data: Dict[str, Any]) -> Dict[str
         first_val = next(iter(value.values()), None) if value else None
 
         if isinstance(first_val, dict):
-            schema_name = key
-            if schema_name not in schema:
-                schema[schema_name] = {}
-            for table_name, columns in value.items():
-                if not isinstance(columns, dict):
-                    continue
-                schema[schema_name][table_name] = {}
-                for col_name, col_type_str in columns.items():
-                    schema[schema_name][table_name][col_name] = exp.DataType.build(col_type_str)
+            schema[key] = sqlglot_schema_to_datatypes(value)
         else:
-            table_name = key
-            schema[table_name] = {}
-            for col_name, col_type_str in value.items():
-                schema[table_name][col_name] = exp.DataType.build(col_type_str)
+            schema[key] = {
+                col_name: exp.DataType.build(col_type_str)
+                for col_name, col_type_str in value.items()
+            }
 
     return schema
+
+
+def source_default_context(source) -> Dict[str, str]:
+    """``source.get_default_context()``, or ``{}`` for an object without one."""
+    context = getattr(source, "get_default_context", lambda: {})()
+    return context if isinstance(context, dict) else {}
+
+
+def resolve_default_context(
+    metadata: Optional[Dict[str, Any]], source_context: Optional[Dict[str, str]] = None
+) -> Tuple[Optional[str], Optional[str]]:
+    """``(catalog, schema)`` that unqualified table names resolve against.
+
+    The source's context wins over the stored metadata, so a source whose default
+    schema changes keeps reading the schema file it already has.
+    """
+    metadata = metadata or {}
+    source_context = source_context or {}
+    catalog = source_context.get("catalog") or metadata.get("database")
+    schema = source_context.get("schema") or metadata.get("default_schema")
+    return catalog, schema
 
 
 def infer_model_columns(
@@ -75,6 +83,7 @@ def infer_model_columns(
     model_hash: str,
     stored_source_schema: Optional[Dict[str, Any]] = None,
     strict: bool = True,
+    source_context: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """Infer the output columns of ``sql`` as ``{column_name: type_name}``.
 
@@ -97,6 +106,8 @@ def infer_model_columns(
             keystroke, so half-written SQL is the normal state — "nothing
             resolved yet", not a server error. This is also what core's
             reimplementation does unconditionally, since it has no run path.
+        source_context: ``source.get_default_context()``. Its ``catalog`` and
+            ``schema`` override the stored metadata's for unqualified names.
 
     Returns:
         ``{column_name: type_name}``, where the type is SQLGlot's type *name*
@@ -105,11 +116,14 @@ def infer_model_columns(
     """
     stored = stored_source_schema or {}
 
-    default_schema = (stored.get("metadata") or {}).get("default_schema")
+    default_catalog, default_schema = resolve_default_context(
+        stored.get("metadata"), source_context
+    )
     schema = sqlglot_schema_to_datatypes(stored.get("sqlglot_schema") or {})
 
     Logger.instance().debug(
-        f"Inferring columns against {len(schema)} schema entries, default: {default_schema}"
+        f"Inferring columns against {len(schema)} schema entries, "
+        f"default: {default_catalog}.{default_schema}"
     )
 
     try:
@@ -119,6 +133,7 @@ def infer_model_columns(
             schema=schema,
             model_hash=model_hash,
             default_schema=default_schema,
+            default_catalog=default_catalog,
         )
     except Exception:
         if strict:

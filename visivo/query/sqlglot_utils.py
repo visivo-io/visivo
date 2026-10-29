@@ -515,12 +515,41 @@ def _match_quoted_source_columns(expr, schema: dict) -> None:
             identifier.set("quoted", False)
 
 
+def _schema_depth(schema: dict) -> int:
+    """Levels above the tables: 1 for ``{table: ...}``, 3 for ``{database: {schema: {table: ...}}}``."""
+    depth, node = 0, schema
+    while isinstance(node, dict) and node:
+        node = next(iter(node.values()))
+        if not isinstance(node, dict):
+            break
+        depth += 1
+    return depth
+
+
+def _bind_attached_databases(expr, schema: dict, default_catalog: str) -> None:
+    """Read ``x.t`` as ``x.main.t`` when ``x`` is an attached database and not a
+    schema of the default one, the way DuckDB's binder does."""
+    databases = {name.lower(): name for name in schema}
+    own = schema.get(databases.get(default_catalog.lower()), {})
+    own_schemas = {name.lower() for name in own}
+    for table in expr.find_all(exp.Table):
+        db = table.args.get("db")
+        if table.args.get("catalog") or not db or not db.name:
+            continue
+        key = db.name.lower()
+        if key in own_schemas or key not in databases:
+            continue
+        table.set("catalog", db)
+        table.set("db", exp.to_identifier("main"))
+
+
 def schema_from_sql(
     sqlglot_dialect: str,
     sql: str,
     schema: dict,
     model_hash: str,
     default_schema: str = None,
+    default_catalog: str = None,
 ) -> dict:
     """
     Uses input schema plus sql to produce the new schema expected from the query.
@@ -533,6 +562,8 @@ def schema_from_sql(
         model_hash: Hash to use as key in returned schema
         default_schema: Default schema for unqualified table references.
                        Used as the `db` parameter in SQLGlot's qualify().
+        default_catalog: Default database for references without one. Used as
+                       the `catalog` parameter in SQLGlot's qualify().
 
     Returns:
         Dict mapping model_hash to column schema: {model_hash: {col: type}}
@@ -563,9 +594,10 @@ def schema_from_sql(
     sql_without_comments = expr.sql(dialect=sqlglot_dialect, comments=False)
     expr = sqlglot.parse_one(sql_without_comments, read=sqlglot_dialect)
     _match_quoted_source_columns(expr, schema)
+    if default_catalog and sqlglot_dialect == "duckdb" and _schema_depth(schema) == 3:
+        _bind_attached_databases(expr, schema, default_catalog)
 
     # 3. Qualify with schema so column refs resolve
-    # Pass db parameter for default schema context (used for unqualified table references)
     mapping_schema = MappingSchema(schema=schema)
     try:
         expr = qualify.qualify(
@@ -573,6 +605,7 @@ def schema_from_sql(
             qualify_columns=True,
             schema=mapping_schema,
             db=default_schema,
+            catalog=default_catalog,
         )
     except OptimizeError as e:
         raise click.ClickException(

@@ -123,3 +123,97 @@ class TestParseExpressionContextString:
         # A ${ref(...)} context string must be wrapped so SQLGlot can parse it.
         expr = parse_expression("${ ref(orders) }", dialect="duckdb")
         assert expr is not None
+
+
+class TestDefaultContext:
+    """Full-path schemas resolve through the catalog and schema SQLGlot is given."""
+
+    SCHEMA = {
+        "saas": {
+            "main": {"orders": {"id": exp.DataType.build("INT")}},
+            "analytics": {"fct_mrr": {"mrr": exp.DataType.build("DOUBLE")}},
+        },
+        "other": {"main": {"ext": {"x": exp.DataType.build("INT")}}},
+    }
+
+    def _columns(self, sql, **context):
+        return schema_from_sql("duckdb", sql, self.SCHEMA, "m", **context)["m"]
+
+    def test_schema_depth(self):
+        from visivo.query.sqlglot_utils import _schema_depth
+
+        assert _schema_depth({}) == 0
+        assert _schema_depth({"t": {"a": "INT"}}) == 1
+        assert _schema_depth({"s": {"t": {"a": "INT"}}}) == 2
+        assert _schema_depth(self.SCHEMA) == 3
+
+    def test_catalog_and_schema_qualify_unqualified_names(self):
+        context = {"default_catalog": "saas", "default_schema": "main"}
+
+        assert self._columns("select * from orders", **context) == {"id": "INT"}
+        assert self._columns("select * from analytics.fct_mrr", **context) == {"mrr": "DOUBLE"}
+        assert self._columns("select * from fct_mrr", **context) == {"*": "UNKNOWN"}
+
+    def test_attached_database_reads_as_its_main_schema(self):
+        context = {"default_catalog": "SAAS", "default_schema": "main"}
+
+        assert self._columns("select * from other.ext", **context) == {"x": "INT"}
+        assert self._columns("select * from OTHER.main.ext", **context) == {"x": "INT"}
+
+    def test_a_schema_of_the_default_database_wins_over_a_database(self):
+        schema = {
+            "saas": {"other": {"ext": {"y": exp.DataType.build("INT")}}},
+            "other": {"main": {"ext": {"x": exp.DataType.build("INT")}}},
+        }
+
+        columns = schema_from_sql("duckdb", "select * from other.ext", schema, "m", "main", "saas")[
+            "m"
+        ]
+
+        assert columns == {"y": "INT"}
+
+    def test_attached_binding_is_duckdb_only(self):
+        columns = schema_from_sql(
+            "postgres",
+            "select * from other.ext",
+            self.SCHEMA,
+            "m",
+            default_schema="main",
+            default_catalog="saas",
+        )["m"]
+
+        assert columns == {"*": "UNKNOWN"}
+
+
+class TestInferenceContext:
+    def test_source_context_overrides_stored_metadata(self):
+        from visivo.query.model_schema_inference import resolve_default_context
+
+        metadata = {"database": "saas", "default_schema": "main"}
+
+        assert resolve_default_context(metadata) == ("saas", "main")
+        assert resolve_default_context(metadata, {"schema": "analytics"}) == ("saas", "analytics")
+        assert resolve_default_context(None, {"catalog": "c", "schema": "s"}) == ("c", "s")
+        assert resolve_default_context(None) == (None, None)
+
+    def test_source_default_context_tolerates_objects_without_one(self):
+        from visivo.query.model_schema_inference import source_default_context
+
+        class NoContext:
+            pass
+
+        class BadContext:
+            def get_default_context(self):
+                return "main"
+
+        assert source_default_context(NoContext()) == {}
+        assert source_default_context(BadContext()) == {}
+
+    def test_three_level_schema_converts_to_datatypes(self):
+        from visivo.query.model_schema_inference import sqlglot_schema_to_datatypes
+
+        converted = sqlglot_schema_to_datatypes(
+            {"saas": {"main": {"orders": {"id": "INT"}, "bad": "x"}, "junk": 1}}
+        )
+
+        assert converted == {"saas": {"main": {"orders": {"id": exp.DataType.build("INT")}}}}

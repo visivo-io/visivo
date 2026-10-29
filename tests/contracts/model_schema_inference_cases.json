@@ -14,7 +14,11 @@
     "assert the same answers. Core locates it via a sibling ../visivo checkout,",
     "which is how its CI already vendors the viewer.",
     "",
-    "Add a case here when you change inference in either repo."
+    "Add a case here when you change inference in either repo.",
+    "",
+    "default_schema and default_catalog are the source's default context. A",
+    "harness passes default_catalog where the stored metadata keeps it, as",
+    "metadata.database."
   ],
   "cases": [
     {
@@ -78,6 +82,66 @@
       "sql": "SELECT id /* the key */, amount FROM orders",
       "sqlglot_schema": { "orders": { "id": "INT", "amount": "DECIMAL" } },
       "expected": { "id": "INT", "amount": "DECIMAL" }
+    },
+    {
+      "name": "a full-path schema resolves an unqualified name in the default database and schema",
+      "dialect": "duckdb",
+      "sql": "SELECT * FROM orders",
+      "default_catalog": "saas",
+      "default_schema": "main",
+      "sqlglot_schema": {
+        "saas": {
+          "main": { "orders": { "id": "INT", "total": "DOUBLE" } },
+          "analytics": { "fct_mrr": { "month": "DATE", "mrr": "DOUBLE" } }
+        },
+        "other": { "main": { "ext": { "x": "INT" } } }
+      },
+      "expected": { "id": "INT", "total": "DOUBLE" }
+    },
+    {
+      "name": "a full-path schema resolves a qualified table in another schema",
+      "dialect": "duckdb",
+      "sql": "SELECT * FROM analytics.fct_mrr",
+      "default_catalog": "saas",
+      "default_schema": "main",
+      "sqlglot_schema": {
+        "saas": {
+          "main": { "orders": { "id": "INT", "total": "DOUBLE" } },
+          "analytics": { "fct_mrr": { "month": "DATE", "mrr": "DOUBLE" } }
+        },
+        "other": { "main": { "ext": { "x": "INT" } } }
+      },
+      "expected": { "month": "DATE", "mrr": "DOUBLE" }
+    },
+    {
+      "name": "a bare name outside the default schema resolves nothing",
+      "dialect": "duckdb",
+      "sql": "SELECT * FROM fct_mrr",
+      "default_catalog": "saas",
+      "default_schema": "main",
+      "sqlglot_schema": {
+        "saas": {
+          "main": { "orders": { "id": "INT", "total": "DOUBLE" } },
+          "analytics": { "fct_mrr": { "month": "DATE", "mrr": "DOUBLE" } }
+        },
+        "other": { "main": { "ext": { "x": "INT" } } }
+      },
+      "expected": {}
+    },
+    {
+      "name": "an attached duckdb database reads x.t as x.main.t",
+      "dialect": "duckdb",
+      "sql": "SELECT * FROM other.ext",
+      "default_catalog": "saas",
+      "default_schema": "main",
+      "sqlglot_schema": {
+        "saas": {
+          "main": { "orders": { "id": "INT", "total": "DOUBLE" } },
+          "analytics": { "fct_mrr": { "month": "DATE", "mrr": "DOUBLE" } }
+        },
+        "other": { "main": { "ext": { "x": "INT" } } }
+      },
+      "expected": { "x": "INT" }
     }
   ]
 }

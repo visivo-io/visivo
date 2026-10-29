@@ -136,24 +136,12 @@ class SchemaAggregator:
 
     @staticmethod
     def _serialize_mapping_schema(mapping_schema: MappingSchema) -> Dict[str, Any]:
-        """
-        Serialize SQLGlot MappingSchema to nested dict format.
+        """Serialize a SQLGlot MappingSchema to the same nesting with type strings.
 
-        Handles both flat and nested MappingSchema structures:
-        - Flat: {"table_name": {"col1": DataType, ...}}
-        - Nested: {"schema_name": {"table_name": {"col1": DataType, ...}}}
-
-        Args:
-            mapping_schema: SQLGlot MappingSchema instance
-
-        Returns:
-            Nested dict: {schema: {table: {col: type_string}}}
-            or flat dict: {table: {col: type_string}} for backwards compatibility
+        Any depth is kept as is: ``{table: {col: type}}``, ``{schema: {table: ...}}``
+        or ``{database: {schema: {table: ...}}}``.
         """
         try:
-            serialized = {}
-
-            # Access the internal mapping if available
             if hasattr(mapping_schema, "_mapping"):
                 mapping = mapping_schema._mapping
             elif hasattr(mapping_schema, "mapping"):
@@ -162,42 +150,29 @@ class SchemaAggregator:
                 mapping = {}
                 Logger.instance().debug("Unable to access MappingSchema internal mapping")
 
-            for key, value in mapping.items():
-                key_str = str(key)
-
-                # Check if value is a nested dict (schema -> tables) or flat (columns)
-                if isinstance(value, dict):
-                    first_val = next(iter(value.values()), None) if value else None
-
-                    if isinstance(first_val, dict):
-                        # Nested structure: {schema: {table: {col: type}}}
-                        # value is {table_name: {col_name: DataType}}
-                        serialized[key_str] = {}
-                        for table_name, columns in value.items():
-                            table_str = str(table_name)
-                            serialized[key_str][table_str] = {}
-                            for col_name, col_type in columns.items():
-                                if isinstance(col_type, exp.DataType):
-                                    serialized[key_str][table_str][col_name] = col_type.sql()
-                                else:
-                                    serialized[key_str][table_str][col_name] = str(col_type)
-                    elif isinstance(first_val, exp.DataType) or first_val is None:
-                        # Flat structure: {table: {col: type}} - columns directly
-                        serialized[key_str] = {}
-                        for col_name, col_type in value.items():
-                            if isinstance(col_type, exp.DataType):
-                                serialized[key_str][col_name] = col_type.sql()
-                            else:
-                                serialized[key_str][col_name] = str(col_type)
-                    else:
-                        # Unknown structure, try to serialize as string
-                        serialized[key_str] = {str(k): str(v) for k, v in value.items()}
-
-            return serialized
+            return SchemaAggregator._serialize_level(mapping)
 
         except Exception as e:
             Logger.instance().debug(f"Error serializing MappingSchema: {e}")
             return {}
+
+    @staticmethod
+    def _serialize_level(level: Dict[Any, Any]) -> Dict[str, Any]:
+        serialized = {}
+        for key, value in level.items():
+            if not isinstance(value, dict):
+                continue
+            first_val = next(iter(value.values()), None) if value else None
+            if isinstance(first_val, dict):
+                serialized[str(key)] = SchemaAggregator._serialize_level(value)
+            else:
+                serialized[str(key)] = {
+                    str(col_name): (
+                        col_type.sql() if isinstance(col_type, exp.DataType) else str(col_type)
+                    )
+                    for col_name, col_type in value.items()
+                }
+        return serialized
 
     @staticmethod
     def load_source_schema(
