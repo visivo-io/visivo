@@ -1,11 +1,31 @@
 /**
  * PivotSaveModal — the pivot Build-lens Save choice (replace vs add-new).
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import PivotSaveModal from './PivotSaveModal';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 const noop = () => {};
+
+// An Escape-closing layer that is already open under the modal, like the
+// narrow-viewport Library drawer (LeftRail overlay).
+const OuterLayer = ({ modalOpen, onModalCancel }) => {
+  const [outerOpen, setOuterOpen] = useState(true);
+  useEscapeToClose(outerOpen, () => setOuterOpen(false));
+  return (
+    <>
+      {outerOpen && <div data-testid="outer-layer" />}
+      <PivotSaveModal
+        open={modalOpen}
+        tableName="t"
+        onReplace={noop}
+        onAddNew={noop}
+        onCancel={onModalCancel}
+      />
+    </>
+  );
+};
 
 describe('PivotSaveModal', () => {
   test('renders nothing when closed', () => {
@@ -101,5 +121,47 @@ describe('PivotSaveModal', () => {
     );
     expect(screen.getByTestId('pivot-save-replace')).toBeDisabled();
     expect(screen.getByTestId('pivot-save-add-new')).toBeDisabled();
+  });
+
+  test('Escape cancels only the modal, not a layer already open under it', () => {
+    const onCancel = jest.fn();
+    const { rerender } = render(<OuterLayer modalOpen={false} onModalCancel={onCancel} />);
+    rerender(<OuterLayer modalOpen onModalCancel={onCancel} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('outer-layer')).toBeInTheDocument();
+  });
+
+  test('Escape is inert while saving, like the disabled Cancel button', () => {
+    const onCancel = jest.fn();
+    render(
+      <PivotSaveModal open saving tableName="t" onReplace={noop} onAddNew={noop} onCancel={onCancel} />
+    );
+    expect(screen.getByTestId('pivot-save-cancel')).toBeDisabled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  test('Escape does nothing while the modal is closed', () => {
+    const onCancel = jest.fn();
+    render(
+      <PivotSaveModal open={false} tableName="t" onReplace={noop} onAddNew={noop} onCancel={onCancel} />
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  test('focus starts on the Cancel button', () => {
+    render(<PivotSaveModal open tableName="t" onReplace={noop} onAddNew={noop} onCancel={noop} />);
+    expect(screen.getByTestId('pivot-save-cancel')).toHaveFocus();
+  });
+
+  test('a pointerdown inside the card does not cancel', () => {
+    const onCancel = jest.fn();
+    render(
+      <PivotSaveModal open tableName="t" onReplace={noop} onAddNew={noop} onCancel={onCancel} />
+    );
+    fireEvent.pointerDown(screen.getByTestId('pivot-save-modal'));
+    expect(onCancel).not.toHaveBeenCalled();
   });
 });

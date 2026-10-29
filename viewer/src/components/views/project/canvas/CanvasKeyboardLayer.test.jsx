@@ -10,6 +10,7 @@
 import React, { useRef } from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import CanvasKeyboardLayer from './CanvasKeyboardLayer';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 import useStore from '../../../../stores/store';
 import { WorkspaceCommitProvider } from '../../workspace/WorkspaceDndContext';
 
@@ -127,6 +128,24 @@ describe('CanvasKeyboardLayer (VIS-790)', () => {
     render(<Host />);
     press('Escape');
     expect(selectedKey()).toBe('dashboard');
+  });
+
+  test('Escape leaves the selection alone while a layer is open and closes that layer', () => {
+    const onClose = jest.fn();
+    const Layer = () => {
+      useEscapeToClose(true, onClose);
+      return null;
+    };
+    useStore.setState({ workspaceOutlineSelectedKey: 'row.0.item.1' });
+    render(
+      <>
+        <Host />
+        <Layer />
+      </>
+    );
+    press('Escape');
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(selectedKey()).toBe('row.0.item.1');
   });
 
   test('Enter focuses the right-rail form first field', () => {

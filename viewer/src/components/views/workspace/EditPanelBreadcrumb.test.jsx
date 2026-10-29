@@ -10,6 +10,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import EditPanelBreadcrumb from './EditPanelBreadcrumb';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 const ref = name => '${ref(' + name + ')}';
 
@@ -119,6 +120,19 @@ describe('EditPanelBreadcrumb interactions', () => {
     const { onSelectKey } = renderBreadcrumb({ outlineKey: 'row.0.item.1' });
     fireEvent.keyDown(screen.getByTestId('edit-breadcrumb'), { key: 'Escape' });
     expect(onSelectKey).toHaveBeenCalledWith('dashboard');
+  });
+
+  test('Escape closes an open layer instead of changing the selection', () => {
+    const onClose = jest.fn();
+    const Layer = () => {
+      useEscapeToClose(true, onClose);
+      return null;
+    };
+    render(<Layer />);
+    const { onSelectKey } = renderBreadcrumb({ outlineKey: 'row.0' });
+    fireEvent.keyDown(screen.getByTestId('edit-breadcrumb'), { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSelectKey).not.toHaveBeenCalled();
   });
 
   test('Enter focuses the form', () => {

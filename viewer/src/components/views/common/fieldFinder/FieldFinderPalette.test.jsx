@@ -12,6 +12,8 @@ const ENTRIES = [
   { path: 'opacity', label: 'Opacity', description: 'trace opacity', keywords: ['opacity', 'transparency'], tier: 'B', controlType: 'number', enumValues: null, isScalar: true, hidden: false },
   { path: 'mode', label: 'Display Mode', description: 'draw mode', keywords: ['mode'], tier: 'B', controlType: 'enum', enumValues: ['lines', 'markers'], isScalar: true, hidden: false },
   { path: 'line.dash', label: 'Line Dash', description: 'dash style of lines', keywords: ['dash', 'dashed'], tier: 'B', controlType: 'string', enumValues: null, isScalar: true, hidden: false },
+  { path: 'visible', label: 'Visible', description: 'show trace', keywords: ['visible'], tier: 'B', controlType: 'boolean', enumValues: null, isScalar: true, hidden: false },
+  { path: 'marker.color', label: 'Marker Color', description: 'marker fill', keywords: ['fill'], tier: 'B', controlType: 'color', enumValues: null, isScalar: true, hidden: false },
   { path: 'marker.colorbar', label: 'Colorbar', description: 'the color bar', keywords: ['colorbar'], tier: null, controlType: 'object', enumValues: null, isScalar: false, hidden: false },
 ];
 
@@ -110,6 +112,101 @@ describe('FieldFinderPalette', () => {
     const { onClose } = setup();
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('Escape closes the palette even after focus has left the dialog element', () => {
+    const { onClose } = setup();
+    document.body.focus();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Escape in the inline editor keeps a typed valid value and closes', () => {
+    const { onEditScalar, onClose } = setup({ value: { opacity: 0.5 } });
+    fireEvent.change(screen.getByTestId('field-finder-input'), { target: { value: 'opacity' } });
+    const input = screen.getByLabelText('Opacity value');
+    fireEvent.change(input, { target: { value: '0.8' } });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(onEditScalar).toHaveBeenCalledWith('opacity', 0.8);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Escape with an unusable draft closes without changing the applied value', () => {
+    const { onEditScalar, onClose } = setup({ value: { opacity: 0.5 } });
+    fireEvent.change(screen.getByTestId('field-finder-input'), { target: { value: 'opacity' } });
+    const input = screen.getByLabelText('Opacity value');
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(onEditScalar).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Escape with an unchanged draft does not re-commit', () => {
+    const { onEditScalar, onClose } = setup({ value: { opacity: 0.5 } });
+    fireEvent.change(screen.getByTestId('field-finder-input'), { target: { value: 'opacity' } });
+    fireEvent.keyDown(screen.getByLabelText('Opacity value'), { key: 'Escape' });
+    expect(onEditScalar).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Escape in a string editor keeps the typed text', () => {
+    const { onEditScalar } = setup();
+    fireEvent.change(screen.getByTestId('field-finder-input'), { target: { value: 'dash' } });
+    const input = screen.getByLabelText('Line Dash value');
+    fireEvent.change(input, { target: { value: 'dot' } });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(onEditScalar).toHaveBeenCalledWith('line.dash', 'dot');
+  });
+
+  it('Enter in the inline editor commits the typed value', () => {
+    const { onEditScalar } = setup({ value: { opacity: 0.5 } });
+    fireEvent.change(screen.getByTestId('field-finder-input'), { target: { value: 'opacity' } });
+    const input = screen.getByLabelText('Opacity value');
+    fireEvent.change(input, { target: { value: '0.2' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onEditScalar).toHaveBeenCalledWith('opacity', 0.2);
+  });
+
+  it('removes the document Escape listener on unmount', () => {
+    const onClose = jest.fn();
+    const { unmount } = render(
+      <FieldFinderPalette type="scatter" entries={ENTRIES} value={{}} onClose={onClose} />
+    );
+    unmount();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('boolean rows commit On/Off', () => {
+    const { onEditScalar } = setup({ value: { visible: true } });
+    fireEvent.change(screen.getByTestId('field-finder-input'), { target: { value: 'visible' } });
+    fireEvent.click(screen.getByText('Off'));
+    expect(onEditScalar).toHaveBeenCalledWith('visible', false);
+  });
+
+  it('color rows commit from the picker, Enter and Escape', () => {
+    const { onEditScalar, onClose } = setup({ value: { 'marker.color': '#112233' } });
+    fireEvent.change(screen.getByTestId('field-finder-input'), { target: { value: 'fill' } });
+    fireEvent.change(screen.getByLabelText('Marker Color color'), { target: { value: '#ff0000' } });
+    expect(onEditScalar).toHaveBeenLastCalledWith('marker.color', '#ff0000');
+    const text = screen.getByLabelText('Marker Color value');
+    fireEvent.change(text, { target: { value: '#00ff00' } });
+    fireEvent.keyDown(text, { key: 'Enter' });
+    expect(onEditScalar).toHaveBeenLastCalledWith('marker.color', '#00ff00');
+    fireEvent.change(text, { target: { value: '#0000ff' } });
+    fireEvent.keyDown(text, { key: 'Escape' });
+    expect(onEditScalar).toHaveBeenLastCalledWith('marker.color', '#0000ff');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ArrowUp/ArrowDown move the active row and Enter focuses the scalar editor', () => {
+    setup({ value: { opacity: 0.5 } });
+    fireEvent.change(screen.getByTestId('field-finder-input'), { target: { value: 'opacity' } });
+    const dialog = screen.getByRole('dialog');
+    fireEvent.keyDown(dialog, { key: 'ArrowDown' });
+    fireEvent.keyDown(dialog, { key: 'ArrowUp' });
+    fireEvent.keyDown(dialog, { key: 'Enter' });
+    expect(screen.getByLabelText('Opacity value')).toHaveFocus();
   });
 
   it('clicking the backdrop closes the palette', () => {

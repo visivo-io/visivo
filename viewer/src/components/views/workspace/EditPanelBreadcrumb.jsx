@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useRef } from 'react';
 import { PiPencil, PiCaretRight, PiSquaresFour, PiKeyboard } from 'react-icons/pi';
 import { getTypeIcon } from '../common/objectTypeConfigs';
+import { hasOpenEscapeLayer } from '../../../hooks/useEscapeToClose';
 import {
   buildBreadcrumbSegments,
   computeSiblingKey,
@@ -115,6 +116,7 @@ const EditPanelBreadcrumb = ({
       const key = outlineKey || 'dashboard';
 
       if (e.key === 'Escape') {
+        if (hasOpenEscapeLayer()) return;
         e.preventDefault();
         handleSelect('dashboard');
         return;

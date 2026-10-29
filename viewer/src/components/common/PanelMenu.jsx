@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PiDotsThreeVertical } from 'react-icons/pi';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 /**
  * PanelMenu — VIS-1224. A reusable "⋮" (vertical dots) overflow menu for a
@@ -57,14 +58,10 @@ const PanelMenu = ({ testId, items = [], ariaLabel = 'Options', menuWidth = 160 
     };
   }, [open, reposition]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = e => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  useEscapeToClose(open, () => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  });
 
   const close = useCallback(() => setOpen(false), []);
 

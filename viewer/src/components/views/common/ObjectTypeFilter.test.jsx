@@ -8,6 +8,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ObjectTypeFilter from './ObjectTypeFilter';
 import { OBJECT_TYPES } from './objectTypeConfigs';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 const enabledValues = OBJECT_TYPES.filter(t => t.enabled).map(t => t.value);
 const disabledTypes = OBJECT_TYPES.filter(t => !t.enabled);
@@ -165,5 +166,35 @@ describe('ObjectTypeFilter — open/close behavior', () => {
 
     fireEvent.mouseDown(screen.getByText('Select all'));
     expect(screen.getByText('Select all')).toBeInTheDocument();
+  });
+
+  it('closes the menu on Escape and returns focus to the trigger', () => {
+    render(<ObjectTypeFilter selectedTypes={[]} onChange={jest.fn()} />);
+    openDropdown();
+    const trigger = screen.getAllByRole('button')[0];
+    const selectAll = screen.getByText('Select all');
+    selectAll.focus();
+
+    fireEvent.keyDown(selectAll, { key: 'Escape' });
+
+    expect(screen.queryByText('Select all')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('only the menu closes on the first Escape when it sits inside another layer', () => {
+    const onOuterClose = jest.fn();
+    const Outer = () => {
+      useEscapeToClose(true, onOuterClose);
+      return <ObjectTypeFilter selectedTypes={[]} onChange={jest.fn()} />;
+    };
+    render(<Outer />);
+    openDropdown();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByText('Select all')).not.toBeInTheDocument();
+    expect(onOuterClose).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onOuterClose).toHaveBeenCalledTimes(1);
   });
 });

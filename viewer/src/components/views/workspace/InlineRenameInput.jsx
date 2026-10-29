@@ -50,7 +50,10 @@ const InlineRenameInput = ({ name, onCommit, onCancel, testIdPrefix = 'inline-re
           // open handler mid-rename. Stop it here, once, for every caller.
           e.stopPropagation();
           if (e.key === 'Enter') commit();
-          else if (e.key === 'Escape') onCancel();
+          else if (e.key === 'Escape') {
+            e.preventDefault();
+            onCancel();
+          }
         }}
         data-testid={`${testIdPrefix}-input`}
         className="min-w-0 flex-1 rounded border border-primary-300 bg-white px-1.5 py-0.5 text-[12px] font-medium text-gray-900 outline-none focus:ring-1 focus:ring-primary-400"

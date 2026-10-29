@@ -1,17 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { PiX } from 'react-icons/pi';
 import { ModalOverlay } from '../../styled/Modal';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 import ThemeEditForm from './ThemeEditForm';
 
 const ThemeEditorDialog = ({ open, onClose }) => {
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKeyDown = event => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, onClose]);
+  useEscapeToClose(open, onClose);
 
   if (!open) return null;
 

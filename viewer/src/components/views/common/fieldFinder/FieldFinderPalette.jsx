@@ -9,6 +9,7 @@ import {
 import { getValueAtPath } from '../SchemaEditor/utils/schemaUtils';
 import { rankFields, curatedEntries } from './fieldFinderIndex';
 import { readMru, bumpMru, subscribeMru } from './fieldFinderMru';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 /**
  * FieldFinderPalette (VIS-1021)
@@ -71,6 +72,15 @@ function InlineScalarEditor({ entry, value, onCommit }) {
 
   const stop = e => e.stopPropagation();
   const commit = next => onCommit(next);
+  // Esc keeps what was typed when it is a usable value; an invalid draft
+  // (empty number, NaN) is dropped and the already-applied value stays.
+  const commitOnEscape = () => {
+    if (draft === '' || draft === undefined || draft === null) return;
+    const v = entry.controlType === 'number' ? Number(draft) : draft;
+    if (typeof v === 'number' && Number.isNaN(v)) return;
+    if (v === value) return;
+    commit(v);
+  };
 
   if (entry.controlType === 'boolean') {
     return (
@@ -134,6 +144,7 @@ function InlineScalarEditor({ entry, value, onCommit }) {
           onKeyDown={e => {
             if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') e.stopPropagation();
             if (e.key === 'Enter') commit(draft);
+            if (e.key === 'Escape') commitOnEscape();
           }}
           onBlur={() => commit(draft)}
           className="w-24 px-2 py-0.5 text-[11px] rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-500"
@@ -162,6 +173,7 @@ function InlineScalarEditor({ entry, value, onCommit }) {
             entry.controlType === 'number' && draft !== '' ? Number(draft) : draft || undefined;
           commit(v);
         }
+        if (e.key === 'Escape') commitOnEscape();
       }}
       onBlur={() => {
         const v =
@@ -250,11 +262,10 @@ export default function FieldFinderPalette({
     [revealCompound]
   );
 
+  useEscapeToClose(true, () => onClose?.());
+
   const onKeyDown = e => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose?.();
-    } else if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActiveIndex(i => Math.min(i + 1, Math.max(rows.length - 1, 0)));
     } else if (e.key === 'ArrowUp') {

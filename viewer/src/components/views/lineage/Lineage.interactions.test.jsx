@@ -4,7 +4,7 @@
  * (Lineage.test.jsx) does not cover:
  *   - selector grammar graph traversal (`name+`, `+name`, `+name+`, commas),
  *   - scope-prop re-seeding vs manual override,
- *   - Escape handling (global document listener + the selector input),
+ *   - Escape handling (the selector as an Escape layer + the selector input),
  *   - drag-to-connect (onConnect) persisting a model's source ref,
  *   - edge deletion clearing a model's source,
  *   - node right-click round-trip (onNodeContextMenu),
@@ -21,6 +21,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Lineage from './Lineage';
 import useStore from '../../../stores/store';
 import { useLineageDag, computeLayout } from './useLineageDag';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 jest.mock('../../../stores/store');
 
@@ -270,6 +271,45 @@ describe('Lineage interactions', () => {
       expect(getSelectorInput().value).toBe('');
       // Full graph is visible again.
       expect(screen.getByTestId('node-source-db')).toBeInTheDocument();
+    });
+
+    it('leaves the selector alone when Escape is pressed in another text field', () => {
+      render(
+        <>
+          <textarea data-testid="other-field" />
+          <Lineage scopeSelector="*" />
+        </>
+      );
+      fireEvent.change(getSelectorInput(), { target: { value: 'users' } });
+      fireEvent.keyDown(screen.getByTestId('other-field'), { key: 'Escape' });
+      expect(getSelectorInput().value).toBe('users');
+    });
+
+    it('closes a menu opened over the lineage first, then clears the selector', () => {
+      const Menu = ({ onClose }) => {
+        useEscapeToClose(true, onClose);
+        return <div data-testid="ctx-menu" />;
+      };
+      const Host = () => {
+        const [menuOpen, setMenuOpen] = React.useState(false);
+        return (
+          <>
+            <Lineage scopeSelector="*" onNodeContextMenu={() => setMenuOpen(true)} />
+            {menuOpen && <Menu onClose={() => setMenuOpen(false)} />}
+          </>
+        );
+      };
+      render(<Host />);
+      fireEvent.change(getSelectorInput(), { target: { value: 'users' } });
+      fireEvent.contextMenu(screen.getByTestId('node-model-users'));
+      expect(screen.getByTestId('ctx-menu')).toBeInTheDocument();
+
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+      expect(screen.queryByTestId('ctx-menu')).not.toBeInTheDocument();
+      expect(getSelectorInput().value).toBe('users');
+
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+      expect(getSelectorInput().value).toBe('');
     });
 
     it('clears and blurs the selector input when Escape is pressed inside it', () => {

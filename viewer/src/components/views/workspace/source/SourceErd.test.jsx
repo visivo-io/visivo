@@ -238,4 +238,16 @@ describe('SourceErd (VIS-1005)', () => {
     });
     expect(screen.queryByTestId('erd-table-ctx-menu')).not.toBeInTheDocument();
   });
+
+  test('Escape dismisses the table context menu', async () => {
+    render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
+    await screen.findByTestId('source-erd-node-orders');
+    fireEvent.contextMenu(
+      screen.getByTestId(`rf-node-wrapper-source-erd::${SRC}::orders`),
+      { clientX: 120, clientY: 80 }
+    );
+    expect(screen.getByTestId('erd-table-ctx-menu')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('erd-table-ctx-menu')).not.toBeInTheDocument();
+  });
 });

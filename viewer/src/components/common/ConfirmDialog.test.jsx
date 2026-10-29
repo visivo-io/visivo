@@ -6,6 +6,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ConfirmDialog, { useConfirm } from './ConfirmDialog';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 describe('ConfirmDialog', () => {
   test('does not render when closed', () => {
@@ -52,6 +53,25 @@ describe('ConfirmDialog', () => {
     fireEvent.keyDown(document, { key: 'a' });
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  test('over another layer, Escape cancels only the dialog', () => {
+    const onCancel = jest.fn();
+    const onOuterClose = jest.fn();
+    const Outer = () => {
+      useEscapeToClose(true, onOuterClose);
+      return null;
+    };
+    const { rerender } = render(<Outer />);
+    rerender(
+      <>
+        <Outer />
+        <ConfirmDialog open title="x" onCancel={onCancel} />
+      </>
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onOuterClose).not.toHaveBeenCalled();
   });
 
   test('keyboard listener is detached while closed', () => {

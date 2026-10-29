@@ -10,6 +10,12 @@ import '@testing-library/jest-dom';
 import { DndContext } from '@dnd-kit/core';
 import ChartBuildSection from './ChartBuildSection';
 import useStore from '../../../stores/store';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
+
+const EscapeLayer = ({ onClose, children = null }) => {
+  useEscapeToClose(true, onClose);
+  return children;
+};
 
 // Each test below uses `await screen.findBy*` for its first DOM lookup so the
 // component's async useEffect (getSchema -> setLayoutSchema) is flushed inside
@@ -275,6 +281,23 @@ describe('ChartBuildSection', () => {
       expect(setChartName).not.toHaveBeenCalled();
       expect(input).toHaveValue('test_chart');
       expect(screen.queryByTestId('chart-rename-error')).not.toBeInTheDocument();
+    });
+
+    it('Escape in the name field reverts it and leaves the layer under it open', async () => {
+      const layerClose = jest.fn();
+      renderInDnd(
+        <EscapeLayer onClose={layerClose}>
+          <ChartBuildSection isExpanded={true} onToggleExpand={jest.fn()} />
+        </EscapeLayer>
+      );
+
+      const input = await screen.findByTestId('chart-name-input');
+      act(() => input.focus());
+      fireEvent.change(input, { target: { value: 'abandoned_name' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      expect(input).toHaveValue('test_chart');
+      expect(layerClose).not.toHaveBeenCalled();
     });
 
     it('shows collision error inline and keeps editing when the name is taken', async () => {

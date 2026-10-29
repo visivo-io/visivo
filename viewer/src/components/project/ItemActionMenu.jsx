@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { PiDotsThreeVertical } from 'react-icons/pi';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 /**
  * ItemActionMenu — VIEW-mode consolidated item-action kebab (⋮).
@@ -27,7 +28,8 @@ import { PiDotsThreeVertical } from 'react-icons/pi';
  * purely presentational + reports intent up.
  *
  * Behavior: click toggles (`onToggle`); outside-click / Escape / selecting a
- * non-`keepOpen` action closes (`onClose`). Honors `prefers-reduced-motion`.
+ * non-`keepOpen` action closes (`onClose`). Escape also returns focus to the
+ * kebab. Honors `prefers-reduced-motion`.
  */
 
 const MULBERRY = '#713b57';
@@ -44,24 +46,23 @@ const ItemActionMenu = ({
   onHover,
 }) => {
   const rootRef = useRef(null);
+  const triggerRef = useRef(null);
 
-  // Close on outside-click / Escape while open. (Clicks INSIDE the menu are
-  // swallowed below so they don't self-close.)
+  // Close on outside-click while open. (Clicks INSIDE the menu are swallowed
+  // below so they don't self-close.)
   useEffect(() => {
     if (!open) return undefined;
     const onDoc = e => {
       if (rootRef.current && !rootRef.current.contains(e.target)) onClose?.();
     };
-    const onKey = e => {
-      if (e.key === 'Escape') onClose?.();
-    };
     document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
+    return () => document.removeEventListener('mousedown', onDoc);
   }, [open, onClose]);
+
+  useEscapeToClose(open, () => {
+    onClose?.();
+    triggerRef.current?.focus();
+  });
 
   if (!box) return null;
 
@@ -89,6 +90,7 @@ const ItemActionMenu = ({
       onMouseDown={e => e.stopPropagation()}
     >
       <button
+        ref={triggerRef}
         type="button"
         data-testid={`view-item-menu-${itemKey}`}
         data-item-menu="true"

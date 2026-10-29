@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 /**
  * SaveAsMetricPrompt — Explore 2.0 Phase 4 (06 §4). The name-prompt modal for
@@ -17,6 +18,10 @@ const SaveAsMetricPrompt = ({ suggestedName, onSubmit, onCancel, submitting = fa
     },
     [name, onSubmit, submitting]
   );
+
+  useEscapeToClose(true, () => {
+    if (!submitting) onCancel?.();
+  });
 
   return (
     <div

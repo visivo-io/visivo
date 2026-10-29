@@ -96,4 +96,28 @@ describe('LevelGroupHeader', () => {
     expect(screen.queryByTestId('lgh-delete-confirm')).not.toBeInTheDocument();
     expect(onDelete).not.toHaveBeenCalled();
   });
+
+  test('Escape cancels the delete confirm and refocuses the delete button', () => {
+    const onDelete = jest.fn();
+    render(<LevelGroupHeader {...baseProps} onDelete={onDelete} />);
+    fireEvent.click(screen.getByTestId('lgh-delete'));
+    expect(screen.getByTestId('lgh-delete-confirm')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('lgh-delete-confirm')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lgh-delete')).toHaveFocus();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  test('Escape in the rename input cancels only the rename, not an open delete confirm', () => {
+    const onRename = jest.fn();
+    render(<LevelGroupHeader {...baseProps} onRename={onRename} />);
+    fireEvent.click(screen.getByTestId('lgh-delete'));
+    fireEvent.doubleClick(screen.getByTestId('lgh-title'));
+    fireEvent.keyDown(screen.getByTestId('lgh-rename-input'), { key: 'Escape' });
+    expect(screen.queryByTestId('lgh-rename-input')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lgh-delete-confirm')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('lgh-delete-confirm')).not.toBeInTheDocument();
+    expect(onRename).not.toHaveBeenCalled();
+  });
 });

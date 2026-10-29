@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import PortalDropdownMenu from './PortalDropdownMenu';
 import { FaCalendarAlt, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { DropdownLabel } from '../../styled/DropdownButton';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 import {
   format,
   parseISO,
@@ -40,6 +41,8 @@ const DateRangeInput = ({
   const [endViewMonth, setEndViewMonth] = useState(new Date());
   const startRef = useRef(null);
   const endRef = useRef(null);
+  const startTriggerRef = useRef(null);
+  const endTriggerRef = useRef(null);
   const startMenuRef = useRef(null);
   const endMenuRef = useRef(null);
 
@@ -113,6 +116,15 @@ const DateRangeInput = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEscapeToClose(isStartOpen, () => {
+    setIsStartOpen(false);
+    startTriggerRef.current?.focus();
+  });
+  useEscapeToClose(isEndOpen, () => {
+    setIsEndOpen(false);
+    endTriggerRef.current?.focus();
+  });
 
   // Update selection when dates change
   const updateSelection = (newStart, newEnd) => {
@@ -322,6 +334,7 @@ const DateRangeInput = ({
         {/* Start Date Picker */}
         <div className="relative flex-1" ref={startRef}>
           <button
+            ref={startTriggerRef}
             type="button"
             onClick={() => {
               setIsStartOpen(!isStartOpen);
@@ -358,6 +371,7 @@ const DateRangeInput = ({
         {/* End Date Picker */}
         <div className="relative flex-1" ref={endRef}>
           <button
+            ref={endTriggerRef}
             type="button"
             onClick={() => {
               setIsEndOpen(!isEndOpen);

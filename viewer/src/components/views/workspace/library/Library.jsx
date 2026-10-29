@@ -15,6 +15,7 @@ import ViewSwitcher from '../ViewSwitcher';
 import { useConfirm } from '../../../common/ConfirmDialog';
 import { ObjectStatus } from '../../../../stores/store';
 import { generateUniqueName } from '../../../../utils/uniqueName';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 // Row Delete -> the per-type store action. Every one has the same shape (API
 // call, refetch, checkCommitStatus) and returns `{ success, error }`, so the
@@ -262,6 +263,7 @@ const Library = () => {
   // type (the per-type "+ New X" buttons live inside each subsection).
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const newMenuRef = useRef(null);
+  const newMenuButtonRef = useRef(null);
   useEffect(() => {
     if (!newMenuOpen) return undefined;
     const onPointerDown = e => {
@@ -269,16 +271,13 @@ const Library = () => {
         setNewMenuOpen(false);
       }
     };
-    const onKeyDown = e => {
-      if (e.key === 'Escape') setNewMenuOpen(false);
-    };
     document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
+    return () => document.removeEventListener('mousedown', onPointerDown);
   }, [newMenuOpen]);
+  useEscapeToClose(newMenuOpen, () => {
+    setNewMenuOpen(false);
+    newMenuButtonRef.current?.focus();
+  });
 
   // Shared inline-create flow (stores/inlineCreateStore.js): drafts a
   // minimal valid config for the type, then we open it as a workspace tab so
@@ -521,6 +520,7 @@ const Library = () => {
         <div className="flex items-center gap-1">
           <div className="relative" ref={newMenuRef}>
             <button
+              ref={newMenuButtonRef}
               type="button"
               onClick={() => setNewMenuOpen(open => !open)}
               title="New object"

@@ -12,6 +12,7 @@ import MiniLineageCard, {
   CARD_WIDTH,
   UNBOUNDED,
 } from './MiniLineageCard';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 /**
  * LibraryRowFlipPopover — VIS-776 / Track C C3 (refined design).
@@ -86,21 +87,15 @@ const LibraryRowFlipPopover = ({
   }, [anchorRef]);
 
   useEffect(() => {
-    const onKey = e => {
-      if (e.key === 'Escape') onClose && onClose();
-    };
     const onDoc = e => {
       if (popoverRef.current && !popoverRef.current.contains(e.target)) {
         onClose && onClose();
       }
     };
-    document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDoc);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onDoc);
-    };
+    return () => document.removeEventListener('mousedown', onDoc);
   }, [onClose]);
+  useEscapeToClose(Boolean(obj), event => onClose && onClose(event));
 
   if (!obj) return null;
 

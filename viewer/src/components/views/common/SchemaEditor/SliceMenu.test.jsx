@@ -205,6 +205,26 @@ describe('SliceMenu — dismissal', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it('closes on Escape and returns focus to the anchor', () => {
+    const onClose = jest.fn();
+    renderHarness({ onClose });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('harness-anchor')).toHaveFocus();
+  });
+
+  it('ignores Escape while closed', () => {
+    const onClose = jest.fn();
+    const anchor = document.createElement('button');
+    document.body.appendChild(anchor);
+    render(
+      <SliceMenu anchorEl={anchor} open={false} onClose={onClose} slice={null} onChange={() => {}} />
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+    anchor.remove();
+  });
+
   it('does not close on mousedown on the anchor (anchor owns the toggle)', () => {
     const onClose = jest.fn();
     renderHarness({ slotShape: 'mixed', onClose });

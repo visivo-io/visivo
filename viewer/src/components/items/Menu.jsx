@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleChevronDown, faCircleChevronUp } from '@fortawesome/free-solid-svg-icons';
 import LazyTooltip from '../common/LazyTooltip';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 const Menu = ({
   children,
@@ -13,10 +14,16 @@ const Menu = ({
   toolTip = '',
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const buttonRef = useRef(null);
 
   if (!hovering && showMenu) {
     setShowMenu(false);
   }
+
+  useEscapeToClose(withDropDown && showMenu && hovering, () => {
+    setShowMenu(false);
+    buttonRef.current?.focus();
+  });
 
   const onMenuClick = () => {
     setShowMenu(!showMenu);
@@ -33,6 +40,7 @@ const Menu = ({
   const renderButton = (
     <button
       {...mergedButtonProps}
+      ref={buttonRef}
       className="text-white bg-secondary-400 hover:bg-secondary-600 focus:ring-4 focus:outline-hidden focus:ring-secondary-300 font-medium rounded-lg text-sm px-3 py-2.5 text-center inline-flex items-center"
       type="button"
     >

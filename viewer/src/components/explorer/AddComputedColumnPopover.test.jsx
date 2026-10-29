@@ -2,6 +2,12 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AddComputedColumnPopover from './AddComputedColumnPopover';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
+
+const OuterLayer = ({ onClose, children }) => {
+  useEscapeToClose(true, onClose);
+  return <div>{children}</div>;
+};
 
 describe('AddComputedColumnPopover', () => {
   let onAdd, onUpdate, onValidate, onEditClose;
@@ -273,6 +279,91 @@ describe('AddComputedColumnPopover', () => {
     // Only one validation call with the final value
     expect(onValidate).toHaveBeenCalledTimes(1);
     expect(onValidate).toHaveBeenCalledWith('SUM');
+  });
+
+  it('a blank expression clears validation without calling onValidate', async () => {
+    renderPopover();
+    fireEvent.click(screen.getByTestId('add-computed-column-btn'));
+
+    fireEvent.change(screen.getByTestId('computed-col-expression'), {
+      target: { value: '   ' },
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(750);
+    });
+
+    expect(onValidate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('validation-result')).not.toBeInTheDocument();
+  });
+
+  it('an invalid result shows its error and no type badge', async () => {
+    onValidate.mockResolvedValue({ valid: false, error: 'Unknown column foo' });
+    renderPopover();
+    fireEvent.click(screen.getByTestId('add-computed-column-btn'));
+
+    fireEvent.change(screen.getByTestId('computed-col-expression'), {
+      target: { value: 'SUM(foo)' },
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(750);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('validation-result')).toHaveTextContent('Unknown column foo');
+    });
+    expect(screen.queryByTestId('detected-type-badge')).not.toBeInTheDocument();
+  });
+
+  describe('Escape', () => {
+    it('cancels the add popover, resets the form and returns focus to the + button', () => {
+      renderPopover();
+      const addButton = screen.getByTestId('add-computed-column-btn');
+      fireEvent.click(addButton);
+      fireEvent.change(screen.getByTestId('computed-col-name'), {
+        target: { value: 'draft_col' },
+      });
+
+      fireEvent.keyDown(screen.getByTestId('computed-col-name'), { key: 'Escape' });
+
+      expect(screen.queryByTestId('add-computed-column-popover')).not.toBeInTheDocument();
+      expect(addButton).toHaveFocus();
+      expect(onAdd).not.toHaveBeenCalled();
+
+      fireEvent.click(addButton);
+      expect(screen.getByTestId('computed-col-name')).toHaveValue('');
+    });
+
+    it('cancels edit mode through onEditClose and focuses the anchor', () => {
+      const anchor = document.createElement('button');
+      document.body.appendChild(anchor);
+      const editColumn = { name: 'existing_col', expression: 'COUNT(*)', type: 'metric' };
+      renderPopover({ editColumn, anchorElement: anchor });
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      expect(onEditClose).toHaveBeenCalledTimes(1);
+      expect(onUpdate).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('add-computed-column-popover')).not.toBeInTheDocument();
+      expect(anchor).toHaveFocus();
+      anchor.remove();
+    });
+
+    it('inside an open layer closes only the popover, then the layer', () => {
+      const onOuterClose = jest.fn();
+      render(
+        <OuterLayer onClose={onOuterClose}>
+          <AddComputedColumnPopover onAdd={onAdd} onValidate={onValidate} />
+        </OuterLayer>
+      );
+      fireEvent.click(screen.getByTestId('add-computed-column-btn'));
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId('add-computed-column-popover')).not.toBeInTheDocument();
+      expect(onOuterClose).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(onOuterClose).toHaveBeenCalledTimes(1);
+    });
   });
 
   // A computed column is a MODEL-SCOPED (nested) metric/dimension, and

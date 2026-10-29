@@ -3,6 +3,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import CheckIcon from '@mui/icons-material/Check';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { OBJECT_TYPES, DEFAULT_COLORS } from './objectTypeConfigs';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 /**
  * ObjectTypeFilter - Dropdown multiselect for filtering by object type
@@ -16,6 +17,12 @@ import { OBJECT_TYPES, DEFAULT_COLORS } from './objectTypeConfigs';
 const ObjectTypeFilter = ({ selectedTypes = [], onChange, counts = {}, showDisabled = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const triggerRef = useRef(null);
+
+  useEscapeToClose(isOpen, () => {
+    setIsOpen(false);
+    triggerRef.current?.focus();
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -63,6 +70,7 @@ const ObjectTypeFilter = ({ selectedTypes = [], onChange, counts = {}, showDisab
     <div className="relative" ref={dropdownRef}>
       {/* Dropdown trigger button */}
       <button
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         className={`
           w-full flex items-center justify-between gap-2
