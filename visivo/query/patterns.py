@@ -276,6 +276,26 @@ def extract_ref_names(text: str) -> Set[str]:
     return {model for model, _ in extract_ref_components(text)}
 
 
+def ref_name(text: str) -> Optional[str]:
+    """
+    The name a reference refers to, quotes stripped, or None.
+
+    Accepts ``${ref(name)}`` (the first ref in the text) and a lone ``ref(name)``.
+
+    Examples:
+        >>> ref_name("${ref(orders)}")
+        'orders'
+        >>> ref_name("ref('orders')")
+        'orders'
+        >>> ref_name("orders") is None
+        True
+    """
+    match = CONTEXT_STRING_REF_PATTERN_COMPILED.search(text) or re.match(
+        REF_PROPERTY_PATTERN, text.strip()
+    )
+    return get_model_name_from_match(match) if match else None
+
+
 def replace_refs(text: str, replacer_func) -> str:
     """
     Replace ref() patterns in text using a custom replacer function.

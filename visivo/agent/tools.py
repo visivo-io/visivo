@@ -26,7 +26,6 @@ is what makes an autonomous loop safe to ship, because the blast radius of a
 hijacked agent is a draft someone can discard.
 """
 
-import re
 from typing import Dict, get_args
 
 from visivo.agent import images
@@ -37,6 +36,7 @@ from visivo.agent.schema import SchemaSlicer
 from visivo.agent.screenshot import SCREENSHOT_TOOLS
 from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
 from visivo.jobs.run_model_data_job import QueryTimeout
+from visivo.query.patterns import is_valid_name, ref_name
 from visivo.server.names import NameTakenError
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
@@ -121,8 +121,7 @@ def _scoped_config(app, type_key, config):
 
     config = dict(config)
     value = str(config.pop("model") or "")
-    named = re.search(r"ref\(\s*([^)\s]+)\s*\)", value)
-    model = named.group(1) if named else value.strip()
+    model = ref_name(value) or value.strip()
     if find_model(app, model) is None:
         raise ToolError(
             f"No model named '{model}' to scope the {_singular(type_key)} to. "
@@ -135,7 +134,7 @@ def _source_reference(app, type_key, config):
     """A model's ``source`` given as a bare name of a source in the project,
     written as the reference it means."""
     source = config.get("source")
-    if type_key != "models" or not isinstance(source, str) or not re.fullmatch(r"[\w-]+", source):
+    if type_key != "models" or not isinstance(source, str):
         return config
     from visivo.server.source_resolution import find_source
 
@@ -257,7 +256,7 @@ def _write_hints(type_key, error):
             )
         elif type_key == "models" and field == "source":
             given = problem.get("input")
-            name = given if isinstance(given, str) and re.fullmatch(r"[\w-]+", given) else "taxi"
+            name = given if isinstance(given, str) and is_valid_name(given) else "taxi"
             hints.append(
                 f"Write the source as a reference to one of the project's sources, e.g. "
                 f"`source: ${{ref({name})}}`; list_sources names them."

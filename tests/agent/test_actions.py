@@ -421,7 +421,9 @@ class TestModelScopedFields:
     @pytest.mark.parametrize(
         "tool, type_key", [("write_metric", "metrics"), ("write_dimension", "dimensions")]
     )
-    @pytest.mark.parametrize("model", ["trips", "${ref(trips)}", "ref(trips)"])
+    @pytest.mark.parametrize(
+        "model", ["trips", "${ref(trips)}", "ref(trips)", "ref('trips')", '${ref("trips")}']
+    )
     def test_a_model_key_scopes_the_field(self, integration_app, tool, type_key, model):
         self._model(integration_app)
         config = {"name": "f", "expression": "sum(fare)", "model": model}
