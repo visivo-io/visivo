@@ -626,7 +626,7 @@ def test_load_example_resets_served_project_before_change_handler(output_dir, mo
     seen = {}
 
     def on_project_change():
-        seen["same_as_example"] = flask_app.matches_served_project(example)
+        seen["served_name"] = flask_app.project.name
 
     example = ProjectFactory(name="example_project")
     flask_app.hot_reload_server = MagicMock()
@@ -653,4 +653,4 @@ def test_load_example_resets_served_project_before_change_handler(output_dir, mo
 
     assert response.status_code == 200
     flask_app.hot_reload_server.on_project_change.assert_called_once()
-    assert seen["same_as_example"] is False
+    assert seen["served_name"] != example.name

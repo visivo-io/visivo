@@ -1,3 +1,4 @@
+import copy
 import re
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -327,6 +328,40 @@ class ObjectManager(ABC, Generic[T]):
             Dictionary of cached objects (including None values for deletions)
         """
         return dict(self._cached_objects)
+
+    def published_from_dag(self, dag) -> Dict[str, T]:
+        """The published objects ``dag`` holds, read without replacing the served ones."""
+        probe = copy.copy(self)
+        probe._published_objects = {}
+        probe.extract_from_dag(dag)
+        return probe._published_objects
+
+    def drop_stale_drafts(self, dag) -> List[str]:
+        """Drop the drafts that an on-disk change in ``dag`` conflicts with.
+
+        A draft is stale when the published object it was built on changed or
+        disappeared, or when its name now exists on disk. Committing it would
+        overwrite that file edit. Returns the names of dropped drafts that held
+        a change.
+        """
+        incoming = self.published_from_dag(dag)
+        with self._lock:
+            stale = [name for name in self._cached_objects if self._is_stale(name, incoming)]
+            dropped = [name for name in stale if self.get_status(name) != ObjectStatus.PUBLISHED]
+            for name in stale:
+                del self._cached_objects[name]
+                self._renames.pop(name, None)
+        return dropped
+
+    def _is_stale(self, name: str, incoming: Dict[str, T]) -> bool:
+        if name in incoming and name not in self._published_objects:
+            return True
+        origin = self._renames.get(name, name)
+        if origin not in self._published_objects:
+            return False
+        return origin not in incoming or not self.objects_equal(
+            self._published_objects[origin], incoming[origin]
+        )
 
     def clear_cache(self) -> None:
         """Clear all cached objects (e.g., after successful publish)."""

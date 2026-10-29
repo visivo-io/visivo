@@ -6,7 +6,8 @@ import useStore from '../../../stores/store';
  * ExternalEditBanner — VIS-808 (Track H H-2, design brief H-2).
  *
  * Dismissible warning shown at the top of the canvas area when an external
- * YAML edit overwrote unsaved canvas changes (Q15 last-write-wins). Sits
+ * YAML edit overwrote unsaved changes (Q15 last-write-wins). It names the
+ * dropped drafts; drafts the edit did not touch are kept. Sits
  * below the Workspace top bar, full-width within the middle pane, in the
  * muted highlight palette — visible but not alarming — and never blocks
  * canvas interaction. Auto-dismisses after ~30s; dismissing only hides the
@@ -18,6 +19,7 @@ const AUTO_DISMISS_MS = 30000;
 const ExternalEditBanner = () => {
   const visible = useStore(s => s.externalEditBannerVisible);
   const dismiss = useStore(s => s.dismissExternalEditBanner);
+  const droppedDrafts = useStore(s => s.externalEditDroppedDrafts);
 
   useEffect(() => {
     if (!visible) return undefined;
@@ -39,10 +41,24 @@ const ExternalEditBanner = () => {
       />
       <div className="min-w-0 flex-1 text-sm">
         <p className="font-medium text-highlight-900">File changed externally.</p>
-        <p className="mt-0.5 text-highlight-800">
-          Your unsaved canvas changes were dropped because the YAML file was edited outside
-          Visivo. The canvas now reflects the file&apos;s current state.
-        </p>
+        {droppedDrafts?.length ? (
+          <p className="mt-0.5 text-highlight-800" data-testid="external-edit-banner-dropped">
+            Your unsaved changes to{' '}
+            {droppedDrafts.map((draft, index) => (
+              <React.Fragment key={`${draft.type}:${draft.name}`}>
+                {index > 0 && ', '}
+                {draft.type} <span className="font-semibold">{draft.name}</span>
+              </React.Fragment>
+            ))}{' '}
+            were dropped because the YAML file changed them outside Visivo. Your other unsaved
+            changes are kept.
+          </p>
+        ) : (
+          <p className="mt-0.5 text-highlight-800">
+            Your unsaved canvas changes were dropped because the YAML file was edited outside
+            Visivo. The canvas now reflects the file&apos;s current state.
+          </p>
+        )}
       </div>
       <button
         type="button"

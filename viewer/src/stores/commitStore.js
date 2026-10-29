@@ -264,10 +264,11 @@ const createCommitSlice = (set, get) => ({
     }
   },
 
-  // External-edit banner (VIS-808 / Q15). Shown when a hot-reload fires
-  // during a dirty Build session — the backend dropped the drafts
-  // (last-write-wins) and the canvas re-rendered from the file's state.
+  // External-edit banner (VIS-808 / Q15). Shown when a file edit conflicted
+  // with drafts: the backend dropped those drafts (last-write-wins) and the
+  // canvas re-rendered from the file's state.
   externalEditBannerVisible: false,
+  externalEditDroppedDrafts: [],
 
   showExternalEditBanner: () => set({ externalEditBannerVisible: true }),
 
@@ -278,9 +279,9 @@ const createCommitSlice = (set, get) => ({
    * project, every named-child collection, and the pending-change state so
    * the Workspace reflects the recompiled YAML without a page reload.
    */
-  refreshFromProjectChange: async ({ draftsDropped = false } = {}) => {
+  refreshFromProjectChange: async ({ draftsDropped = false, droppedDrafts = [] } = {}) => {
     if (draftsDropped) {
-      set({ externalEditBannerVisible: true });
+      set({ externalEditBannerVisible: true, externalEditDroppedDrafts: droppedDrafts });
     }
     await Promise.all([
       get().fetchProject?.(),

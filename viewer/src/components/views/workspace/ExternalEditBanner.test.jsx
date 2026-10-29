@@ -13,7 +13,7 @@ import ExternalEditBanner from './ExternalEditBanner';
 
 describe('ExternalEditBanner (VIS-808)', () => {
   beforeEach(() => {
-    useStore.setState({ externalEditBannerVisible: false });
+    useStore.setState({ externalEditBannerVisible: false, externalEditDroppedDrafts: [] });
   });
 
   test('renders nothing while the flag is off', () => {
@@ -28,6 +28,26 @@ describe('ExternalEditBanner (VIS-808)', () => {
     const banner = screen.getByTestId('external-edit-banner');
     expect(banner).toHaveTextContent('File changed externally.');
     expect(banner).toHaveTextContent('unsaved canvas changes were dropped');
+  });
+
+  test('names each dropped draft and says the other drafts are kept', () => {
+    useStore.setState({
+      externalEditBannerVisible: true,
+      externalEditDroppedDrafts: [
+        { type: 'model', name: 'orders' },
+        { type: 'source', name: 'warehouse' },
+      ],
+    });
+    render(<ExternalEditBanner />);
+
+    const message = screen.getByTestId('external-edit-banner-dropped');
+    expect(message).toHaveTextContent(
+      'Your unsaved changes to model orders, source warehouse were dropped'
+    );
+    expect(message).toHaveTextContent('Your other unsaved changes are kept.');
+    expect(screen.getByTestId('external-edit-banner')).not.toHaveTextContent(
+      'unsaved canvas changes were dropped'
+    );
   });
 
   test('the X dismisses it', async () => {
