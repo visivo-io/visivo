@@ -36,6 +36,7 @@ from visivo.agent.schema import SchemaSlicer
 from visivo.agent.screenshot import SCREENSHOT_TOOLS
 from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
 from visivo.jobs.run_model_data_job import QueryTimeout
+from visivo.query.patterns import is_valid_name, ref_name
 from visivo.server.names import NameTakenError
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
@@ -75,9 +76,16 @@ def _dump(obj):
 
     ``model_dump(mode="json")`` keeps ``${ref(name)}`` as the string it is —
     the same form the object managers serve to the editor, so an agent reads
-    what a person reads.
+    what a person reads. A metric or dimension scoped to a model carries it as
+    ``model``, the key its write takes.
     """
-    return obj.model_dump(exclude_none=True, mode="json") if obj is not None else None
+    if obj is None:
+        return None
+    data = obj.model_dump(exclude_none=True, mode="json")
+    parent = getattr(obj, "_parent_name", None)
+    if parent:
+        data["model"] = parent
+    return data
 
 
 # --- the generated per-type tools ------------------------------------------
@@ -123,9 +131,49 @@ def _get_handler(type_key):
     return handler
 
 
+_MODEL_SCOPED = ("metrics", "dimensions")
+
+
+def _scoped_config(app, type_key, config):
+    """``(config, model)``: a metric's or dimension's ``model`` key taken off its
+    config, naming the model it is scoped to, as the editor's ``parentModel`` does."""
+    if type_key not in _MODEL_SCOPED or "model" not in config:
+        return config, None
+    from visivo.server.source_resolution import find_model
+
+    config = dict(config)
+    value = str(config.pop("model") or "")
+    model = ref_name(value) or value.strip()
+    if find_model(app, model) is None:
+        raise ToolError(
+            f"No model named '{model}' to scope the {_singular(type_key)} to. "
+            "Call list_models to see them."
+        )
+    return config, model
+
+
+def _source_reference(app, type_key, config):
+    """A model's ``source`` given as a bare name of a source in the project,
+    written as the reference it means."""
+    source = config.get("source")
+    if type_key != "models" or not isinstance(source, str):
+        return config
+    from visivo.server.source_resolution import find_source
+
+    if find_source(app, source) is None:
+        return config
+    return {**config, "source": f"${{ref({source})}}"}
+
+
+def _agent_config(app, type_key, arguments):
+    """``(config, model)``: the config in the shapes the agent sends, made valid."""
+    config, model = _scoped_config(app, type_key, _config_argument(arguments))
+    return _source_reference(app, type_key, config), model
+
+
 def _validate_handler(type_key):
     def handler(app, arguments):
-        config = _config_argument(arguments)
+        config, model = _agent_config(app, type_key, arguments)
         manager = _manager(app, type_key)
         try:
             obj = manager.validate_object(config)
@@ -133,6 +181,8 @@ def _validate_handler(type_key):
             raise
         except Exception as error:
             return {"valid": False, "error": str(error)}
+        if model:
+            obj.set_parent_name(model)
         name = config.get("name")
         clash = manager.name_clash and isinstance(name, str) and manager.name_clash(name, obj)
         if clash:
@@ -144,7 +194,7 @@ def _validate_handler(type_key):
 
 def _write_handler(type_key):
     def handler(app, arguments):
-        config = _config_argument(arguments)
+        config, model = _agent_config(app, type_key, arguments)
         name = config.get("name")
         if not isinstance(name, str) or not name.strip():
             raise ToolError("The config must carry a 'name'.")
@@ -154,6 +204,8 @@ def _write_handler(type_key):
         except Exception as error:
             hints = "".join(f"\nHint: {hint}" for hint in _write_hints(type_key, error))
             raise ToolError(f"Invalid {_singular(type_key)}: {error}{hints}")
+        if model:
+            obj.set_parent_name(model)
 
         # Local import: run_views reaches back into the server package, and the
         # tool registry is imported from it.
@@ -231,17 +283,17 @@ def _write_hints(type_key, error):
                 f'`interactions: [{{{field}: "?{{ ... }}"}}]`.'
             )
         elif field == "model" and problem.get("type") == "extra_forbidden":
-            example = (
-                "`expression: sum(${ref(trips).fare})`"
-                if type_key in ("metrics", "dimensions")
-                else "`?{ sum(${ref(trips).fare}) }`"
-            )
             hints.append(
                 f"A {_singular(type_key)} has no `model` field. Name the model inside its "
-                f"expressions, e.g. {example}."
+                "expressions, e.g. `?{ sum(${ref(trips).fare}) }`."
             )
         elif type_key == "models" and field == "source":
-            hints.append("Write the source as a reference, e.g. `source: ${ref(taxi)}`.")
+            given = problem.get("input")
+            name = given if isinstance(given, str) and is_valid_name(given) else "taxi"
+            hints.append(
+                f"Write the source as a reference to one of the project's sources, e.g. "
+                f"`source: ${{ref({name})}}`; list_sources names them."
+            )
     return list(dict.fromkeys(hints))
 
 
@@ -286,12 +338,21 @@ _PER_TYPE = {
 }
 
 
+_SCOPED_NOTE = (
+    " Put `model: <model name>` in the config to scope the {singular} to that model, "
+    "as score_candidates' semantic_layer lists it; its expression then uses the "
+    "model's columns by name, e.g. `sum(fare_amount)`."
+)
+
+
 def _generated_tools():
     tools = {}
     for type_key in TYPE_TO_MANAGER:
         singular = _singular(type_key)
         for verb, (schema, factory, description) in _PER_TYPE.items():
             name = f"{verb}_{singular}" if verb != "list" else f"list_{type_key}"
+            if verb in ("write", "validate") and type_key in _MODEL_SCOPED:
+                description += _SCOPED_NOTE
             tools[name] = Tool(
                 name=name,
                 description=description.format(singular=singular, plural=type_key),

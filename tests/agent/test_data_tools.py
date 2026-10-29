@@ -691,6 +691,15 @@ class TestPreviewInsight:
         assert set(result["props_mapping"]) == {"props.x", "props.y"}
         assert result["inputs_substituted"] == {} and result["truncated"] is False
 
+    def test_a_metric_written_with_its_model_previews(self, integration_app, model):
+        metric = {"name": "total_y", "expression": "sum(y)", "model": "orders_q"}
+        call(integration_app, "write_metric", {"config": metric})
+        config = self._config(y="?{${ref(orders_q).total_y}}")
+
+        result = call(integration_app, "preview_insight", {"config": config})
+
+        assert result["row_count"] == 6 and result["models"] == ["orders_q"]
+
     def test_a_saved_insight_previews_by_name(self, integration_app, model):
         call(integration_app, "write_insight", {"config": self._config(name="saved")})
 

@@ -8,6 +8,7 @@ parsing ${ref(...)} patterns in the Visivo query system.
 import pytest
 import re
 from visivo.query.patterns import (
+    ref_name,
     REF_FUNCTION_PATTERN,
     REF_PROPERTY_PATTERN,
     PROPERTY_PATH_PATTERN,
@@ -174,6 +175,28 @@ class TestExtractRefComponents:
         """Test extracting from text with no refs."""
         result = extract_ref_components("SELECT * FROM table")
         assert result == []
+
+
+class TestRefName:
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "${ref(orders)}",
+            "${ ref(orders) }",
+            "ref(orders)",
+            " ref('orders') ",
+            '${ref("orders")}',
+        ],
+    )
+    def test_reads_the_name_from_a_reference(self, text):
+        assert ref_name(text) == "orders"
+
+    def test_reads_a_name_with_spaces(self):
+        assert ref_name("ref(Order Lines)") == "Order Lines"
+
+    @pytest.mark.parametrize("text", ["orders", "", "sum(${ref}) "])
+    def test_none_for_text_without_a_reference(self, text):
+        assert ref_name(text) is None
 
 
 class TestExtractModelNames:

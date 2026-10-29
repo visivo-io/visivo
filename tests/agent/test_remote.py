@@ -137,6 +137,25 @@ class TestTheToolsWorkUnchanged:
         assert (type_key, name) == ("markdowns", "fresh")
         assert config["content"] == "# new"
 
+    def test_a_scoped_field_reaches_core_as_the_editor_posts_it(self):
+        project, core = _project()
+        metric = project.metric_manager.validate_object(
+            {"name": "fares", "expression": "sum(fare)"}
+        )
+        metric.set_parent_name("trips")
+
+        project.metric_manager.save("fares", metric)
+
+        [(type_key, name, config)] = core.saved
+        assert (type_key, name) == ("metrics", "fares")
+        assert config["parentModel"] == "trips" and "model" not in config
+
+    def test_a_scoped_row_keeps_its_model_when_loaded(self):
+        row = _envelope("fares", {"expression": "sum(fare)", "parentModel": "trips"})
+        project, _ = _project({"metrics": [row]})
+
+        assert call(project, "get_metric", {"name": "fares"})["model"] == "trips"
+
     def test_and_is_visible_to_the_next_tool_call(self):
         """Write-through must not mean write-only: the agent reads back what it
         just wrote, in the same turn."""
