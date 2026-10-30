@@ -1,6 +1,7 @@
 import os
 from typing import List, Literal, Optional, Any
 from visivo.models.base.base_model import BaseModel
+from visivo.models.sources.database_file import DatabaseFileMixin
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from visivo.models.sources.source import ServerSource
 from pydantic import Field
@@ -23,7 +24,7 @@ class Attachment(BaseModel):
 SqliteType = Literal["sqlite"]
 
 
-class SqliteSource(ServerSource, SqlalchemySource):
+class SqliteSource(DatabaseFileMixin, ServerSource, SqlalchemySource):
     """
     SqliteSources hold the connection information to SQLite data sources.
 

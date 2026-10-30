@@ -43,16 +43,17 @@ test.describe('ObjectCanvasFrame (VIS-1001)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('the read-only pill shows on a canvas lens and clears on Lineage', async ({ page }) => {
+  test('no read-only pill while the right rail can edit the object', async ({ page }) => {
     const errors = collectErrors(page);
     await openWorkspace(page);
 
     await selectLibraryObject(page, 'insight', 'simple-scatter-insight');
 
-    // Read-only canvas → the lock pill is present.
-    await expect(page.getByTestId('canvas-readonly-pill')).toBeVisible({ timeout: WAIT });
+    // The right rail edits the insight, so the canvas shows no read-only pill.
+    await expect(page.getByTestId('workspace-right-rail-tab-edit')).toBeVisible({ timeout: WAIT });
+    await expect(page.getByTestId('canvas-readonly-pill')).toHaveCount(0);
 
-    // Flip to Lineage — the pill is gone (the universal DAG lens has no pill).
+    // Flip to Lineage — the universal DAG lens has no pill either.
     await page.getByTestId('workspace-lens-picker-option-lineage').click();
     await expect(page.getByTestId('workspace-middle-insight-lineage')).toBeVisible({ timeout: WAIT });
     await expect(page.getByTestId('canvas-readonly-pill')).toHaveCount(0);

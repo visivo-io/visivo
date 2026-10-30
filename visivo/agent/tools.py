@@ -239,9 +239,18 @@ def _write_handler(type_key):
         from visivo.agent.charting import lint
 
         found = lint.warnings(app, type_key, config)
-        if type_key == "models":
-            from visivo.agent.data_tools import probe_model_sql
+        if type_key == "sources":
+            from visivo.agent.data_tools import missing_database_file_warning
 
+            missing = missing_database_file_warning(app, obj)
+            if missing:
+                found.append(missing)
+        if type_key == "models":
+            from visivo.agent.data_tools import probe_model_sql, sourceless_model_warning
+
+            sourceless = sourceless_model_warning(app, obj)
+            if sourceless:
+                found.append(sourceless)
             problem = probe_model_sql(app, obj)
             if problem:
                 found.append(

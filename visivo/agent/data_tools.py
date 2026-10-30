@@ -17,6 +17,8 @@ from visivo.jobs.run_model_data_job import (
     QueryTimeout,
     execute_and_get_result,
 )
+from visivo.models.models.sql_model import SqlModel
+from visivo.models.validators.models_have_sources_validator import missing_source_message
 from visivo.query.patterns import extract_ref_names
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.services.draft_insight import (
@@ -170,6 +172,33 @@ def _default_source(app):
         return find_source(app, name)
     sources = app.source_manager.get_all_objects_list()
     return sources[0] if len(sources) == 1 else None
+
+
+def missing_database_file_warning(app, source):
+    """The shared missing-file error for a SQLite or DuckDB ``source``, with a hint, or ``None``.
+    Connecting creates an empty database, so nothing else fails loudly."""
+    check_files = getattr(source, "check_database_files_exist", None)
+    if not check_files:
+        return None
+    try:
+        check_files(getattr(app, "_working_dir", None))
+    except FileNotFoundError as error:
+        return (
+            f"{error}. Connecting would create an empty database there, so the source has "
+            "no tables. Point `database` at the existing file."
+        )
+    return None
+
+
+def sourceless_model_warning(app, model):
+    """The run's error for a SQL model that names no source in a project with no
+    ``defaults.source_name``, or ``None``. The run does not fall back to the
+    project's only source, so neither does this."""
+    if not isinstance(model, SqlModel) or model.source:
+        return None
+    if getattr(getattr(app.project, "defaults", None), "source_name", None):
+        return None
+    return missing_source_message(model.name)
 
 
 def probe_model_sql(app, model):
@@ -493,6 +522,15 @@ def _stored_schema(app, source):
 
 def _describe_source_handler(app, arguments):
     source = _source_argument(app, arguments, key="name")
+    missing = missing_database_file_warning(app, source)
+    if missing:
+        return {
+            "source": source.name,
+            "type": source.type,
+            "total_tables": 0,
+            "tables": [],
+            "warnings": [missing],
+        }
     stored, run_id = _stored_schema(app, source)
     wanted = (arguments or {}).get("table")
     tables = stored.get("tables") or {}

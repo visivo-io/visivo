@@ -27,7 +27,10 @@ def register_source_views(app, flask_app, output_dir):
                     return jsonify({"error": "Source configuration is required"}), 400
 
             job_id = SourceOpJobManager.instance().start(
-                "test_connection", lambda: validate_source_from_config(source_config)
+                "test_connection",
+                lambda: validate_source_from_config(
+                    source_config, flask_app.source_manager.project_dir
+                ),
             )
             return jsonify({"job_id": job_id, "status": "queued"}), 202
         except Exception as e:
