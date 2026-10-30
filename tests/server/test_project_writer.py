@@ -136,8 +136,60 @@ def test_diff_list_changes():
     old_dict = {"items": [1, 2, 3]}
     new_dict = {"items": [1, 2, 4]}
 
-    result = diff(old_dict, new_dict)
-    assert result["items"] == [1, 2, 4]
+    target = {"items": [1, 2, 3]}
+    apply_diff(target, diff(old_dict, new_dict))
+    assert target["items"] == [1, 2, 4]
+
+
+def test_diff_list_grows_and_shrinks():
+    grown = {"items": [1]}
+    apply_diff(grown, diff({"items": [1]}, {"items": [1, 2, 3]}))
+    assert grown["items"] == [1, 2, 3]
+
+    shrunk = {"items": [1, 2, 3]}
+    apply_diff(shrunk, diff({"items": [1, 2, 3]}, {"items": [1]}))
+    assert shrunk["items"] == [1]
+
+
+def test_diff_list_edits_nested_items_in_place():
+    old = {"rows": [{"height": "medium", "items": [{"width": 1, "chart": "a"}]}]}
+    new = {"rows": [{"height": "large", "items": [{"width": 1, "chart": "b"}, "x"]}]}
+    target = json.loads(json.dumps(old))
+    result = diff(old, new)
+    assert set(result["rows"]) == {0}
+    apply_diff(target, result)
+    assert target == new
+
+
+def test_diff_list_replaces_mismatched_item_types_and_nested_lists():
+    old = {"a": [[1, 2], "s", {"k": 1}]}
+    new = {"a": [[1, 3], {"k": 1}, "t"]}
+    target = json.loads(json.dumps(old))
+    apply_diff(target, diff(old, new))
+    assert target == new
+
+
+def test_diff_keeps_a_key_the_file_sets_to_its_default():
+    old = {"name": "n", "align": "left", "nested": [{"justify": "start", "a": 1}]}
+    new = {"name": "n", "nested": [{"a": 2}]}
+    full = {"name": "n", "align": "left", "nested": [{"justify": "start", "a": 2}]}
+    target = json.loads(json.dumps(old))
+    apply_diff(target, diff(old, new, full))
+    assert target == {"name": "n", "align": "left", "nested": [{"justify": "start", "a": 2}]}
+
+
+def test_diff_still_deletes_a_key_the_user_removed():
+    old = {"name": "n", "align": "left"}
+    target = dict(old)
+    apply_diff(target, diff(old, {"name": "n"}, {"name": "n"}))
+    assert target == {"name": "n"}
+
+
+def test_diff_writes_a_changed_default_instead_of_deleting_it():
+    old = {"name": "n", "type": "single-select"}
+    target = dict(old)
+    apply_diff(target, diff(old, {"name": "n"}, {"name": "n", "type": "multi-select"}))
+    assert target == {"name": "n", "type": "multi-select"}
 
 
 def test_diff_deletions():
