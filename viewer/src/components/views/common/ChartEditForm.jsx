@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import isEqual from 'lodash/isEqual';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import useFormBaseline from '../../../hooks/useFormBaseline';
 import { Button, ButtonOutline } from '../../styled/Button';
@@ -31,7 +32,14 @@ import RenameImpactDialog from '../workspace/RenameImpactDialog';
  * - onNavigateToEmbedded: Callback(type, object) to navigate to embedded objects
  */
 const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded, onDirtyChange }) => {
-  const { deleteChart, checkCommitStatus, insights: storeInsights, fetchInsights } = useStore();
+  const {
+    deleteChart,
+    checkCommitStatus,
+    insights: storeInsights,
+    fetchInsights,
+    createWorkspaceObject,
+    deleteInsight,
+  } = useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -44,11 +52,11 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
   const [insights, setInsights] = useState([]);
   const [layoutValues, setLayoutValues] = useState({});
 
-  // VIS-1224: "New blank insight" (the Add Insight menu) branches a blank
-  // EMBEDDED insight on the chart; staged entries merge into the save and count
-  // toward dirty. (The chart no longer edits insight props inline — that's the
-  // insight's own edit panel.)
-  const [stagedEmbedded, setStagedEmbedded] = useState([]);
+  const [creatingInsight, setCreatingInsight] = useState(false);
+  // Insights drafted by "New blank insight" in this form, and their config as
+  // first seen, so Discard/Cancel can remove the ones still untouched.
+  const [draftedInsights, setDraftedInsights] = useState([]);
+  const draftSnapshotsRef = useRef(new Map());
 
   // UI state
   const [errors, setErrors] = useState({});
@@ -147,7 +155,15 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chart, isCreate]);
 
-  const dirty = isDirtyAgainst({ name, insights, layoutValues }) || stagedEmbedded.length > 0;
+  const dirty = isDirtyAgainst({ name, insights, layoutValues });
+
+  useEffect(() => {
+    draftedInsights.forEach(draftedName => {
+      if (draftSnapshotsRef.current.has(draftedName)) return;
+      const record = (storeInsights || []).find(i => i.name === draftedName);
+      if (record) draftSnapshotsRef.current.set(draftedName, record.config);
+    });
+  }, [draftedInsights, storeInsights]);
 
   // Report upward so the tab strip's unsaved dot and its guarded close reflect
   // real edits (VIS-1133) — the rail clears it on unmount.
@@ -163,7 +179,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
       newErrors.name = nameError;
     }
 
-    if (insights.length === 0 && embeddedInsights.length === 0 && stagedEmbedded.length === 0) {
+    if (insights.length === 0 && embeddedInsights.length === 0) {
       newErrors.data = 'At least one insight is required';
     }
 
@@ -198,9 +214,6 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     for (; refIdx < refInsights.length; refIdx += 1) {
       rebuiltInsights.push(refInsights[refIdx]);
     }
-
-    // VIS-1224: append any "New blank insight" the Add-Insight menu staged.
-    stagedEmbedded.forEach(embedded => rebuiltInsights.push(embedded));
 
     if (rebuiltInsights.length > 0) {
       config.insights = rebuiltInsights;
@@ -249,23 +262,56 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
     }
   };
 
-  // Insight management (VIS-1224: add via the AddInsightMenu dropdown — pick an
-  // existing project insight, or branch a New blank embedded insight).
   const addExistingInsight = insightName => {
-    if (!insightName || insights.includes(insightName)) return;
-    setInsights([...insights, insightName]);
+    if (!insightName) return;
+    setInsights(current => (current.includes(insightName) ? current : [...current, insightName]));
   };
 
-  const addBlankInsight = () => {
-    setStagedEmbedded([...stagedEmbedded, { props: { type: 'scatter' } }]);
+  // A chart's insights must each carry a name, so a blank one is drafted as its
+  // own named insight (the Library's "+ New" path) and referenced by the chart.
+  const addBlankInsight = async () => {
+    setCreatingInsight(true);
+    setSaveError(null);
+    const result = await createWorkspaceObject('insight');
+    setCreatingInsight(false);
+    if (result?.success) {
+      addExistingInsight(result.name);
+      setDraftedInsights(current => [...current, result.name]);
+    } else {
+      setSaveError(result?.error || 'Failed to create insight');
+    }
   };
 
   const removeInsight = index => {
     setInsights(insights.filter((_, i) => i !== index));
   };
 
-  const removeStagedEmbedded = index => {
-    setStagedEmbedded(stagedEmbedded.filter((_, i) => i !== index));
+  // A blank insight the saved chart does not reference, and that nobody has
+  // edited since it was drafted, would be left behind as an orphan draft.
+  const removeUntouchedDrafts = () => {
+    const savedRefs = new Set(
+      rawInsights.filter(i => typeof i === 'string').map(i => parseRefValue(i))
+    );
+    const untouched = draftedInsights.filter(draftedName => {
+      if (savedRefs.has(draftedName) || !draftSnapshotsRef.current.has(draftedName)) return false;
+      const record = (storeInsights || []).find(i => i.name === draftedName);
+      return Boolean(record) && isEqual(record.config, draftSnapshotsRef.current.get(draftedName));
+    });
+    setDraftedInsights(current => current.filter(n => !untouched.includes(n)));
+    untouched.forEach(draftedName => {
+      draftSnapshotsRef.current.delete(draftedName);
+      deleteInsight(draftedName);
+    });
+  };
+
+  const handleDiscard = () => {
+    removeUntouchedDrafts();
+    discard();
+  };
+
+  const handleCancel = () => {
+    removeUntouchedDrafts();
+    onClose?.();
   };
 
   return (
@@ -316,7 +362,8 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
                   <button
                     type="button"
                     data-testid="chart-add-insight"
-                    className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
+                    disabled={creatingInsight}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors disabled:opacity-50"
                   >
                     <AddIcon fontSize="small" />
                     Add Insight
@@ -334,7 +381,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
               </Dropdown>
             </div>
 
-            {insights.length === 0 && embeddedInsights.length === 0 && stagedEmbedded.length === 0 ? (
+            {insights.length === 0 && embeddedInsights.length === 0 ? (
               <p className="text-sm text-gray-500 italic">
                 No insights yet. Use “Add Insight” to add one.
               </p>
@@ -353,23 +400,6 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
                       as="div"
                       tooltip={`Insight: ${insight}`}
                       onRemove={() => removeInsight(index)}
-                      className="flex-1 min-w-0"
-                    />
-                  </div>
-                ))}
-                {stagedEmbedded.map((_, index) => (
-                  <div
-                    key={`staged-${index}`}
-                    className="flex items-center gap-2"
-                    data-testid={`staged-insight-row-${index}`}
-                  >
-                    <EmbeddedPill
-                      objectType="insight"
-                      label="New insight (blank)"
-                      size="md"
-                      as="div"
-                      tooltip="A new blank embedded insight — saved with the chart"
-                      onRemove={() => removeStagedEmbedded(index)}
                       className="flex-1 min-w-0"
                     />
                   </div>
@@ -481,7 +511,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
                 (the onboarding modal) it stays a real Cancel. */}
             <ButtonOutline
               type="button"
-              onClick={isEditMode ? discard : onClose}
+              onClick={isEditMode ? handleDiscard : handleCancel}
               disabled={isEditMode && (!dirty || saving || deleting)}
               data-testid="chart-form-discard"
               className="text-sm"
@@ -491,7 +521,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded,
             <Button
               type="button"
               onClick={handleSave}
-              disabled={saving || (isEditMode && !dirty)}
+              disabled={saving || creatingInsight || (isEditMode && !dirty)}
               className="text-sm"
             >
               {saving ? (

@@ -38,6 +38,8 @@ const renderItem = (props = {}) =>
     </DndContext>
   );
 
+const flushPromises = () => act(() => Promise.resolve());
+
 describe('helpers', () => {
   test('getItemLeafRef resolves chart/table refs and null for empty/container', () => {
     expect(getItemLeafRef({ chart: 'ref(c1)' })).toEqual({ type: 'chart', name: 'c1', inline: false });
@@ -392,7 +394,11 @@ describe('ItemEditForm — right-rail "Choose…" click-to-pick (W5)', () => {
       inputs: [],
       insights: [{ name: 'rev-insight' }],
       saveChart: jest.fn().mockResolvedValue({ success: true }),
-      openCreateChartModal: jest.fn(),
+      createWorkspaceObject: jest
+        .fn()
+        .mockResolvedValue({ success: true, name: 'new-chart', type: 'chart' }),
+      openWorkspaceTab: jest.fn(),
+      showWorkspaceToast: jest.fn(),
       // Reset so a read-only case can't leak into neighbouring tests.
       capabilities: null,
     });
@@ -552,15 +558,16 @@ describe('ItemEditForm — right-rail "Choose…" click-to-pick (W5)', () => {
   });
 
   // ── The rail and the canvas mount the SAME picker ─────────────────────────
-  test('an EMPTY project offers create-new from the picker (parity with the canvas)', () => {
+  test('an EMPTY project offers create-new from the picker (parity with the canvas)', async () => {
     useStore.setState({ charts: [], insights: [] });
     renderItem({ item: emptyItem });
     openPicker();
 
     expect(screen.getByTestId('reference-picker-empty')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('reference-picker-empty-create'));
+    await flushPromises();
 
-    expect(useStore.getState().openCreateChartModal).toHaveBeenCalledTimes(1);
+    expect(useStore.getState().createWorkspaceObject).toHaveBeenCalledWith('chart');
     expect(screen.queryByTestId('reference-picker')).not.toBeInTheDocument();
     expect(events.find(e => e.eventName === 'inline_create_used').payload).toEqual({
       source: 'picker',
@@ -568,10 +575,33 @@ describe('ItemEditForm — right-rail "Choose…" click-to-pick (W5)', () => {
     });
   });
 
-  test('the picker footer create link is available whenever objects exist', () => {
-    renderItem({ item: emptyItem });
+  test('the picker footer create link creates a chart, places it in the item and opens it', async () => {
+    const onChange = jest.fn();
+    renderItem({ item: emptyItem, onChange });
     openPicker();
     fireEvent.click(screen.getByTestId('reference-picker-create'));
-    expect(useStore.getState().openCreateChartModal).toHaveBeenCalledTimes(1);
+    await flushPromises();
+    expect(useStore.getState().createWorkspaceObject).toHaveBeenCalledWith('chart');
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange.mock.calls[0][0].chart).toBe('${ref(new-chart)}');
+    expect(useStore.getState().openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'chart:new-chart',
+      type: 'chart',
+      name: 'new-chart',
+    });
+  });
+
+  test('a failed create toasts the reason and places nothing', async () => {
+    useStore.setState({
+      createWorkspaceObject: jest.fn().mockResolvedValue({ success: false, error: 'nope' }),
+    });
+    const onChange = jest.fn();
+    renderItem({ item: emptyItem, onChange });
+    openPicker();
+    fireEvent.click(screen.getByTestId('reference-picker-create'));
+    await flushPromises();
+    expect(useStore.getState().showWorkspaceToast).toHaveBeenCalledWith('nope');
+    expect(onChange).not.toHaveBeenCalled();
+    expect(useStore.getState().openWorkspaceTab).not.toHaveBeenCalled();
   });
 });
