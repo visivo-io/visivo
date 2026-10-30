@@ -282,15 +282,14 @@ entries:
     verbs: []
     serves:
     - studio
-    reason: 'Cloud gap: core has dashboard list and detail only. Deleting a dashboard in the cloud is a draft edit of the
-      project file.'
+    - cloud
   dashboardValidate:
     path: /api/dashboards/{name}/validate/
     verbs:
     - POST
     serves:
     - studio
-    reason: 'Cloud gap: core has dashboard list and detail only. Validation happens on the draft run.'
+    - cloud
   defaults:
     path: /api/defaults/
     verbs: []
