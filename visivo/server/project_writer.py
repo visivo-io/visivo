@@ -256,7 +256,11 @@ class ProjectWriter:
             return False
 
         file_path = self.named_children[new_child_name]["file_path"]
-        recurse(self.files_to_write[file_path])
+        if not recurse(self.files_to_write[file_path]):
+            raise ValueError(
+                f"Cannot rename '{old_child_name}' to '{new_child_name}': {file_path} has no "
+                f"entry named '{old_child_name}'. Nothing was written."
+            )
 
     def _get_named_child_config(self, named_child_name: str) -> dict:
         """

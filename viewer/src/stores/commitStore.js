@@ -192,7 +192,10 @@ const createCommitSlice = (set, get) => ({
     // 4xx gates: 409 run_required/run_in_progress/run_failed, 403 branch_required,
     // 422 invalid. Surface the action + message.
     const error =
-      body.detail || (body.errors && JSON.stringify(body.errors)) || 'Failed to commit changes';
+      body.detail ||
+      body.error ||
+      (body.errors && JSON.stringify(body.errors)) ||
+      'Failed to commit changes';
     // Store the action too, not just the message: the modal needs to know a
     // refusal was `run_required` to point at the Runs tab, and the detail string
     // is not something to pattern-match on.

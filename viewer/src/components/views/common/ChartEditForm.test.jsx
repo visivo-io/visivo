@@ -2,6 +2,13 @@ import React from 'react';
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import ChartEditForm from './ChartEditForm';
 import useStore from '../../../stores/store';
+import { fetchRenameImpact, renameResource } from '../../../api/rename';
+
+jest.mock('../../../api/rename', () => ({
+  ...jest.requireActual('../../../api/rename'),
+  fetchRenameImpact: jest.fn(),
+  renameResource: jest.fn(),
+}));
 
 jest.mock('../../../stores/store', () => {
   const fn = jest.fn();
@@ -449,5 +456,32 @@ describe('ChartEditForm — layout emptied to undefined', () => {
     expect(config.layout).toBeUndefined();
     // The button recovered to its idle label (not stuck on 'Saving...').
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+  });
+});
+
+describe('ChartEditForm — a Save that renames and edits (VIS-1538)', () => {
+  test('saves the edited layout under the current name, then renames', async () => {
+    fetchRenameImpact.mockResolvedValue({
+      target: { type: 'charts', name: 'rev_chart', new_name: 'revenue', status: 'published' },
+      references: [],
+    });
+    renameResource.mockResolvedValue({ renamed: true, references: [] });
+    withLayoutSchema();
+    const onSave = jest.fn(async () => ({ success: true }));
+    await renderForm({ onSave });
+
+    fireEvent.change(screen.getByLabelText(/Chart Name/), { target: { value: 'revenue' } });
+    await makeDirty();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(await screen.findByTestId('rename-impact-confirm'));
+
+    await waitFor(() =>
+      expect(renameResource).toHaveBeenCalledWith('charts', 'rev_chart', 'revenue', expect.anything())
+    );
+    expect(onSave).toHaveBeenCalledWith(
+      'chart',
+      'rev_chart',
+      expect.objectContaining({ name: 'rev_chart', layout: { showlegend: true } })
+    );
   });
 });

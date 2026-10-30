@@ -367,17 +367,23 @@ class ObjectManager(ABC, Generic[T]):
         """Clear all cached objects (e.g., after successful publish)."""
         with self._lock:
             self._cached_objects.clear()
+            self._renames.clear()
 
     def has_unpublished_changes(self) -> bool:
         """
         Check if there are any unpublished changes.
 
         Returns:
-            True if any cached object has status NEW, MODIFIED, or DELETED
+            True if any cached object has status NEW, MODIFIED, RENAMED, or DELETED
         """
+        unpublished = (
+            ObjectStatus.NEW,
+            ObjectStatus.MODIFIED,
+            ObjectStatus.RENAMED,
+            ObjectStatus.DELETED,
+        )
         for name in self._cached_objects:
-            status = self.get_status(name)
-            if status in (ObjectStatus.NEW, ObjectStatus.MODIFIED, ObjectStatus.DELETED):
+            if self.get_status(name) in unpublished:
                 return True
         return False
 

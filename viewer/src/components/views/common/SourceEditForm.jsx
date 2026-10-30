@@ -53,7 +53,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
 
   const recordName = source?.name || '';
 
-  const rename = useRenameFlow({ type: 'source', recordName, name });
+  const rename = useRenameFlow({ type: 'source', recordName, name, onCancel: setName });
   const isNewObject = source?.status === ObjectStatus.NEW;
   const isEmbedded = isEmbeddedObject(source);
   const parentName = source?._embedded?.parentName;
@@ -180,15 +180,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
     capabilities
   );
 
-  const handleSave = async () => {
-    if (!validateForm()) return;
-    // A changed name in edit mode is a RENAME — its own server operation,
-    // confirmed first, because every `${ref()}` to this object moves with it.
-    if (isEditMode && rename.nameChanged) {
-      rename.start();
-      return;
-    }
-
+  const persist = async nameToSave => {
     setSaving(true);
     setSaveError(null);
 
@@ -203,16 +195,27 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
     }
     const config = isEmbedded
       ? { type: sourceType, ...values }
-      : { name, type: sourceType, ...values };
+      : { name: nameToSave, type: sourceType, ...values };
 
     // Call unified save - parent handles embedded vs standalone routing
-    const result = await onSave('source', name, config);
+    const result = await onSave('source', nameToSave, config);
 
     setSaving(false);
 
     if (!result?.success) {
       setSaveError(result?.error || 'Failed to save source');
+      return false;
     }
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+    if (isEditMode && rename.nameChanged) {
+      await rename.start(() => persist(recordName));
+      return;
+    }
+    await persist(name);
   };
 
   const handleDelete = async () => {

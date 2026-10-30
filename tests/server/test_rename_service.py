@@ -25,6 +25,9 @@ class FakeManager:
     def renamed_from(self, name):
         return self._renames.get(name)
 
+    def delete_from_cache(self, name):
+        return self.cached_objects.pop(name, None) is not None
+
     def get_status(self, name):
         if name in self.cached_objects:
             if name in self._renames:
@@ -255,6 +258,29 @@ class TestApply:
 
         assert app.model_manager.renamed_from("purchases") == "orders"
 
+    def test_a_chained_rename_leaves_no_stale_draft_of_the_middle_name(self):
+        app = _app()
+
+        rename_object(app, type_key="models", old_name="orders", new_name="temp")
+        rename_object(app, type_key="models", old_name="temp", new_name="purchases")
+
+        assert "temp" not in app.model_manager.cached_objects
+        assert app.model_manager.get_status("temp") is None
+
+    def test_an_edit_saved_under_the_old_name_moves_with_the_rename(self):
+        """The editor saves a form's other fields under the current name, then
+        renames. The edit belongs to the new name only."""
+        app = _app()
+        app.model_manager.cached_objects["orders"] = _Obj(
+            {"name": "orders", "source": "${ref(db)}", "sql": "select 2"}
+        )
+
+        rename_object(app, type_key="models", old_name="orders", new_name="purchases")
+
+        assert "orders" not in app.model_manager.cached_objects
+        assert app.model_manager.get_status("orders") == ObjectStatus.PUBLISHED
+        assert app.model_manager.cached_objects["purchases"].model_dump()["sql"] == "select 2"
+
     def test_it_returns_what_it_changed(self):
         app = _app()
 
@@ -282,3 +308,40 @@ class TestApply:
         renamed = manager.cached_objects["lake"].model_dump(mode="json")
         assert renamed["password"] == "${env.LAKE_PASSWORD}"
         assert dotenv_values(tmp_path / ".env")["LAKE_PASSWORD"] == "hunter2"
+
+
+class TestNeverCommittedDraft:
+    """A draft has no YAML entry, so renaming it is a plain re-key (VIS-1538)."""
+
+    def _app(self):
+        return FakeApp(
+            source_manager=RecordingManager(
+                cached={"new-source": _Obj({"name": "new-source", "type": "duckdb"})}
+            ),
+            model_manager=RecordingManager(
+                cached={"m": _Obj({"name": "m", "source": "${ref(new-source)}"})}
+            ),
+        )
+
+    def test_the_draft_moves_to_the_new_name(self):
+        app = self._app()
+
+        rename_object(app, type_key="sources", old_name="new-source", new_name="warehouse")
+
+        assert set(app.source_manager.cached_objects) == {"warehouse"}
+        assert app.source_manager.cached_objects["warehouse"].model_dump()["type"] == "duckdb"
+
+    def test_no_rename_is_recorded(self):
+        app = self._app()
+
+        rename_object(app, type_key="sources", old_name="new-source", new_name="warehouse")
+
+        assert app.source_manager.renamed_from("warehouse") is None
+        assert app.source_manager.get_status("warehouse") == ObjectStatus.NEW
+
+    def test_references_are_still_rewritten(self):
+        app = self._app()
+
+        rename_object(app, type_key="sources", old_name="new-source", new_name="warehouse")
+
+        assert app.model_manager.cached_objects["m"].model_dump()["source"] == "${ref(warehouse)}"
