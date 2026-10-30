@@ -79,16 +79,75 @@ describe('secret fields follow what the server said', () => {
     expect(screen.getByRole('combobox')).toHaveValue('PGPW');
   });
 
-  test('"New secret…" lets a name be typed and still stores a reference', async () => {
-    const onChange = jest.fn();
-    renderForm({ secretsRequired: true, secretKeys: [], onChange });
+  test('there is no "New secret" option — it never created one', () => {
+    // It dropped you into a text box to type a NAME and wrote a reference to a
+    // secret that might not exist, which failed at run time with nothing on
+    // screen to explain it. Creating one happens on the secrets page.
+    renderForm({ secretsRequired: true, secretKeys: ['PGPW'] });
 
-    await userEvent.selectOptions(screen.getByRole('combobox'), '__new__');
-    await userEvent.type(screen.getByPlaceholderText('SECRET_NAME'), 'N');
+    expect(screen.queryByRole('option', { name: /new secret/i })).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('SECRET_NAME')).not.toBeInTheDocument();
+  });
 
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ password: toSecretRef('N') })
-    );
+  test('an account with no secrets says so instead of offering an empty list', () => {
+    renderForm({ secretsRequired: true, secretKeys: [] });
+
+    expect(screen.getByRole('option', { name: 'No secrets yet' })).toBeInTheDocument();
+  });
+
+  test('links to the secrets page in a new tab', () => {
+    renderForm({ secretsRequired: true, secretKeys: [], secretsUrl: '/acct/environment' });
+
+    const link = screen.getByRole('link', { name: /manage secrets/i });
+    expect(link).toHaveAttribute('href', '/acct/environment');
+    expect(link).toHaveAttribute('target', '_blank');
+    // Without this, the opened page can reach back through window.opener.
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
+
+  test('no link when the server did not say where the secrets page is', () => {
+    renderForm({ secretsRequired: true, secretKeys: [] });
+
+    expect(screen.queryByRole('link', { name: /manage secrets/i })).not.toBeInTheDocument();
+  });
+
+  describe('the list refreshes so a secret added elsewhere turns up', () => {
+    test('when the tab regains focus — the new-tab round trip', () => {
+      const onRefreshSecrets = jest.fn();
+      renderForm({ secretsRequired: true, secretKeys: [], onRefreshSecrets });
+
+      fireEvent.focus(window);
+
+      expect(onRefreshSecrets).toHaveBeenCalled();
+    });
+
+    test('when the tab becomes visible again', () => {
+      const onRefreshSecrets = jest.fn();
+      renderForm({ secretsRequired: true, secretKeys: [], onRefreshSecrets });
+
+      fireEvent(document, new Event('visibilitychange'));
+
+      expect(onRefreshSecrets).toHaveBeenCalled();
+    });
+
+    test('when the dropdown itself is opened', async () => {
+      const onRefreshSecrets = jest.fn();
+      renderForm({ secretsRequired: true, secretKeys: ['PGPW'], onRefreshSecrets });
+
+      await userEvent.click(screen.getByRole('combobox'));
+
+      expect(onRefreshSecrets).toHaveBeenCalled();
+    });
+
+    test('it stops listening once the form is gone', () => {
+      const onRefreshSecrets = jest.fn();
+      const { unmount } = renderForm({ secretsRequired: true, secretKeys: [], onRefreshSecrets });
+
+      unmount();
+      fireEvent.focus(window);
+
+      expect(onRefreshSecrets).not.toHaveBeenCalled();
+    });
   });
 });
 

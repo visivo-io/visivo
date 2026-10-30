@@ -99,6 +99,33 @@ export const isInsideDollarBrace = (text, position) => {
   return depth > 0;
 };
 
+/**
+ * The `${env.NAME}` half of the grammar — the environment-variable reference a
+ * config stores in place of a credential.
+ *
+ * Mirrors ENV_VAR_NAME_PATTERN / ENV_VAR_CONTEXT_PATTERN in
+ * `visivo/query/patterns.py`, the same way the ref patterns above do. The
+ * server is what resolves these at query time; the client only has to read and
+ * write them, and it should read and write the same shape.
+ */
+const ENV_VAR_NAME_REGEX = `[a-zA-Z_][a-zA-Z0-9_]*`;
+export const ENV_VAR_CONTEXT_REGEX = new RegExp(
+  `\\$\\{\\s*env\\.(${ENV_VAR_NAME_REGEX})\\s*\\}`
+);
+
+/** `NAME` -> the reference a config stores. */
+export const toEnvRef = name => `\${env.${name}}`;
+
+/**
+ * The name inside a reference, or `''` when the value is not exactly one.
+ *
+ * Anchored on purpose: a field that holds a credential must be the reference
+ * and nothing else. `prefix${env.X}` is a literal with a reference in it, which
+ * is not the same thing and must not read as a name.
+ */
+const ENV_VAR_ONLY_REGEX = new RegExp(`^${ENV_VAR_CONTEXT_REGEX.source}$`);
+export const envRefName = value => (value || '').match(ENV_VAR_ONLY_REGEX)?.[1] ?? '';
+
 // formatRef and formatRefExpression have moved to src/utils/refString.js
 // Re-exported here for backward compatibility with existing imports
 export { formatRef, formatRefExpression } from './refString';
