@@ -108,10 +108,15 @@ def _with_inline_children(app, type_key, objects):
     """Project-level objects plus those defined inside models, each inline one
     tagged with its ``model``. A draft model replaces its published children."""
     drafted = _manager(app, "models").cached_objects
+    # Only the PUBLISHED children are replaced. One written with a `model` key
+    # lives in its own manager with `_parent_name` set — the draft model's
+    # `.metrics`/`.dimensions` stays empty — so dropping it with them would
+    # make a field that `get_*` returns vanish from `list_*`.
+    drafted_children = _manager(app, type_key).cached_objects
     listed = []
     for obj in objects:
         parent = getattr(obj, "_parent_name", None)
-        if parent in drafted:
+        if parent in drafted and drafted_children.get(obj.name) is not obj:
             continue
         listed.append(_dump(obj) | ({"model": parent} if parent else {}))
     for model_name, model in drafted.items():
