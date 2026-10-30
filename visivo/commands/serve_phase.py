@@ -3,13 +3,36 @@ from visivo.commands.compile_phase import compile_phase
 from visivo.logger.logger import Logger
 
 from visivo.agent.actions import log as action_log
-from visivo.server.hot_reload_server import HotReloadServer
+from visivo.server.hot_reload_server import HotReloadServer, project_file_matcher
 from visivo.server.flask_app import FlaskApp
 from visivo.commands.run_phase import run_phase
 from visivo.server.jobs.save_run_executor import record_failed_run
 import json
 import os
 import traceback
+
+
+def _unbuilt_names(runner):
+    """Names of the objects a run failed to build, including ones skipped for a failed dependency."""
+    names = (getattr(result.item, "name", None) for result in runner.failed_job_results)
+    return {name for name in names if name}
+
+
+def _retry_filter(project, unbuilt):
+    """A selector that rebuilds each unbuilt object still in ``project``, with its dependencies.
+
+    The dependencies are included because an upstream job can succeed with a stale
+    result (a model schema of ``*``) that made the downstream job fail.
+    """
+    dag = project.dag()
+    selectors = []
+    for name in sorted(unbuilt):
+        try:
+            dag.get_descendant_by_name(name)
+        except ValueError:
+            continue
+        selectors.append(f"+{name}+")
+    return ",".join(selectors)
 
 
 def serve_phase(
@@ -36,6 +59,7 @@ def serve_phase(
         port=port,
     )
     server = None  # Will be set later
+    unbuilt = set()
 
     def on_project_change(one_shot=False):
         def emit_project_changed(dropped_drafts):
@@ -45,6 +69,7 @@ def serve_phase(
                     {"drafts_dropped": bool(dropped_drafts), "dropped_drafts": dropped_drafts},
                 )
 
+        compiled = False
         try:
             Logger.instance().info(
                 "Server has detected changes to the project. Re-running project..."
@@ -68,6 +93,13 @@ def serve_phase(
             changed_dag_filter = project.dag().get_diff_dag_filter(
                 existing_project=app.project, existing_dag_filter=dag_filter
             )
+            compiled = True
+            app.project_error = None
+            retry_filter = _retry_filter(project, unbuilt)
+            if retry_filter and (changed_dag_filter or not new):
+                retried = retry_filter.replace("+", "").replace(",", ", ")
+                Logger.instance().info(f"Retrying what did not build in the last run: {retried}")
+                changed_dag_filter = ",".join(f for f in (changed_dag_filter, retry_filter) if f)
             if not changed_dag_filter and not new:
                 # No runnable jobs changed, but the compiled project may still
                 # differ (e.g. a layout-only dashboard edit published to YAML).
@@ -93,6 +125,8 @@ def serve_phase(
                 no_deprecation_warnings=no_deprecation_warnings,
             )
             app.project = runner.project
+            unbuilt.clear()
+            unbuilt.update(_unbuilt_names(runner))
             # The watcher path always rebuilds, whatever the run-trigger
             # preference says — it's the core `visivo serve` contract for editing
             # YAML in a text editor, and it swaps app.project besides. The
@@ -115,6 +149,8 @@ def serve_phase(
             if os.environ.get("STACKTRACE"):
                 error_message = f"{str(e)}\n{traceback.format_exc()}"
             Logger.instance().error(error_message)
+            if not compiled:
+                app.project_error = str(e)
             with open(f"{output_dir}/error.json", "w") as error_file:
                 error_file.write(json.dumps({"message": error_message}))
 
@@ -137,6 +173,7 @@ def serve_phase(
                 server_url=server_url,
                 no_deprecation_warnings=no_deprecation_warnings,
             )
+            unbuilt.update(_unbuilt_names(runner))
             if runner.failed_job_results:
                 record_failed_run(app, runner)
             if one_shot:
@@ -174,6 +211,7 @@ def serve_phase(
         on_project_change=on_project_change,
         watch_path=working_dir,
         ignore_patterns=ignore_patterns,
+        is_project_file=project_file_matcher(working_dir, output_dir),
     )
 
     # Pass the server reference to the Flask app so it can control the file watcher

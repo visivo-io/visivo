@@ -540,3 +540,70 @@ class TestEveryFailureIsARefusal:
         with pytest.raises(ToolError) as raised:
             call(integration_app, "get_theme", {})
         assert raised.value is refusal
+
+
+class TestValidationNotice:
+    """While serve is on the last valid project because the file on disk fails
+    validation, every project tool says so (VIS-1607)."""
+
+    @pytest.fixture(autouse=True)
+    def _source(self, tmp_path):
+        self.SOURCE = {"name": "notice-db", "type": "sqlite", "database": str(tmp_path / "x.db")}
+
+    def test_a_healthy_project_changes_no_result_shape(self, integration_app):
+        assert isinstance(call(integration_app, "list_sources"), list)
+        written = call(integration_app, "write_source", {"config": self.SOURCE})
+        assert "notice" not in written
+
+    def test_list_results_say_they_are_the_last_valid_project(self, integration_app, monkeypatch):
+        monkeypatch.setattr(integration_app, "project_error", "boom\nsecond", raising=False)
+
+        result = call(integration_app, "list_sources")
+
+        assert result["notice"].startswith("The project file currently fails validation: boom")
+        assert "last valid project" in result["notice"]
+        assert isinstance(result["results"], list)
+
+    def test_write_results_carry_the_notice_and_stay_a_draft(self, integration_app, monkeypatch):
+        monkeypatch.setattr(integration_app, "project_error", "bad ref", raising=False)
+
+        result = call(integration_app, "write_source", {"config": self.SOURCE})
+
+        assert result["status"] == "draft"
+        assert result["notice"] == "The project file currently fails validation: bad ref"
+
+    def test_get_and_validate_carry_the_notice(self, integration_app, monkeypatch):
+        call(integration_app, "write_source", {"config": self.SOURCE})
+        monkeypatch.setattr(integration_app, "project_error", "bad ref", raising=False)
+
+        assert "notice" in call(integration_app, "get_source", {"name": "notice-db"})
+        assert "notice" in call(integration_app, "validate_source", {"config": self.SOURCE})
+
+    def test_hand_written_tools_are_left_alone(self, integration_app, monkeypatch):
+        monkeypatch.setattr(integration_app, "project_error", "bad ref", raising=False)
+
+        assert "notice" not in call(integration_app, "list_runs")
+
+    def test_a_non_dict_result_is_not_wrapped(self, monkeypatch):
+        from visivo.agent import tools as tools_module
+
+        app = type("App", (), {"project_error": "bad"})()
+
+        assert tools_module._with_validation_notice(app, "get_source", ["x"]) == ["x"]
+
+    @pytest.mark.parametrize(
+        "message,expected",
+        [
+            ("", "unknown error"),
+            ("plain failure\nmore", "plain failure"),
+            (
+                "2 validation errors for Project\nmodels.0.name\n  bad",
+                "2 validation errors for Project: models.0.name",
+            ),
+            ("1 validation error for Project", "1 validation error for Project"),
+        ],
+    )
+    def test_first_error(self, message, expected):
+        from visivo.agent.tools import _first_error
+
+        assert _first_error(message) == expected

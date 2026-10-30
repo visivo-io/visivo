@@ -181,10 +181,67 @@ class TestOnProjectChangeErrorHandling:
         mocker.patch("visivo.commands.serve_phase.compile_phase", return_value=compiled)
         mocker.patch(
             "visivo.commands.serve_phase.run_phase",
-            return_value=mocker.Mock(project=compiled),
+            return_value=mocker.Mock(project=compiled, failed_job_results=[]),
         )
 
         on_project_change(one_shot=True)
 
         with open(f"{output_dir}/error.json") as fp:
             assert json.load(fp) == {}
+
+
+class TestWatcherScope:
+    def test_watcher_only_reloads_for_files_the_project_includes(
+        self, project_with_data, output_dir, server_url, tmp_path
+    ):
+        (tmp_path / "project.visivo.yml").write_text("name: p\nincludes:\n  - path: models.yml\n")
+        (tmp_path / "models.yml").write_text("models: []\n")
+        server, _, _ = _serve(project_with_data, output_dir, server_url, working_dir=str(tmp_path))
+
+        assert server.is_project_file(str(tmp_path / "project.visivo.yml"))
+        assert server.is_project_file(str(tmp_path / "models.yml"))
+        assert not server.is_project_file(str(tmp_path / "tmp.yml"))
+
+
+def _capture_flask_app(mocker):
+    from visivo.server.flask_app import FlaskApp
+
+    created = []
+
+    def build(*args, **kwargs):
+        created.append(FlaskApp(*args, **kwargs))
+        return created[0]
+
+    mocker.patch("visivo.commands.serve_phase.FlaskApp", side_effect=build)
+    return created
+
+
+class TestProjectErrorState:
+    def test_compile_failure_is_kept_on_the_app_and_success_clears_it(
+        self, project_with_data, output_dir, server_url, mocker
+    ):
+        flask_app = _capture_flask_app(mocker)
+        _, on_project_change, _ = _serve(project_with_data, output_dir, server_url)
+        compile_mock = mocker.patch(
+            "visivo.commands.serve_phase.compile_phase",
+            side_effect=RuntimeError("bad reference"),
+        )
+        on_project_change()
+        assert flask_app[0].project_error == "bad reference"
+
+        compile_mock.side_effect = None
+        compile_mock.return_value = ProjectFactory()
+        on_project_change()
+        assert flask_app[0].project_error is None
+
+    def test_a_failure_after_compile_is_not_a_validation_error(
+        self, project_with_data, output_dir, server_url, mocker
+    ):
+        flask_app = _capture_flask_app(mocker)
+        _, on_project_change, _ = _serve(project_with_data, output_dir, server_url, new=True)
+        mocker.patch("visivo.commands.serve_phase.compile_phase", return_value=ProjectFactory())
+        mocker.patch("visivo.commands.serve_phase.run_phase", side_effect=RuntimeError("run broke"))
+
+        on_project_change()
+
+        assert flask_app[0].project_error is None
