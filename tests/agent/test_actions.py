@@ -467,6 +467,35 @@ class TestModelScopedFields:
         call(integration_app, "write_metric", {"config": unscoped})
         assert "model" not in call(integration_app, "get_metric", {"name": "g"})
 
+    def test_an_inline_field_on_a_draft_model_is_listed_once(self, integration_app):
+        """The two ways a field becomes model-scoped are disjoint, and the
+        listing must not conflate them.
+
+        `write_model` with inline children puts them ON the model and leaves
+        the child manager empty; `write_dimension` with a `model` key puts the
+        child in its OWN manager with `_parent_name` and leaves the model's
+        list empty. The skip in `_with_inline_children` supersedes only
+        PUBLISHED children — widening it drops the second kind (see
+        test_list_and_get_carry_the_model_back), dropping it duplicates this
+        one.
+        """
+        call(
+            integration_app,
+            "write_model",
+            {
+                "config": {
+                    "name": "trips",
+                    "sql": "select 1 as fare",
+                    "dimensions": [{"name": "d1", "expression": "fare"}],
+                }
+            },
+        )
+
+        listed = call(integration_app, "list_dimensions", {})
+
+        assert [d["name"] for d in listed if d["name"] == "d1"] == ["d1"]
+        assert next(d for d in listed if d["name"] == "d1")["model"] == "trips"
+
     @pytest.mark.parametrize("segment", ["metrics", "dimensions"])
     def test_the_agent_saves_what_the_editor_saves(self, integration_app, segment):
         self._model(integration_app)
