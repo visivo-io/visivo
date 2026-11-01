@@ -1,7 +1,8 @@
 on:
   github:
     pull_request:
-      actions: [opened, reopened, synchronize]
+      if: ${{ event.github.pull_request.pull_request.draft == false }}
+      actions: [opened, reopened, synchronize, ready_for_review]
       init:
         commit-sha: ${{ event.git.sha }}
         pr-num: ${{ event.github.pull_request.pull_request.number }}

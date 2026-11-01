@@ -7,6 +7,7 @@ on:
       - reopened
       - closed
       - synchronize
+      - ready_for_review
 env:
   yml_location: test-projects/integration
   visivo_version: ${{ github.head_ref }}
@@ -14,6 +15,7 @@ env:
 
 jobs:
   deploy-dashboard:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
 
     steps:
