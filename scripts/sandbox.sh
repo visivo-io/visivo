@@ -104,7 +104,7 @@ start_frontend() {
     echo "Starting frontend on :$FRONTEND_PORT..."
     (
         cd "$VIEWER_DIR"
-        source ~/.nvm/nvm.sh
+        source ~/.nvm/nvm.sh --no-use
         nvm use
         VITE_BACKEND_PORT=$BACKEND_PORT VITE_PORT=$FRONTEND_PORT yarn start:local > "$PID_DIR/frontend.log" 2>&1
     ) &
