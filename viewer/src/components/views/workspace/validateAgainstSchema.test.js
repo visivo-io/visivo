@@ -61,6 +61,27 @@ describe('validateRecordConfig (async, authoritative)', () => {
     expect(extra.message).toMatch(/bogus_key/);
   });
 
+  test('an insight interaction with an unknown key is rejected', async () => {
+    const insight = interaction => ({
+      name: 'revenue',
+      props: { type: 'bar', x: '?{ ${ref(orders).month} }' },
+      interactions: [interaction],
+    });
+
+    const known = await validateRecordConfig(
+      'insight',
+      insight({ filter: '?{ ${ref(orders).region} }' })
+    );
+    expect(known.valid).toBe(true);
+
+    const unknown = await validateRecordConfig(
+      'insight',
+      insight({ click: '?{ ${ref(orders).region} }' })
+    );
+    expect(unknown.valid).toBe(false);
+    expect(unknown.errors.map(e => e.path)).toEqual(['interactions']);
+  });
+
   test('a model-scoped dimension carries its parentModel without failing the schema', async () => {
     const result = await validateRecordConfig('dimension', {
       name: 'x_rounded',
