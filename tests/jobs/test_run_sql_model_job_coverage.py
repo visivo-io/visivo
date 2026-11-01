@@ -187,3 +187,40 @@ class TestJobTableReference:
 
         created = job(dag, output_dir, model)
         assert created.action is schema_only_action
+
+
+class TestAModelWithNoSourceFailsWithAClearMessage:
+    """With no source to run on, the run named the missing source instead of
+    leaking ``'NoneType' object has no attribute 'get_sqlglot_dialect'``."""
+
+    def _dag(self, tmp_path):
+        source = SqliteSource(name="db", type="sqlite", database=str(tmp_path / "db.sqlite"))
+        model = SqlModel(name="kept", sql="select 1 as x", source="ref(db)")
+        return _project(model, source).dag()
+
+    def test_the_data_run(self, tmp_path):
+        orphan = SqlModel(name="orphan", sql="select 1 as x")
+
+        result = model_query_and_schema_action(orphan, self._dag(tmp_path), str(tmp_path))
+
+        assert not result.success
+        assert "Model 'orphan' has no source and the project has no defaults.source_name" in (
+            result.message
+        )
+        assert "NoneType" not in result.message
+
+    def test_the_schema_run(self, tmp_path):
+        orphan = SqlModel(name="orphan", sql="select 1 as x")
+
+        result = schema_only_action(orphan, self._dag(tmp_path), str(tmp_path))
+
+        assert not result.success
+        assert "has no source and the project has no defaults.source_name" in result.message
+
+    def test_a_source_that_does_not_resolve(self, tmp_path):
+        orphan = SqlModel(name="orphan", sql="select 1 as x", source="ref(gone)")
+
+        result = schema_only_action(orphan, self._dag(tmp_path), str(tmp_path))
+
+        assert not result.success
+        assert "Model 'orphan' names source ref(gone), which does not resolve." in result.message

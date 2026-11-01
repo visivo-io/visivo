@@ -17,7 +17,7 @@ import Segmented from './Segmented';
 import LineageCanvas from '../lineage/LineageCanvas';
 import { getCanvasDescriptor } from './objectCanvasRegistry';
 import { useCanvasRecord } from './useCanvasRecord';
-import { COLLECTION_KEY } from './collectionKeys';
+import { COLLECTION_KEY, SAVE_ACTION } from './collectionKeys';
 import CenteredFrameState from '../common/CenteredFrameState';
 
 /**
@@ -27,9 +27,10 @@ import CenteredFrameState from '../common/CenteredFrameState';
  *   - the SubBar (tinted type icon + `name · singularLabel`) and the N-way lens
  *     picker driven by the type's descriptor (`descriptor.lenses` + universal
  *     `lineage`);
- *   - a lens-aware affordance — a read-only lock pill on read-only lenses,
- *     replaced by a dirty indicator on editable lenses (the seam VIS-1008/1009/
- *     1010 + the markdown editor plug into via ObjectCanvasDirtyContext);
+ *   - a lens-aware affordance — a dirty indicator on editable lenses (the seam
+ *     VIS-1008/1009/1010 + the markdown editor plug into via
+ *     ObjectCanvasDirtyContext), and a read-only lock pill on a read-only lens
+ *     only when the object cannot be edited in the right rail either;
  *   - the four canonical states — `unavailable` (dist/cloud for a `serve` type),
  *     `not-found`, `empty`, `loading` — with the body mounted ONLY when ready,
  *     inside <Suspense> so the lazy (code-split) body shows the frame's loading
@@ -175,9 +176,13 @@ const ObjectCanvasFrame = ({ activeObject, projectId }) => {
     return lenses.map(l => ({ value: l.key, label: l.label, icon: LENS_ICON[l.key] }));
   }, [hasCanvasLens, lenses]);
 
-  // The read-only / dirty affordance describes the OBJECT's canvas lens; the
-  // universal Lineage lens is its own read-only DAG and carries no pill.
-  const showAffordance = lens !== 'lineage';
+  // The universal Lineage lens is its own read-only DAG and carries no pill. On
+  // a read-only canvas lens the pill would read as "this object is read-only"
+  // next to a working right-rail Edit tab, so it shows only where nothing can
+  // save the object (a dist build).
+  const railEditable = Boolean(SAVE_ACTION[type]) && safeAvailable(`${type}Detail`);
+  const showAffordance =
+    lens !== 'lineage' && (activeLensMeta.kind === 'editable' || !railEditable);
   const lensPicker = (
     <div className="flex items-center gap-2">
       {showAffordance &&

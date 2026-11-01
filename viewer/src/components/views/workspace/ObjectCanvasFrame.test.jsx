@@ -59,7 +59,15 @@ describe('ObjectCanvasFrame', () => {
     await screen.findByTestId('chart-preview-mock');
   });
 
-  test('a read-only lens shows the read-only pill (not a dirty indicator)', async () => {
+  test('a read-only lens shows no pill when the right rail can edit the object', async () => {
+    render(frameFor('chart'));
+    expect(screen.queryByTestId('canvas-readonly-pill')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('canvas-dirty-indicator')).not.toBeInTheDocument();
+    await screen.findByTestId('chart-preview-mock');
+  });
+
+  test('a read-only lens shows the read-only pill where nothing can save the object', async () => {
+    isAvailable.mockImplementation(key => key !== 'chartDetail');
     render(frameFor('chart'));
     expect(screen.getByTestId('canvas-readonly-pill')).toBeInTheDocument();
     expect(screen.queryByTestId('canvas-dirty-indicator')).not.toBeInTheDocument();
@@ -156,5 +164,26 @@ describe('ObjectCanvasFrame', () => {
     expect(screen.getByTestId('workspace-middle-gadget-lineage')).toBeInTheDocument();
     expect(screen.getByTestId('lineage-canvas-mock')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-lens-picker-option-preview')).toBeDisabled();
+  });
+
+  test('with no URL config the frame treats the object as editable and shows no pill', async () => {
+    isAvailable.mockImplementation(() => {
+      throw new Error('URL config not set');
+    });
+    render(frameFor('chart'));
+    expect(screen.queryByTestId('canvas-readonly-pill')).not.toBeInTheDocument();
+    await screen.findByTestId('chart-preview-mock');
+  });
+
+  test('selecting another object re-defaults the lens', async () => {
+    const { rerender } = render(frameFor('chart', 'revenue'));
+    await screen.findByTestId('chart-preview-mock');
+    fireEvent.click(screen.getByTestId('workspace-lens-picker-option-lineage'));
+    expect(screen.getByTestId('workspace-middle-chart-lineage')).toBeInTheDocument();
+
+    rerender(frameFor('chart', 'costs'));
+
+    expect(await screen.findByTestId('chart-preview-mock')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-middle-chart-lineage')).not.toBeInTheDocument();
   });
 });

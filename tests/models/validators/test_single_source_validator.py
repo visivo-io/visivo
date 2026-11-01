@@ -70,7 +70,7 @@ class TestSingleSourceValidator:
                 dashboards=[],
             )
 
-        assert "does not specify a source" in str(exc_info.value)
+        assert "has no source and the project has no defaults.source_name" in str(exc_info.value)
 
     def test_metric_ties_back_through_model_on_seeded_source(self):
         """A model reading seeded tables still traces to the source that holds them.

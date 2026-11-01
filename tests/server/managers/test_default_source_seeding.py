@@ -207,7 +207,7 @@ class TestTheErrorItActuallyFixes:
 
     def test_without_the_seed_it_is_the_reported_error(self, output_dir):
         """Pins the symptom: the same drafts, with no default adopted, produce
-        the sentence the user saw."""
+        the missing-source error."""
         app = self._app(output_dir)
         client = app.app.test_client()
 
@@ -220,4 +220,4 @@ class TestTheErrorItActuallyFixes:
 
         error = self._commit_error(app)
         assert error is not None
-        assert "does not specify a source and project does not specify default source" in error
+        assert "has no source and the project has no defaults.source_name" in error
