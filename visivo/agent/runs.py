@@ -50,6 +50,19 @@ def wait_for_runs(app, timeout=RUN_SETTLE_TIMEOUT_SECONDS):
 
 
 def verdict(app, timeout=RUN_SETTLE_TIMEOUT_SECONDS):
+    """Whether the project builds: the newest run's verdict, and the project file.
+
+    A hand edit that fails validation leaves serve on the last valid project, and
+    a run on that project can still succeed, so the run alone does not answer.
+    """
+    result = _run_verdict(app, timeout)
+    project_error = getattr(app, "project_error", None)
+    if project_error:
+        result.update(ok=False, project_error=project_error)
+    return result
+
+
+def _run_verdict(app, timeout):
     """Whether the newest run settled and succeeded, and why not if it did not."""
     manager = getattr(app, "run_manager", None)
     if manager is None:

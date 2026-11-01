@@ -264,3 +264,41 @@ class TestWaitingForABuild:
         integration_app.run_manager = None
 
         assert run_helpers.wait_for_runs(integration_app) is True
+
+
+class TestProjectFileError:
+    """While the file on disk fails validation, serve stays on the last valid
+    project, and a run on that project can succeed (VIS-1607)."""
+
+    def test_a_succeeded_run_does_not_hide_it(self, integration_app, runs, monkeypatch):
+        run = runs.create(dag_filter=None)
+        runs.set_state(run.id, RunState.SUCCEEDED)
+        error = "2 validation errors for Project\nmodels.0.name\n  bad"
+        monkeypatch.setattr(integration_app, "project_error", error, raising=False)
+
+        result = call(integration_app, "check_runs", {})
+
+        assert result["ok"] is False
+        assert result["state"] == "succeeded"
+        assert result["project_error"] == error
+
+    def test_it_is_reported_with_no_runs(self, integration_app, runs, monkeypatch):
+        monkeypatch.setattr(integration_app, "project_error", "bad ref", raising=False)
+
+        result = call(integration_app, "check_runs", {})
+
+        assert result["ok"] is False and result["project_error"] == "bad ref"
+
+    def test_a_valid_file_adds_nothing(self, integration_app, runs, monkeypatch):
+        monkeypatch.setattr(integration_app, "project_error", None, raising=False)
+        run = runs.create(dag_filter=None)
+        runs.set_state(run.id, RunState.SUCCEEDED)
+
+        result = call(integration_app, "check_runs", {})
+
+        assert result["ok"] is True and "project_error" not in result
+
+    def test_other_tools_keep_their_shape(self, integration_app, runs, monkeypatch):
+        monkeypatch.setattr(integration_app, "project_error", "bad ref", raising=False)
+
+        assert isinstance(call(integration_app, "list_sources"), list)
