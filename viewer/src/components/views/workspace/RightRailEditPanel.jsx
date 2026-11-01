@@ -6,15 +6,8 @@ import { isReadOnly } from '../../../stores/branchingStore';
 import useWorkspaceScope from './useWorkspaceScope';
 import { FormFooter, FormAlert } from '../../styled/FormComponents';
 import SelectionChip from './SelectionChip';
-import EditPanelBreadcrumb from './EditPanelBreadcrumb';
-import {
-  applyReorder,
-  getNodeAtKey,
-  tokenizeOutlineKey,
-  updateSiblingsAtKey,
-} from './breadcrumbNav';
+import { tokenizeOutlineKey } from './breadcrumbNav';
 import RowEditForm from '../common/RowEditForm';
-import ItemEditForm, { getItemLeafRef } from '../common/ItemEditForm';
 import MarkdownEditForm from '../common/MarkdownEditForm';
 import InputEditForm from '../common/InputEditForm';
 import ChartEditForm from '../common/ChartEditForm';
@@ -46,7 +39,6 @@ import { templateItemNames } from '../../project/template/templateHtml';
  *     form (rows list).
  *   - Scoped dashboard + Outline `row.N` key       → <RowEditForm>.
  *   - Scoped dashboard + Outline `row.N.item.M`    → the item's leaf form
- *     (Chart/Table/Markdown/Input) when it references one, else <ItemEditForm>.
  *   - Level (Outline / Project-Editor `level` selection) → <LevelEditForm>
  *     (VIS-807 / M-2b — title + description, persisted via `updateLevel`).
  *   - Project-chrome / defaults selection            → <DefaultsEditForm>
@@ -169,13 +161,6 @@ const EmptyState = () => (
 const RightRailEditPanel = () => {
   const activeObject = useStore(s => s.workspaceActiveObject);
   const outlineKey = useStore(s => s.workspaceOutlineSelectedKey);
-  const setWorkspaceSelection = useStore(s => s.setWorkspaceSelection);
-  // Outline-key writes routed through the unified action (VIS-994); the panel
-  // is already the Edit surface so no revealEdit is needed.
-  const setOutlineKey = useCallback(
-    key => setWorkspaceSelection(undefined, key),
-    [setWorkspaceSelection]
-  );
   const dashboards = useStore(s => s.dashboards);
   const updateDashboardConfigOptimistic = useStore(s => s.updateDashboardConfigOptimistic);
   const captureDashboardBaseline = useStore(s => s.captureDashboardBaseline);
@@ -363,6 +348,17 @@ const RightRailEditPanel = () => {
     </>
   ) : null;
 
+  // Selecting a row or item used to swap the panel for a narrower view. Now
+  // the panel is whole and the selection scrolls to its section, the way the
+  // Outline does. `nearest` so a selection already on screen does not jump.
+  useEffect(() => {
+    if (!outlineKey || typeof document === 'undefined') return;
+    const section = document.querySelector(
+      `[data-testid="workspace-right-rail-edit"] [data-outline-key="${outlineKey}"]`
+    );
+    section?.scrollIntoView?.({ block: 'nearest' });
+  }, [outlineKey]);
+
   const handleSelectRef = useCallback(
     ref => {
       if (ref && ref.type && ref.name && openWorkspaceTab) {
@@ -370,50 +366,6 @@ const RightRailEditPanel = () => {
       }
     },
     [openWorkspaceTab]
-  );
-
-  // ⌘↑/⌘↓ reorder from the breadcrumb: swap the node within its siblings in the
-  // live config (optimistic + debounced save) and re-key the selection so the
-  // breadcrumb + Edit form follow the node to its new index.
-  const handleBreadcrumbReorder = useCallback(
-    op => {
-      // Read-only: persistConfig no-ops the move, so moving the selection key
-      // would desync the breadcrumb/Edit form from the (unchanged) node. Bail
-      // before touching selection.
-      if (!op || !dashboardConfig || readOnly) return;
-      const nextConfig = applyReorder(dashboardConfig, op);
-      persistConfig(nextConfig, { kind: 'reorder', axis: op.axis });
-      const nextKey = op.parentKey === 'dashboard'
-        ? `${op.axis}.${op.toIndex}`
-        : `${op.parentKey}.${op.axis}.${op.toIndex}`;
-      if (setOutlineKey) setOutlineKey(nextKey);
-    },
-    [dashboardConfig, persistConfig, setOutlineKey, readOnly]
-  );
-
-  // Enter on the breadcrumb focuses the Edit form's first focusable field.
-  const handleFocusForm = useCallback(() => {
-    if (typeof document === 'undefined') return;
-    const panel = document.querySelector('[data-testid="workspace-right-rail-edit"]');
-    if (!panel) return;
-    const field = panel.querySelector(
-      'input:not([type="hidden"]), textarea, select, [contenteditable="true"]'
-    );
-    if (field && typeof field.focus === 'function') field.focus();
-  }, []);
-
-  // The breadcrumb band — rendered at the top of every dashboard-scoped Edit
-  // view (dashboard / row / item). Reflects the Outline selection's ancestry
-  // and is the keyboard-nav surface (Q7 = C).
-  const breadcrumb = (
-    <EditPanelBreadcrumb
-      outlineKey={outlineKey}
-      dashboardName={dashboardName}
-      rows={rows}
-      onSelectKey={setOutlineKey}
-      onReorder={handleBreadcrumbReorder}
-      onFocusForm={handleFocusForm}
-    />
   );
 
   // ── Nothing selected ──────────────────────────────────────────────────────
@@ -472,7 +424,13 @@ const RightRailEditPanel = () => {
     const sel = parseOutlineKey(outlineKey);
 
     // dashboard-chrome → bundled rows editor (auto-saved, no Save button).
-    if (sel.kind === 'dashboard') {
+    // One panel for the whole dashboard, whatever is selected inside it.
+    // There used to be three renderings — dashboard, row, item — and moving
+    // between them swapped the panel out from under you. The Outline already
+    // showed the shape in one list; the Edit panel now matches it, and the
+    // selection scrolls to its section and highlights it instead of replacing
+    // the view.
+    if (sel.kind === 'dashboard' || sel.kind === 'row' || sel.kind === 'item') {
       // VIS-993: a new row is BORN with one empty slot (itemMutations) so it
       // stays a visible drop target (VIS-989) — no sanitize re-seeding.
       const addRow = () => writeRows([...rows, createRow()], { kind: 'add_row' });
@@ -483,8 +441,7 @@ const RightRailEditPanel = () => {
 
       return (
         <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
-          {breadcrumb}
-          <SelectionChip
+              <SelectionChip
             type="dashboard"
             name={dashboardName}
             subtitle={`${rows.length} row${rows.length === 1 ? '' : 's'}`}
@@ -510,6 +467,8 @@ const RightRailEditPanel = () => {
                   key={rowIndex}
                   row={row}
                   rowId={rowIndex}
+                  outlineKey={`row.${rowIndex}`}
+                  selectedKey={outlineKey}
                   rowIndex={rowIndex}
                   onRemoveRow={() => removeRow(rowIndex)}
                   onHeightChange={height => updateRow(rowIndex, { ...row, height })}
@@ -544,139 +503,6 @@ const RightRailEditPanel = () => {
       );
     }
 
-    // row.N (any depth — nested container rows included) → single RowEditForm
-    // (auto-saved). The node resolves via the shared breadcrumbNav walk and
-    // writes go through `updateSiblingsAtKey`, so a nested row edits ITSELF —
-    // not the whole dashboard.
-    if (sel.kind === 'row') {
-      const row = getNodeAtKey(rows, outlineKey)?.node;
-      if (!row) {
-        return (
-          <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
-            <SelectionChip type="dashboard" name={dashboardName} />
-            <Placeholder
-              testId="right-rail-edit-missing"
-              title="Row not found"
-              body="The selected row no longer exists."
-            />
-          </div>
-        );
-      }
-      const items = Array.isArray(row.items) ? row.items : [];
-      const updateRow = nextRow =>
-        writeRows(
-          updateSiblingsAtKey(rows, outlineKey, sibs =>
-            sibs.map((r, i) => (i === sel.index ? nextRow : r))
-          ),
-          { kind: 'update_row' }
-        );
-
-      return (
-        <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
-          {breadcrumb}
-          <SelectionChip
-            type="dashboard"
-            name={`Row ${sel.rowIndex + 1}`}
-            subtitle={`${row.height || 'medium'} · ${items.length} item${items.length === 1 ? '' : 's'}`}
-            saveStatus={effectiveSaveStatus}
-          />
-          {readOnlyNotice}
-          {validationBanner}
-          <div data-testid="right-rail-edit-row" className="flex-1 overflow-y-auto p-3">
-            <RowEditForm
-              row={row}
-              rowId={sel.rowIndex}
-              rowIndex={sel.rowIndex}
-              onRemoveRow={() =>
-                writeRows(
-                  updateSiblingsAtKey(rows, outlineKey, sibs =>
-                    sibs.filter((_, i) => i !== sel.index)
-                  ),
-                  { kind: 'remove_row' }
-                )
-              }
-              onHeightChange={height => updateRow({ ...row, height })}
-              onAddItem={() => updateRow(appendEmptyItem(row))}
-              onRemoveItem={itemIndex =>
-                updateRow({ ...row, items: items.filter((_, i) => i !== itemIndex) })
-              }
-              onItemChange={(itemIndex, nextItem) =>
-                updateRow({
-                  ...row,
-                  items: items.map((it, i) => (i === itemIndex ? nextItem : it)),
-                })
-              }
-              onSelectRef={handleSelectRef}
-            />
-          </div>
-          {dashboardFooter}
-        </div>
-      );
-    }
-
-    // row.N.item.M (any depth — items in nested container rows included) →
-    // leaf form when it references an object, else ItemEditForm.
-    if (sel.kind === 'item') {
-      const item = getNodeAtKey(rows, outlineKey)?.node;
-      if (!item) {
-        return (
-          <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
-            <SelectionChip type="dashboard" name={dashboardName} />
-            <Placeholder
-              testId="right-rail-edit-missing"
-              title="Item not found"
-              body="The selected item no longer exists."
-            />
-          </div>
-        );
-      }
-      const leafRef = getItemLeafRef(item);
-      // Selecting an item edits the ITEM — its width, and which object fills it.
-      // It used to drill straight into the referenced object's own edit form,
-      // which put a chart form and a dashboard form in the same rail with no
-      // way to tell which one a save applied to. The object is reachable from
-      // the pill, which opens it as its own workspace tab.
-      const updateItem = nextItem =>
-        writeRows(
-          updateSiblingsAtKey(rows, outlineKey, sibs =>
-            sibs.map((it, i) => (i === sel.index ? nextItem : it))
-          ),
-          { kind: 'update_item' }
-        );
-      const removeItem = () =>
-        writeRows(
-          updateSiblingsAtKey(rows, outlineKey, sibs =>
-            sibs.filter((_, i) => i !== sel.index)
-          ),
-          { kind: 'remove_item' }
-        );
-
-      return (
-        <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
-          {breadcrumb}
-          <SelectionChip
-            type="dashboard"
-            name={`Item ${sel.itemIndex + 1}`}
-            subtitle={itemSubtitle(sel.rowIndex, leafRef)}
-            saveStatus={effectiveSaveStatus}
-          />
-          {readOnlyNotice}
-          {validationBanner}
-          <div data-testid="right-rail-edit-item" className="flex-1 overflow-y-auto p-3">
-            <ItemEditForm
-              item={item}
-              itemId={`row-${sel.rowIndex}-item-${sel.itemIndex}`}
-              itemIndex={sel.itemIndex}
-              onChange={updateItem}
-              onRemove={removeItem}
-              onSelectRef={handleSelectRef}
-              RowComponent={RowEditForm}
-            />
-          </div>
-          {dashboardFooter}
-        </div>
-      );
-    }
   }
 
   // ── Library-row object → that type's existing edit form ────────────────────
@@ -699,15 +525,6 @@ const RightRailEditPanel = () => {
       />
     </div>
   );
-};
-
-/** What an item slot holds, for the selection chip. */
-const itemSubtitle = (rowIndex, leafRef) => {
-  const row = `Row ${rowIndex + 1}`;
-  if (!leafRef) return `${row} · empty slot`;
-  // A named object now lands here too — before, it drilled into its own form,
-  // so "empty slot" was never reachable with a leaf present.
-  return leafRef.inline ? `${row} · inline ${leafRef.type}` : `${row} · ${leafRef.type}`;
 };
 
 /**

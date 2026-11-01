@@ -13,7 +13,7 @@ import {
  * useCanvasKeyboardNav — VIS-790 / Track D D-7.
  *
  * Canvas-DIRECT keyboard navigation + a11y for the Workspace dashboard canvas.
- * Where the G-2 breadcrumb (<EditPanelBreadcrumb>) drives the SAME selection from
+ * Where the Outline tree drives the SAME selection from
  * the right rail, this hook drives it from a focus surface ON the canvas, with a
  * 2D arrow-key mental model that matches the spatial layout:
  *

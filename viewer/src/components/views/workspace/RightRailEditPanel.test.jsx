@@ -258,6 +258,16 @@ const renderPanel = (entry = '/workspace/dashboard/simple-dashboard') => {
 const liveConfig = (name = 'simple-dashboard') =>
   useStore.getState().dashboards.find(d => d.name === name).config;
 
+// The Edit panel is ONE panel (VIS-1654): every row and item renders at once
+// and the selection marks its section rather than swapping the view. These
+// assert on that marking instead of on which sub-form rendered.
+// Rows keep their existing `row-edit-form-<id>` testid; item slots carry
+// `edit-section-<outline key>`. Both mark themselves with `data-selected`.
+const rowSection = rowId => screen.getByTestId(`row-edit-form-${rowId}`);
+const itemSection = key => screen.getByTestId(`edit-section-${key}`);
+const expectMarked = element => expect(element).toHaveAttribute('data-selected', 'true');
+const expectUnmarked = element => expect(element).not.toHaveAttribute('data-selected');
+
 describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
   test('dashboard-chrome (Outline key "dashboard") → dashboard rows form + chip', () => {
     resetStore({ workspaceOutlineSelectedKey: 'dashboard' });
@@ -271,13 +281,14 @@ describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
     expect(screen.getByTestId('row-edit-form-1')).toBeInTheDocument();
   });
 
-  test('row selection (Outline key "row.0") → single RowEditForm', () => {
+  test('row selection ("row.0") marks that row, and every row still renders', () => {
     resetStore({ workspaceOutlineSelectedKey: 'row.0' });
     renderPanel();
-    expect(screen.getByTestId('right-rail-edit-row')).toBeInTheDocument();
+    // Both rows stay on screen — selection marks, it does not filter.
     expect(screen.getByTestId('row-edit-form-0')).toBeInTheDocument();
-    expect(screen.queryByTestId('row-edit-form-1')).not.toBeInTheDocument();
-    expect(screen.getByTestId('right-rail-selection-chip')).toHaveTextContent('Row 1');
+    expect(screen.getByTestId('row-edit-form-1')).toBeInTheDocument();
+    expectMarked(rowSection(0));
+    expectUnmarked(rowSection(1));
   });
 
   test('item with a string-ref chart leaf (row.0.item.0) → the ITEM editor, not the chart form', () => {
@@ -286,9 +297,9 @@ describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
     // Selecting an item edits the item. Putting the chart's own form in the
     // same rail as the dashboard's left no way to tell which one a save
     // applied to (VIS-1654); the chart is reached from the pill instead.
-    expect(screen.getByTestId('right-rail-edit-item')).toBeInTheDocument();
     expect(screen.queryByTestId('chart-edit-form-stub')).not.toBeInTheDocument();
     expect(screen.queryByTestId('right-rail-edit-leaf-form')).not.toBeInTheDocument();
+    expectMarked(itemSection('row.0.item.0'));
   });
 
   test('GAP-1: an OBJECT-stored chart leaf reads as that chart, not an empty slot', () => {
@@ -312,16 +323,17 @@ describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
       dashboards: [objectLeafDash],
     });
     renderPanel();
-    expect(screen.getByTestId('right-rail-edit-item')).toBeInTheDocument();
-    expect(screen.getByTestId('right-rail-selection-chip')).not.toHaveTextContent('empty slot');
-    expect(screen.getByTestId('right-rail-selection-chip')).toHaveTextContent('chart');
+    // It used to mis-route as an empty slot; the guard is that the slot still
+    // knows it is full — its pill names the chart.
+    expectMarked(itemSection('row.0.item.0'));
+    expect(screen.getByTitle(/chart: rev_chart/)).toBeInTheDocument();
   });
 
   test('item with a markdown leaf (row.1.item.0) → the ITEM editor too', () => {
     resetStore({ workspaceOutlineSelectedKey: 'row.1.item.0' });
     renderPanel();
-    expect(screen.getByTestId('right-rail-edit-item')).toBeInTheDocument();
     expect(screen.queryByTestId('markdown-edit-form-stub')).not.toBeInTheDocument();
+    expectMarked(itemSection('row.1.item.0'));
   });
 
   test('the pill on a filled item opens that object as its own tab', () => {
@@ -337,11 +349,28 @@ describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
     expect(openWorkspaceTab).toHaveBeenCalledWith({ type: 'chart', name: 'rev_chart' });
   });
 
-  test('empty item (row.0.item.1, no leaf ref) → ItemEditForm', () => {
+  test('the selected section is scrolled into view', () => {
+    // The panel is one long list, so a selection below the fold has to be
+    // brought to the user rather than the panel being swapped for it.
+    const scrollIntoView = jest.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      resetStore({ workspaceOutlineSelectedKey: 'row.1.item.0' });
+      renderPanel();
+
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+    } finally {
+      // Restored even on failure: this is a prototype, not a local.
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  test('empty item (row.0.item.1, no leaf ref) is marked like any other', () => {
     resetStore({ workspaceOutlineSelectedKey: 'row.0.item.1' });
     renderPanel();
-    expect(screen.getByTestId('right-rail-edit-item')).toBeInTheDocument();
     expect(screen.getByTestId('item-edit-form-row-0-item-1')).toBeInTheDocument();
+    expectMarked(itemSection('row.0.item.1'));
   });
 
   test('Library-row markdown object → MarkdownEditForm', () => {
@@ -426,35 +455,36 @@ describe('RightRailEditPanel nested container keys (arbitrary depth)', () => {
       ...overrides,
     });
 
-  test('nested row key (row.0.item.1.row.0) → that row form, NOT the whole-dashboard form', () => {
+  test('a nested row marks itself at its own depth', () => {
     resetNested({ workspaceOutlineSelectedKey: 'row.0.item.1.row.0' });
     renderPanel();
-    expect(screen.getByTestId('right-rail-edit-row')).toBeInTheDocument();
-    expect(screen.queryByTestId('right-rail-edit-dashboard')).not.toBeInTheDocument();
-    expect(screen.getByTestId('right-rail-selection-chip')).toHaveTextContent('Row 1');
+    // Keys compose, so a row inside an item inside a row marks the right one.
+    expectMarked(rowSection('row-0-item-1-0'));
+    // The whole dashboard is still on screen around it.
+    expect(screen.getByTestId('right-rail-edit-dashboard')).toBeInTheDocument();
   });
 
-  test('nested chart item key (row.0.item.1.row.0.item.0) → that item, NOT the whole dashboard', () => {
+  test('a nested item marks itself, and the chart is reached from the pill', () => {
     resetNested({ workspaceOutlineSelectedKey: 'row.0.item.1.row.0.item.0' });
     renderPanel();
-    // A nested item resolves to its own slot at any depth; like a top-level
-    // one it edits the ITEM, and the chart is reached from the pill.
-    expect(screen.getByTestId('right-rail-edit-item')).toBeInTheDocument();
+    expectMarked(itemSection('row.0.item.1.row.0.item.0'));
     expect(screen.queryByTestId('chart-edit-form-stub')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('right-rail-edit-dashboard')).not.toBeInTheDocument();
   });
 
-  test('nested EMPTY item key (row.0.item.1.row.0.item.1) → ItemEditForm for that slot', () => {
+  test('a nested EMPTY slot marks itself too', () => {
     resetNested({ workspaceOutlineSelectedKey: 'row.0.item.1.row.0.item.1' });
     renderPanel();
-    expect(screen.getByTestId('right-rail-edit-item')).toBeInTheDocument();
-    expect(screen.queryByTestId('right-rail-edit-dashboard')).not.toBeInTheDocument();
+    expectMarked(itemSection('row.0.item.1.row.0.item.1'));
   });
 
-  test('a nested key pointing past the live config → not-found placeholder (not the dashboard form)', () => {
+  test('a key pointing past the live config marks nothing, and still shows the dashboard', () => {
+    // There is no sub-view to 404 any more. A stale key simply matches no
+    // section — the panel keeps showing the dashboard rather than a
+    // placeholder where the form used to be.
     resetNested({ workspaceOutlineSelectedKey: 'row.0.item.1.row.5' });
     renderPanel();
-    expect(screen.getByTestId('right-rail-edit-missing')).toBeInTheDocument();
+    expectUnmarked(rowSection(0));
+    expect(screen.getByTestId('right-rail-edit-dashboard')).toBeInTheDocument();
   });
 });
 
@@ -645,7 +675,10 @@ describe('RightRailEditPanel dashboard editing (#46 — working copy, explicit s
     });
     renderPanel();
 
-    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    // Both the outer row and the nested one render now, and both label their
+    // height control "Row 1 height" — scope to the nested section.
+    const nested = within(rowSection('row-0-item-1-0'));
+    selectEvent.openMenu(nested.getByLabelText('Row 1 height'));
     fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
 
     const config = liveConfig();
@@ -735,11 +768,11 @@ describe('RightRailEditPanel Library-row routing (GAP-1/GAP-2 inline forms)', ()
     expect(screen.getByTestId('right-rail-selection-chip')).toHaveTextContent('sel1');
   });
 
-  test('a stale item key past the live config → item-not-found placeholder', () => {
+  test('a stale item key marks nothing rather than replacing the panel', () => {
     resetStore({ workspaceOutlineSelectedKey: 'row.0.item.9' });
     renderPanel();
-    expect(screen.getByTestId('right-rail-edit-missing')).toBeInTheDocument();
-    expect(screen.getByTestId('right-rail-edit-missing')).toHaveTextContent('Item not found');
+    expectUnmarked(rowSection(0));
+    expect(screen.getByTestId('right-rail-edit-dashboard')).toBeInTheDocument();
   });
 
   test('a dashboard record WITHOUT a nested config still routes (record is the config)', () => {
@@ -889,7 +922,11 @@ describe('RightRailEditPanel structural edits (VIS-802 auto-save)', () => {
     // Removing the item drops the slot; the selection now points at nothing and
     // the panel degrades to the not-found placeholder (optimistic update).
     fireEvent.click(screen.getByRole('button', { name: 'Remove item 2' }));
-    expect(screen.getByTestId('right-rail-edit-missing')).toBeInTheDocument();
+    // The slot is gone, so the selection matches nothing — but the dashboard
+    // is still there to carry on editing, where it used to be replaced by a
+    // not-found placeholder.
+    expectUnmarked(rowSection(0));
+    expect(screen.getByTestId('right-rail-edit-dashboard')).toBeInTheDocument();
     await act(async () => {
       jest.advanceTimersByTime(600);
     });
@@ -932,79 +969,6 @@ describe('RightRailEditPanel → RowEditForm prop contract', () => {
 });
 
 // ── Breadcrumb keyboard nav wired to the live config (G-2) ──────────────────
-describe('RightRailEditPanel breadcrumb keyboard nav (VIS-804)', () => {
-  beforeEach(() => jest.useFakeTimers());
-  afterEach(() => {
-    act(() => jest.runOnlyPendingTimers());
-    jest.useRealTimers();
-  });
-
-  test('⌘↓ on a row reorders it within the dashboard and re-keys the selection', async () => {
-    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
-    resetStore({ workspaceOutlineSelectedKey: 'row.0', saveDashboard });
-    renderPanel();
-
-    fireEvent.keyDown(screen.getByTestId('edit-breadcrumb'), {
-      key: 'ArrowDown',
-      metaKey: true,
-    });
-
-    // The selection follows the moved row to its new index…
-    expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.1');
-    // …and the reordered config lands in the working copy (#46: no auto-persist).
-    expect(liveConfig().rows.map(r => r.height)).toEqual(['small', 'medium']);
-    expect(saveDashboard).not.toHaveBeenCalled();
-  });
-
-  test('⌘↑ at the top edge is a no-op (no save scheduled)', async () => {
-    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
-    resetStore({ workspaceOutlineSelectedKey: 'row.0', saveDashboard });
-    renderPanel();
-
-    fireEvent.keyDown(screen.getByTestId('edit-breadcrumb'), {
-      key: 'ArrowUp',
-      metaKey: true,
-    });
-    expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.0');
-    await act(async () => {
-      jest.advanceTimersByTime(600);
-    });
-    expect(saveDashboard).not.toHaveBeenCalled();
-  });
-
-  test('Enter on the breadcrumb moves focus into the Edit form fields', () => {
-    resetStore({ workspaceOutlineSelectedKey: 'row.0' });
-    renderPanel();
-
-    fireEvent.keyDown(screen.getByTestId('edit-breadcrumb'), { key: 'Enter' });
-    // The form's first focusable field is the row-height combobox input.
-    expect(screen.getByLabelText('Row 1 height')).toHaveFocus();
-  });
-
-  test('⌘↓ under a read-only branch neither moves the selection nor persists', async () => {
-    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
-    resetStore({
-      workspaceOutlineSelectedKey: 'row.0',
-      saveDashboard,
-      capabilities: { can_view: true, can_edit: false },
-    });
-    renderPanel();
-
-    fireEvent.keyDown(screen.getByTestId('edit-breadcrumb'), {
-      key: 'ArrowDown',
-      metaKey: true,
-    });
-
-    // The persist no-ops under read-only, so the selection must NOT advance to
-    // the index the node would have moved to (that would desync the breadcrumb).
-    expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.0');
-    await act(async () => {
-      jest.advanceTimersByTime(600);
-    });
-    expect(saveDashboard).not.toHaveBeenCalled();
-  });
-});
-
 describe('RightRailEditPanel standalone leaf save (VIS-1018 step 3)', () => {
   test('a Library-row leaf save routes through the unified useRecordSave backbone', async () => {
     const saveChart = jest.fn(() => Promise.resolve({ success: true }));
@@ -1150,7 +1114,8 @@ describe('RightRailEditPanel structure validation gate (VIS-993)', () => {
     resetStore({ workspaceOutlineSelectedKey: 'row.0', saveDashboard });
     renderPanel();
 
-    fireEvent.click(screen.getByTestId('pill-remove'));
+    // Every row renders now, so scope to the slot under test.
+    fireEvent.click(within(itemSection('row.0.item.0')).getByTestId('pill-remove'));
     await act(async () => {
       jest.advanceTimersByTime(600);
     });

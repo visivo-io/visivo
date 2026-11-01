@@ -4,7 +4,7 @@
  * Pure helpers backing the right-rail Edit-panel structural breadcrumb and its
  * keyboard navigation. Kept framework-free (no React, no store) so the
  * key-derivation + nav logic is unit-testable in isolation and reused by both
- * the <EditPanelBreadcrumb> component and its keydown handler.
+ * the canvas keyboard layer (⌘↑/⌘↓ reorder) and the Outline tree.
  *
  * SELECTION KEY GRAMMAR (the same composite key OutlineTreePanel writes):
  *   - `dashboard`                          — the dashboard chrome.
