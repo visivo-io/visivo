@@ -27,6 +27,9 @@ const SourceEditorModal = () => {
   // See sourceCapabilities: a file-backed source can only be reached where its
   // file lives, so cloud cannot test one however valid the config is.
   const capabilities = useStore(state => state.capabilities);
+  // Re-reads the account's secret names so the picker can pick up one added
+  // on the secrets page in another tab.
+  const refreshCapabilities = useStore(state => state.fetchCapabilities);
 
   const isEditMode = !!editingSource;
   const sourceName = editingSource?.name || '';
@@ -220,6 +223,8 @@ const SourceEditorModal = () => {
             errors={errors}
             secretsRequired={capabilities?.secrets_required ?? false}
             secretKeys={capabilities?.secret_keys ?? []}
+            secretsUrl={capabilities?.secrets_url}
+            onRefreshSecrets={refreshCapabilities}
           />
 
           {/* Connection Status */}

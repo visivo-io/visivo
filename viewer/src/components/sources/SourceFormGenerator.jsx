@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SecretPicker, { toSecretRef, secretRefName } from './SecretPicker';
 
 // Eye icon for showing password
 const EyeIcon = () => (
@@ -158,106 +159,15 @@ const SOURCE_SCHEMAS = {
 export const parsePortInput = text => (/^\d+$/.test(text) ? Number(text) : text);
 
 // Get schema for a source type (returns empty fields if type not found)
+export { toSecretRef, secretRefName };
+
 export const getSourceSchema = type => {
   return SOURCE_SCHEMAS[type] || { fields: [] };
 };
 
-// Wraps a secret's name in the reference syntax visivo resolves at query time
-// (query/patterns.py ENV_VAR_CONTEXT_PATTERN), and reads one back out.
-const SECRET_REF = /^\$\{\s*env\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}$/;
-export const toSecretRef = key => `\${env.${key}}`;
-export const secretRefName = value => (value || '').match(SECRET_REF)?.[1] ?? '';
-
 const ENV_VAR_DOCS_URL = 'https://docs.visivo.io/topics/environment-variables/';
 const toEnvName = name => name.toUpperCase().replace(/^CREDENTIALS_BASE64$/, 'SERVICE_ACCOUNT_KEY');
 const envRefExample = name => `\${env.${toEnvName(name)}}`;
-
-// A secret-bearing field in cloud: pick one of the account's secret names, or
-// name a new one. Either way the config stores a ${env.NAME} reference — the
-// value itself lives in the secret store and is injected into the run.
-const SecretField = ({ field, value, onChange, secretKeys, error }) => {
-  const selected = secretRefName(value);
-  const naming = !!value && !selected;
-  const [addingNew, setAddingNew] = useState(naming);
-
-  const choose = key => {
-    if (key === '__new__') {
-      setAddingNew(true);
-      onChange(field.name, '');
-      return;
-    }
-    setAddingNew(false);
-    onChange(field.name, key ? toSecretRef(key) : '');
-  };
-
-  // Match the floating notched-border label used by the other source fields.
-  const controlClass = `block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border focus:outline-none focus:ring-2 focus:border-primary-500 ${
-    error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'
-  }`;
-  const labelBase = 'absolute left-2 z-10 origin-[0] bg-white px-1 text-sm duration-200 transform';
-  const labelColor = error ? 'text-red-500' : 'text-gray-500';
-  const labelText = (
-    <>
-      {field.label}
-      {field.required && <span className="text-red-500 ml-0.5">*</span>}
-    </>
-  );
-
-  return (
-    <div>
-      <div className="relative">
-        {addingNew ? (
-          <>
-            <input
-              type="text"
-              autoFocus
-              id={field.name}
-              name={field.name}
-              value={selected}
-              onChange={e => onChange(field.name, e.target.value ? toSecretRef(e.target.value) : '')}
-              placeholder="SECRET_NAME"
-              className={`${controlClass} appearance-none peer placeholder-transparent`}
-            />
-            {/* Floats down as the placeholder when empty, up into the border otherwise. */}
-            <label
-              htmlFor={field.name}
-              className={`${labelBase} ${labelColor} top-2 -translate-y-4 scale-75 peer-focus:text-primary-500 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:scale-100 peer-focus:top-2 peer-focus:-translate-y-4 peer-focus:scale-75`}
-            >
-              {labelText}
-            </label>
-          </>
-        ) : (
-          <>
-            <select
-              id={field.name}
-              name={field.name}
-              value={selected}
-              onChange={e => choose(e.target.value)}
-              className={controlClass}
-            >
-              <option value="">Select a secret…</option>
-              {secretKeys.map(key => (
-                <option key={key} value={key}>
-                  {key}
-                </option>
-              ))}
-              <option value="__new__">New secret…</option>
-            </select>
-            {/* A select always holds a value, so the label stays notched up. */}
-            <label htmlFor={field.name} className={`${labelBase} ${labelColor} top-2 -translate-y-4 scale-75`}>
-              {labelText}
-            </label>
-          </>
-        )}
-      </div>
-      <p className="mt-1 text-xs text-gray-500">
-        Stored as a reference. Add the value under account settings — it is never
-        saved with the project.
-      </p>
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
-    </div>
-  );
-};
 
 const SourceFormGenerator = ({
   sourceType,
@@ -272,6 +182,11 @@ const SourceFormGenerator = ({
   // over the account's secret names.
   secretsRequired = false,
   secretKeys = [],
+  // Where the account manages its secrets, and how to re-read the list. Both
+  // come from the server for the same reason the keys do: the viewer has no
+  // idea which account it is serving.
+  secretsUrl,
+  onRefreshSecrets,
 }) => {
   const schema = getSourceSchema(sourceType);
   // Track visibility state for masked fields
@@ -326,13 +241,15 @@ const SourceFormGenerator = ({
     <div className="space-y-4">
       {schema.fields.map(field =>
         isSecretPicker(field) ? (
-          <SecretField
+          <SecretPicker
             key={field.name}
             field={field}
             value={values[field.name] ?? ''}
             onChange={handleFieldChange}
             secretKeys={secretKeys}
             error={errors[field.name]}
+            secretsUrl={secretsUrl}
+            onRefreshSecrets={onRefreshSecrets}
           />
         ) : (
         <div key={field.name}>

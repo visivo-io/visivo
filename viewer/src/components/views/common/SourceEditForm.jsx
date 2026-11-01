@@ -38,6 +38,9 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
   // Tells us whether the serving process shares a filesystem with the project,
   // which is what decides if a file-backed source can be reached at all.
   const capabilities = useStore(state => state.capabilities);
+  // Re-reads the account's secret names so the picker can pick up one added
+  // on the secrets page in another tab.
+  const refreshCapabilities = useStore(state => state.fetchCapabilities);
 
   // Form state
   const [name, setName] = useState('');
@@ -286,6 +289,8 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
             errors={errors}
             secretsRequired={capabilities?.secrets_required ?? false}
             secretKeys={capabilities?.secret_keys ?? []}
+            secretsUrl={capabilities?.secrets_url}
+            onRefreshSecrets={refreshCapabilities}
           />
 
           {/* Test Connection sits directly under the connection properties it

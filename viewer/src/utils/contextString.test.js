@@ -1,12 +1,5 @@
 /* eslint-disable no-template-curly-in-string */
-import {
-  ContextString,
-  parseTextWithRefs,
-  isInsideDollarBrace,
-  formatRef,
-  formatRefExpression,
-  REF_PATTERN,
-} from './contextString';
+import { ContextString, parseTextWithRefs, isInsideDollarBrace, formatRef, formatRefExpression, REF_PATTERN, toEnvRef, envRefName } from './contextString';
 
 describe('ContextString', () => {
   describe('toString', () => {
@@ -280,5 +273,42 @@ describe('formatRefExpression', () => {
 
   it('trims whitespace', () => {
     expect(formatRefExpression('  myModel  ', '  field  ')).toBe('${ref(myModel).field}');
+  });
+});
+
+describe('env references — the ${env.NAME} half of the grammar', () => {
+  // Composed, not written as a literal: a plain '${env.X}' string trips
+  // no-template-curly-in-string.
+  const DOLLAR = '$';
+  const raw = (name, pad = '') => DOLLAR + '{' + pad + 'env.' + name + pad + '}';
+
+  test('round-trips a name', () => {
+    expect(toEnvRef('DB_PASSWORD')).toBe(raw('DB_PASSWORD'));
+    expect(envRefName(raw('DB_PASSWORD'))).toBe('DB_PASSWORD');
+  });
+
+  test('tolerates whitespace inside the braces, as the server does', () => {
+    expect(envRefName(raw('PGPW', ' '))).toBe('PGPW');
+  });
+
+  test.each(['A', '_leading', 'A1', 'WITH_UNDERSCORES'])('accepts %s', name => {
+    expect(envRefName(raw(name))).toBe(name);
+  });
+
+  test('rejects a name that could not be an env var', () => {
+    // ENV_VAR_NAME_PATTERN: a letter or underscore, then word characters.
+    expect(envRefName(raw('1LEADING_DIGIT'))).toBe('');
+    expect(envRefName(raw('has-a-hyphen'))).toBe('');
+  });
+
+  test('a value that merely CONTAINS a reference is not one', () => {
+    // Anchored on purpose: a credential field must be the reference and
+    // nothing else, or a literal password with a ref in it reads as a name.
+    expect(envRefName('prefix' + raw('PW'))).toBe('');
+    expect(envRefName(raw('PW') + 'suffix')).toBe('');
+  });
+
+  test.each([undefined, null, '', 'plain-text'])('is empty for %p', value => {
+    expect(envRefName(value)).toBe('');
   });
 });
