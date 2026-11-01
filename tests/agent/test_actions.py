@@ -395,7 +395,7 @@ class TestWriteHints:
 
     def test_a_bare_name_of_a_real_source_is_written_as_its_reference(self, integration_app):
         source = integration_app.source_manager.get_all_objects_list()[0].name
-        config = {"name": "m", "source": source, "sql": "select 1"}
+        config = {"name": "m", "source": source, "sql": "select 1 as x"}
 
         assert call(integration_app, "validate_model", {"config": config}) == {"valid": True}
         assert call(integration_app, "write_model", {"config": config})["status"] == "draft"
