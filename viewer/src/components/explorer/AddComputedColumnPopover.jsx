@@ -4,6 +4,7 @@ import { PiPlus, PiX, PiCheckCircle, PiWarningCircle, PiSpinner } from 'react-ic
 import { recordOnboardingAction } from '../onboarding/onboardingState';
 import { getTypeColors } from '../views/common/objectTypeConfigs';
 import { refKindsFor } from '../views/common/fieldTypes';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 // A "computed column" is the Explorer's name for a MODEL-SCOPED metric or
 // dimension: it promotes with a `parentModel`, and `project_writer._new` nests
@@ -168,6 +169,11 @@ const AddComputedColumnPopover = ({
   }, [isEditMode, onEditClose]);
 
   handleCancelRef.current = handleCancel;
+
+  useEscapeToClose(isOpen, () => {
+    handleCancel();
+    (isEditMode ? anchorElement : buttonRef.current)?.focus?.();
+  });
 
   const popoverContent = isOpen && createPortal(
     <div

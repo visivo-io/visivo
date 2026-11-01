@@ -1,6 +1,12 @@
 import React from 'react';
 import { render, fireEvent, screen, within } from '@testing-library/react';
 import MultiSelectDropdown from './MultiSelectDropdown';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
+
+const OuterLayer = ({ onClose, children }) => {
+  useEscapeToClose(true, onClose);
+  return <div>{children}</div>;
+};
 
 const options = ['Option A', 'Option B', 'Option C'];
 
@@ -195,11 +201,39 @@ describe('MultiSelectDropdown Component', () => {
       expect(screen.queryByTestId('portal-dropdown-menu')).not.toBeInTheDocument();
     });
 
-    it('Escape closes the open menu', () => {
+    it('Escape closes the open menu and returns focus to the trigger', () => {
+      render(<MultiSelectDropdown options={options} name="test" />);
+      const trigger = screen.getByRole('button');
+      fireEvent.click(trigger);
+      const search = screen.getByPlaceholderText('Search options...');
+      search.focus();
+      fireEvent.keyDown(search, { key: 'Escape' });
+      expect(screen.queryByTestId('portal-dropdown-menu')).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+    });
+
+    it('Escape closes the open menu when focus is elsewhere', () => {
       render(<MultiSelectDropdown options={options} name="test" />);
       fireEvent.click(screen.getByRole('button'));
-      fireEvent.keyDown(screen.getByPlaceholderText('Search options...'), { key: 'Escape' });
+      fireEvent.keyDown(document, { key: 'Escape' });
       expect(screen.queryByTestId('portal-dropdown-menu')).not.toBeInTheDocument();
+    });
+
+    it('Escape inside an open layer closes only the menu, then the layer', () => {
+      const onOuterClose = jest.fn();
+      render(
+        <OuterLayer onClose={onOuterClose}>
+          <MultiSelectDropdown options={options} name="test" />
+        </OuterLayer>
+      );
+      fireEvent.click(screen.getByRole('button'));
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId('portal-dropdown-menu')).not.toBeInTheDocument();
+      expect(onOuterClose).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(onOuterClose).toHaveBeenCalledTimes(1);
     });
 
     it('ArrowDown highlights the next option and Enter toggles it', () => {

@@ -4,7 +4,7 @@
 # operands are always quoted, numeric ones never; multi-select defaults are
 # explicit lists; chart layout props cannot read inputs.
 card_to_input:
-  - match: {role: [categorical, geo_region, boolean, text, numeric_continuous, numeric_discrete, time], bucket: [one]}
+  - match: {role: [categorical, geo_region, boolean, text, numeric_continuous, numeric_discrete, time], n_max: 1}
     input: none
     why: a constant column has nothing to choose
   - match: {role: [boolean]}
@@ -13,31 +13,31 @@ card_to_input:
     accessor: value
     wiring: {interaction: filter, expression: "('${ref(I).value}' = 'All' OR CAST(${ref(M).C} AS VARCHAR) = '${ref(I).value}')"}
     why: a toggle has no "all" state, so a boolean filter is three tabs
-  - match: {role: [categorical, geo_region], bucket: [few], n_max: 5}
+  - match: {role: [categorical, geo_region], n_min: 2, n_max: 5}
     input: {type: single-select, display: tabs, options: from_top_n}
     default: top_value
     accessor: value
     wiring: {interaction: filter, expression: "${ref(M).C} = '${ref(I).value}'"}
     why: up to five values read as tabs
-  - match: {role: [categorical, geo_region], bucket: [few], n_min: 6}
+  - match: {role: [categorical, geo_region], n_min: 6, n_max: 7}
     input: {type: single-select, display: radio, options: from_top_n}
     default: top_value
     accessor: value
     wiring: {interaction: filter, expression: "${ref(M).C} = '${ref(I).value}'"}
     why: six or seven values fit a radio group
-  - match: {role: [categorical, geo_region], bucket: [some], n_max: 15}
+  - match: {role: [categorical, geo_region], n_min: 8, n_max: 15}
     input: {type: multi-select, display: chips, options: query_distinct}
     default: top_values
     accessor: values
     wiring: {interaction: filter, expression: "${ref(M).C} IN (${ref(I).values})"}
     why: a short list to pick several from; the default is the top five, as an explicit list
-  - match: {role: [categorical, geo_region], bucket: [some], n_min: 16}
+  - match: {role: [categorical, geo_region], n_min: 16, n_max: 20}
     input: {type: multi-select, display: dropdown, options: query_distinct}
     default: top_values
     accessor: values
     wiring: {interaction: filter, expression: "${ref(M).C} IN (${ref(I).values})"}
     why: chips crowd past fifteen values
-  - match: {role: [categorical, geo_region], bucket: [many, high]}
+  - match: {role: [categorical, geo_region], n_min: 21}
     input: {type: single-select, display: autocomplete, options: query_distinct}
     default: top_value
     accessor: value
@@ -79,7 +79,7 @@ patterns:
     snippet_ref: test-projects/docs-interactivity/project.visivo.yml:30-52
     note: a half-wired filter is the canonical failure; nothing propagates by itself
   - name: split_switcher
-    trigger: two or more `few` categoricals the reader would compare by in turn
+    trigger: two or more categoricals of 2–7 values the reader would compare by in turn
     wiring: "split: CASE WHEN '${ref(I).value}' = '<A>' THEN ${ref(M).A} ELSE ${ref(M).B} END"
     snippet_ref: test-projects/integration/insights.visivo.yml:89
     note: every CASE branch must return the same type; cast to VARCHAR when mixing
@@ -101,7 +101,7 @@ patterns:
     note: insight props only; chart `layout` (barmode, yaxis.type) is never substituted, and the input name must be snake_case
     forbid_paths: ["layout.*", "barmode", "yaxis.type"]
   - name: top_n
-    trigger: a `many`/`high` categorical ranked by a measure
+    trigger: a categorical of more than 20 values ranked by a measure
     wiring: "filter: ${ref(M).rank_col} <= ${ref(I).value}"
     snippet_ref: test-projects/integration/insights.visivo.yml:243
     note: the rank must be a precomputed column in the model (dense_rank() over the measure); a global rank combined with a region filter is "global top-N within region", not "top-N in region"

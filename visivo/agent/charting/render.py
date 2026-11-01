@@ -20,7 +20,7 @@ from visivo.agent.charting.rules import (
     load_tables,
     load_transforms,
 )
-from visivo.agent.charting.schema import CARDINALITY_BUCKETS, Intent, Semantics
+from visivo.agent.charting.schema import Intent, Semantics, bucket_bounds
 
 SKILLS_DIR = Path(__file__).parent.parent / "skills"
 START, END = "<!-- rules:start -->", "<!-- rules:end -->"
@@ -72,17 +72,33 @@ def layout_rules_markdown(doc=None):
     )
 
 
+def _values(low, high):
+    """A distinct-value range as the skills state it: ``2–7``, ``≤30``, ``21+``."""
+    low = low if low and low > 1 else None
+    if low is None and high is None:
+        return "any"
+    if low is None:
+        return "1" if high <= 1 else f"≤{high}"
+    if high is None:
+        return f"{low}+"
+    return f"{low}–{high}"
+
+
+def _split_line(min_bucket):
+    first_input, _ = bucket_bounds(min_bucket)
+    return (
+        f"split a column of up to {first_input - 1} values; from {first_input} values up, an input"
+    )
+
+
 def _card_row(rule):
     match = rule.match
     roles = "/".join(match.role)
-    bucket = ", ".join(match.bucket) if match.bucket else "any"
-    bounds = ""
-    if match.n_min is not None or match.n_max is not None:
-        bounds = f" (n {match.n_min or ''}–{match.n_max or ''})".replace(" (n –)", "")
+    values = _values(match.n_min, match.n_max)
     if rule.input == "none":
-        return f"| {roles} | {bucket}{bounds} | — | {rule.why} |"
+        return f"| {roles} | {values} | — | {rule.why} |"
     return (
-        f"| {roles} | {bucket}{bounds} | {rule.input.type} `{rule.input.display}` → "
+        f"| {roles} | {values} | {rule.input.type} `{rule.input.display}` → "
         f"`{rule.wiring.interaction}` | {rule.why} |"
     )
 
@@ -93,14 +109,14 @@ def interactivity_rules_markdown(doc=None, insight_design=None):
     min_points = (insight_design or load_insight_design()).reductions.regrain.points_min
     d = doc.design_rules
     lines = [
-        "| column | cardinality | input → interaction | why |",
+        "| column | distinct values | input → interaction | why |",
         "|---|---|---|---|",
         *[_card_row(rule) for rule in doc.card_to_input],
         "",
         f"- **Counts:** {d.max_inputs_per_dashboard} inputs at most, in one `{d.inputs_row.height}` top row "
         f"with a header saying what they control; an input that drives one chart sits {d.chart_local_input}; "
         f"≤{d.max_inputs_mobile_row} survive the mobile stack.",
-        f"- **Input vs split:** split a `few` column; from `{d.input_over_split_min_bucket}` up, an input.",
+        f"- **Input vs split:** {_split_line(d.input_over_split_min_bucket)}.",
         f"- **Defaults:** every input has one, so the first render is complete. Multi-select defaults are an "
         f"explicit list (never `all` or a query); numeric ranges default to the full span; a time default "
         f"leaves ≥{min_points} points at the column's grain.",
@@ -181,14 +197,6 @@ def _lifts(rule):
     return intents, flags
 
 
-def _bucket_line():
-    parts, low = [], 0
-    for name, upper in CARDINALITY_BUCKETS:
-        parts.append(f"{name} {upper}" if upper == low + 1 else f"{name} {low + 1}–{upper}")
-        low = upper
-    return " · ".join(parts + [f"high {low + 1}+"])
-
-
 def choose_rules_markdown(doc=None, interactivity=None):
     """The decision tree the choose-a-chart skill states: intent and
     semantics to family, the boundaries a map needs, cardinality buckets,
@@ -216,16 +224,18 @@ def choose_rules_markdown(doc=None, interactivity=None):
     )
     mapped = [rule.name for rule in doc.families if "region boundaries" in rule.hard_gates.requires]
     repairs = ", ".join(f"`{t.name}`" for t in load_transforms().transforms if t.fixes)
-    split_bucket = interactivity.design_rules.input_over_split_min_bucket
+    split = _split_line(interactivity.design_rules.input_over_split_min_bucket)
+    many, _ = bucket_bounds("many")
+    high, _ = bucket_bounds("high")
     return "\n".join(
         [
             f"- **Intent → family**, strongest first: {intents}.",
             f"- **Semantics → family:** {flags}.",
             f"- **Maps:** {', '.join(mapped)} {'needs' if len(mapped) == 1 else 'need'} a region Plotly knows "
             f"({', '.join(doc.builtin_boundaries)}) or `boundaries_available`.",
-            f"- **Cardinality:** {_bucket_line()}. Split a `few` dimension; from `{split_bucket}` "
-            "up, an input. An identifier, or a lookup list at `high`, is a table; a chart over a "
-            "`many`/`high` list pairs with `detail_table_below`.",
+            f"- **Cardinality** is the card's distinct-value count: {split}. An identifier, or a "
+            f"lookup list of {high} or more values, is a table; a chart over a list of {many} or "
+            "more values pairs with `detail_table_below`.",
             f"- **Repairs**, each entry trying its own in order: {repairs}.",
         ]
     )
@@ -402,6 +412,7 @@ def insight_design_markdown(doc=None, interactivity=None):
     tail = doc.heavy_tail
     slots = ", ".join(f"≤{s.max} {s.name} ({'/'.join(s.intents)})" for s in pf.slots)
     lags = ", ".join(f"lag {lag} at {grain}" for grain, lag in sc.seasonality_lags.items())
+    at_low, at_high = bucket_bounds(d.input_over_split_min_bucket)
     return "\n".join(
         [
             "| column | metrics | why |",
@@ -419,10 +430,10 @@ def insight_design_markdown(doc=None, interactivity=None):
             f"{load_tables().column_budget.full_width - 1} values, past that the larger "
             "becomes an input; an "
             "identifier is never a dimension, only the detail table's key.",
-            f"- **Split vs input:** below `{d.input_over_split_min_bucket}` split; at "
-            f"`{d.input_over_split_min_bucket}`, `top_n_other` when the top {red.top_n_other.n} "
-            f"hold ≥{_pct(doc.split_vs_input.top_n_min_share)} of rows, else an input; above, an "
-            "input or the table. Time never splits.",
+            f"- **Split vs input:** up to {at_low - 1} values, split; {_values(at_low, at_high)}, "
+            f"`top_n_other` when the top {red.top_n_other.n} "
+            f"hold ≥{_pct(doc.split_vs_input.top_n_min_share)} of rows, else an input; above "
+            f"{at_high}, an input or the table. Time never splits.",
             "- **Reductions** (each is a proposed dimension, written once):",
             f"  - `top_n_other` (top {red.top_n_other.n}, at most {red.top_n_other.n_max}, "
             f"+ Other): {red.top_n_other.when};",

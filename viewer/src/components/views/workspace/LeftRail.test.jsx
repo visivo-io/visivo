@@ -20,6 +20,12 @@ import { futureFlags } from '../../../router-config';
 import LeftRail from './LeftRail';
 import useStore from '../../../stores/store';
 import { LAYOUT_TYPES, DATA_TYPES } from './library/LibraryRow';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
+
+const EscapeLayer = ({ onClose }) => {
+  useEscapeToClose(true, onClose);
+  return null;
+};
 
 const seedStore = (extra = {}) => {
   act(() => {
@@ -162,6 +168,21 @@ describe('LeftRail collapsed strip', () => {
 
       fireEvent.keyDown(document, { key: 'Escape' });
 
+      expect(screen.queryByTestId('workspace-left-rail-overlay')).not.toBeInTheDocument();
+    });
+
+    test('a layer opened inside the popout takes the first Escape; the next one dismisses the popout', () => {
+      seedNarrow({ workspaceLeftOverlayOpen: true });
+      renderRail();
+      const innerClose = jest.fn();
+      const { unmount: closeInner } = render(<EscapeLayer onClose={innerClose} />);
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(innerClose).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('workspace-left-rail-overlay')).toBeInTheDocument();
+
+      closeInner();
+      fireEvent.keyDown(document, { key: 'Escape' });
       expect(screen.queryByTestId('workspace-left-rail-overlay')).not.toBeInTheDocument();
     });
 

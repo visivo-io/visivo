@@ -14,6 +14,7 @@ import {
 import { ObjectStatus } from '../../../../stores/store';
 import { getTypeByValue, getTypeIcon, DEFAULT_COLORS } from '../../common/objectTypeConfigs';
 import LibraryRowFlipPopover from './LibraryRowFlipPopover';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 /**
  * LibraryRow — VIS-769 + VIS-776 / Track C C1 + C3.
@@ -305,6 +306,8 @@ const LibraryRow = ({
   // Anchor for the portal-rendered flip popover (escapes the rail's
   // overflow-y-auto clipping ancestor).
   const rowAnchorRef = useRef(null);
+  const flipButtonRef = useRef(null);
+  const kebabButtonRef = useRef(null);
 
   const def = getTypeDef(obj.type);
   const Icon = def.icon;
@@ -386,7 +389,14 @@ const LibraryRow = ({
   );
 
   const handleMenuDismiss = useCallback(() => setMenuOpen(false), []);
-  const handlePopoverClose = useCallback(() => setPopoverOpen(false), []);
+  const handlePopoverClose = useCallback(event => {
+    setPopoverOpen(false);
+    if (event?.key === 'Escape') flipButtonRef.current?.focus();
+  }, []);
+  useEscapeToClose(menuOpen, () => {
+    setMenuOpen(false);
+    kebabButtonRef.current?.focus();
+  });
 
   // Dismiss menu on outside click. Mousedowns INSIDE the menu must not
   // dismiss it — with a real cursor the native mousedown precedes the click,
@@ -479,7 +489,7 @@ const LibraryRow = ({
             'flex shrink-0 items-center gap-0.5 transition-opacity',
             showActions || (expandable && expanded)
               ? 'opacity-100'
-              : 'opacity-0 pointer-events-none',
+              : 'opacity-0 pointer-events-none focus-within:pointer-events-auto focus-within:opacity-100',
           ].join(' ')}
         >
           {/* Expand lives with the other row actions rather than as a leading
@@ -525,6 +535,7 @@ const LibraryRow = ({
               schema, exploration staleness, field swap). It is also already
               the icon LineageCanvas uses for the surface this opens. */}
           <button
+            ref={flipButtonRef}
             type="button"
             onClick={handleFlipClick}
             title="Show lineage"
@@ -541,6 +552,7 @@ const LibraryRow = ({
             <PiTreeStructure className="h-3.5 w-3.5" />
           </button>
           <button
+            ref={kebabButtonRef}
             type="button"
             onClick={handleKebabClick}
             title="More actions"

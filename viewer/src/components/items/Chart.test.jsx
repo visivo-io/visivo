@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import Chart from './Chart';
 import { withProviders } from '../../utils/test-utils';
 import { BUILTIN_THEMES } from '../../theme/builtinThemes';
@@ -8,6 +8,7 @@ import useStore from '../../stores/store';
 let capturedLayout = null;
 let capturedData = null;
 let capturedConfig = null;
+let capturedOnError = null;
 
 jest.mock('react-plotly.js', () => {
   const React = require('react');
@@ -15,6 +16,7 @@ jest.mock('react-plotly.js', () => {
     capturedLayout = props.layout;
     capturedData = props.data;
     capturedConfig = props.config;
+    capturedOnError = props.onError;
     // Simulate Plotly signalling the plot finished drawing.
     React.useEffect(() => {
       if (props.onAfterPlot) props.onAfterPlot();
@@ -30,6 +32,7 @@ beforeEach(() => {
   capturedLayout = null;
   capturedData = null;
   capturedConfig = null;
+  capturedOnError = null;
   chart = {
     name: 'name',
     insights: [],
@@ -43,6 +46,32 @@ describe('Chart', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Mock Plot')).toBeInTheDocument();
+    });
+  });
+
+  describe('a basemap that cannot be reached', () => {
+    test('says so on the chart instead of leaving a blank frame', async () => {
+      render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+      expect(await screen.findByText('Mock Plot')).toBeInTheDocument();
+
+      await act(async () => {
+        capturedOnError(new Error('Map error.'));
+      });
+
+      const alert = screen.getByTestId('chart_basemap_error_name');
+      expect(alert).toHaveTextContent('Map background unavailable');
+      expect(alert).toHaveTextContent('not part of your Visivo install');
+    });
+
+    test('a plot failure that is not the basemap is left alone', async () => {
+      render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
+      expect(await screen.findByText('Mock Plot')).toBeInTheDocument();
+
+      await act(async () => {
+        capturedOnError(new Error('Something else went wrong'));
+      });
+
+      expect(screen.queryByTestId('chart_basemap_error_name')).not.toBeInTheDocument();
     });
   });
 

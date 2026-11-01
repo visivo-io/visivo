@@ -50,7 +50,7 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 
 **Variations**
 - When a metric per place: `marker.size` (use `sqrt` so area, not diameter, is proportional) with `marker.sizemode: diameter`.
-- When a categorical with `few` values: `split` (one series per value, theme-colored) rather than `marker.color`.
+- When a categorical with 2–7 values: `split` (one series per value, theme-colored) rather than `marker.color`.
 - When the points are raw rows rather than aggregated places: `cluster.enabled: true`, or aggregate to zone or grid in SQL.
 - When a second metric matters: `marker.color` from a data column with `marker.colorscale` (the legitimate color case).
 

@@ -3,7 +3,7 @@ family: distribution
 status: preferred
 one_liner: A box plot that also draws the density; pick it when the shape beyond quartiles matters and groups are large.
 use_when:
-  - "One numeric column by a `few` categorical where every group is large and the shape matters (bimodal fares, a second hump of airport trips)."
+  - "One numeric column by a categorical of 2–7 values where every group is large and the shape matters (bimodal fares, a second hump of airport trips)."
   - "Two sub-groups per category to contrast side by side: two insights with `side: negative` / `side: positive` (split violin)."
   - A box would hide the story; two groups with the same median and IQR but different shapes.
 other_uses:
@@ -37,7 +37,7 @@ example: |
 variations:
   - when: "a sub-group with two values to contrast within each category"
     then: "two insights on one chart, `side: negative` and `side: positive`, each filtered to one value"
-  - when: "a second `few` categorical"
+  - when: "a second categorical of 2–7 values"
     then: "`split` with the chart `layout.violinmode: group`"
   - when: "groups of very different size"
     then: "`scalemode: count` so width reflects n; the default `width` makes a small group look as solid as a large one"

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 import { ROW_TEMPLATES } from './canvasReorder';
 
 /**
@@ -14,7 +15,8 @@ import { ROW_TEMPLATES } from './canvasReorder';
  * Mulberry (`primary`) is the selection/active colour (NOT a type colour — these
  * empty-slot previews carry no object type, so objectTypeConfigs is intentionally
  * not consulted here). Keyboard: Up/Down navigate, Enter commits the focused
- * template, Esc dismisses (returns focus to the trigger via `onDismiss`).
+ * template, Esc dismisses (`onDismiss`) and returns focus to the element that
+ * had it when the menu opened (the trigger).
  */
 
 const MULBERRY = 'var(--color-primary-500)';
@@ -57,12 +59,20 @@ const RowTemplateMenu = ({ onSelect, onDismiss, anchor = 'bottom' }) => {
   const [selectedKey, setSelectedKey] = useState(null);
   const itemRefs = useRef([]);
   const focusIndexRef = useRef(0);
+  const openerRef = useRef(null);
 
   // Focus the first template on open so keyboard nav works immediately.
   useEffect(() => {
+    openerRef.current = document.activeElement;
     const el = itemRefs.current[0];
     if (el) el.focus();
   }, []);
+
+  useEscapeToClose(true, () => {
+    if (typeof onDismiss === 'function') onDismiss();
+    const opener = openerRef.current;
+    if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus();
+  });
 
   const commit = key => {
     // Flash the chosen row mulberry (220ms) before the caller dismisses, so the
@@ -82,9 +92,6 @@ const RowTemplateMenu = ({ onSelect, onDismiss, anchor = 'bottom' }) => {
       const next = Math.max(focusIndexRef.current - 1, 0);
       focusIndexRef.current = next;
       itemRefs.current[next]?.focus();
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      if (typeof onDismiss === 'function') onDismiss();
     }
   };
 

@@ -111,13 +111,25 @@ const LeafChooseControl = ({ item, itemId, onChange }) => {
     });
   };
 
-  const handleCreateNew = typeKey => {
+  const handleCreateNew = async typeKey => {
     setPickerOpen(false);
     if (readOnly) return;
     emitWorkspaceEvent('inline_create_used', { source: 'picker', kind: typeKey });
-    const openCreateChartModal = useStore.getState().openCreateChartModal;
-    if (typeKey === 'chart' && typeof openCreateChartModal === 'function') {
-      openCreateChartModal();
+    const state = useStore.getState();
+    if (typeof state.createWorkspaceObject !== 'function') return;
+    const result = await state.createWorkspaceObject(typeKey);
+    if (!result?.success || !result.name) {
+      if (result?.error && state.showWorkspaceToast) state.showWorkspaceToast(result.error);
+      return;
+    }
+    const next = placeLeafRef(item, typeKey, result.name);
+    if (next) onChange(next);
+    if (state.openWorkspaceTab) {
+      state.openWorkspaceTab({
+        id: `${typeKey}:${result.name}`,
+        type: typeKey,
+        name: result.name,
+      });
     }
   };
 

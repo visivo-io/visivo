@@ -512,6 +512,19 @@ describe('SemanticLayerCanvas', () => {
       expect(screen.getByTestId('semantic-erd-node-ctx-open-new-tab')).toBeInTheDocument();
     });
 
+    it('Escape dismisses the model context menu', () => {
+      render(<SemanticLayerCanvas />);
+      act(() => {
+        rfProps.current.onNodeContextMenu(
+          { clientX: 40, clientY: 60, preventDefault: jest.fn() },
+          { type: 'semanticLayerModelNode', data: { name: 'orders' } }
+        );
+      });
+      expect(screen.getByTestId('semantic-erd-node-ctx-menu')).toBeInTheDocument();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId('semantic-erd-node-ctx-menu')).not.toBeInTheDocument();
+    });
+
     it('"Explore this" from the context menu mints an exploration seeded from the model and opens it', async () => {
       render(<SemanticLayerCanvas />);
       act(() => {

@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import selectEvent from 'react-select-event';
 import ExplorationPromoteModal from './ExplorationPromoteModal';
 import useStore from '../../../stores/store';
 import { buildPromoteChecklist } from '../../../stores/promoteChecklist';
@@ -129,6 +130,57 @@ describe('ExplorationPromoteModal', () => {
     expect(
       screen.getByTestId('promote-row-insight-sibling_insight-checkbox')
     ).not.toBeChecked();
+  });
+
+  test('saving after a rename sends the new name for the renamed row and keeps dependents selected', async () => {
+    const renameModelTab = jest.fn();
+    const promoteExploration = jest
+      .fn()
+      .mockResolvedValue({ success: true, results: [], reclassificationOffers: [] });
+    useStore.setState({ renameModelTab, promoteExploration });
+    buildPromoteChecklist
+      .mockResolvedValueOnce([row(), row({ tier: 'insight', type: 'insight', name: 'sibling_insight' })])
+      .mockResolvedValueOnce([
+        row({ name: 'daily_orders' }),
+        row({ tier: 'insight', type: 'insight', name: 'sibling_insight' }),
+      ]);
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+    fireEvent.change(input, { target: { value: 'daily_orders' } });
+    fireEvent.blur(input);
+    await screen.findByTestId('promote-row-model-daily_orders-name-input');
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+    await waitFor(() => expect(promoteExploration).toHaveBeenCalled());
+    expect(promoteExploration.mock.calls[0][1]).toEqual([
+      { type: 'model', name: 'daily_orders' },
+      { type: 'insight', name: 'sibling_insight' },
+    ]);
+  });
+
+  test('clicking Save while a rename is still rebuilding waits and sends the new name', async () => {
+    const renameModelTab = jest.fn();
+    const promoteExploration = jest
+      .fn()
+      .mockResolvedValue({ success: true, results: [], reclassificationOffers: [] });
+    useStore.setState({ renameModelTab, promoteExploration });
+    let release;
+    buildPromoteChecklist
+      .mockResolvedValueOnce([row()])
+      .mockImplementationOnce(
+        () => new Promise(resolve => (release = () => resolve([row({ name: 'daily_orders' })])))
+      );
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={jest.fn()} />);
+    const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+    fireEvent.change(input, { target: { value: 'daily_orders' } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(renameModelTab).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+    expect(promoteExploration).not.toHaveBeenCalled();
+    await act(async () => {
+      release();
+    });
+    await waitFor(() => expect(promoteExploration).toHaveBeenCalled());
+    expect(promoteExploration.mock.calls[0][1]).toEqual([{ type: 'model', name: 'daily_orders' }]);
   });
 
   test('shows a loading state while the checklist builds', () => {
@@ -462,6 +514,40 @@ describe('ExplorationPromoteModal', () => {
     });
   });
 
+  test('Escape closes the modal (same as Cancel) without promoting', async () => {
+    buildPromoteChecklist.mockResolvedValue([row()]);
+    const promoteExploration = jest.fn();
+    useStore.setState({ promoteExploration });
+    const onClose = jest.fn();
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+    await screen.findByTestId('exploration-promote-cancel');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(promoteExploration).not.toHaveBeenCalled();
+  });
+
+  test('Escape while a promote is in flight does NOT close the modal', async () => {
+    buildPromoteChecklist.mockResolvedValue([row()]);
+    let resolvePromote;
+    const promoteExploration = jest.fn(
+      () => new Promise(resolve => { resolvePromote = resolve; })
+    );
+    useStore.setState({ promoteExploration });
+    const onClose = jest.fn();
+    render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+    await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolvePromote({ success: true, results: [], reclassificationOffers: [] });
+    });
+  });
+
   // VIS-1068 — dashboard round-trip completion ("Place in <dashboard>").
   describe('return_to / "Place in <dashboard>"', () => {
     const seedReturnTo = (returnTo, extra = {}) => {
@@ -578,6 +664,27 @@ describe('ExplorationPromoteModal', () => {
         })
       );
       expect(onClose).toHaveBeenCalled();
+    });
+
+    test('Escape with the dashboard picker open closes only the picker; the next Escape closes the modal', async () => {
+      seedReturnTo(null);
+      buildPromoteChecklist.mockResolvedValue([row({ tier: 'chart', type: 'chart', name: 'churn_chart' })]);
+      useStore.setState({ promoteExploration: jest.fn().mockResolvedValue(promoteChartResult()) });
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      await waitFor(() => expect(screen.getByTestId('exploration-promote-submit')).toBeEnabled());
+      fireEvent.click(screen.getByTestId('exploration-promote-submit'));
+      const offer = await screen.findByTestId('exploration-promote-fallback-dashboard-offer');
+      const input = within(offer).getByRole('combobox');
+      selectEvent.openMenu(input);
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
 
     test('a fallback placement failure shows an inline error and does not close', async () => {
@@ -1435,6 +1542,20 @@ describe('ExplorationPromoteModal', () => {
         screen.queryByTestId('promote-row-model-orders_q-name-error')
       ).not.toBeInTheDocument();
       expect(renameModelTab).not.toHaveBeenCalled();
+    });
+
+    test('Escape in a name field resets only the draft — the modal stays open', async () => {
+      buildPromoteChecklist.mockResolvedValue([row()]);
+      const onClose = jest.fn();
+      render(<ExplorationPromoteModal explorationId="exp_1" onClose={onClose} />);
+      const input = await screen.findByTestId('promote-row-model-orders_q-name-input');
+      fireEvent.change(input, { target: { value: 'half typed' } });
+
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      expect(input).toHaveValue('orders_q');
+      expect(onClose).not.toHaveBeenCalled();
+      expect(screen.getByTestId('exploration-promote-modal')).toBeInTheDocument();
     });
 
     test('re-typing the exact same name on blur is a no-op — no rename call, no error', async () => {

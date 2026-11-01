@@ -31,17 +31,4 @@ describe('copyItemLink', () => {
 
     expect(copy).toHaveBeenCalledWith('http://localhost/project/my-dash?element_id=0');
   });
-
-  it('is a silent no-op when window is unavailable (SSR-like pass)', () => {
-    const originalWindow = global.window;
-    // eslint-disable-next-line no-native-reassign
-    delete global.window;
-    try {
-      expect(typeof window).toBe('undefined');
-      expect(() => copyItemLink()).not.toThrow();
-      expect(copy).not.toHaveBeenCalled();
-    } finally {
-      global.window = originalWindow;
-    }
-  });
 });

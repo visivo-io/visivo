@@ -26,7 +26,7 @@ example: |
           size: ?{ sqrt(count(*)) }
 variations:
   - when: "an existing insight of this type needs any change"
-    then: "change `type` to `scattermap` first, then apply its variations: `marker.size` for a metric, `split` for a `few` categorical, `cluster.enabled` for raw points"
+    then: "change `type` to `scattermap` first, then apply its variations: `marker.size` for a metric, `split` for a categorical of 2–7 values, `cluster.enabled` for raw points"
 limits:
   series_ideal: 5
   series_max: 8

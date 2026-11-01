@@ -6,10 +6,22 @@
  * `react-select-event` (a dev dep) since react-select renders its menu/options
  * only when open.
  */
-import React from 'react';
-import { render, screen } from '@testing-library/react';
+import React, { useState } from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import selectEvent from 'react-select-event';
 import Select from './Select';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
+
+const SelectInLayer = props => {
+  const [open, setOpen] = useState(true);
+  useEscapeToClose(open, () => setOpen(false));
+  if (!open) return null;
+  return (
+    <div data-testid="layer">
+      <Select value="a" options={OPTIONS} onChange={() => {}} aria-label="fruit" {...props} />
+    </div>
+  );
+};
 
 const OPTIONS = [
   { value: 'a', label: 'Apple' },
@@ -179,5 +191,32 @@ describe('Select', () => {
     // menu and drops search focus/state.
     expect(screen.getByTestId('fruit')).toBe(containerBefore);
     expect(screen.getByText('Cherry')).toBeInTheDocument();
+  });
+
+  test('Escape in an open menu closes only the menu, not the layer around it', () => {
+    const onMenuClose = jest.fn();
+    render(<SelectInLayer onMenuClose={onMenuClose} />);
+    const input = screen.getByLabelText('fruit');
+    selectEvent.openMenu(input);
+    expect(screen.getByText('Cherry')).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.queryByText('Cherry')).not.toBeInTheDocument();
+    expect(screen.getByTestId('layer')).toBeInTheDocument();
+    expect(onMenuClose).toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.queryByTestId('layer')).not.toBeInTheDocument();
+  });
+
+  test('Escape on a closed select closes the layer around it and calls onKeyDown', () => {
+    const onKeyDown = jest.fn();
+    const onMenuOpen = jest.fn();
+    render(<SelectInLayer onKeyDown={onKeyDown} onMenuOpen={onMenuOpen} />);
+    const input = screen.getByLabelText('fruit');
+    selectEvent.openMenu(input);
+    expect(onMenuOpen).toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: 'Escape' });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(onKeyDown).toHaveBeenLastCalledWith(expect.objectContaining({ key: 'Escape' }));
+    expect(screen.queryByTestId('layer')).not.toBeInTheDocument();
   });
 });

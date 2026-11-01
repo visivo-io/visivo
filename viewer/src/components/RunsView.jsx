@@ -27,6 +27,36 @@ const STATE_BADGE = {
   canceled: 'bg-gray-100 text-gray-600',
 };
 
+const failedJobCount = run => diagnosticsFrom(run?.error_json).length;
+
+// What the staged panel says when nothing is staged. "Everything built" is only
+// true when the newest run succeeded (or there is no run to contradict it).
+const idleStatus = lastRun => {
+  if (lastRun?.state === 'failed') {
+    const jobs = failedJobCount(lastRun);
+    return {
+      key: 'failed',
+      title: jobs > 0 ? `Last run failed — ${jobs} job${jobs === 1 ? '' : 's'} failed` : 'Last run failed',
+      body: 'Nothing is staged, but the latest run did not build. Fix the cause, then run again.',
+    };
+  }
+  if (lastRun && isActiveRun(lastRun)) {
+    return { key: 'active', title: 'A run is in progress', body: 'Nothing is staged.' };
+  }
+  if (lastRun?.state === 'canceled') {
+    return {
+      key: 'canceled',
+      title: 'Last run was canceled',
+      body: 'Nothing is staged, but the latest run did not finish building.',
+    };
+  }
+  return {
+    key: 'built',
+    title: 'No changes waiting to run',
+    body: 'Everything built. Editing a query, model or source will queue work here.',
+  };
+};
+
 const scopeLabel = run => run.dag_filter || (run.state === 'queued' ? '—' : 'all');
 
 /**
@@ -45,7 +75,7 @@ const scopeLabel = run => run.dag_filter || (run.state === 'queued' ? '—' : 'a
  * the only way back when outputs are missing or corrupt but the fingerprints
  * say they're built.
  */
-function StagedPanel({ heading }) {
+function StagedPanel({ heading, lastRun, onViewRun }) {
   const projectId = useStore(s => s.project?.id);
   const queryClient = useQueryClient();
   const staged = useStore(s => s.stagedChanges);
@@ -59,6 +89,8 @@ function StagedPanel({ heading }) {
   const running = latestRun ? isActiveRun(latestRun) : false;
   const count = staged.length;
   const busy = running || starting;
+  const idle = idleStatus(lastRun);
+  const showFailure = lastRun?.state === 'failed';
 
   const startRun = async opts => {
     setError(null);
@@ -111,14 +143,20 @@ function StagedPanel({ heading }) {
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-gray-900">
               {count === 0
-                ? 'No changes waiting to run'
+                ? idle.title
                 : `${count} change${count === 1 ? '' : 's'} waiting to run`}
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              {count === 0
-                ? 'Everything built. Editing a query, model or source will queue work here.'
-                : 'A run rebuilds these and everything downstream of them.'}
+              {count === 0 ? idle.body : 'A run rebuilds these and everything downstream of them.'}
             </p>
+            {showFailure && (
+              <p className="text-xs text-highlight-700 mt-1" data-testid="runs-last-run-failed">
+                {count > 0 && `${idleStatus(lastRun).title}. `}
+                <button type="button" onClick={() => onViewRun(lastRun)} className="underline">
+                  Show what went wrong
+                </button>
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -386,6 +424,13 @@ export default function RunsView() {
     );
   }, [projectId, runsQueryClient]);
 
+  const viewRun = run => {
+    setExpandedId(run.id);
+    setTimeout(() => {
+      document.getElementById(`run-row-${run.id}`)?.scrollIntoView?.({ behavior: 'smooth' });
+    }, 0);
+  };
+
   if (isLoading) {
     return (
       <div data-testid="runs-view-loading" className="min-h-full bg-gray-50 p-6 text-gray-500">
@@ -403,7 +448,11 @@ export default function RunsView() {
 
   return (
     <div data-testid="runs-view" className="min-h-full bg-gray-50 p-6">
-      <StagedPanel heading={<h2 className="text-xl font-bold text-gray-900">Project Runs</h2>} />
+      <StagedPanel
+        heading={<h2 className="text-xl font-bold text-gray-900">Project Runs</h2>}
+        lastRun={runs[0]}
+        onViewRun={viewRun}
+      />
       {runs.length === 0 ? (
         <p className="text-gray-500">No runs yet.</p>
       ) : (
@@ -417,7 +466,7 @@ export default function RunsView() {
           {runs.map(run => {
             const isOpen = expandedId === run.id;
             return (
-              <div key={run.id} className="border-b last:border-0">
+              <div key={run.id} id={`run-row-${run.id}`} className="border-b last:border-0">
                 <button
                   type="button"
                   aria-expanded={isOpen}

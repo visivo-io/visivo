@@ -13,7 +13,7 @@ describe('ThemeEditorDialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('shows the theme form and closes from the button, Escape or the backdrop', () => {
+  it('shows the theme form and closes from the button or the backdrop', () => {
     const onClose = jest.fn();
     const outerClick = jest.fn();
     render(
@@ -29,9 +29,31 @@ describe('ThemeEditorDialog', () => {
     expect(onClose).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    fireEvent.keyDown(window, { key: 'Escape' });
     fireEvent.click(screen.getByTestId('theme-editor-backdrop'));
-    expect(onClose).toHaveBeenCalledTimes(3);
+    expect(onClose).toHaveBeenCalledTimes(2);
     expect(outerClick).not.toHaveBeenCalled();
+  });
+
+  it('closes on Escape while open', () => {
+    const onClose = jest.fn();
+    render(<ThemeEditorDialog open onClose={onClose} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores Escape while closed', () => {
+    const onClose = jest.fn();
+    render(<ThemeEditorDialog open={false} onClose={onClose} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('leaves the dialog open when an inner element consumes Escape', () => {
+    const onClose = jest.fn();
+    render(<ThemeEditorDialog open onClose={onClose} />);
+    const inner = screen.getByTestId('theme-form-stub');
+    inner.addEventListener('keydown', e => e.preventDefault());
+    fireEvent.keyDown(inner, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

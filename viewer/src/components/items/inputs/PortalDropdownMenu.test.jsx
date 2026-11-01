@@ -10,14 +10,14 @@ import React, { useRef } from 'react';
 import { render, screen } from '@testing-library/react';
 import PortalDropdownMenu from './PortalDropdownMenu';
 
-const Harness = ({ children }) => {
+const Harness = ({ children, minWidth }) => {
   const anchorRef = useRef(null);
   return (
     <div>
       <div ref={anchorRef} data-testid="anchor" style={{ width: 200 }}>
         anchor
       </div>
-      <PortalDropdownMenu anchorRef={anchorRef}>{children}</PortalDropdownMenu>
+      <PortalDropdownMenu anchorRef={anchorRef} minWidth={minWidth}>{children}</PortalDropdownMenu>
     </div>
   );
 };
@@ -60,5 +60,17 @@ describe('PortalDropdownMenu', () => {
     expect(menu.style.width).toBe('200px');
     // Below the anchor by default (anchor.bottom + 4).
     expect(menu.style.top).toBe('134px');
+  });
+
+  test('minWidth widens a narrow anchor and keeps the menu inside the viewport', () => {
+    window.innerWidth = 300;
+    render(
+      <Harness minWidth={280}>
+        <div>wide</div>
+      </Harness>
+    );
+    const menu = screen.getByTestId('portal-dropdown-menu');
+    expect(menu.style.width).toBe('280px');
+    expect(menu.style.left).toBe('12px');
   });
 });

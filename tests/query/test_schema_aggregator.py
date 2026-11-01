@@ -515,3 +515,26 @@ class TestLoadWithFallback:
 
         assert stored == SchemaAggregator.load_source_schema("s", str(tmp_path))
         assert stored["metadata"]["total_columns"] == 1
+
+
+def test_serialize_mapping_schema_keeps_database_level():
+    schema = MappingSchema()
+    schema.add_table(
+        exp.Table(
+            this=exp.to_identifier("fct_mrr"),
+            db=exp.to_identifier("analytics"),
+            catalog=exp.to_identifier("saas"),
+        ),
+        {"mrr": exp.DataType.build("DOUBLE")},
+    )
+    schema.add_table("saas.main.orders", {"id": exp.DataType.build("INT")})
+
+    assert SchemaAggregator._serialize_mapping_schema(schema) == {
+        "saas": {"analytics": {"fct_mrr": {"mrr": "DOUBLE"}}, "main": {"orders": {"id": "INT"}}}
+    }
+
+
+def test_serialize_level_skips_non_dict_entries():
+    assert SchemaAggregator._serialize_level({"t": {"a": "INT"}, "junk": "x"}) == {
+        "t": {"a": "INT"}
+    }

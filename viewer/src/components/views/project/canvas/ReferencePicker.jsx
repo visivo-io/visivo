@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PiX, PiMagnifyingGlass, PiPlus } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 import { getTypeIcon, getTypeColors, getTypeByValue } from '../../common/objectTypeConfigs';
 
 /**
@@ -176,13 +177,11 @@ const ReferencePicker = ({ type, types, onSelect, onClose, onCreateNew, loading 
     };
   }, []);
 
+  useEscapeToClose(true, () => onClose && onClose());
+
+  // Focus trap, as `aria-modal` promises.
   useEffect(() => {
     const onKey = e => {
-      if (e.key === 'Escape') {
-        onClose && onClose();
-        return;
-      }
-      // Focus trap, as `aria-modal` promises.
       if (e.key !== 'Tab') return;
       const dialog = dialogRef.current;
       if (!dialog) return;
@@ -207,7 +206,7 @@ const ReferencePicker = ({ type, types, onSelect, onClose, onCreateNew, loading 
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
 
   const sections = useMemo(() => {
     const q = query.trim().toLowerCase();

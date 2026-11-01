@@ -37,9 +37,9 @@ of the same metric is the failure this prevents.
 
 Every model also gets `count(*)`. A heavy tail is skew above 1 or p99 above 5× the median. The lead total (cross-tabs, maps, the first queries) has the strongest measured signal; before stats it is the first whose column names money or volume (amount, revenue, sales, fare, total, price, cost, quantity, units); with no total, the row count.
 - **Pairing:** time with ≤1 categorical; two categoricals up to 480 cells chart, up to 10000 pivot when the smaller has at most 11 values, past that the larger becomes an input; an identifier is never a dimension, only the detail table's key.
-- **Split vs input:** below `some` split; at `some`, `top_n_other` when the top 5 hold ≥80 % of rows, else an input; above, an input or the table. Time never splits.
+- **Split vs input:** up to 7 values, split; 8–20, `top_n_other` when the top 5 hold ≥80 % of rows, else an input; above 20, an input or the table. Time never splits.
 - **Reductions** (each is a proposed dimension, written once):
-  - `top_n_other` (top 5, at most 7, + Other): a categorical at the input bucket whose top values hold most rows, kept as a split;
+  - `top_n_other` (top 5, at most 7, + Other): a categorical at the input threshold whose top values hold most rows, kept as a split;
   - `bucket` (10 bins): a continuous column used as a dimension;
   - `regrain` (12–600 points): a time axis with too many points at its natural grain;
   - `collapse_rare` (under 2 % → Other): a part-of-whole chart (pie, funnel, flow), so every slice or node keeps a visible mark;

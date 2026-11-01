@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FaChevronDown, FaTimes } from 'react-icons/fa';
 import { DropdownLabel } from '../../styled/DropdownButton';
 import PortalDropdownMenu from './PortalDropdownMenu';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 /**
  * AutocompleteInput - Single-select input with searchable dropdown.
@@ -84,6 +85,14 @@ const AutocompleteInput = ({
     }
   };
 
+  // Blur rather than refocus: the input is the trigger and focusing it reopens the list.
+  useEscapeToClose(isOpen, () => {
+    setIsOpen(false);
+    setHighlightedIndex(-1);
+    setSearchTerm('');
+    inputRef.current?.blur();
+  });
+
   const handleKeyDown = e => {
     if (!isOpen && (e.key === 'ArrowDown' || e.key === 'Enter')) {
       e.preventDefault();
@@ -92,12 +101,6 @@ const AutocompleteInput = ({
     }
 
     switch (e.key) {
-      case 'Escape':
-        setIsOpen(false);
-        setHighlightedIndex(-1);
-        setSearchTerm('');
-        inputRef.current?.blur();
-        break;
       case 'ArrowDown':
         e.preventDefault();
         setHighlightedIndex(prev => (prev < filteredOptions.length - 1 ? prev + 1 : 0));

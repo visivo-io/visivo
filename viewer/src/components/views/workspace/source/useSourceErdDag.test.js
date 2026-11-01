@@ -113,6 +113,15 @@ describe('flattenSourceTables', () => {
     expect(t1.id).toBe(erdNodeId('memory', null, 't1'));
   });
 
+  test("a table's own schema wins over its parent's (full-path cached feed)", () => {
+    const tables = flattenSourceTables({
+      databases: [{ name: 'src', tables: [{ name: 'fct_mrr', schema: 'analytics', columns: [] }] }],
+    });
+    expect(tables[0].schema).toBe('analytics');
+    expect(tables[0].table).toBe('fct_mrr');
+    expect(tables[0].id).toBe(erdNodeId('src', 'analytics', 'fct_mrr'));
+  });
+
   test('returns [] for a null / empty / databaseless entry', () => {
     expect(flattenSourceTables(null)).toEqual([]);
     expect(flattenSourceTables({})).toEqual([]);

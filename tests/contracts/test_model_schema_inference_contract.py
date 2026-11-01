@@ -32,7 +32,10 @@ def test_inference_matches_the_shared_contract(case):
         model_hash="contract_hash",
         stored_source_schema={
             "sqlglot_schema": case["sqlglot_schema"],
-            "metadata": {"default_schema": case.get("default_schema")},
+            "metadata": {
+                "default_schema": case.get("default_schema"),
+                "database": case.get("default_catalog"),
+            },
         },
         # The contract describes what the ENDPOINTS answer. The run calls the
         # same function with strict=True so a model whose SQL does not parse

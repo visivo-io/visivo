@@ -76,3 +76,20 @@ it('closes modal when close button is clicked', async () => {
   fireEvent.click(closeButton);
   expect(mockSetIsOpen).toHaveBeenCalledWith(false);
 });
+
+it('closes on Escape like the close button', async () => {
+  const mockSetIsOpen = jest.fn();
+  render(<DeployModal isOpen={true} setIsOpen={mockSetIsOpen} />);
+  await waitFor(() => {
+    expect(screen.getByTestId('authentication')).toBeInTheDocument();
+  });
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(mockSetIsOpen).toHaveBeenCalledWith(false);
+});
+
+it('ignores Escape while closed', () => {
+  const mockSetIsOpen = jest.fn();
+  render(<DeployModal isOpen={false} setIsOpen={mockSetIsOpen} />);
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(mockSetIsOpen).not.toHaveBeenCalled();
+});

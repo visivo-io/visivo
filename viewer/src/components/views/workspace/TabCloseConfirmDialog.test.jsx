@@ -9,6 +9,12 @@ import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import TabCloseConfirmDialog from './TabCloseConfirmDialog';
 import useStore from '../../../stores/store';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
+
+const EscapeLayer = ({ onClose, children = null }) => {
+  useEscapeToClose(true, onClose);
+  return children;
+};
 
 const TABS = [
   { id: 'project:p', type: 'project', name: 'p', dirty: false },
@@ -77,6 +83,31 @@ describe('TabCloseConfirmDialog', () => {
     render(<TabCloseConfirmDialog />);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(cancelCloseWorkspaceTab).toHaveBeenCalled();
+  });
+
+  test('opened over another layer, Escape cancels only the close; the next one closes that layer', () => {
+    const layerClose = jest.fn();
+    const cancelCloseWorkspaceTab = jest.fn(() =>
+      useStore.setState({ workspacePendingCloseTabId: null })
+    );
+    seed({ cancelCloseWorkspaceTab });
+    render(
+      <EscapeLayer onClose={layerClose}>
+        <TabCloseConfirmDialog />
+      </EscapeLayer>
+    );
+    act(() => {
+      useStore.setState({ workspacePendingCloseTabId: 'chart:revenue' });
+    });
+
+    fireEvent.keyDown(screen.getByTestId('tab-close-confirm-cancel'), { key: 'Escape' });
+    expect(cancelCloseWorkspaceTab).toHaveBeenCalledTimes(1);
+    expect(layerClose).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('tab-close-confirm-dialog')).not.toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(cancelCloseWorkspaceTab).toHaveBeenCalledTimes(1);
+    expect(layerClose).toHaveBeenCalledTimes(1);
   });
 
   test('a non-Escape key is a no-op — it neither cancels nor confirms', () => {

@@ -126,6 +126,31 @@ describe('ItemActionMenu', () => {
     expect(list()).not.toBeInTheDocument();
   });
 
+  test('Escape returns focus to the kebab', () => {
+    renderControlled();
+    fireEvent.click(kebab());
+    action('copy').focus();
+    fireEvent.keyDown(action('copy'), { key: 'Escape' });
+    expect(list()).not.toBeInTheDocument();
+    expect(kebab()).toHaveFocus();
+  });
+
+  test('Escape already handled by an element leaves the menu open', () => {
+    renderControlled();
+    fireEvent.click(kebab());
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    event.preventDefault();
+    document.dispatchEvent(event);
+    expect(list()).toBeInTheDocument();
+  });
+
+  test('Escape does nothing while the menu is closed', () => {
+    const onClose = jest.fn();
+    render(<ItemActionMenu box={BOX} itemKey={KEY} open={false} onClose={onClose} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   test('closes on outside click', () => {
     renderControlled();
     fireEvent.click(kebab());

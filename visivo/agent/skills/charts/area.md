@@ -32,11 +32,11 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 - Always add `- sort: ?{ <x expression> ASC }`; without it the line connects points in storage order and zig-zags.
 - `x` and `y` must be aggregated at the same grain: `date_trunc('day', ts)` with `count(*)`, never raw rows for a line.
 - To give a series a fixed colour (a brand colour, or the same one on every dashboard), pin it with a CASE on the split column: `marker.color: ?{ CASE ... END }` for markers, `line.color: "?{ CASE ... END }[0]"` for lines. Without the `[0]` the line colour is silently ignored.
-- A `split` adds a series per distinct value: check the column's cardinality bucket first (`few` is fine, `some` needs top-N).
+- A `split` adds a series per distinct value: check the column's cardinality first (up to 7 values is fine, 8–20 needs top-N).
 - `fill: tonexty` fills to the previous insight in the chart, so insight order in `charts.insights` is the stacking order; prefer `stackgroup` for stacked areas.
 
 **Variations**
-- When a second `few` categorical dimension: `split` interaction; one line per value on shared axes.
+- When a second categorical dimension of 2–7 values: `split` interaction; one line per value on shared axes.
 - When a second metric with a different unit: the `bar_line_dual_axis` pairing: the second metric on its own right-hand axis.
 - When a third numeric measure per point in markers mode: `marker.size` (it scales area, not radius); never `marker.color` unless it encodes data.
 - When split markers rather than lines: keep fewer series than for lines; overlapping clouds mix colours in the dense core.

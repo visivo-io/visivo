@@ -6,13 +6,18 @@ import SQLEditor from './SQLEditor';
 // Mock Monaco editor — selection state is configurable per-test
 let mockSelectionIsEmpty = true;
 let mockSelectedText = '';
+let mockEditorValue = '';
+
+const mockQueryRunningKey = { set: jest.fn() };
 
 const mockEditor = {
   getSelection: () => ({ isEmpty: () => mockSelectionIsEmpty }),
   getModel: () => ({
     getValueInRange: () => mockSelectedText,
   }),
+  getValue: () => mockEditorValue,
   addCommand: jest.fn(),
+  createContextKey: jest.fn(() => mockQueryRunningKey),
   focus: jest.fn(),
   trigger: jest.fn(),
 };
@@ -36,6 +41,7 @@ const mockMonaco = {
 
 jest.mock('@monaco-editor/react', () => {
   const MockedEditor = ({ value, onChange, onMount, options }) => {
+    mockEditorValue = value;
     // Call onMount synchronously to simulate editor mounting
     if (onMount) {
       setTimeout(() => onMount(mockEditor, mockMonaco), 0);
@@ -575,6 +581,18 @@ describe('SQLEditor', () => {
       expect(mockExecuteQuery).toHaveBeenCalledWith('test_source', 'SELECT 1');
     });
 
+    it('Cmd+Enter runs the editor text even when React state lags behind it', async () => {
+      render(<SQLEditor initialValue="select 1 group al" sourceName="test_source" />);
+      await waitFor(() => expect(mockEditor.addCommand).toHaveBeenCalledTimes(2));
+
+      mockEditorValue = 'select 1 group by all';
+      act(() => {
+        getRunCommand()();
+      });
+
+      expect(mockExecuteQuery).toHaveBeenCalledWith('test_source', 'select 1 group by all');
+    });
+
     it('Cmd+Enter is ignored while a query is running', async () => {
       mockQueryJobState.isRunning = true;
 
@@ -610,6 +628,42 @@ describe('SQLEditor', () => {
       });
 
       expect(mockCancel).toHaveBeenCalled();
+    });
+
+    it('binds Escape only under the query-running context key', async () => {
+      render(<SQLEditor initialValue="SELECT 1" sourceName="test_source" />);
+      await waitFor(() => expect(mockEditor.addCommand).toHaveBeenCalledTimes(2));
+
+      expect(mockEditor.addCommand.mock.calls[1][0]).toBe(mockMonaco.KeyCode.Escape);
+      expect(mockEditor.addCommand.mock.calls[1][2]).toBe('visivoQueryRunning');
+      expect(mockEditor.createContextKey).toHaveBeenCalledWith('visivoQueryRunning', false);
+    });
+
+    it('starts the context key true when the editor mounts mid-run', async () => {
+      mockQueryJobState.isRunning = true;
+      render(<SQLEditor initialValue="SELECT 1" sourceName="test_source" />);
+      await waitFor(() => expect(mockEditor.addCommand).toHaveBeenCalledTimes(2));
+
+      expect(mockEditor.createContextKey).toHaveBeenCalledWith('visivoQueryRunning', true);
+    });
+
+    it('keeps the context key in step with the running state', async () => {
+      const { rerender } = render(<SQLEditor initialValue="SELECT 1" sourceName="test_source" />);
+      await waitFor(() => expect(mockEditor.addCommand).toHaveBeenCalledTimes(2));
+      mockQueryRunningKey.set.mockClear();
+
+      mockQueryJobState.isRunning = true;
+      rerender(<SQLEditor initialValue="SELECT 1" sourceName="test_source" />);
+      expect(mockQueryRunningKey.set).toHaveBeenLastCalledWith(true);
+
+      mockQueryJobState.isRunning = false;
+      rerender(<SQLEditor initialValue="SELECT 1" sourceName="test_source" />);
+      expect(mockQueryRunningKey.set).toHaveBeenLastCalledWith(false);
+
+      // The mocked Editor re-schedules onMount on every render; let those settle.
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
     });
 
     it('Escape is a no-op when idle', async () => {

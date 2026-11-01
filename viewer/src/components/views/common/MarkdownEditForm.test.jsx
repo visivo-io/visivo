@@ -2,6 +2,13 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import selectEvent from 'react-select-event';
 import MarkdownEditForm from './MarkdownEditForm';
+import { fetchRenameImpact, renameResource } from '../../../api/rename';
+
+jest.mock('../../../api/rename', () => ({
+  ...jest.requireActual('../../../api/rename'),
+  fetchRenameImpact: jest.fn(),
+  renameResource: jest.fn(),
+}));
 
 // The form destructures `useStore()`; a plain action bag satisfies it.
 const mockActions = {
@@ -275,5 +282,31 @@ describe('edit mode uses an explicit Save (no auto-save)', () => {
     fireEvent.click(screen.getByTestId('markdown-form-discard'));
     expect(content).toHaveValue('hello');
     expect(mockSaveNow).not.toHaveBeenCalled();
+  });
+});
+
+describe('MarkdownEditForm — a Save that renames and edits (VIS-1538)', () => {
+  test('saves the edited content under the current name, then renames', async () => {
+    fetchRenameImpact.mockResolvedValue({
+      target: { type: 'markdowns', name: 'doc1', new_name: 'doc2', status: 'published' },
+      references: [],
+    });
+    renameResource.mockResolvedValue({ renamed: true, references: [] });
+    renderForm({
+      markdown: { name: 'doc1', status: 'PUBLISHED', config: { name: 'doc1', content: '# Old' } },
+      isCreate: false,
+    });
+
+    fireEvent.change(screen.getByLabelText(/Markdown Name/), { target: { value: 'doc2' } });
+    fireEvent.change(screen.getByLabelText(/Content/), { target: { value: '# New' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(await screen.findByTestId('rename-impact-confirm'));
+
+    await waitFor(() =>
+      expect(renameResource).toHaveBeenCalledWith('markdowns', 'doc1', 'doc2', expect.anything())
+    );
+    expect(mockSaveNow).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'doc1', content: '# New' })
+    );
   });
 });

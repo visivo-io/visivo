@@ -106,8 +106,10 @@ const SourceErdCanvas = ({ activeObject }) => {
         // than one. Nothing is fetched now that wasn't fetched before.
         const envelope = await fetchSourceSchema(sourceName, null, projectId);
         if (cancelledRef.current) return;
+        // An envelope key can be a full path; the parts come from the table's metadata.
         const tableEntries = tablesFromEnvelope(envelope).map(t => ({
-          name: t.name,
+          name: t.metadata.table_name ?? t.name,
+          schema: t.metadata.schema ?? null,
           columns: columnsFromEnvelope(envelope, t.name).map(c => ({
             name: c.name,
             type: c.type,

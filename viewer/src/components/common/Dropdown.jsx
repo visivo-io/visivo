@@ -1,5 +1,6 @@
 import React, { useState, useRef, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 /**
  * Reusable dropdown / popover for the top bar.
@@ -39,6 +40,14 @@ export default function Dropdown({
     setOpen(value);
     if (onToggle) onToggle(value);
   };
+
+  useEscapeToClose(open, () => {
+    set(false);
+    const focusable = triggerRef.current?.querySelector(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable) focusable.focus();
+  });
 
   const reposition = useCallback(() => {
     const el = triggerRef.current;
@@ -84,7 +93,11 @@ export default function Dropdown({
 
       {open && !portal && (
         <>
-          <div onClick={() => set(false)} style={{ position: 'fixed', inset: 0, zIndex: 80 }} />
+          <div
+            data-testid="dropdown-backdrop"
+            onClick={() => set(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 80 }}
+          />
           <div
             onClick={e => e.stopPropagation()}
             style={{
@@ -107,7 +120,11 @@ export default function Dropdown({
         typeof document !== 'undefined' &&
         createPortal(
           <>
-            <div onClick={() => set(false)} style={{ position: 'fixed', inset: 0, zIndex: 80 }} />
+            <div
+              data-testid="dropdown-backdrop"
+              onClick={() => set(false)}
+              style={{ position: 'fixed', inset: 0, zIndex: 80 }}
+            />
             <div onClick={e => e.stopPropagation()} style={{ ...fixedPos, ...panelBoxStyle }}>
               {panelContent}
             </div>

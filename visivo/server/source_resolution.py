@@ -1,10 +1,8 @@
 """Resolve a source, model or input by name the way the editor sees it:
 the uncommitted draft if there is one, else the committed object."""
 
-import re
-
 from visivo.models.base.context_string import ContextString
-from visivo.query.patterns import REF_PROPERTY_PATTERN, extract_ref_names
+from visivo.query.patterns import ref_name
 
 
 def from_manager(flask_app, manager_name, name):
@@ -65,12 +63,7 @@ def referenced_source_name(model):
     if isinstance(source, ContextString):
         return source.get_reference()
     if isinstance(source, str):
-        names = extract_ref_names(source)
-        if names:
-            return next(iter(names))
-        match = re.match(REF_PROPERTY_PATTERN, source.strip())
-        if match:
-            return match.group("model_name")
+        return ref_name(source)
     return None
 
 

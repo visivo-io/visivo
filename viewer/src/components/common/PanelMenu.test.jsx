@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import PanelMenu from './PanelMenu';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 const renderMenu = (items, extra = {}) =>
   render(
@@ -53,12 +54,28 @@ describe('PanelMenu', () => {
     expect(screen.getByTestId('panel-menu-item-delete-x').className).toContain('text-highlight-600');
   });
 
-  it('Escape closes the menu', () => {
+  it('Escape closes the menu and returns focus to the trigger', () => {
     renderMenu([{ id: 'rename', label: 'Rename', onSelect: jest.fn() }]);
     fireEvent.click(screen.getByTestId('panel-menu-trigger-x'));
     expect(screen.getByTestId('panel-menu-x')).toBeInTheDocument();
-    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByTestId('panel-menu-x')).not.toBeInTheDocument();
+    expect(screen.getByTestId('panel-menu-trigger-x')).toHaveFocus();
+  });
+
+  it('inside another layer, the first Escape closes only the menu', () => {
+    const onOuterClose = jest.fn();
+    const Outer = () => {
+      useEscapeToClose(true, onOuterClose);
+      return <PanelMenu testId="x" items={[{ id: 'rename', label: 'Rename' }]} />;
+    };
+    render(<Outer />);
+    fireEvent.click(screen.getByTestId('panel-menu-trigger-x'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('panel-menu-x')).not.toBeInTheDocument();
+    expect(onOuterClose).not.toHaveBeenCalled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onOuterClose).toHaveBeenCalledTimes(1);
   });
 
   it('clicking the backdrop closes the menu', () => {

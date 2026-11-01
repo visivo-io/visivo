@@ -662,6 +662,49 @@ describe('PillMenu', () => {
       fireEvent.keyDown(screen.getByTestId('pill-menu'), { key: 'ArrowDown' });
       expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
     });
+
+    test('Escape closes the menu and returns focus to the chevron trigger', () => {
+      render(<PillMenu state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }} />);
+      openMenu();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+      expect(screen.getByTestId('pill-menu-trigger')).toHaveFocus();
+    });
+
+    test('Escape pressed inside the popover reaches the document and closes it', () => {
+      const onParentKeyDown = jest.fn();
+      render(
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+        <div onKeyDown={onParentKeyDown}>
+          <PillMenu state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }} />
+        </div>
+      );
+      openMenu();
+      fireEvent.keyDown(screen.getByTestId('pill-menu'), { key: 'ArrowDown' });
+      expect(onParentKeyDown).not.toHaveBeenCalled();
+      fireEvent.keyDown(screen.getByTestId('pill-menu'), { key: 'Escape' });
+      expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+    });
+
+    test('Escape focuses returnFocusRef instead of the trigger when given', () => {
+      const Host = () => {
+        const target = React.useRef(null);
+        return (
+          <>
+            <input data-testid="focus-target" ref={target} />
+            <PillMenu
+              state={{ kind: 'dimension', ref: 'orders_q', column: 'region' }}
+              returnFocusRef={target}
+            />
+          </>
+        );
+      };
+      render(<Host />);
+      openMenu();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+      expect(screen.getByTestId('focus-target')).toHaveFocus();
+    });
   });
 
   // T4 (pills-buildrail #5): the popover flips to open UPWARD when its
@@ -943,7 +986,7 @@ describe('PillMenu', () => {
     expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ useAs: 'dimension' }));
   });
 
-  test('a keydown inside the popover never bubbles to reach an ancestor handler (same portal-bubbling guard as click)', () => {
+  test('a non-Escape keydown inside the popover never bubbles to an ancestor handler (same portal-bubbling guard as click)', () => {
     const ancestorKeyDown = jest.fn();
     render(
       // eslint-disable-next-line jsx-a11y/no-static-element-interactions
@@ -952,7 +995,7 @@ describe('PillMenu', () => {
       </div>
     );
     openMenu();
-    fireEvent.keyDown(screen.getByTestId('pill-menu'), { key: 'Escape' });
+    fireEvent.keyDown(screen.getByTestId('pill-menu'), { key: 'Enter' });
     expect(ancestorKeyDown).not.toHaveBeenCalled();
   });
 

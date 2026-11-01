@@ -6,6 +6,7 @@ import { getTypeIcon } from '../../common/objectTypeConfigs';
 import { formatRefExpression } from '../../../../utils/refString';
 import { generateUniqueName } from '../../../../utils/uniqueName';
 import { emitWorkspaceEvent } from '../telemetry';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 /**
  * ErdTableContextMenu — right-click menu for a Source-ERD table node (VIS-1005).
@@ -81,19 +82,15 @@ const ErdTableContextMenu = ({ x, y, sourceName, target, onDismiss }) => {
       if (menuRef.current && menuRef.current.contains(e.target)) return;
       onDismiss && onDismiss();
     };
-    const onKey = e => {
-      if (e.key === 'Escape') onDismiss && onDismiss();
-    };
     const onScroll = () => onDismiss && onDismiss();
     document.addEventListener('pointerdown', onDocPointer, true);
-    document.addEventListener('keydown', onKey);
     window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('pointerdown', onDocPointer, true);
-      document.removeEventListener('keydown', onKey);
       window.removeEventListener('scroll', onScroll, true);
     };
   }, [onDismiss]);
+  useEscapeToClose(Boolean(target), () => onDismiss && onDismiss());
 
   if (!target) return null;
 

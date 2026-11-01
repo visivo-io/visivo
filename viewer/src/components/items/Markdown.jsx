@@ -26,7 +26,9 @@ const Markdown = ({ markdown, row, height }) => {
       <div
         className={`w-full h-full overflow-auto flex flex-col items-stretch ${markdown.justify}`}
       >
-        <MarkdownRenderer
+        <div
+          key={markdownPath}
+          data-testid="markdown-body"
           className={`p-2 prose max-w-none ${
             markdown.justify === 'end'
               ? 'mt-auto'
@@ -40,12 +42,11 @@ const Markdown = ({ markdown, row, height }) => {
                       ? 'grow flex flex-col justify-evenly'
                       : ''
           }`}
-          key={markdownPath}
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeRaw, rehypeSanitize]}
         >
-          {markdown.content}
-        </MarkdownRenderer>
+          <MarkdownRenderer remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+            {markdown.content}
+          </MarkdownRenderer>
+        </div>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import PillMenu, { CHIP_SECTIONS } from './PillMenu';
 import { parseTextWithRefs } from '../../../utils/contextString';
 import { serializeContentEditableToRefString } from '../../../utils/contextString';
 import { formatRefExpression } from '../../../utils/refString';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 /**
  * RefTextArea - Inline contentEditable editor for expressions with ref() syntax
@@ -160,6 +161,7 @@ const RefTextArea = ({
   // Accessor dropdown for input pills
   const [accessorDropdown, setAccessorDropdown] = useState(null);
   const accessorAnchorRef = useRef(null);
+  useEscapeToClose(!!accessorDropdown, () => setAccessorDropdown(null));
   // The chip whose menu is open. Held by INDEX, not by node: opening the menu
   // re-renders, and the value->DOM sync rebuilds every chip, so a captured node
   // is detached by the time Apply runs. The index identifies THIS chip rather
@@ -963,6 +965,7 @@ const RefTextArea = ({
           sections={CHIP_SECTIONS}
           onApply={handleChipApply}
           onRemove={handleChipRemove}
+          returnFocusRef={editableRef}
         />
       </span>,
       document.body

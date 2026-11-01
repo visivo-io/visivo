@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PiWarningCircle } from 'react-icons/pi';
 import useStore from '../../../stores/store';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 /**
  * TabCloseConfirmDialog — VIS-812 / Track O O-3.
@@ -41,18 +42,11 @@ const TabCloseConfirmDialog = () => {
   const displayName = (tab && (explorationDisplayName || tab.name)) || '';
 
   useEffect(() => {
-    if (!tab) return undefined;
     // Focus the safe action so Enter keeps editing rather than discarding.
-    if (cancelRef.current) cancelRef.current.focus();
-    const onKey = e => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        cancelClose && cancelClose();
-      }
-    };
-    document.addEventListener('keydown', onKey, true);
-    return () => document.removeEventListener('keydown', onKey, true);
-  }, [tab, cancelClose]);
+    if (tab && cancelRef.current) cancelRef.current.focus();
+  }, [tab]);
+
+  useEscapeToClose(!!tab, () => cancelClose && cancelClose());
 
   if (!tab) return null;
 

@@ -508,4 +508,51 @@ describe('LibraryRow', () => {
     fireEvent.click(screen.getByTestId('library-row-chart-waterfall'));
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  describe('Escape', () => {
+    const T = 'library-row-chart-waterfall';
+
+    test('closes the context menu and returns focus to the kebab', () => {
+      render(withDnd(<LibraryRow obj={CHART} />));
+      fireEvent.click(screen.getByTestId(`${T}-kebab`));
+      expect(screen.getByTestId(`${T}-context-menu`)).toBeInTheDocument();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId(`${T}-context-menu`)).not.toBeInTheDocument();
+      expect(screen.getByTestId(`${T}-kebab`)).toHaveFocus();
+    });
+
+    test('closes the flip popover and returns focus to the flip button', () => {
+      render(withDnd(<LibraryRow obj={CHART} />));
+      fireEvent.click(screen.getByTestId(`${T}-flip`));
+      expect(screen.getByTestId(`${T}-popover`)).toBeInTheDocument();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId(`${T}-popover`)).not.toBeInTheDocument();
+      expect(screen.getByTestId(`${T}-flip`)).toHaveFocus();
+    });
+
+    test('closes the menu first and the popover under it on the next press', () => {
+      render(withDnd(<LibraryRow obj={CHART} />));
+      fireEvent.click(screen.getByTestId(`${T}-flip`));
+      fireEvent.click(screen.getByTestId(`${T}-kebab`));
+      expect(screen.getByTestId(`${T}-popover`)).toBeInTheDocument();
+      expect(screen.getByTestId(`${T}-context-menu`)).toBeInTheDocument();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId(`${T}-context-menu`)).not.toBeInTheDocument();
+      expect(screen.getByTestId(`${T}-popover`)).toBeInTheDocument();
+      expect(screen.getByTestId(`${T}-kebab`)).toHaveFocus();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId(`${T}-popover`)).not.toBeInTheDocument();
+      expect(screen.getByTestId(`${T}-flip`)).toHaveFocus();
+    });
+
+    test('closing the popover with its × button leaves focus where it is', () => {
+      render(withDnd(<LibraryRow obj={CHART} />));
+      fireEvent.click(screen.getByTestId(`${T}-flip`));
+      fireEvent.click(screen.getByTestId(`${T}-popover-close`));
+      expect(screen.queryByTestId(`${T}-popover`)).not.toBeInTheDocument();
+      expect(screen.getByTestId(`${T}-flip`)).not.toHaveFocus();
+    });
+  });
 });

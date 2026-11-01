@@ -76,6 +76,42 @@ describe('LevelEditForm', () => {
     expect(reorderLevel).toHaveBeenCalledWith(0, 1);
   });
 
+  test('move up calls reorderLevel with -1 for a level that is not first', () => {
+    const reorderLevel = jest.fn();
+    seed({ reorderLevel });
+    render(<LevelEditForm index={2} />);
+    expect(screen.getByTestId('level-edit-move-down')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('level-edit-move-up'));
+    expect(reorderLevel).toHaveBeenCalledWith(2, -1);
+  });
+
+  test('falls back to the shared default levels when none are configured', () => {
+    seed({ defaults: { levels: [] } });
+    render(<LevelEditForm index={1} />);
+    expect(screen.getByTestId('level-edit-title')).toHaveValue('Department');
+  });
+
+  test('surfaces the server error when updateLevel fails', async () => {
+    const onSaved = jest.fn();
+    seed({ updateLevel: jest.fn(async () => ({ success: false, error: 'Disk full' })) });
+    render(<LevelEditForm index={0} onSaved={onSaved} />);
+    fireEvent.click(screen.getByTestId('level-edit-save'));
+    await screen.findByText('Disk full');
+    expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  test('surfaces the thrown message when updateLevel throws', async () => {
+    seed({
+      updateLevel: jest.fn(async () => {
+        throw new Error('Network down');
+      }),
+    });
+    render(<LevelEditForm index={0} />);
+    fireEvent.click(screen.getByTestId('level-edit-save'));
+    await screen.findByText('Network down');
+    expect(screen.getByTestId('level-edit-save')).not.toBeDisabled();
+  });
+
   test('delete confirms then calls deleteLevel', async () => {
     const deleteLevel = jest.fn(async () => ({ success: true }));
     seed({ deleteLevel });
@@ -85,6 +121,22 @@ describe('LevelEditForm', () => {
     expect(screen.getByTestId('level-edit-delete-confirm')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('level-edit-delete-confirm-btn'));
     await waitFor(() => expect(deleteLevel).toHaveBeenCalledWith(2));
+  });
+
+  test('Cancel and Escape each dismiss the delete confirmation without deleting', () => {
+    const deleteLevel = jest.fn(async () => ({ success: true }));
+    seed({ deleteLevel });
+    render(<LevelEditForm index={2} />);
+
+    fireEvent.click(screen.getByTestId('level-edit-delete'));
+    fireEvent.click(screen.getByTestId('level-edit-delete-cancel'));
+    expect(screen.queryByTestId('level-edit-delete-confirm')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('level-edit-delete'));
+    expect(screen.getByTestId('level-edit-delete-confirm')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('level-edit-delete-confirm')).not.toBeInTheDocument();
+    expect(deleteLevel).not.toHaveBeenCalled();
   });
 
   test('renders a "no longer exists" state for an out-of-range index', () => {

@@ -16,12 +16,12 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 
 **Use when**
 - One numeric_continuous or numeric_discrete column and the question is "how is it distributed".
-- A few groups to compare (`few` categorical) as overlaid or stacked histograms.
+- A few groups to compare (a categorical of 2–7 values) as overlaid or stacked histograms.
 - Spotting skew, outliers, bimodality before choosing an average vs a median for the KPIs.
-- One numeric column by a `few`/`some` categorical (trip minutes by borough, fare by payment type).
+- One numeric column by a categorical of 2–20 values (trip minutes by borough, fare by payment type).
 - Too many groups for overlaid histograms, which turn to mud; a box per group stays readable.
 - Outliers matter and should be visible as points rather than clipped away.
-- One numeric column by a `few` categorical where every group is large and the shape matters (bimodal fares, a second hump of airport trips).
+- One numeric column by a categorical of 2–7 values where every group is large and the shape matters (bimodal fares, a second hump of airport trips).
 - Two sub-groups per category to contrast side by side: two insights with `side: negative` / `side: positive` (split violin).
 - A box would hide the story; two groups with the same median and IQR but different shapes.
 
@@ -61,7 +61,7 @@ Read this after `recommend_charts` names the family and before `write_insight`. 
 - The density is smoothed (`bandwidth` auto); say 'estimated density' in the subtitle and never read a value off the outline.
 
 **Variations**
-- When a second `few` dimension: `split` with the chart `layout.barmode: overlay` and `opacity: 0.6`, or `barmode: stack`.
+- When a second dimension of 2–7 values: `split` with the chart `layout.barmode: overlay` and `opacity: 0.6`, or `barmode: stack`.
 - When comparing groups of different size: `histnorm: percent` so shapes compare, not totals.
 - When the column is a timestamp: that is counts per period, i.e. a bar or line after `date_trunc`, not a histogram.
 

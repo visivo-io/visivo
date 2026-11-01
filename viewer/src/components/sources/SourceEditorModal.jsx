@@ -9,6 +9,7 @@ import { Button, ButtonOutline } from '../styled/Button';
 import SourceTypeSelector from './SourceTypeSelector';
 import SourceFormGenerator, { getSourceSchema } from './SourceFormGenerator';
 import { validateName } from '../views/common/namedModel';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 import CircularProgress from '@mui/material/CircularProgress';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -133,6 +134,8 @@ const SourceEditorModal = () => {
   const handleClose = () => {
     closeSourceModal();
   };
+
+  useEscapeToClose(sourceModalOpen, handleClose);
 
   const currentConnectionStatus = connectionStatus[name || 'new'];
 

@@ -174,3 +174,53 @@ describe('ItemFlipCard reduced motion', () => {
     expect(inner.style.transform).toBe('');
   });
 });
+
+describe('ItemFlipCard Escape', () => {
+  const BOX = { top: 0, left: 0, width: 400, height: 300 };
+
+  test('Escape flips the card back (onClose)', () => {
+    const onClose = jest.fn();
+    render(<ItemFlipCard box={BOX} obj={OBJ} onClose={onClose} testIdPrefix={PREFIX} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('two open cards close newest first, one per Escape', () => {
+    const Harness = () => {
+      const [open, setOpen] = React.useState(['a']);
+      return (
+        <>
+          <button data-testid="flip-b" onClick={() => setOpen(o => [...o, 'b'])}>
+            flip b
+          </button>
+          {open.map(k => (
+            <ItemFlipCard
+              key={k}
+              box={BOX}
+              obj={{ type: 'chart', name: k }}
+              onClose={() => setOpen(o => o.filter(x => x !== k))}
+              testIdPrefix={`card-${k}`}
+            />
+          ))}
+        </>
+      );
+    };
+    render(<Harness />);
+    fireEvent.click(screen.getByTestId('flip-b'));
+    expect(screen.getByTestId('card-a')).toBeInTheDocument();
+    expect(screen.getByTestId('card-b')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('card-b')).not.toBeInTheDocument();
+    expect(screen.getByTestId('card-a')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('card-a')).not.toBeInTheDocument();
+  });
+
+  test('a card with no box renders nothing and ignores Escape', () => {
+    const onClose = jest.fn();
+    render(<ItemFlipCard box={null} obj={OBJ} onClose={onClose} testIdPrefix={PREFIX} />);
+    expect(screen.queryByTestId(PREFIX)).not.toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});

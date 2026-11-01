@@ -20,8 +20,10 @@ import { createPortal } from 'react-dom';
  *        positioned to its bounding box).
  * @param {React.ReactNode} children - the menu contents.
  * @param {number} [maxHeight=320] - max menu height (px) used for flip math.
+ * @param {number} [minWidth] - when set, the menu is at least this wide and is
+ *        shifted left to stay inside the viewport (for content wider than the anchor).
  */
-const PortalDropdownMenu = ({ anchorRef, menuRef, children, maxHeight = 320 }) => {
+const PortalDropdownMenu = ({ anchorRef, menuRef, children, maxHeight = 320, minWidth }) => {
   const [style, setStyle] = useState(null);
 
   const reposition = useCallback(() => {
@@ -32,10 +34,16 @@ const PortalDropdownMenu = ({ anchorRef, menuRef, children, maxHeight = 320 }) =
     const spaceAbove = rect.top;
     // Flip above only when there's clearly more room there.
     const flipUp = spaceBelow < Math.min(maxHeight, 240) && spaceAbove > spaceBelow;
+    let left = rect.left;
+    let width = rect.width;
+    if (minWidth) {
+      width = Math.max(width, minWidth);
+      left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+    }
     const next = {
       position: 'fixed',
-      left: rect.left,
-      width: rect.width,
+      left,
+      width,
       zIndex: 9999,
       maxHeight: Math.max(120, (flipUp ? spaceAbove : spaceBelow) - 12),
     };
@@ -45,7 +53,7 @@ const PortalDropdownMenu = ({ anchorRef, menuRef, children, maxHeight = 320 }) =
       next.top = rect.bottom + 4;
     }
     setStyle(next);
-  }, [anchorRef, maxHeight]);
+  }, [anchorRef, maxHeight, minWidth]);
 
   useLayoutEffect(() => {
     reposition();

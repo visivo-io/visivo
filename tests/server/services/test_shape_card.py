@@ -110,10 +110,10 @@ class TestRoles:
 
 
 class TestCardFields:
-    def test_cardinality_bucket_and_nulls(self):
+    def test_cardinality_is_the_count_and_nulls(self):
         c = card(col("payment_type", "VARCHAR", 4, nulls=250, avg_length=5))
 
-        assert c.cardinality == 4 and c.cardinality_bucket == "few"
+        assert c.cardinality == 4 and "cardinality_bucket" not in c.model_dump()
         assert c.null_pct == 0.25
 
     def test_top_n_shares_are_of_non_null_rows(self):

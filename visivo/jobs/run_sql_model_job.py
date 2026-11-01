@@ -32,7 +32,11 @@ from visivo.query.sqlglot_utils import (
     unaliased_projection_message,
     unaliased_projections,
 )
-from visivo.query.model_schema_inference import infer_model_columns
+from visivo.query.model_schema_inference import (
+    infer_model_columns,
+    resolve_default_context,
+    source_default_context,
+)
 from visivo.constants import DEFAULT_RUN_ID
 from visivo.output_paths import model_data_file, schema_file as schema_file_path
 
@@ -61,6 +65,7 @@ def _build_and_write_schema(
     sqlglot_dialect = source.get_sqlglot_dialect()
     model_hash = sql_model.name_hash()
     sql = sql_model.sql
+    source_context = source_default_context(source)
 
     Logger.instance().debug(f"Building schema for model {sql_model.name}")
 
@@ -103,7 +108,10 @@ def _build_and_write_schema(
                     f"{provider.table_count} tables, default: {provider.default_schema}"
                 )
 
-            default_schema = provider.default_schema
+            default_catalog, default_schema = resolve_default_context(
+                {"database": provider.default_catalog, "default_schema": provider.default_schema},
+                source_context,
+            )
 
             query_result_schema = schema_from_sql(
                 sqlglot_dialect=sqlglot_dialect,
@@ -111,6 +119,7 @@ def _build_and_write_schema(
                 schema=schema,
                 model_hash=model_hash,
                 default_schema=default_schema,
+                default_catalog=default_catalog,
             )
         else:
             # No cached provider, fall back to empty schema
@@ -138,6 +147,7 @@ def _build_and_write_schema(
                 sqlglot_dialect=sqlglot_dialect,
                 model_hash=model_hash,
                 stored_source_schema=stored_schema,
+                source_context=source_context,
             )
         }
 

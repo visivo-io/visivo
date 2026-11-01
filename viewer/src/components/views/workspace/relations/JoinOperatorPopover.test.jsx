@@ -224,4 +224,61 @@ describe('JoinOperatorPopover', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(mockSaveRelation).not.toHaveBeenCalled();
   });
+
+  describe('Escape', () => {
+    it('closes the popover', () => {
+      const onClose = jest.fn();
+      renderPopover({ onClose });
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('with the join-type menu open closes only the menu, then the popover', () => {
+      const onClose = jest.fn();
+      renderPopover({ onClose });
+      const combobox = within(screen.getByTestId('join-type-select')).getByRole('combobox');
+      selectEvent.openMenu(combobox);
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+
+      fireEvent.keyDown(combobox, { key: 'Escape' });
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(combobox, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('with the @-mention list open clears the list first, then closes the popover', () => {
+      const onClose = jest.fn();
+      renderPopover({ onClose });
+      const input = screen.getByTestId('join-endpoint-b-model-input');
+      fireEvent.change(input, { target: { value: '@ord' } });
+      expect(screen.getByTestId('join-endpoint-b-model-options')).toBeInTheDocument();
+
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(screen.queryByTestId('join-endpoint-b-model-options')).not.toBeInTheDocument();
+      expect(input).toHaveValue('users');
+      expect(onClose).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('other keys in the @-mention input keep the list and the popover open', () => {
+      const onClose = jest.fn();
+      renderPopover({ onClose });
+      const input = screen.getByTestId('join-endpoint-a-model-input');
+      fireEvent.change(input, { target: { value: 'us' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(screen.getByTestId('join-endpoint-a-model-options')).toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+  });
+
+  it('dismisses when the page scrolls', () => {
+    const onClose = jest.fn();
+    renderPopover({ onClose });
+    fireEvent.scroll(window);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

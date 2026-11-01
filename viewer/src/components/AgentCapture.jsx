@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import useEscapeToClose from '../hooks/useEscapeToClose';
 
 /**
  * A screenshot the agent took, under the tool call that took it.
@@ -14,6 +15,12 @@ import React, { useState } from 'react';
 function AgentCapture({ src, dashboard }) {
   const [open, setOpen] = useState(false);
   const [broken, setBroken] = useState(false);
+  const thumbRef = useRef(null);
+
+  useEscapeToClose(open, () => {
+    setOpen(false);
+    thumbRef.current?.focus();
+  });
 
   // A capture is served off the serve output dir, which a `visivo run` can
   // clear. A dead <img> in the transcript reads as a bug in the agent rather
@@ -25,6 +32,7 @@ function AgentCapture({ src, dashboard }) {
   return (
     <>
       <button
+        ref={thumbRef}
         type="button"
         onClick={() => setOpen(true)}
         className="block mt-1 rounded border border-gray-200 overflow-hidden hover:border-gray-400"

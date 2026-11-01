@@ -321,7 +321,16 @@ class TestDashboardRefs:
         chart_manager=SimpleNamespace(get=CHARTS.get),
         table_manager=SimpleNamespace(get={}.get),
         insight_manager=SimpleNamespace(get=INSIGHTS.get),
+        markdown_manager=SimpleNamespace(get={"intro": object()}.get),
     )
+
+    def test_a_missing_markdown_ref_is_flagged_and_an_existing_one_passes(self):
+        rows = [
+            {"items": [{"markdown": "${ref(intro)}"}, {"markdown": "${ref(nope)}"}]},
+            {"items": [{"markdown": {"content": "# inline"}}]},
+        ]
+        found = lint.warnings(self.APP, "dashboards", {"name": "d", "rows": rows})
+        assert found == ["The dashboard places markdown `nope`, which does not exist."]
 
     def test_an_insight_placed_as_a_chart_and_missing_items_are_flagged(self):
         rows = [

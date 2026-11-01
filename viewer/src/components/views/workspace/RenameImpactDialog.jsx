@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PiArrowRight, PiPencilSimple } from 'react-icons/pi';
 import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 /**
  * RenameImpactDialog — what a rename will change, before it changes it.
@@ -64,15 +65,9 @@ const RenameImpactDialog = ({ impact, error, loading, onConfirm, onCancel }) => 
 
   useEffect(() => {
     if (cancelRef.current) cancelRef.current.focus();
-    const onKey = e => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onCancel && onCancel();
-      }
-    };
-    document.addEventListener('keydown', onKey, true);
-    return () => document.removeEventListener('keydown', onKey, true);
-  }, [onCancel]);
+  }, []);
+
+  useEscapeToClose(true, () => onCancel && onCancel());
 
   const target = impact?.target;
   const references = impact?.references || [];

@@ -1,6 +1,12 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import AutocompleteInput from './AutocompleteInput';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
+
+const OuterLayer = ({ onClose, children }) => {
+  useEscapeToClose(true, onClose);
+  return <div>{children}</div>;
+};
 
 describe('AutocompleteInput', () => {
   const defaultProps = {
@@ -218,5 +224,106 @@ describe('AutocompleteInput', () => {
     render(<AutocompleteInput {...defaultProps} label="" />);
     // When label is empty, the DropdownLabel component should not render any content
     expect(screen.queryByText('Test Autocomplete')).not.toBeInTheDocument();
+  });
+
+  describe('Escape', () => {
+    it('closes the list from the document, clears the search and blurs the input', () => {
+      render(<AutocompleteInput {...defaultProps} />);
+      const input = screen.getByRole('textbox');
+
+      act(() => input.focus());
+      expect(input).toHaveFocus();
+      fireEvent.change(input, { target: { value: 'Ch' } });
+      expect(input.value).toBe('Ch');
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      expect(screen.queryByTestId('portal-dropdown-menu')).not.toBeInTheDocument();
+      expect(input.value).toBe('Banana');
+      expect(input).not.toHaveFocus();
+    });
+
+    it('closes only the list inside an open layer, then the layer on the next Escape', () => {
+      const onOuterClose = jest.fn();
+      render(
+        <OuterLayer onClose={onOuterClose}>
+          <AutocompleteInput {...defaultProps} />
+        </OuterLayer>
+      );
+      fireEvent.focus(screen.getByRole('textbox'));
+      expect(screen.getByText('Apple')).toBeInTheDocument();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByText('Apple')).not.toBeInTheDocument();
+      expect(onOuterClose).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(onOuterClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves Escape to the layer underneath while the list is closed', () => {
+      const onOuterClose = jest.fn();
+      render(
+        <OuterLayer onClose={onOuterClose}>
+          <AutocompleteInput {...defaultProps} />
+        </OuterLayer>
+      );
+
+      fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' });
+
+      expect(onOuterClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('keyboard navigation', () => {
+    it('opens the list on ArrowDown when closed', () => {
+      render(<AutocompleteInput {...defaultProps} />);
+      const input = screen.getByRole('textbox');
+      fireEvent.focus(input);
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByText('Apple')).not.toBeInTheDocument();
+
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+      expect(screen.getByText('Apple')).toBeInTheDocument();
+    });
+
+    it('wraps ArrowUp to the last option and selects it on Enter', () => {
+      const setInputJobValue = jest.fn();
+      render(<AutocompleteInput {...defaultProps} setInputJobValue={setInputJobValue} />);
+      const input = screen.getByRole('textbox');
+
+      fireEvent.focus(input);
+      fireEvent.keyDown(input, { key: 'ArrowUp' });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(setInputJobValue).toHaveBeenCalledWith('test-autocomplete', 'Elderberry');
+    });
+
+    it('steps ArrowUp back from a highlighted option', () => {
+      const setInputJobValue = jest.fn();
+      render(<AutocompleteInput {...defaultProps} setInputJobValue={setInputJobValue} />);
+      const input = screen.getByRole('textbox');
+
+      fireEvent.focus(input);
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      fireEvent.keyDown(input, { key: 'ArrowUp' });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(setInputJobValue).toHaveBeenCalledWith('test-autocomplete', 'Apple');
+    });
+
+    it('closes the list on Tab', () => {
+      render(<AutocompleteInput {...defaultProps} />);
+      const input = screen.getByRole('textbox');
+
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: 'Ch' } });
+      fireEvent.keyDown(input, { key: 'Tab' });
+
+      expect(screen.queryByTestId('portal-dropdown-menu')).not.toBeInTheDocument();
+      expect(input.value).toBe('Banana');
+    });
   });
 });

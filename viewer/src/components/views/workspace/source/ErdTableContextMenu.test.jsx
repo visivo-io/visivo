@@ -154,4 +154,41 @@ describe('ErdTableContextMenu', () => {
     fireEvent.click(screen.getByTestId('erd-table-ctx-copy-name'));
     expect(writeText).toHaveBeenCalledWith('public.orders');
   });
+
+  const mountWithDismiss = (target = { schema: 'public', table: 'orders' }) => {
+    const onDismiss = jest.fn();
+    render(
+      <ErdTableContextMenu x={10} y={10} sourceName="analytics_db" target={target} onDismiss={onDismiss} />
+    );
+    return onDismiss;
+  };
+
+  test('Escape dismisses the menu', () => {
+    const onDismiss = mountWithDismiss();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  test('a non-Escape key does not dismiss the menu', () => {
+    const onDismiss = mountWithDismiss();
+    fireEvent.keyDown(document, { key: 'Enter' });
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  test('without a target it renders nothing and ignores Escape', () => {
+    const onDismiss = mountWithDismiss(null);
+    expect(screen.queryByTestId('erd-table-ctx-menu')).not.toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  test('dismisses on an outside pointerdown or a scroll, not on one inside', () => {
+    const onDismiss = mountWithDismiss();
+    fireEvent.pointerDown(screen.getByTestId('erd-table-ctx-menu'));
+    expect(onDismiss).not.toHaveBeenCalled();
+    fireEvent.pointerDown(document.body);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    fireEvent.scroll(window);
+    expect(onDismiss).toHaveBeenCalledTimes(2);
+  });
 });

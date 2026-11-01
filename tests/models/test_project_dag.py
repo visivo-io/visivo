@@ -261,3 +261,28 @@ def test_get_descendant_by_name_not_found_from_node():
         dag.get_descendant_by_name("dashboard", from_node=insight)
 
     assert "No descendant found with name 'dashboard'" in str(exc_info.value)
+
+
+def test_project_named_like_its_source_resolves_refs_to_the_source():
+    project = ProjectFactory(name="taxi")
+    source = project.sources[0]
+    source.name = "taxi"
+    model = SqlModelFactory(name="rides", source=f"${{ref({source.name})}}")
+    project.models.append(model)
+
+    built = Project(**project.model_dump())
+    dag = built.dag()
+
+    assert dag.get_descendant_by_name("taxi") is built.sources[0]
+    assert dag.get_descendant_by_name("taxi", from_node=built) is built.sources[0]
+    assert ContextString("${ref(taxi)}").get_item(dag=dag) is built.sources[0]
+
+
+def test_two_objects_named_like_the_project_are_still_ambiguous():
+    project = ProjectFactory(name="taxi")
+    project.sources[0].name = "taxi"
+    project.charts.append(ChartFactory(name="taxi"))
+    project.models.append(SqlModelFactory(name="rides", source="${ref(taxi)}"))
+
+    with pytest.raises(ValueError, match="points to multiple objects"):
+        Project(**project.model_dump())

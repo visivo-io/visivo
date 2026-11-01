@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { useParams } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
+import { futureFlags } from '../../router-config';
 import Project from './Project';
 import useStore from '../../stores/store';
 
@@ -50,6 +51,13 @@ const mockStore = state => {
   useStore.mockImplementation(selector => selector(state));
 };
 
+const renderProject = (path = '/project') =>
+  render(
+    <MemoryRouter initialEntries={[path]} future={futureFlags}>
+      <Project />
+    </MemoryRouter>
+  );
+
 describe('Project', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -58,19 +66,19 @@ describe('Project', () => {
 
   it('renders a loading indicator while dashboards are loading', () => {
     mockStore(buildState({ dashboardsLoading: true }));
-    render(<Project />);
+    renderProject();
     expect(screen.getByTestId('loading')).toBeInTheDocument();
   });
 
   it('shows a message when no project is loaded', () => {
     mockStore(buildState({ project: null }));
-    render(<Project />);
+    renderProject();
     expect(screen.getByText('No project loaded')).toBeInTheDocument();
   });
 
   it('shows an empty message when the project has no dashboards', () => {
     mockStore(buildState({ dashboards: [] }));
-    render(<Project />);
+    renderProject();
     expect(screen.getByText('No dashboards found')).toBeInTheDocument();
   });
 
@@ -82,7 +90,7 @@ describe('Project', () => {
         filteredDashboards: [{ name: 'a' }, { name: 'b' }],
       })
     );
-    render(<Project />);
+    renderProject();
 
     expect(screen.getByTestId('filter-bar')).toBeInTheDocument();
     const sections = screen.getAllByTestId('dashboard-section');
@@ -100,14 +108,14 @@ describe('Project', () => {
         filteredDashboards: [],
       })
     );
-    render(<Project />);
+    renderProject();
     expect(screen.getByText('No dashboards match your search criteria.')).toBeInTheDocument();
   });
 
   it('renders the selected Dashboard when a dashboardName param is present', () => {
     useParams.mockReturnValue({ dashboardName: 'sales' });
     mockStore(buildState({ dashboards: [{ name: 'sales', config: {} }] }));
-    render(<Project />);
+    renderProject();
 
     const dash = screen.getByTestId('dashboard');
     expect(dash).toHaveAttribute('data-name', 'sales');
@@ -123,7 +131,7 @@ describe('Project', () => {
         themeModeOverrides: { 'project-1': 'dark' },
       })
     );
-    render(<Project />);
+    renderProject();
 
     const root = screen.getByTestId('dashboard-theme-root');
     expect(root).toHaveAttribute('data-theme', 'dark');
@@ -140,7 +148,7 @@ describe('Project', () => {
         themeModeOverrides: { 'project-1': 'light' },
       })
     );
-    render(<Project />);
+    renderProject();
 
     expect(screen.getByTestId('dashboard-theme-root')).toHaveAttribute('data-theme', 'dark');
     expect(screen.queryByRole('radiogroup', { name: 'Dashboard theme' })).not.toBeInTheDocument();
@@ -148,7 +156,7 @@ describe('Project', () => {
 
   it('does not theme the dashboard list', () => {
     mockStore(buildState({ dashboards: [{ name: 'a', config: {} }], dashboardsByLevel: { L1: [] } }));
-    render(<Project />);
+    renderProject();
     expect(screen.queryByTestId('dashboard-theme-root')).not.toBeInTheDocument();
   });
 
@@ -163,7 +171,7 @@ describe('Project', () => {
         initializeDashboardView,
       })
     );
-    render(<Project />);
+    renderProject();
 
     expect(fetchDashboards).toHaveBeenCalled();
     expect(initializeDashboardView).toHaveBeenCalledWith(
@@ -171,5 +179,57 @@ describe('Project', () => {
       undefined,
       expect.anything()
     );
+  });
+
+  describe('unknown dashboard', () => {
+    const known = [
+      { name: 'sales', config: {} },
+      { name: 'sales-overview', config: {} },
+      { name: 'ops', config: {} },
+    ];
+
+    it('shows a not-found message with a link back to the list instead of loading forever', () => {
+      useParams.mockReturnValue({ dashboardName: 'nope' });
+      mockStore(buildState({ dashboards: known }));
+      renderProject('/project/nope');
+      expect(screen.getByText('No dashboard named nope')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Back to the dashboard list' })).toHaveAttribute(
+        'href',
+        '/project'
+      );
+      expect(screen.queryByTestId('dashboard')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Did you mean/)).not.toBeInTheDocument();
+    });
+
+    it('suggests close names', () => {
+      useParams.mockReturnValue({ dashboardName: 'Sale' });
+      mockStore(buildState({ dashboards: known }));
+      renderProject('/project/Sale');
+      expect(screen.getByRole('link', { name: 'sales' })).toHaveAttribute(
+        'href',
+        '/project/sales'
+      );
+      expect(screen.getByRole('link', { name: 'sales-overview' })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'ops' })).not.toBeInTheDocument();
+    });
+
+    it('links to the root list when served from the site root', () => {
+      useParams.mockReturnValue({ dashboardName: 'sale' });
+      mockStore(buildState({ dashboards: known }));
+      renderProject('/sale');
+      expect(screen.getByRole('link', { name: 'Back to the dashboard list' })).toHaveAttribute(
+        'href',
+        '/'
+      );
+      expect(screen.getByRole('link', { name: 'sales' })).toHaveAttribute('href', '/sales');
+    });
+
+    it('still renders a dashboard that exists', () => {
+      useParams.mockReturnValue({ dashboardName: 'ops' });
+      mockStore(buildState({ dashboards: known }));
+      renderProject('/project/ops');
+      expect(screen.getByTestId('dashboard')).toBeInTheDocument();
+      expect(screen.queryByTestId('dashboard-not-found')).not.toBeInTheDocument();
+    });
   });
 });

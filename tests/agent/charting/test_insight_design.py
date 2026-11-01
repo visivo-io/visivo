@@ -179,4 +179,9 @@ class TestTheSkill:
         interactivity.design_rules.input_over_split_min_bucket = "many"
         doc.reductions.regrain.points_min = 9
         text = render.insight_design_markdown(doc, interactivity)
-        assert "top 6 hold" in text and "9–333 points" in text and "at `many`" in text
+        assert (
+            "top 6 hold" in text
+            and "9–333 points" in text
+            and "up to 20 values, split; 21–100, `top_n_other`" in text
+            and "above 100, an input" in text
+        )

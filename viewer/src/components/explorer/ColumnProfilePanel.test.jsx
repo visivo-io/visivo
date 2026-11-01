@@ -1,6 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ColumnProfilePanel from './ColumnProfilePanel';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
+
+const OuterLayer = ({ onClose, children }) => {
+  useEscapeToClose(true, onClose);
+  return <div>{children}</div>;
+};
 
 jest.mock('../../duckdb/profiling', () => ({
   histogramTableLocally: jest.fn(),
@@ -110,6 +116,26 @@ describe('ColumnProfilePanel', () => {
     render(<ColumnProfilePanel {...defaultProps} onClose={onClose} />);
     fireEvent.click(screen.getByLabelText('Close profile panel'));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onClose on Escape', () => {
+    const onClose = jest.fn();
+    render(<ColumnProfilePanel {...defaultProps} onClose={onClose} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not claim Escape while closed', () => {
+    const onClose = jest.fn();
+    const onOuterClose = jest.fn();
+    render(
+      <OuterLayer onClose={onOuterClose}>
+        <ColumnProfilePanel {...defaultProps} isOpen={false} onClose={onClose} />
+      </OuterLayer>
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onOuterClose).toHaveBeenCalledTimes(1);
   });
 
   it('loads and displays histogram on Show Distribution click', async () => {

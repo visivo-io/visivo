@@ -114,7 +114,8 @@
   • Public project key (193619) — shared with the www site and the visivo CLI
     telemetry (visivo/telemetry/config.py). phc_* keys are PUBLIC client keys
     and are safe to embed in shipped HTML.
-  • Host us.i.posthog.com (the www site uses the same host).
+  • Host e.visivo.io, the PostHog managed reverse proxy (the www site uses
+    the same host). Ad blockers drop requests to *.posthog.com.
   • Material runs with `navigation.instant`, so a full page load only happens
     once; subsequent nav swaps the <main> in place. We init PostHog once, then
     fire a manual `$pageview` (+ `docs_page_viewed`) on every `location$`
@@ -133,7 +134,7 @@
     /* Public PostHog project key (193619) — shared across www, CLI, and docs.
        This is a PUBLIC client key; embedding it in shipped HTML is intended. */
     var PHC_KEY = "phc_DaLOz39kD2u4ZFNi6aXQuA7ncmnbAGoE8dLZc2z7Agj";
-    var PHC_HOST = "https://us.i.posthog.com";
+    var PHC_HOST = "https://e.visivo.io";
 
     /* Only load PostHog on the real docs origin so local dev / sandbox / CI
        builds (127.0.0.1, localhost, file://) never pollute the prod project. */
@@ -212,6 +213,7 @@
 
       window.posthog.init(PHC_KEY, {
         api_host: PHC_HOST,
+        ui_host: "https://us.posthog.com",
         /* Material owns navigation (instant nav) — fire pageviews manually so
            SPA-style nav is tracked exactly once per location change. */
         capture_pageview: false,
