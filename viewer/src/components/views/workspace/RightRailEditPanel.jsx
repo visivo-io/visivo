@@ -74,7 +74,6 @@ import { templateItemNames } from '../../project/template/templateHtml';
  */
 
 // Object types that are edited by reusing their existing leaf/Library-row form.
-const LEAF_TYPES = ['chart', 'table', 'markdown', 'input'];
 // The richer Data-Layer / leaf forms that bring their own UI (and Save button).
 // Routed for completeness; the four leaf types above already cover the
 // dashboard-item drill-in.
@@ -632,21 +631,11 @@ const RightRailEditPanel = () => {
         );
       }
       const leafRef = getItemLeafRef(item);
-      // If the item points at a real, NAMED leaf object, drill in to that leaf's
-      // existing edit form (per Q25). Inline/unnamed leaves (e.g. markdown
-      // defined in place) are NOT in the object store — there is no named object
-      // to open — so they fall through to the item layout editor below, which
-      // renders a "defined inline" chip + a prompt to name the object rather
-      // than opening an empty/broken leaf form.
-      if (leafRef && !leafRef.inline && LEAF_TYPES.includes(leafRef.type)) {
-        return (
-          <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
-            {breadcrumb}
-            <LeafObjectForm type={leafRef.type} name={leafRef.name} onSelectRef={handleSelectRef} />
-          </div>
-        );
-      }
-      // Otherwise edit the item layout slot itself.
+      // Selecting an item edits the ITEM — its width, and which object fills it.
+      // It used to drill straight into the referenced object's own edit form,
+      // which put a chart form and a dashboard form in the same rail with no
+      // way to tell which one a save applied to. The object is reachable from
+      // the pill, which opens it as its own workspace tab.
       const updateItem = nextItem =>
         writeRows(
           updateSiblingsAtKey(rows, outlineKey, sibs =>
@@ -668,11 +657,7 @@ const RightRailEditPanel = () => {
           <SelectionChip
             type="dashboard"
             name={`Item ${sel.itemIndex + 1}`}
-            subtitle={
-              leafRef?.inline
-                ? `Row ${sel.rowIndex + 1} · inline ${leafRef.type}`
-                : `Row ${sel.rowIndex + 1} · empty slot`
-            }
+            subtitle={itemSubtitle(sel.rowIndex, leafRef)}
             saveStatus={effectiveSaveStatus}
           />
           {readOnlyNotice}
@@ -714,6 +699,15 @@ const RightRailEditPanel = () => {
       />
     </div>
   );
+};
+
+/** What an item slot holds, for the selection chip. */
+const itemSubtitle = (rowIndex, leafRef) => {
+  const row = `Row ${rowIndex + 1}`;
+  if (!leafRef) return `${row} · empty slot`;
+  // A named object now lands here too — before, it drilled into its own form,
+  // so "empty slot" was never reachable with a leaf present.
+  return leafRef.inline ? `${row} · inline ${leafRef.type}` : `${row} · ${leafRef.type}`;
 };
 
 /**

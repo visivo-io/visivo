@@ -280,21 +280,21 @@ describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
     expect(screen.getByTestId('right-rail-selection-chip')).toHaveTextContent('Row 1');
   });
 
-  test('item with a string-ref chart leaf (row.0.item.0) → inline ChartEditForm', () => {
+  test('item with a string-ref chart leaf (row.0.item.0) → the ITEM editor, not the chart form', () => {
     resetStore({ workspaceOutlineSelectedKey: 'row.0.item.0' });
     renderPanel();
-    // chart leaf → the inline chart edit form (GAP-2), chip = chart.
-    const chip = screen.getByTestId('right-rail-selection-chip');
-    expect(chip).toHaveAttribute('data-object-type', 'chart');
-    expect(chip).toHaveTextContent('rev_chart');
-    expect(screen.getByTestId('right-rail-edit-leaf-form')).toBeInTheDocument();
-    expect(screen.getByTestId('chart-edit-form-stub')).toHaveTextContent('rev_chart');
-    // The old "open in its own surface" stub is gone for charts.
-    expect(screen.queryByTestId('right-rail-edit-leaf-open')).not.toBeInTheDocument();
+    // Selecting an item edits the item. Putting the chart's own form in the
+    // same rail as the dashboard's left no way to tell which one a save
+    // applied to (VIS-1654); the chart is reached from the pill instead.
+    expect(screen.getByTestId('right-rail-edit-item')).toBeInTheDocument();
+    expect(screen.queryByTestId('chart-edit-form-stub')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('right-rail-edit-leaf-form')).not.toBeInTheDocument();
   });
 
-  test('GAP-1: item with an OBJECT-stored chart leaf → inline ChartEditForm (not empty slot)', () => {
+  test('GAP-1: an OBJECT-stored chart leaf reads as that chart, not an empty slot', () => {
     // Real compiled dashboards carry the leaf as an object, not a ref string.
+    // It used to mis-route as an empty ItemEditForm; now it routes to the item
+    // editor either way, so the guard is that the slot still knows it is full.
     const objectLeafDash = {
       name: 'simple-dashboard',
       config: {
@@ -312,15 +312,29 @@ describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
       dashboards: [objectLeafDash],
     });
     renderPanel();
-    // Must resolve to the chart leaf form — NOT mis-route as an empty ItemEditForm.
-    expect(screen.getByTestId('chart-edit-form-stub')).toHaveTextContent('rev_chart');
-    expect(screen.queryByTestId('right-rail-edit-item')).not.toBeInTheDocument();
+    expect(screen.getByTestId('right-rail-edit-item')).toBeInTheDocument();
+    expect(screen.getByTestId('right-rail-selection-chip')).not.toHaveTextContent('empty slot');
+    expect(screen.getByTestId('right-rail-selection-chip')).toHaveTextContent('chart');
   });
 
-  test('item with a markdown leaf (row.1.item.0) → MarkdownEditForm', () => {
+  test('item with a markdown leaf (row.1.item.0) → the ITEM editor too', () => {
     resetStore({ workspaceOutlineSelectedKey: 'row.1.item.0' });
     renderPanel();
-    expect(screen.getByTestId('markdown-edit-form-stub')).toHaveTextContent('notes');
+    expect(screen.getByTestId('right-rail-edit-item')).toBeInTheDocument();
+    expect(screen.queryByTestId('markdown-edit-form-stub')).not.toBeInTheDocument();
+  });
+
+  test('the pill on a filled item opens that object as its own tab', () => {
+    // The route out of the dashboard, now that selecting an item no longer
+    // drills in: click the pill, work on the chart, come back via its tab.
+    const openWorkspaceTab = jest.fn();
+    resetStore({ workspaceOutlineSelectedKey: 'row.0.item.0', openWorkspaceTab });
+    renderPanel();
+
+    // The pill carries `chart: rev_chart — click to open` as its tooltip.
+    fireEvent.click(screen.getByTitle(/chart: rev_chart/));
+
+    expect(openWorkspaceTab).toHaveBeenCalledWith({ type: 'chart', name: 'rev_chart' });
   });
 
   test('empty item (row.0.item.1, no leaf ref) → ItemEditForm', () => {
@@ -420,10 +434,13 @@ describe('RightRailEditPanel nested container keys (arbitrary depth)', () => {
     expect(screen.getByTestId('right-rail-selection-chip')).toHaveTextContent('Row 1');
   });
 
-  test('nested chart item key (row.0.item.1.row.0.item.0) → the leaf chart form', () => {
+  test('nested chart item key (row.0.item.1.row.0.item.0) → that item, NOT the whole dashboard', () => {
     resetNested({ workspaceOutlineSelectedKey: 'row.0.item.1.row.0.item.0' });
     renderPanel();
-    expect(screen.getByTestId('chart-edit-form-stub')).toHaveTextContent('nested_chart');
+    // A nested item resolves to its own slot at any depth; like a top-level
+    // one it edits the ITEM, and the chart is reached from the pill.
+    expect(screen.getByTestId('right-rail-edit-item')).toBeInTheDocument();
+    expect(screen.queryByTestId('chart-edit-form-stub')).not.toBeInTheDocument();
     expect(screen.queryByTestId('right-rail-edit-dashboard')).not.toBeInTheDocument();
   });
 
