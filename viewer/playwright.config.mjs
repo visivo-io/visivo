@@ -47,6 +47,8 @@ export default defineConfig({
         '**/theme-edit.spec.mjs',
         // Drafts a broken model + insight and runs them (see state-mutating).
         '**/canvas-insight-run-failure.spec.mjs',
+        // Drafts broken and empty charts on a dashboard and runs them (see state-mutating).
+        '**/dashboard-chart-states.spec.mjs',
         // Phase 2 e2e gate (VIS-1050): explorations live in ONE file-backed
         // repository shared by every worker (`.visivo/explorations/`, no
         // per-worker isolation like localStorage-scoped Phase 0 state) — see
@@ -162,6 +164,9 @@ export default defineConfig({
         // Drafts a model selecting from a missing table plus an insight on it,
         // runs them to a failure, then deletes both.
         '**/canvas-insight-run-failure.spec.mjs',
+        // Drafts a failing and an empty chart on a new dashboard, runs them,
+        // then deletes them.
+        '**/dashboard-chart-states.spec.mjs',
       ],
       dependencies: ['parallel'],
     },

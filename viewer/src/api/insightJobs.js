@@ -101,12 +101,16 @@ export const fetchInsightJobs = async (projectId, names, runId = DEFAULT_RUN_ID,
       const response = await apiFetch(url);
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(
+        const httpError = new Error(
           `Failed to fetch insight jobs data: ${response.status} ${response.statusText}. ${errorText}`
         );
+        httpError.status = response.status;
+        throw httpError;
       }
 
       const data = await response.json();
+
+      if (Array.isArray(data) && data.length === 0) return [];
 
       let insightJobs = Array.isArray(data) ? data : [data];
 
@@ -145,5 +149,9 @@ export const fetchInsightJobs = async (projectId, names, runId = DEFAULT_RUN_ID,
     }
   }
 
-  throw new Error(`Failed to fetch insight jobs after ${retries} attempts: ${lastError.message}`);
+  const finalError = new Error(
+    `Failed to fetch insight jobs after ${retries} attempts: ${lastError.message}`
+  );
+  finalError.status = lastError.status;
+  throw finalError;
 };

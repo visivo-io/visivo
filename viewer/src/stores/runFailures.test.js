@@ -10,6 +10,7 @@ import {
   parseDagFilterNames,
   extractRunError,
   findLatestRunFailureFor,
+  findBuildFailureFor,
   pickDiagnosticFor,
   selectLatestRunFailureFor,
 } from './runFailures';
@@ -282,5 +283,68 @@ describe('diagnostics payloads', () => {
       diagnostic: null,
       createdAt: '2026-07-01T12:00:00Z',
     });
+  });
+});
+
+describe('findBuildFailureFor', () => {
+  const diagnostic = {
+    phase: 'run',
+    code: 'query_execution_failed',
+    message: 'Binder Error: Referenced column "region" not found',
+    object: { type: 'insight', name: 'units_by_region' },
+  };
+  const fullBuild = over => ({
+    id: 'startup',
+    state: 'failed',
+    dag_filter: '+EV Sales Overview+',
+    error_json: { phase: 'run', diagnostics: [diagnostic] },
+    is_superseded: false,
+    created_at: '2026-10-24T08:00:00Z',
+    ...over,
+  });
+
+  it('returns null for missing runs / name', () => {
+    expect(findBuildFailureFor(undefined, 'units_by_region')).toBeNull();
+    expect(findBuildFailureFor([fullBuild()], '')).toBeNull();
+  });
+
+  it('prefers a failure scoped to the name', () => {
+    const scoped = {
+      id: 'scoped',
+      state: 'failed',
+      dag_filter: '+units_by_region+',
+      error_json: { error: 'scoped failure' },
+      is_superseded: false,
+      created_at: '2026-10-24T09:00:00Z',
+    };
+    expect(findBuildFailureFor([scoped], 'units_by_region').runId).toBe('scoped');
+  });
+
+  it('reads the diagnostic about the name from the newest run, whatever it built', () => {
+    const failure = findBuildFailureFor([fullBuild()], 'units_by_region');
+    expect(failure).toMatchObject({ runId: 'startup', error: diagnostic.message, diagnostic });
+  });
+
+  it('reads a full build with no dag_filter the same way', () => {
+    expect(findBuildFailureFor([fullBuild({ dag_filter: null })], 'units_by_region')).not.toBeNull();
+  });
+
+  it('ignores a run with no diagnostic about the name', () => {
+    expect(findBuildFailureFor([fullBuild()], 'other_insight')).toBeNull();
+  });
+
+  it('ignores a run that succeeded or was superseded', () => {
+    expect(findBuildFailureFor([fullBuild({ state: 'succeeded' })], 'units_by_region')).toBeNull();
+    expect(findBuildFailureFor([fullBuild({ is_superseded: true })], 'units_by_region')).toBeNull();
+  });
+
+  it('reads only the newest run', () => {
+    const newer = fullBuild({ id: 'newer', state: 'succeeded', created_at: '2026-10-24T10:00:00Z' });
+    expect(findBuildFailureFor([fullBuild(), newer], 'units_by_region')).toBeNull();
+  });
+
+  it('carries a null createdAt when the run has none', () => {
+    const failure = findBuildFailureFor([fullBuild({ created_at: undefined })], 'units_by_region');
+    expect(failure.createdAt).toBeNull();
   });
 });
