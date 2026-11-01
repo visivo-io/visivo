@@ -1,7 +1,7 @@
 /* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import { render, screen, fireEvent } from '@testing-library/react';
 import selectEvent from 'react-select-event';
-import PivotableTable from './PivotableTable';
+import PivotableTable, { csvRowsFor } from './PivotableTable';
 import * as DuckDBContext from '../../contexts/DuckDBContext';
 
 jest.mock('../../contexts/DuckDBContext');
@@ -468,6 +468,240 @@ describe('PivotableTable', () => {
     expect(link).toBeDefined();
     expect(link.getAttribute('download')).toBe('test-table.csv');
     appendSpy.mockRestore();
+  });
+
+  const exportCsvText = () => {
+    const OriginalBlob = global.Blob;
+    const parts = [];
+    global.Blob = function (blobParts) {
+      parts.push(...blobParts);
+      return new OriginalBlob(blobParts);
+    };
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'DownloadCsv' }));
+    } finally {
+      global.Blob = OriginalBlob;
+    }
+    return parts.join('');
+  };
+
+  const exportCsv = () => exportCsvText().replace(/^\uFEFF/, '').split('\r\n');
+
+  describe('CSV export headers (VIS-1622)', () => {
+    it('writes the same readable headers the grid shows for a data: insight table', async () => {
+      render(
+        <PivotableTable
+          table={{ name: 'insight-table', data: '${ref(rev-insight)}' }}
+          sourceData={{
+            data: [
+              { mwohwccuenqqyny: 'North', medzqprtzikdonh: 10 },
+              { mwohwccuenqqyny: 'South', medzqprtzikdonh: 20 },
+            ],
+            props_mapping: { 'props.x': 'mwohwccuenqqyny', 'props.y': 'medzqprtzikdonh' },
+            files: [],
+          }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      const lines = exportCsv();
+      expect(lines[0]).toBe('"X","Y"');
+      expect(lines[1]).toBe('"North",10');
+      expect(lines[2]).toBe('"South",20');
+      expect(lines.join('\n')).not.toMatch(/mwohwccuenqqyny|medzqprtzikdonh/);
+    });
+
+    it('strips the hash suffix from unmapped keys in the CSV header', async () => {
+      render(
+        <PivotableTable
+          table={{ name: 'model-table' }}
+          sourceData={{ data: [{ total_revenue_hash_abc123: 5 }], props_mapping: {}, files: [] }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      const lines = exportCsv();
+      expect(lines[0]).toBe('"Total Revenue"');
+      expect(lines[1]).toBe('5');
+    });
+
+    it('keeps real column names in the CSV for a table on a model', async () => {
+      render(
+        <PivotableTable
+          table={{ name: 'model-table', data: '${ref(daily_metrics)}' }}
+          sourceData={{ data: [{ day_num: 1, category: 'A' }], files: [] }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      expect(screen.getByText('Day Num')).toBeInTheDocument();
+      const lines = exportCsv();
+      expect(lines[0]).toBe('"day_num","category"');
+      expect(lines[1]).toBe('1,"A"');
+    });
+
+    it('keeps aliases and maps unaliased hashed keys in column-select mode', async () => {
+      mockPivotReturn = {
+        ...mockPivotReturn,
+        rows: [{ Region: 'North', col_b: 10 }],
+        columns: [
+          { accessorKey: 'Region', header: 'Region' },
+          { accessorKey: 'col_b', header: 'Revenue' },
+        ],
+      };
+      render(
+        <PivotableTable
+          table={{
+            name: 'select-table',
+            columns: ['${ref(rev-insight).name} as Region', '${ref(rev-insight).revenue}'],
+          }}
+          sourceData={mockInsightData}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      const lines = exportCsv();
+      expect(lines[0]).toBe('"Region","Revenue"');
+      expect(lines[1]).toBe('"North",10');
+    });
+
+    it('de-hashes composite pivot keys so each value column keeps its aggregate', async () => {
+      mockPivotReturn = {
+        ...mockPivotReturn,
+        rows: [
+          { col_a: 'Alice', 'North_sum(col_b)': 10, 'North_avg(col_b)': 5 },
+        ],
+        columns: [
+          { accessorKey: 'col_a', header: 'Name', isPivotRow: true },
+          { accessorKey: 'North_sum(col_b)', header: 'North' },
+          { accessorKey: 'North_avg(col_b)', header: 'North' },
+        ],
+      };
+      render(
+        <PivotableTable
+          table={{
+            name: 'pivot-table',
+            columns: ['${ref(rev-insight).region}'],
+            rows: ['${ref(rev-insight).name}'],
+            values: ['sum(${ref(rev-insight).revenue})'],
+          }}
+          sourceData={mockInsightData}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      const lines = exportCsv();
+      expect(lines[0]).toBe('"Name","North_sum(Revenue)","North_avg(Revenue)"');
+      expect(lines[1]).toBe('"Alice",10,5');
+    });
+
+    it('disables the download when the table has no columns', () => {
+      render(
+        <PivotableTable
+          table={{ name: 'empty-table' }}
+          sourceData={{ data: [], props_mapping: {}, files: [] }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: 'DownloadCsv' })).toBeDisabled();
+    });
+  });
+
+  describe('CSV content', () => {
+    const exportedCsv = sourceData => {
+      render(
+        <PivotableTable
+          table={{ name: 'csv-table', rows_per_page: 50 }}
+          sourceData={sourceData}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+      return exportCsvText();
+    };
+
+    it('writes empty cells as empty text, not the word null', () => {
+      const csv = exportedCsv({
+        data: [
+          { name: 'Alice', score: 1 },
+          { name: null, score: null },
+        ],
+        props_mapping: {},
+        files: [],
+      });
+      expect(csv).not.toContain('null');
+      expect(csv.split('\r\n')[2]).toBe('"",""');
+    });
+
+    it('writes date columns as displayed rather than as raw timestamps', () => {
+      const csv = exportedCsv({
+        data: [{ day: '2024-03-05T00:00:00.000Z', n: 1234.5 }],
+        props_mapping: {},
+        files: [],
+      });
+      expect(csv).toContain('2024-03-05');
+      expect(csv).not.toContain('T00:00:00.000Z');
+      expect(csv).toContain('1234.5');
+    });
+
+    it('writes readable headers and cleaned values together for a data: insight table', () => {
+      render(
+        <PivotableTable
+          table={{ name: 'insight-table', data: '${ref(rev-insight)}' }}
+          sourceData={{
+            data: [
+              { mwohwccuenqqyny: '2024-03-05T00:00:00.000Z', medzqprtzikdonh: 10 },
+              { mwohwccuenqqyny: '2024-03-06T00:00:00.000Z', medzqprtzikdonh: null },
+            ],
+            props_mapping: { 'props.x': 'mwohwccuenqqyny', 'props.y': 'medzqprtzikdonh' },
+            files: [],
+          }}
+          itemWidth={600}
+          height={400}
+          width={600}
+        />
+      );
+
+      const lines = exportCsv();
+      expect(lines[0]).toBe('"X","Y"');
+      expect(lines[1]).toBe('"2024-03-05",10');
+      expect(lines[2]).toBe('"2024-03-06",""');
+    });
+
+    it('keeps the BOM so Excel reads UTF-8', () => {
+      const csv = exportedCsv(mockInsightData);
+      expect(csv.charCodeAt(0)).toBe(0xfeff);
+    });
+  });
+
+  describe('csvRowsFor', () => {
+    it('stringifies bigint and object values and leaves other values alone', () => {
+      const rows = csvRowsFor(
+        [{ big: 12n, obj: { a: 1 }, text: 'x', flag: true, gone: undefined }],
+        [
+          { name: 'big', normalizedType: 'number' },
+          { name: 'obj', normalizedType: 'string' },
+          { name: 'text', normalizedType: 'string' },
+          { name: 'flag', normalizedType: 'boolean' },
+          { name: 'gone', normalizedType: 'string' },
+        ]
+      );
+      expect(rows[0]).toEqual({ big: '12', obj: '{"a":1}', text: 'x', flag: true, gone: '' });
+    });
   });
 
   it('applies gradient cell backgrounds when format_cells is configured', () => {
