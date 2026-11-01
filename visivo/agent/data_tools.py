@@ -315,36 +315,40 @@ def _profile_model_handler(app, arguments):
     name = (arguments or {}).get("name")
     if not isinstance(name, str) or not name.strip():
         raise ToolError("'name' is required: a model in this project.")
-    if find_model(app, name) is None:
-        raise ToolError(f"No model named '{name}'. Call list_models to see them.")
-    service = profiling_service_for(app.output_dir)
-    try:
-        profile = service.profile_model(name, columns=_columns_argument(arguments))
-    except FileNotFoundError:
-        raise ToolError(
-            f"Model '{name}' has no built data yet. profile_columns with its SQL "
-            "profiles it straight from the source, or wait for a run to finish."
-        )
-    return _cards_payload(service, profile, model=name)
-
-
-def model_cards(app, name):
-    """Shape cards for a model's columns, each carrying the model's name: from
-    its built data when a run has built it, else from its SQL on its source."""
     model = find_model(app, name)
     if model is None:
         raise ToolError(f"No model named '{name}'. Call list_models to see them.")
     service = profiling_service_for(app.output_dir)
+    profile = _model_profile(app, service, model, name, columns=_columns_argument(arguments))
+    return _cards_payload(service, profile, model=name)
+
+
+def _model_profile(app, service, model, name, columns=None):
+    """A model's profile from its built data when a run has built it, else from
+    its SQL on its source."""
     try:
-        profile = service.profile_model(name)
+        return service.profile_model(name, columns=columns)
     except FileNotFoundError:
         source = source_for_model(app, model, app.output_dir)
         sql = getattr(model, "sql", None)
         if source is None or not sql:
             raise ToolError(f"Model '{name}' has no built data and no SQL on a source to profile.")
-        profile = service.profile_query(
-            source, sql, sample_rows=DEFAULT_SAMPLE_ROWS, timeout_s=AGENT_QUERY_TIMEOUT_S
+        return service.profile_query(
+            source,
+            sql,
+            columns=columns,
+            sample_rows=DEFAULT_SAMPLE_ROWS,
+            timeout_s=AGENT_QUERY_TIMEOUT_S,
         )
+
+
+def model_cards(app, name):
+    """Shape cards for a model's columns, each carrying the model's name."""
+    model = find_model(app, name)
+    if model is None:
+        raise ToolError(f"No model named '{name}'. Call list_models to see them.")
+    service = profiling_service_for(app.output_dir)
+    profile = _model_profile(app, service, model, name)
     return [dict(card, model=name) for card in service.shape_cards(profile)]
 
 
@@ -474,13 +478,14 @@ def _preview_insight_handler(app, arguments):
 # --- describe_source ---------------------------------------------------------
 
 
-def _stored_schema(app, source):
-    """The cached schema for ``source``, introspected into its preview run
-    when nothing is stored yet. Never runs seeds."""
+def _stored_schema(app, source, refresh=False):
+    """The cached schema for ``source``. Introspected into its preview run when
+    nothing is stored yet, and over the stored copy on ``refresh``. Never runs
+    seeds."""
     stored, run_id = SchemaAggregator.load_source_schema_with_fallback(source.name, app.output_dir)
-    if stored is not None:
+    if stored is not None and not refresh:
         return stored, run_id
-    run_id = SchemaAggregator.preview_run_id(source.name)
+    run_id = run_id or SchemaAggregator.preview_run_id(source.name)
     stored = SchemaAggregator.aggregate_source_schema(
         source_name=source.name,
         source_type=source.type,
@@ -493,7 +498,7 @@ def _stored_schema(app, source):
 
 def _describe_source_handler(app, arguments):
     source = _source_argument(app, arguments, key="name")
-    stored, run_id = _stored_schema(app, source)
+    stored, run_id = _stored_schema(app, source, refresh=(arguments or {}).get("refresh") is True)
     wanted = (arguments or {}).get("table")
     tables = stored.get("tables") or {}
     names = sorted(tables)
@@ -618,8 +623,8 @@ DATA_TOOLS = {
     "profile_model": Tool(
         name="profile_model",
         description=(
-            "Shape cards for a model that a run has already built, from its "
-            "parquet. Same cards as profile_columns, no source round-trip."
+            "Shape cards for a model: from its parquet when a run has built it, "
+            "else from its SQL on its source. Same cards as profile_columns."
         ),
         input_schema={
             "type": "object",
@@ -679,14 +684,20 @@ DATA_TOOLS = {
         description=(
             "The tables and columns of a source, from its cached schema; "
             "introspects the database once if nothing is cached. Pass 'table' "
-            "to see one table. Call this before writing a model so column "
-            "names come from the database rather than a guess."
+            "to see one table. Pass 'refresh': true to read the schema from the "
+            "database again, for example after tables were added or changed. "
+            "Call this before writing a model so column names come from the "
+            "database rather than a guess."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "name": {"type": "string", "description": "The source's name."},
                 "table": {"type": "string", "description": "One table to describe."},
+                "refresh": {
+                    "type": "boolean",
+                    "description": "Read the schema from the database, not the cache.",
+                },
             },
             "required": ["name"],
         },

@@ -112,6 +112,52 @@ class TestDescribeSource:
         ]
 
 
+class TestDescribeSourceRefresh:
+    def _add_table(self, integration_app):
+        import sqlite3
+
+        with sqlite3.connect(_source(integration_app).database) as connection:
+            connection.execute("CREATE TABLE added_later (z INTEGER)")
+
+    def _names(self, result):
+        return {t["name"] for t in result["tables"]}
+
+    def test_refresh_reads_tables_added_after_the_schema_was_cached(self, integration_app):
+        name = _source(integration_app).name
+        call(integration_app, "describe_source", {"name": name})
+        self._add_table(integration_app)
+
+        stale = call(integration_app, "describe_source", {"name": name})
+        fresh = call(integration_app, "describe_source", {"name": name, "refresh": True})
+        after = call(integration_app, "describe_source", {"name": name})
+
+        assert "added_later" not in self._names(stale)
+        assert "added_later" in self._names(fresh)
+        assert fresh["schema_from"] == f"preview-{name}"
+        assert "added_later" in self._names(after)
+
+    def test_refresh_replaces_the_schema_a_run_wrote(self, integration_app):
+        source = _source(integration_app)
+        SchemaAggregator.aggregate_source_schema(
+            source.name,
+            source.type,
+            {"tables": {"from_main": {"columns": {"a": {"type": "INT"}}}}},
+            integration_app.output_dir,
+        )
+
+        result = call(integration_app, "describe_source", {"name": source.name, "refresh": True})
+
+        assert result["schema_from"] == "main"
+        assert "from_main" not in self._names(result)
+        assert "test_table" in self._names(result)
+
+    def test_the_tool_description_offers_refresh(self):
+        tool = TOOLS["describe_source"]
+
+        assert "refresh" in tool.input_schema["properties"]
+        assert "'refresh'" in tool.description
+
+
 class TestPreviewTable:
     def test_rows_come_back_labelled_as_data(self, integration_app):
         result = call(
@@ -527,21 +573,60 @@ class TestProfileModel:
             "role"
         ] == "categorical"
 
-    def test_an_unbuilt_model_says_how_to_profile_it_anyway(self, integration_app):
+    def test_an_unbuilt_draft_model_is_profiled_from_its_sql(self, integration_app):
         call(
             integration_app,
             "write_model",
             {
                 "config": {
                     "name": "unbuilt",
-                    "sql": "SELECT 1 AS one",
+                    "sql": "SELECT 1 AS one, 'a' AS kind",
                     "source": f"ref({_source(integration_app).name})",
                 }
             },
         )
 
-        with pytest.raises(ToolError, match="no built data yet"):
-            call(integration_app, "profile_model", {"name": "unbuilt"})
+        result = call(integration_app, "profile_model", {"name": "unbuilt", "columns": ["kind"]})
+
+        assert result["model"] == "unbuilt" and result["row_count"] == 1
+        assert [c["column"] for c in result["cards"]] == ["kind"]
+
+    def test_a_committed_model_with_no_parquet_is_profiled_from_its_sql(self, output_dir):
+        """A model only insights use is never written to a parquet of its own."""
+        import os
+
+        from tests.factories.model_factories import ProjectFactory, SourceFactory, SqlModelFactory
+        from visivo.commands.utils import create_file_database
+        from visivo.server.flask_app import FlaskApp
+
+        abs_output_dir = os.path.abspath(output_dir)
+        source = SourceFactory(database=f"{abs_output_dir}/test.sqlite")
+        model = SqlModelFactory(name="orders", sql="SELECT x, y FROM test_table")
+        project = ProjectFactory(sources=[source], models=[model])
+        create_file_database(url=source.url(), output_dir=abs_output_dir)
+        app = FlaskApp(abs_output_dir, project, working_dir=abs_output_dir)
+
+        result = call(app, "profile_model", {"name": "orders"})
+
+        assert result["model"] == "orders"
+        assert {c["column"] for c in result["cards"]} == {"x", "y"}
+
+    def test_an_unbuilt_model_with_no_source_is_a_refusal(self, integration_app, monkeypatch):
+        call(
+            integration_app,
+            "write_model",
+            {
+                "config": {
+                    "name": "orphan",
+                    "sql": "SELECT 1 AS one",
+                    "source": f"ref({_source(integration_app).name})",
+                }
+            },
+        )
+        monkeypatch.setattr(data_tools, "source_for_model", lambda *a: None)
+
+        with pytest.raises(ToolError, match="no built data and no SQL"):
+            call(integration_app, "profile_model", {"name": "orphan"})
 
     def test_an_unknown_model_is_a_refusal(self, integration_app):
         with pytest.raises(ToolError, match="No model named"):
