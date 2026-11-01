@@ -9,6 +9,7 @@ Follows the pattern from preview_job_executor.py:
 from visivo.logger.logger import Logger
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.managers.preview_run_manager import RunStatus
+from visivo.server.source_resolution import find_source
 from visivo.jobs.run_source_schema_job import action as run_source_schema_action
 
 
@@ -39,7 +40,7 @@ def execute_source_schema_job(job_id, config, flask_app, output_dir, run_manager
 
         Logger.instance().info(f"Executing schema generation job {job_id} for source {source_name}")
 
-        source = flask_app.project.find_source(source_name)
+        source = find_source(flask_app, source_name)
         if source is None:
             raise Exception(f"Source '{source_name}' not found in project")
 

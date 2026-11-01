@@ -103,7 +103,6 @@ class TestSourceSchemaJobsViews:
         """Create a mock project with sources."""
         project = Mock()
         project.sources = [mock_source]
-        project.find_source = Mock(return_value=mock_source)
         return project
 
     @pytest.fixture
@@ -114,6 +113,8 @@ class TestSourceSchemaJobsViews:
 
         flask_app = Mock()
         flask_app.project = mock_project
+        flask_app.source_manager.get.return_value = None
+        flask_app.source_manager.get_sources_list.side_effect = lambda: list(mock_project.sources)
 
         register_source_schema_jobs_views(app, flask_app, temp_output_dir)
 
@@ -163,6 +164,114 @@ class TestListSourceSchemaJobs(TestSourceSchemaJobsViews):
         assert response.status_code == 200
         data = response.get_json()
         assert len(data) == 0
+
+
+class TestDraftSources(TestSourceSchemaJobsViews):
+    """VIS-1550: a source saved in the editor but not committed is listed and
+    can have its schema generated, like a committed one."""
+
+    @pytest.fixture
+    def draft_source(self):
+        source = Mock()
+        source.name = "draft_source"
+        source.type = "duckdb"
+        return source
+
+    @pytest.fixture
+    def with_draft(self, app, mock_project, draft_source):
+        manager = app.flask_app.source_manager
+        manager.get_sources_list.side_effect = lambda: list(mock_project.sources) + [draft_source]
+        manager.get.side_effect = lambda n: draft_source if n == "draft_source" else None
+        return app
+
+    def test_a_draft_source_is_listed(self, client, with_draft):
+        data = client.get("/api/source-schema-jobs/").get_json()
+
+        assert [s["source_name"] for s in data] == ["test_source", "draft_source"]
+        assert data[1]["source_type"] == "duckdb"
+        assert data[1]["has_cached_schema"] is False
+
+    @patch("visivo.server.views.source_schema_jobs_views.PreviewRunManager")
+    @patch("visivo.server.views.source_schema_jobs_views.threading.Thread")
+    def test_a_draft_source_schema_can_be_generated(
+        self, mock_thread, mock_run_manager_class, client, with_draft, draft_source
+    ):
+        run_manager = Mock()
+        run_manager.find_existing_run.return_value = None
+        run_manager.create_run.return_value = "draft-job"
+        mock_run_manager_class.instance.return_value = run_manager
+
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {"source_name": "draft_source"}, "run": True},
+        )
+
+        assert response.status_code == 202
+        assert response.get_json()["run_id"] == "draft-job"
+        assert run_manager.create_run.call_args[0][0]["source_type"] == "duckdb"
+
+
+class TestDeletedSources(TestSourceSchemaJobsViews):
+    """A source the draft marks for deletion is not found, as the cloud server
+    answers it, even though the committed project still holds it."""
+
+    @pytest.fixture
+    def with_deleted(self, app, mock_project):
+        from visivo.server.managers.source_manager import SourceManager
+        from tests.factories.model_factories import DuckdbSourceFactory
+
+        gone = DuckdbSourceFactory(name="gone")
+        live = DuckdbSourceFactory(name="live_draft")
+        mock_project.sources = list(mock_project.sources) + [gone]
+        manager = SourceManager()
+        manager._published_objects = {s.name: s for s in mock_project.sources}
+        manager.save("live_draft", live)
+        manager.mark_for_deletion("gone")
+        app.flask_app.source_manager = manager
+        return app
+
+    def test_post_for_a_deleted_source_is_404(self, client, with_deleted):
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {"source_name": "gone"}, "run": True},
+        )
+
+        assert response.status_code == 404
+        assert response.get_json() == {"error": "Source 'gone' not found"}
+
+    def test_post_for_an_unknown_source_is_the_same_404(self, client, with_deleted):
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {"source_name": "nope"}, "run": True},
+        )
+
+        assert response.status_code == 404
+        assert response.get_json() == {"error": "Source 'nope' not found"}
+
+    def test_get_leaves_the_deleted_source_out(self, client, with_deleted):
+        names = [s["source_name"] for s in client.get("/api/source-schema-jobs/").get_json()]
+
+        assert "gone" not in names
+        assert "live_draft" in names
+
+    @patch("visivo.server.views.source_schema_jobs_views.PreviewRunManager")
+    @patch("visivo.server.views.source_schema_jobs_views.threading.Thread")
+    def test_post_for_a_live_draft_source_is_still_202(
+        self, mock_thread, mock_run_manager_class, client, with_deleted
+    ):
+        run_manager = Mock()
+        run_manager.find_existing_run.return_value = None
+        run_manager.create_run.return_value = "live-job"
+        mock_run_manager_class.instance.return_value = run_manager
+
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {"source_name": "live_draft"}, "run": True},
+        )
+
+        assert response.status_code == 202
+        assert response.get_json() == {"run_id": "live-job"}
+        mock_thread.return_value.start.assert_called_once()
 
 
 class TestGetSourceSchema(TestSourceSchemaJobsViews):
@@ -233,16 +342,13 @@ class TestGenerateSourceSchema(TestSourceSchemaJobsViews):
 
     def test_generate_schema_source_not_found(self, client, app):
         """Test generating schema for non-existent source."""
-        app.flask_app.project.find_source.return_value = None
-
         response = client.post(
             "/api/source-schema-jobs/",
             json={"config": {"source_name": "nonexistent"}, "run": True},
         )
 
         assert response.status_code == 404
-        data = response.get_json()
-        assert "nonexistent" in data["message"]
+        assert response.get_json() == {"error": "Source 'nonexistent' not found"}
 
     def test_generate_schema_missing_config(self, client, app):
         """Test generating schema without config field."""
@@ -493,3 +599,43 @@ class TestSourceSchemaPathTraversal(TestSourceSchemaJobsViews):
         """The guard must not reject legitimate run_ids."""
         response = client.get("/api/source-schema-jobs/test_source/?run_id=main")
         assert response.status_code == 200
+
+
+class TestFailurePaths(TestSourceSchemaJobsViews):
+    """Each route answers a clear status instead of raising."""
+
+    @patch("visivo.server.views.source_schema_jobs_views.SchemaAggregator")
+    def test_a_listing_failure_is_a_500(self, mock_aggregator, client):
+        mock_aggregator.load_source_schema_with_fallback.side_effect = RuntimeError("disk")
+
+        response = client.get("/api/source-schema-jobs/")
+
+        assert response.status_code == 500
+        assert "disk" in response.get_json()["message"]
+
+    def test_an_empty_body_is_a_400(self, client):
+        response = client.post("/api/source-schema-jobs/", json={})
+
+        assert response.status_code == 400
+        assert "body is required" in response.get_json()["message"]
+
+    @patch("visivo.server.views.source_schema_jobs_views.PreviewRunManager")
+    def test_a_job_start_failure_is_a_500(self, mock_run_manager_class, client):
+        mock_run_manager_class.instance.side_effect = RuntimeError("no runs")
+
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {"source_name": "test_source"}, "run": True},
+        )
+
+        assert response.status_code == 500
+        assert "no runs" in response.get_json()["message"]
+
+    @patch("visivo.server.views.source_schema_jobs_views.SchemaAggregator")
+    def test_a_schema_read_failure_is_a_500(self, mock_aggregator, client):
+        mock_aggregator.load_source_schema_with_fallback.side_effect = RuntimeError("disk")
+
+        response = client.get("/api/source-schema-jobs/test_source/")
+
+        assert response.status_code == 500
+        assert "disk" in response.get_json()["message"]

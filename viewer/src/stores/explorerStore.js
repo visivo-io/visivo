@@ -3,6 +3,7 @@ import { generateUniqueName } from '../utils/uniqueName';
 import { legacyStateForSeed } from '../components/views/workspace/explorationLegacyBridge';
 import { formatRefExpression } from '../utils/refString';
 import { encodeQueryString } from '../utils/expressionCodec';
+import { ObjectStatus } from './sourceStore';
 
 /**
  * Thrown by create/rename actions when the proposed name collides with any
@@ -331,6 +332,23 @@ const matchSourceName = (extractedName, sources) => {
  * Expression validation/translation endpoints expect a dialect string, not a
  * source name — passing the name silently falls back to DuckDB parsing.
  */
+/**
+ * The Explorer's source options, built from the Library's `sources` list so
+ * that uncommitted (draft) sources are included and sources marked for
+ * deletion are not.
+ */
+export const explorerSourcesFromLibrary = (sources) =>
+  (sources || [])
+    .filter((source) => source?.name && source.status !== ObjectStatus.DELETED)
+    .map((source) => ({ source_name: source.name, source_type: source.config?.type || null }));
+
+export const sameExplorerSources = (a, b) =>
+  (a || []).length === (b || []).length &&
+  (a || []).every(
+    (source, i) =>
+      source.source_name === b[i]?.source_name && source.source_type === b[i]?.source_type
+  );
+
 export const getSourceDialect = (sourceName, sources) => {
   const source = (sources || []).find(
     (src) => src.source_name === sourceName || src.name === sourceName
