@@ -88,7 +88,7 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     return allRows.map(row =>
       dataTableColumns
         .filter(col => row[col.name] != null)
-        .flatMap(col => [String(row[col.name]), formatCellText(row[col.name], col.normalizedType)])
+        .flatMap(col => [String(row[col.name]), formatCellText(row[col.name], col.normalizedType, col.name)])
         .join('\n')
         .toLowerCase()
     );

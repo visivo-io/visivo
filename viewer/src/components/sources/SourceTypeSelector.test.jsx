@@ -37,9 +37,18 @@ describe('SourceTypeSelector', () => {
     expect(screen.getByText('Snowflake')).toBeInTheDocument();
   });
 
-  it('disables the underlying combobox when disabled', () => {
+  it('disables the select when disabled', () => {
     render(<SourceTypeSelector value="duckdb" onChange={jest.fn()} disabled />);
-    const combo = within(screen.getByTestId('source-type-select')).getByRole('combobox');
-    expect(combo).toBeDisabled();
+    expect(screen.getByTestId('source-type-select')).toHaveClass('vis-select--is-disabled');
+  });
+
+  it('filters options as you type and Enter picks the match', () => {
+    const onChange = jest.fn();
+    render(<SourceTypeSelector value="" onChange={onChange} />);
+    const combo = openMenu();
+    fireEvent.change(combo, { target: { value: 'CSV' } });
+    expect(screen.getAllByRole('option').map(o => o.textContent)).toEqual(['CSV']);
+    fireEvent.keyDown(combo, { key: 'Enter', keyCode: 13 });
+    expect(onChange).toHaveBeenCalledWith('csv');
   });
 });

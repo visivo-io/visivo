@@ -82,4 +82,37 @@ describe('DataTableCell', () => {
     render(<DataTableCell value={1704067200} columnType="date" />);
     expect(screen.getByTitle('2024-01-01')).toBeInTheDocument();
   });
+
+  it('keeps thousands separators off year-like integers in a year column', () => {
+    render(<DataTableCell value={2023} columnType="number" columnName="year" />);
+    expect(screen.getByText('2023')).toBeInTheDocument();
+  });
+
+  it('keeps thousands separators off bigint years in a year column', () => {
+    render(<DataTableCell value={2023n} columnType="number" columnName="Fiscal_Year" />);
+    expect(screen.getByText('2023')).toBeInTheDocument();
+  });
+
+  it('still separates ordinary numbers and out-of-range values in a year column', () => {
+    render(<DataTableCell value={2023} columnType="number" columnName="revenue" />);
+    expect(screen.getByText(/^2.023$/)).toBeInTheDocument();
+    render(<DataTableCell value={12345} columnType="number" columnName="year" />);
+    expect(screen.getByText(/^12.345$/)).toBeInTheDocument();
+  });
+
+  it.each(['order year', 'fiscalYear', 'ORDER_YEAR', 'year-start'])(
+    'treats %s as a year column',
+    columnName => {
+      render(<DataTableCell value={2023} columnType="number" columnName={columnName} />);
+      expect(screen.getByText('2023')).toBeInTheDocument();
+    }
+  );
+
+  it.each(['yearly_revenue', 'years_active', 'light_years', 'yearsOfService'])(
+    'keeps separators in %s, where year is only part of a word',
+    columnName => {
+      render(<DataTableCell value={1250} columnType="number" columnName={columnName} />);
+      expect(screen.getByText(/^1.250$/)).toBeInTheDocument();
+    }
+  );
 });
