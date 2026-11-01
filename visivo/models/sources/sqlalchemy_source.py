@@ -38,6 +38,8 @@ _MAX_ERROR_CHARS = 200
 # Failures are grouped by reason, so the message names a few example tables
 # rather than all of them — 186 names is not more informative than 3.
 _MAX_SAMPLE_TABLES = 3
+# The server's wording for a rejected login; PostgreSQL and its forks share it.
+_LOGIN_FAILURE_MARKER = "password authentication failed"
 
 
 def _sqlalchemy_type_for(polars_dtype):
@@ -181,9 +183,35 @@ class SqlalchemySource(Source, ABC):
                     )
             return connection
         except Exception as err:
+            login_failure = self._login_failure_message(err)
+            if login_failure:
+                raise click.ClickException(login_failure)
             raise click.ClickException(
                 f"Error connecting to source '{self.name}'. Ensure the database is running and the connection properties are correct. Full Error: {str(err)}"
             )
+
+    def _login_failure_message(self, err) -> Optional[str]:
+        """One line naming the source and user when the server rejected the login.
+
+        Returns None for any other error. The driver text is dropped on purpose:
+        it repeats the host and adds a library link the user cannot act on.
+        """
+        if _LOGIN_FAILURE_MARKER not in str(err).lower():
+            return None
+        try:
+            user = self.get_username() if hasattr(self, "get_username") else None
+        except Exception:
+            user = None
+        password = getattr(self, "password", None)
+        env_names = password.get_env_var_names() if hasattr(password, "get_env_var_names") else []
+        who = f"source '{self.name}' as '{user}'" if user else f"source '{self.name}'"
+        references = ", ".join(f"${{env.{name}}}" for name in env_names)
+        hint = (
+            f"Check the password or the environment variable it reads ({references})."
+            if env_names
+            else "Check the password."
+        )
+        return f"Could not log in to {who}: password authentication failed. {hint}"
 
     def get_engine(self):
 
@@ -511,7 +539,10 @@ class SqlalchemySource(Source, ABC):
             return result
 
         except Exception as e:
-            Logger.instance().error(f"Error building schema for source {self.name}: {e}")
+            login_failure = self._login_failure_message(e)
+            message = login_failure or str(e)
+            log = Logger.instance().debug if login_failure else Logger.instance().error
+            log(f"Error building schema for source {self.name}: {message}")
             # Return minimal schema to avoid breaking downstream code. `errors`
             # is a list here as well as on the success path, so a caller has one
             # shape to check rather than two.
@@ -519,8 +550,8 @@ class SqlalchemySource(Source, ABC):
                 "tables": {},
                 "sqlglot_schema": MappingSchema(),
                 "metadata": {
-                    "error": str(e),
-                    "errors": [str(e)],
+                    "error": message,
+                    "errors": [message],
                     "scanned_schemas": [],
                     "total_tables": 0,
                     "total_columns": 0,

@@ -107,8 +107,8 @@ REF_PROPERTY_PATTERN = rf"^{REF_FUNCTION_PATTERN}$"
 
 # Property path pattern: optional dots, brackets, digits, word chars
 # Captures: property_path (the property path after ref())
-# Examples: .id, [0], .list[0].property, or empty string
-PROPERTY_PATH_PATTERN = r"(?P<property_path>[\.\d\w\[\]]*?)"
+# Examples: .id, [0], [:-10], .list[0].property, or empty string
+PROPERTY_PATH_PATTERN = r"(?P<property_path>[\.\d\w\[\]:\-]*?)"
 
 # Core pattern for ${ref(model).field} or ${ref('model').field} or ${ref('model')[0]}
 # Composed of: ${ + REF_FUNCTION + PROPERTY_PATH + }
@@ -150,7 +150,7 @@ INLINE_PATH_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]]+?)\s*}}"
 
 # General context string value pattern: ${anything}
 # Used for equality and hashing in ContextString class
-CONTEXT_STRING_VALUE_PATTERN = rf"\${{\s*([{NAME_REGEX}\.\[\]\)\()]+?)\s*}}"
+CONTEXT_STRING_VALUE_PATTERN = rf"\${{\s*([{NAME_REGEX}\.\[\]:\)\()]+?)\s*}}"
 
 
 # ============================================================================
@@ -274,6 +274,26 @@ def extract_ref_names(text: str) -> Set[str]:
         {'orders', 'users'}
     """
     return {model for model, _ in extract_ref_components(text)}
+
+
+def ref_name(text: str) -> Optional[str]:
+    """
+    The name a reference refers to, quotes stripped, or None.
+
+    Accepts ``${ref(name)}`` (the first ref in the text) and a lone ``ref(name)``.
+
+    Examples:
+        >>> ref_name("${ref(orders)}")
+        'orders'
+        >>> ref_name("ref('orders')")
+        'orders'
+        >>> ref_name("orders") is None
+        True
+    """
+    match = CONTEXT_STRING_REF_PATTERN_COMPILED.search(text) or re.match(
+        REF_PROPERTY_PATTERN, text.strip()
+    )
+    return get_model_name_from_match(match) if match else None
 
 
 def replace_refs(text: str, replacer_func) -> str:

@@ -28,7 +28,7 @@ example: |
       interactions:
         - sort: ?{ min(${ref(events).stage_order}) ASC }
 variations:
-  - when: "a `few` categorical (a segment) should be compared"
+  - when: "a categorical of 2–7 values (a segment) should be compared"
     then: "`split` with `layout.funnelmode: group`; the counts stay comparable per stage"
   - when: "the message is percent of the first stage"
     then: "`textinfo: value+percent initial`"

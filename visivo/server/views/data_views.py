@@ -75,11 +75,12 @@ def register_data_views(app, flask_app, output_dir):
         with open(os.path.join(VIEWER_PATH, "index.html"), "r") as f:
             html = f.read()
 
-        # Add socket.io client and our hot reload script
-        scripts = """
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-            <script src="/hot-reload.js"></script>
-        """
+        # Nothing is injected for hot reload any more. This used to pull
+        # socket.io from cdnjs so an injected /hot-reload.js could call `io()`,
+        # which meant a page served offline threw a ReferenceError and stopped
+        # reloading on file changes. The SPA bundles socket.io-client and
+        # subscribes to `reload` itself (viewer/src/events/useHardReload.js).
+        scripts = ""
 
         # Honor the CLI/local telemetry opt-out: when telemetry is disabled
         # (env VISIVO_TELEMETRY_DISABLED, project defaults, or global config),

@@ -25,6 +25,33 @@ describe('SaveAsMetricPrompt', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  test('Escape cancels (same as Cancel) without submitting', () => {
+    const onSubmit = jest.fn();
+    const onCancel = jest.fn();
+    render(<SaveAsMetricPrompt suggestedName="x" onSubmit={onSubmit} onCancel={onCancel} />);
+    fireEvent.keyDown(screen.getByTestId('save-as-metric-name-input'), { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  test('Escape while submitting does not cancel (Cancel is disabled then too)', () => {
+    const onCancel = jest.fn();
+    render(
+      <SaveAsMetricPrompt suggestedName="x" onSubmit={jest.fn()} onCancel={onCancel} submitting />
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  test('a backdrop click cancels; a click inside the card does not', () => {
+    const onCancel = jest.fn();
+    render(<SaveAsMetricPrompt suggestedName="x" onSubmit={jest.fn()} onCancel={onCancel} />);
+    fireEvent.click(screen.getByTestId('save-as-metric-name-input'));
+    expect(onCancel).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('save-as-metric-prompt'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
   test('shows an inline error and stays editable (never loses the flow)', () => {
     render(
       <SaveAsMetricPrompt

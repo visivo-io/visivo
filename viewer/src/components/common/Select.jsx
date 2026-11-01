@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import ReactSelect, { components as RSComponents } from 'react-select';
 import FieldPill from '../views/common/FieldPill';
 
@@ -229,6 +229,23 @@ const Select = ({
     }
   };
 
+  const menuOpenRef = useRef(false);
+  const { onMenuOpen, onMenuClose, onKeyDown } = rest;
+  const handleMenuOpen = () => {
+    menuOpenRef.current = true;
+    onMenuOpen?.();
+  };
+  const handleMenuClose = () => {
+    menuOpenRef.current = false;
+    onMenuClose?.();
+  };
+  // react-select prevents every Escape, even with its menu closed. Marking the
+  // synthetic event only skips react-select, so the layer around it can close.
+  const handleKeyDown = event => {
+    onKeyDown?.(event);
+    if (event.key === 'Escape' && !menuOpenRef.current) event.defaultPrevented = true;
+  };
+
   const sz = SIZE[size] || SIZE.md;
   const styles = useMemo(() => buildStyles(sz), [sz]);
 
@@ -263,6 +280,9 @@ const Select = ({
       components={dataTestId ? TESTID_COMPONENTS : undefined}
       data-testid={dataTestId}
       {...rest}
+      onMenuOpen={handleMenuOpen}
+      onMenuClose={handleMenuClose}
+      onKeyDown={handleKeyDown}
     />
   );
 };

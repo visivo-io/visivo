@@ -20,8 +20,6 @@
  * flag from the served HTML; cloud never sets it, so cloud is always-on.
  */
 
-const DEFAULT_HOST = 'https://us.i.posthog.com';
-
 // Public, write-only PostHog ingestion key. Safe to hardcode: it ships to every
 // client and cannot read data or administer the project. Turns viewer telemetry
 // on by default in distribution. Override via VITE_POSTHOG_KEY at build time.
@@ -33,6 +31,6 @@ export function getPosthogConfig() {
   if (!key) return null;
   return {
     key,
-    host: env.VITE_POSTHOG_HOST || DEFAULT_HOST,
+    host: env.VITE_POSTHOG_HOST || null,
   };
 }

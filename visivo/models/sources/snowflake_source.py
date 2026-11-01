@@ -168,7 +168,7 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
         if host:
             url_attributes["host"] = host
         if self.port:
-            url_attributes["port"] = self.port
+            url_attributes["port"] = self.get_port()
         if self.protocol:
             url_attributes["protocol"] = self.protocol
 

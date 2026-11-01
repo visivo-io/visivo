@@ -41,3 +41,12 @@ def dist(working_dir, output_dir, source, dbt_profile, dbt_target, dist_dir, dep
         deployment_root=deployment_root,
     )
     Logger.instance().success(f"Created dist folder: {dist_dir}")
+    Logger.instance().info(
+        "Only work saved to project files is included. Drafts held in a running "
+        "`visivo serve` session are not; save them first."
+    )
+    Logger.instance().info(
+        f"Preview it with: python -m http.server --directory {dist_dir}. "
+        "Opening index.html from file:// does not work, because the viewer needs a web server. "
+        "To host under a sub-path, pass --deployment-root."
+    )

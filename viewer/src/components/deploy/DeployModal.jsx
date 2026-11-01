@@ -4,9 +4,12 @@ import BranchSelection from './BranchSelection';
 import DeployLoader from './DeployLoader';
 import { ModalOverlay, ModalWrapper } from '../styled/Modal';
 import { fetchAuthorization } from '../../api/authorization';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 const DeployModal = ({ isOpen, setIsOpen }) => {
   const [status, setStatus] = useState('login-required');
+
+  useEscapeToClose(isOpen, () => setIsOpen(false));
 
   // The same question the Agent tab asks, through the same client (VIS-1377).
   // This used to read `data.token` — the endpoint no longer hands the token to

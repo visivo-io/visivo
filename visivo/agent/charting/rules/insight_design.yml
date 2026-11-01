@@ -40,7 +40,7 @@ reductions:
   top_n_other:
     n: 5
     n_max: 7
-    when: a categorical at the input bucket whose top values hold most rows, kept as a split
+    when: a categorical at the input threshold whose top values hold most rows, kept as a split
   bucket:
     bins: 10
     when: a continuous column used as a dimension

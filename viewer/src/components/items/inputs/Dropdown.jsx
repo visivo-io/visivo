@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FaChevronDown } from 'react-icons/fa';
 import DropdownOptions from './DropdownOptions';
 import PortalDropdownMenu from './PortalDropdownMenu';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 import {
   DropdownButton,
   DropdownLabel,
@@ -40,6 +41,7 @@ const Dropdown = ({
   const dropdownRef = useRef(null);
   const menuRef = useRef(null);
   const searchInputRef = useRef(null);
+  const triggerRef = useRef(null);
 
   // Derive selectedItems from selectedValue prop (display only)
   const selectedItems = useMemo(() => {
@@ -96,10 +98,6 @@ const Dropdown = ({
     }
 
     switch (e.key) {
-      case 'Escape':
-        setIsOpen(false);
-        setHighlightedIndex(-1);
-        break;
       case 'ArrowDown':
         e.preventDefault();
         setHighlightedIndex(prev => (prev < filteredOptions.length - 1 ? prev + 1 : 0));
@@ -118,6 +116,12 @@ const Dropdown = ({
         break;
     }
   };
+
+  useEscapeToClose(isOpen, () => {
+    setIsOpen(false);
+    setHighlightedIndex(-1);
+    triggerRef.current?.focus();
+  });
 
   const toggleSelection = option => {
     // User actively selected an option - notify store
@@ -147,6 +151,7 @@ const Dropdown = ({
       {label && <DropdownLabel>{label}</DropdownLabel>}
       <div className="relative" ref={dropdownRef}>
         <DropdownButton
+          ref={triggerRef}
           onClick={() => {
             setIsOpen(!isOpen);
             if (!isOpen) {

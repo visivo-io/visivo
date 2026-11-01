@@ -10,6 +10,13 @@ import React from 'react';
 import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import InputEditForm from './InputEditForm';
 import useStore from '../../../stores/store';
+import { fetchRenameImpact, renameResource } from '../../../api/rename';
+
+jest.mock('../../../api/rename', () => ({
+  ...jest.requireActual('../../../api/rename'),
+  fetchRenameImpact: jest.fn(),
+  renameResource: jest.fn(),
+}));
 
 const seed = (overrides = {}) => {
   act(() => {
@@ -476,5 +483,38 @@ describe('InputEditForm — delete flows', () => {
 
     fireEvent.click(screen.getByTitle('Delete'));
     expect(screen.getByText(/discard your unsaved changes/i)).toBeInTheDocument();
+  });
+});
+
+describe('InputEditForm — a Save that renames and edits (VIS-1538)', () => {
+  test('saves the edited label under the current name, then renames', async () => {
+    fetchRenameImpact.mockResolvedValue({
+      target: { type: 'inputs', name: 'split_threshold', new_name: 'threshold', status: 'published' },
+      references: [],
+    });
+    renameResource.mockResolvedValue({ renamed: true, references: [] });
+    seed({ closeWorkspaceTab: jest.fn(), openWorkspaceTab: jest.fn(), fetchInputs: jest.fn() });
+    const onSave = jest.fn(async () => ({ success: true }));
+    render(<InputEditForm input={makeInput()} onSave={onSave} onClose={jest.fn()} />);
+    await flushHydration();
+
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'threshold' } });
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'New Label' } });
+    fireEvent.click(screen.getByTestId('form-footer-save'));
+    fireEvent.click(await screen.findByTestId('rename-impact-confirm'));
+
+    await waitFor(() =>
+      expect(renameResource).toHaveBeenCalledWith(
+        'inputs',
+        'split_threshold',
+        'threshold',
+        expect.anything()
+      )
+    );
+    expect(onSave).toHaveBeenCalledWith(
+      'input',
+      'split_threshold',
+      expect.objectContaining({ name: 'split_threshold', label: 'New Label' })
+    );
   });
 });

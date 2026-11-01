@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PiFloppyDisk } from 'react-icons/pi';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 /**
  * PivotSaveModal — the pivot Build-lens "Save" choice.
@@ -19,7 +20,8 @@ import { PiFloppyDisk } from 'react-icons/pi';
  *                   user can retry or cancel).
  *   - onReplace   — chose "Replace the current table".
  *   - onAddNew    — chose "Add as a new table".
- *   - onCancel    — dismissed (backdrop / Escape / Cancel button).
+ *   - onCancel    — dismissed (backdrop / Escape / Cancel button; Escape and Cancel
+ *                   are inert while saving).
  */
 const PivotSaveModal = ({
   open,
@@ -33,17 +35,11 @@ const PivotSaveModal = ({
   const cancelRef = useRef(null);
 
   useEffect(() => {
-    if (!open) return undefined;
-    if (cancelRef.current) cancelRef.current.focus();
-    const onKey = e => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onCancel && onCancel();
-      }
-    };
-    document.addEventListener('keydown', onKey, true);
-    return () => document.removeEventListener('keydown', onKey, true);
-  }, [open, onCancel]);
+    if (open && cancelRef.current) cancelRef.current.focus();
+  }, [open]);
+  useEscapeToClose(open, () => {
+    if (!saving && onCancel) onCancel();
+  });
 
   if (!open) return null;
 

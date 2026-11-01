@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { menuPolicyFor } from './utils/slotShape';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 /**
  * SliceMenu — popover that lets the user pick which row(s) of a query
@@ -24,7 +25,8 @@ import { menuPolicyFor } from './utils/slotShape';
  *   the popover beneath. Required when `open` is true.
  * @param {boolean} props.open - Whether the menu is visible.
  * @param {() => void} props.onClose - Called when the user clicks
- *   outside or selects an option.
+ *   outside, presses Escape (focus then returns to `anchorEl`) or selects
+ *   an option.
  * @param {string|null} props.slice - The current slice expression
  *   (e.g. `"[0]"`, `"[1:5]"`) or null if no slice is set.
  * @param {(newSlice: string|null) => void} props.onChange - Called
@@ -76,6 +78,11 @@ export function SliceMenu({ anchorEl, open, onClose, slice, onChange, slotShape 
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open, onClose, anchorEl]);
+
+  useEscapeToClose(open && !!anchorEl, () => {
+    onClose?.();
+    anchorEl?.focus?.();
+  });
 
   if (!open || !anchorEl) return null;
 

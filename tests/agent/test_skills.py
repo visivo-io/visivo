@@ -539,7 +539,7 @@ class TestExploreASource:
             tools.reset_attachments()
 
         assert [s["name"] for s in wrapped["skills_attached"]] == ["explore-a-source"]
-        assert "cardinality_bucket" in wrapped["skills_attached"][0]["body"]
+        assert "`cardinality` is the distinct-value count" in wrapped["skills_attached"][0]["body"]
         assert wrapped["result"]["tables"]
 
     def test_it_is_on_demand_and_lists_every_profiling_tool(self):

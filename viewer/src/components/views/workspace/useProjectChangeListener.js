@@ -12,13 +12,13 @@ import { PROJECT_CHANGED } from '../../../events/topics';
  * post-publish refreshes) and soft-refresh the store instead of letting the
  * page hard-reload:
  *
- *   - `drafts_dropped: true` means the recompile happened during a dirty
- *     Build session and the backend dropped the drafts (Q15
- *     last-write-wins) — the store shows the external-edit banner and the
- *     canvas re-renders from the file's state via the refetch.
- *   - The hook also sets `window.__VISIVO_SOFT_RELOAD__` so the legacy
- *     `/hot-reload.js` script (injected when Flask serves the bundle) skips
- *     its `window.location.reload()` while the Workspace handles updates.
+ *   - `drafts_dropped: true` means a file edit conflicted with drafts and
+ *     the backend dropped those drafts, listed in `dropped_drafts` — the
+ *     store shows the external-edit banner naming them, and the canvas
+ *     re-renders from the file's state via the refetch.
+ *   - The hook also sets `window.__VISIVO_SOFT_RELOAD__` so `useHardReload`
+ *     skips its `window.location.reload()` while the Workspace handles
+ *     updates.
  *
  * Subscribes through the event-source seam rather than opening its own socket
  * (VIS-1345): the run view and the agent tab want the same kind of "this is
@@ -36,9 +36,10 @@ export default function useProjectChangeListener() {
     window.__VISIVO_SOFT_RELOAD__ = true;
     const unsubscribe = subscribe(PROJECT_CHANGED, payload => {
       const draftsDropped = Boolean(payload?.drafts_dropped);
+      const droppedDrafts = Array.isArray(payload?.dropped_drafts) ? payload.dropped_drafts : [];
       const refresh = useStore.getState().refreshFromProjectChange;
       if (typeof refresh === 'function') {
-        refresh({ draftsDropped });
+        refresh({ draftsDropped, droppedDrafts });
       }
       if (draftsDropped) {
         emitWorkspaceEvent('external_edit_overwrite', {});

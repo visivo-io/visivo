@@ -102,4 +102,36 @@ describe('LibraryFilter', () => {
     expect(screen.queryByTestId('library-filter-clear')).not.toBeInTheDocument();
     expect(screen.queryByTestId('library-filter-active-count')).not.toBeInTheDocument();
   });
+
+  test('Escape closes the menu and returns focus to the Filter button', () => {
+    renderFilter();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    expect(screen.getByTestId('library-filter-menu')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('library-filter-menu')).not.toBeInTheDocument();
+    expect(screen.getByTestId('library-filter-toggle')).toHaveFocus();
+  });
+
+  test('a non-Escape key leaves the menu open', () => {
+    renderFilter();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    fireEvent.keyDown(document, { key: 'Enter' });
+    expect(screen.getByTestId('library-filter-menu')).toBeInTheDocument();
+  });
+
+  test('a mousedown outside closes the menu; one inside keeps it open', () => {
+    renderFilter();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    fireEvent.mouseDown(screen.getByTestId('library-filter-option-type-chart'));
+    expect(screen.getByTestId('library-filter-menu')).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByTestId('library-filter-menu')).not.toBeInTheDocument();
+  });
+
+  test('clicking the Filter button again closes the menu', () => {
+    renderFilter();
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    fireEvent.click(screen.getByTestId('library-filter-toggle'));
+    expect(screen.queryByTestId('library-filter-menu')).not.toBeInTheDocument();
+  });
 });

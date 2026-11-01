@@ -178,17 +178,19 @@ def test_only_the_renamed_objects_own_entry_is_touched():
     assert models[1]["sql"] == "select * from ${ref(orders)} o"
 
 
-def test_a_rename_the_file_never_heard_of_changes_nothing():
-    """`old_name` is core's claim about what the repo holds, and the repo can
-    have moved on. Writing the object in anyway would append a duplicate; doing
-    nothing leaves the file exactly as the author has it."""
+def test_a_rename_the_file_never_heard_of_fails_and_writes_nothing():
+    """`old_name` is a claim about what the file holds, and the file can have
+    moved on. Appending the object would duplicate it; skipping it silently
+    drops the object from the commit. Failing keeps the file as it is and says
+    why (VIS-1538)."""
     path = _project_file()
     writer = ProjectWriter(_renamed(path, old_name="never_written", config={"name": "sales"}))
 
-    writer.update_file_contents()
+    with pytest.raises(ValueError, match="no entry named 'never_written'"):
+        writer.update_file_contents()
 
-    models = writer.files_to_write[path]["models"]
-    assert [model["name"] for model in models] == ["orders"]
+    with open(path) as handle:
+        assert handle.read() == YAML_WITH_COMMENTS
 
 
 @pytest.mark.parametrize("status", ["Renamed", "Modified", "New", "Deleted"])
@@ -201,3 +203,67 @@ def test_every_status_the_map_can_carry_is_handled(status):
     children["sales"]["status"] = status
 
     ProjectWriter(children).update_file_contents()  # must not raise
+
+
+def test_a_rename_into_an_empty_file_fails():
+    path = _project_file(contents="")
+    writer = ProjectWriter(_renamed(path, old_name="orders", config={"name": "sales"}))
+
+    with pytest.raises(ValueError, match="no entry named 'orders'"):
+        writer.update_file_contents()
+
+
+def test_an_unchanged_child_is_left_alone():
+    path = _project_file()
+    children = _renamed(path, old_name="orders", config={"name": "sales"})
+    children["sales"]["status"] = "Unchanged"
+    writer = ProjectWriter(children)
+
+    writer.update_file_contents()
+
+    assert writer.files_to_write == {}
+
+
+def test_a_child_missing_from_the_map_is_an_error():
+    writer = ProjectWriter({})
+
+    with pytest.raises(ValueError, match="not found in named_children"):
+        writer._get_named_child_config("ghost")
+
+
+INLINE_SOURCE_YAML = """\
+name: analytics
+
+models:
+  - name: orders
+    source:
+      name: lake
+      type: duckdb
+      database: lake.duckdb
+    sql: select 1
+"""
+
+
+@pytest.mark.parametrize(
+    "replace_with_reference, expected", [(True, "${ref(lake)}"), (False, None)]
+)
+def test_an_inline_object_held_under_a_key_is_removed_or_replaced_by_a_ref(
+    replace_with_reference, expected
+):
+    path = _project_file(contents=INLINE_SOURCE_YAML)
+    writer = ProjectWriter(
+        {
+            "lake": {
+                "status": "Deleted",
+                "type_key": "sources",
+                "config": {},
+                "file_path": path,
+                "new_file_path": path,
+            }
+        }
+    )
+
+    writer._delete("lake", replace_with_reference=replace_with_reference)
+
+    model = writer.files_to_write[path]["models"][0]
+    assert model.get("source") == expected

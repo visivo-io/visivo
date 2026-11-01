@@ -119,10 +119,10 @@ class TestServe:
 
         assert ready_calls == [True]
         server.run_server.assert_called_once()
-        # The client-reload script route is registered and serves JS.
-        response = server.app.test_client().get("/hot-reload.js")
-        assert response.status_code == 200
-        assert "socket.on('reload'" in response.get_data(as_text=True)
+        # No injected reload script any more: it needed a socket.io global
+        # fetched from cdnjs, so it threw offline. The SPA subscribes to
+        # `reload` through the socket.io client it already bundles.
+        assert server.app.test_client().get("/hot-reload.js").status_code == 404
 
     def test_error_in_run_server_stops_and_reraises(self, tmp_path):
         server = _server(tmp_path)

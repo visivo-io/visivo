@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SourceFormGenerator, {
   getSourceSchema,
+  parsePortInput,
   secretRefName,
   toSecretRef,
 } from './SourceFormGenerator';
@@ -128,5 +129,112 @@ describe('schemas match the visivo source models', () => {
     }
     const bq = getSourceSchema('bigquery').fields.find(f => f.name === 'credentials_base64');
     expect(bq.type).toBe('secret');
+  });
+});
+
+describe('port field', () => {
+  test('shows an env var reference instead of a blank box', () => {
+    renderForm({ values: { port: rawRef('PG_PORT') } });
+    const port = screen.getByLabelText('Port');
+    expect(port).toHaveAttribute('type', 'text');
+    expect(port).toHaveValue(rawRef('PG_PORT'));
+  });
+
+  test('keeps a typed env var reference as text', () => {
+    const onChange = jest.fn();
+    renderForm({ values: { port: 5432 }, onChange });
+    fireEvent.change(screen.getByLabelText('Port'), { target: { value: rawRef('OTHER_PORT') } });
+    expect(onChange).toHaveBeenLastCalledWith({ port: rawRef('OTHER_PORT') });
+  });
+
+  test('stores typed digits as a number', () => {
+    const onChange = jest.fn();
+    renderForm({ values: { port: rawRef('PG_PORT') }, onChange });
+    fireEvent.change(screen.getByLabelText('Port'), { target: { value: '6543' } });
+    expect(onChange).toHaveBeenLastCalledWith({ port: 6543 });
+  });
+
+  test.each(['mysql', 'clickhouse', 'redshift'])('is a text field for %s too', sourceType => {
+    renderForm({ sourceType, values: { port: rawRef('DB_PORT') } });
+    expect(screen.getByLabelText('Port')).toHaveValue(rawRef('DB_PORT'));
+  });
+
+  test('says it takes a number or a reference, unless it shows an error', () => {
+    const { rerender } = renderForm();
+    expect(screen.getByText(`A number or an ${rawRef('NAME')} reference.`)).toBeInTheDocument();
+    rerender(
+      <SourceFormGenerator
+        sourceType="postgresql"
+        values={{}}
+        onChange={() => {}}
+        errors={{ port: 'Port is invalid' }}
+      />
+    );
+    expect(screen.queryByText(/A number or an/)).not.toBeInTheDocument();
+    expect(screen.getByText('Port is invalid')).toBeInTheDocument();
+  });
+
+  test('parsePortInput turns only whole digit strings into numbers', () => {
+    expect(parsePortInput('5432')).toBe(5432);
+    expect(parsePortInput('')).toBe('');
+    expect(parsePortInput('54a')).toBe('54a');
+    expect(parsePortInput(rawRef('PG_PORT'))).toBe(rawRef('PG_PORT'));
+  });
+});
+
+describe('environment variable hint', () => {
+  test('a local password field shows the env reference syntax and a docs link', () => {
+    renderForm();
+    const hint = screen.getByTestId('password-env-hint');
+    expect(hint).toHaveTextContent(rawRef('PASSWORD'));
+    expect(screen.getByRole('link', { name: 'Learn more' })).toHaveAttribute(
+      'href',
+      'https://docs.visivo.io/topics/environment-variables/'
+    );
+  });
+
+  test('the bigquery key field gets its own variable name', () => {
+    renderForm({ sourceType: 'bigquery' });
+    expect(screen.getByTestId('credentials_base64-env-hint')).toHaveTextContent(
+      rawRef('SERVICE_ACCOUNT_KEY')
+    );
+  });
+
+  test('plain text fields and the cloud picker show no hint', () => {
+    renderForm();
+    expect(screen.queryByTestId('host-env-hint')).not.toBeInTheDocument();
+    renderForm({ secretsRequired: true, secretKeys: [] });
+    expect(screen.getAllByTestId('password-env-hint')).toHaveLength(1);
+  });
+});
+
+describe('plain field behavior', () => {
+  test('typing calls onChange, numbers are coerced and cleared to empty', async () => {
+    const onChange = jest.fn();
+    renderForm({ onChange });
+    await userEvent.type(screen.getByLabelText(/^Host/), 'a');
+    expect(onChange).toHaveBeenLastCalledWith({ host: 'a' });
+    const port = screen.getByLabelText('Port');
+    await userEvent.clear(port);
+    expect(onChange).toHaveBeenLastCalledWith({ port: '' });
+    await userEvent.type(port, '7');
+    expect(onChange).toHaveBeenLastCalledWith({ port: 54327 });
+  });
+
+  test('the eye button reveals and re-masks the password', async () => {
+    renderForm();
+    const input = screen.getByLabelText('Password');
+    expect(input).toHaveAttribute('type', 'password');
+    await userEvent.click(screen.getByTitle('Show'));
+    expect(input).toHaveAttribute('type', 'text');
+    await userEvent.click(screen.getByTitle('Hide'));
+    expect(input).toHaveAttribute('type', 'password');
+  });
+
+  test('no source type and unknown source type render a message', () => {
+    renderForm({ sourceType: '' });
+    expect(screen.getByText(/Select a source type/)).toBeInTheDocument();
+    renderForm({ sourceType: 'nope' });
+    expect(screen.getByText(/schema not available/)).toBeInTheDocument();
   });
 });

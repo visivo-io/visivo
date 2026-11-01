@@ -847,12 +847,22 @@ describe('Library', () => {
     expect(openWorkspaceTab).not.toHaveBeenCalled();
   });
 
-  test('the header "+ New" menu dismisses on Escape', () => {
+  test('the header "+ New" menu dismisses on Escape and returns focus to its button', () => {
     renderLibrary();
     fireEvent.click(screen.getByTestId('library-new-object-button'));
     expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByTestId('library-new-object-menu')).not.toBeInTheDocument();
+    expect(screen.getByTestId('library-new-object-button')).toHaveFocus();
+  });
+
+  test('an Escape another element already handled leaves the "+ New" menu open', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-new-object-button'));
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    event.preventDefault();
+    fireEvent(document, event);
+    expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
   });
 
   test('the header "+ New" menu stays open on a non-Escape key', () => {

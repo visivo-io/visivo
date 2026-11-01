@@ -51,7 +51,7 @@ describe('DraggableColumnHeader', () => {
     const wrapper = screen.getByTestId('draggable-col-total_revenue');
     expect(wrapper.className).toContain('border-t-2');
     expect(wrapper.className).toContain('bg-cyan-100');
-    expect(wrapper.style.borderTopColor).toBe('#06b6d4');
+    expect(wrapper.style.borderTopColor).toBe('rgb(6, 182, 212)');
   });
 
   it('applies dimension styling (from objectTypeConfigs) for dimension computed columns', () => {
@@ -61,7 +61,7 @@ describe('DraggableColumnHeader', () => {
     const wrapper = screen.getByTestId('draggable-col-order_month');
     expect(wrapper.className).toContain('border-t-2');
     expect(wrapper.className).toContain('bg-teal-100');
-    expect(wrapper.style.borderTopColor).toBe('#14b8a6');
+    expect(wrapper.style.borderTopColor).toBe('rgb(20, 184, 166)');
   });
 
   it('does not apply computed styling for regular columns', () => {

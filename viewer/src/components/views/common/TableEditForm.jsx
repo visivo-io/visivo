@@ -59,7 +59,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
 
   const recordName = table?.name || '';
 
-  const rename = useRenameFlow({ type: 'table', recordName, name });
+  const rename = useRenameFlow({ type: 'table', recordName, name, onCancel: setName });
   const isNewObject = table?.status === ObjectStatus.NEW;
 
   // Combine insights and models for the data source dropdown
@@ -176,20 +176,12 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
-    if (!validateForm()) return;
-    // A changed name in edit mode is a RENAME — its own server operation,
-    // confirmed first, because every `${ref()}` to this object moves with it.
-    if (isEditMode && rename.nameChanged) {
-      rename.start();
-      return;
-    }
-
+  const persist = async nameToSave => {
     setSaving(true);
     setSaveError(null);
 
     const config = {
-      name,
+      name: nameToSave,
       rows_per_page: rowsPerPage,
     };
 
@@ -203,13 +195,24 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded,
     if (rows.length > 0) config.rows = rows;
     if (values.length > 0) config.values = values;
 
-    const result = await onSave('table', name, config);
+    const result = await onSave('table', nameToSave, config);
 
     setSaving(false);
 
     if (!result?.success) {
       setSaveError(result?.error || 'Failed to save table');
+      return false;
     }
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+    if (isEditMode && rename.nameChanged) {
+      await rename.start(() => persist(recordName));
+      return;
+    }
+    await persist(name);
   };
 
   const handleDelete = async () => {

@@ -7,6 +7,8 @@ import { QueryProvider } from './contexts/QueryContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StoreProvider } from './StoreProvider';
 import { DuckDBProvider } from './contexts/DuckDBContext';
+import useHardReload from './events/useHardReload';
+import './monacoSetup';
 
 const queryClient = new QueryClient();
 
@@ -15,6 +17,8 @@ export default function LocalProviders({
   fetchDashboard,
   fetchInputJobs,
 }) {
+  useHardReload();
+
   return (
     <QueryClientProvider client={queryClient}>
       <QueryProvider

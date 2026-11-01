@@ -79,6 +79,7 @@ def build():
         # The agent reads its skills and chart rules from disk at runtime.
         f"--include-data-dir={HERE / 'agent' / 'skills'}=visivo/agent/skills",
         f"--include-data-dir={HERE / 'agent' / 'charting' / 'rules'}=visivo/agent/charting/rules",
+        f"--include-data-dir={HERE / 'templates' / 'samples'}=visivo/templates/samples",
         # Read as JSON, so no import leads the analyser to it.
         f"--include-data-files={HERE / 'models' / 'dashboards' / 'template_policy.json'}=visivo/models/dashboards/template_policy.json",
         str(HERE / "command_line.py"),

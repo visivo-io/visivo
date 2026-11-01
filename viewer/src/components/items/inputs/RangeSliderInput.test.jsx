@@ -33,8 +33,9 @@ describe('RangeSliderInput', () => {
     expect(maxSlider).toHaveValue('7');
     // Thumb geometry: (3-1)/(10-1) and (7-1)/(10-1) of the track.
     const [minLeft, maxLeft] = thumbs(container);
-    expect(minLeft).toBe(`calc(${(2 / 9) * 100}% - 10px)`);
-    expect(maxLeft).toBe(`calc(${(6 / 9) * 100}% - 10px)`);
+    // Serialised to 4dp, which is what a browser reports too.
+    expect(minLeft).toBe('calc(22.2222% - 10px)');
+    expect(maxLeft).toBe('calc(66.6667% - 10px)');
     expect(screen.getByText('3', { selector: '.text-lg' })).toBeInTheDocument();
     expect(screen.getByText('7', { selector: '.text-lg' })).toBeInTheDocument();
   });

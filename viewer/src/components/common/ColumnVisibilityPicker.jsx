@@ -1,8 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 const ColumnVisibilityPicker = ({ table }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const triggerRef = useRef(null);
+
+  useEscapeToClose(open, () => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  });
 
   // Close on outside click
   useEffect(() => {
@@ -20,6 +27,7 @@ const ColumnVisibilityPicker = ({ table }) => {
   return (
     <div className="relative" ref={ref}>
       <button
+        ref={triggerRef}
         className="text-xs text-secondary-500 hover:text-secondary-700 transition-colors"
         onClick={() => setOpen(prev => !prev)}
       >

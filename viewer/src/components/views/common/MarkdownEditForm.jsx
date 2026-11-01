@@ -50,7 +50,7 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
 
   const recordName = markdown?.name || '';
 
-  const rename = useRenameFlow({ type: 'markdown', recordName, name });
+  const rename = useRenameFlow({ type: 'markdown', recordName, name, onCancel: setName });
   const isNewObject = markdown?.status === ObjectStatus.NEW;
 
   // Unified optimistic save backbone (VIS-1018 step 2) — `saveNow` shares the
@@ -112,27 +112,21 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
-    if (!validateForm()) return;
-    // A changed name in edit mode is a RENAME — its own server operation,
-    // confirmed first, because every `${ref()}` to this object moves with it.
-    if (isEditMode && rename.nameChanged) {
-      rename.start();
-      return;
-    }
-
+  const persist = async nameToSave => {
     setSaving(true);
     setSaveError(null);
 
+    let ok = false;
     try {
-      const config = { name, content, align, justify };
+      const config = { name: nameToSave, content, align, justify };
 
       // Edit mode persists through the optimistic backbone (shared with the
       // canvas) and STAYS OPEN — like the chart/insight panels. Create mode
       // writes the new record directly and closes the tab.
-      const result = isEditMode ? await saveNow(config) : await saveMarkdown(name, config);
+      const result = isEditMode ? await saveNow(config) : await saveMarkdown(nameToSave, config);
 
       if (result?.success) {
+        ok = true;
         onSave && onSave(config);
         if (!isEditMode) onClose();
       } else {
@@ -143,6 +137,16 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
     }
 
     setSaving(false);
+    return ok;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+    if (isEditMode && rename.nameChanged) {
+      await rename.start(() => persist(recordName));
+      return;
+    }
+    await persist(name);
   };
 
   const handleDelete = async () => {

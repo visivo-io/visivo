@@ -1,6 +1,13 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ModelEditForm from './ModelEditForm';
+import { fetchRenameImpact, renameResource } from '../../../api/rename';
+
+jest.mock('../../../api/rename', () => ({
+  ...jest.requireActual('../../../api/rename'),
+  fetchRenameImpact: jest.fn(),
+  renameResource: jest.fn(),
+}));
 
 // Selector-aware store mock: ModelEditForm pulls individual actions via
 // useStore(state => state.x), so the default export must apply selectors.
@@ -578,5 +585,31 @@ describe('ModelEditForm — Discard (edit mode)', () => {
 
     fireEvent.click(screen.getByTestId('form-footer-cancel'));
     expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+  });
+});
+
+describe('ModelEditForm — a Save that renames and edits (VIS-1538)', () => {
+  it('saves the edited SQL under the current name, then renames', async () => {
+    fetchRenameImpact.mockResolvedValue({
+      target: { type: 'models', name: 'orders', new_name: 'purchases', status: 'published' },
+      references: [],
+    });
+    renameResource.mockResolvedValue({ renamed: true, references: [] });
+    const onSave = jest.fn(async () => ({ success: true }));
+    render(<ModelEditForm model={editModel()} onSave={onSave} onCancel={jest.fn()} />);
+
+    setName('purchases');
+    makeDirty('select 2 as two');
+    clickSave();
+    fireEvent.click(await screen.findByTestId('rename-impact-confirm'));
+
+    await waitFor(() =>
+      expect(renameResource).toHaveBeenCalledWith('models', 'orders', 'purchases', expect.anything())
+    );
+    expect(onSave).toHaveBeenCalledWith(
+      'model',
+      'orders',
+      expect.objectContaining({ name: 'orders', sql: 'select 2 as two' })
+    );
   });
 });

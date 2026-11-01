@@ -132,7 +132,7 @@ export const CREATE_TEMPLATES = {
     namePrefix: 'new-source',
     collectionKey: 'sources',
     saveKey: 'saveSource',
-    config: () => ({ type: 'sqlite', database: 'new-source.db' }),
+    config: () => ({ type: 'sqlite', database: ':memory:' }),
   },
   dimension: {
     namePrefix: 'new_dimension',

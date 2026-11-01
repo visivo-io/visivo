@@ -312,11 +312,29 @@ describe('LibraryRowFlipPopover — collapse and empty state', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  test('Escape key fires onClose', () => {
+  test('Escape key fires onClose with the keyboard event', () => {
     const onClose = jest.fn();
     render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={onClose} />);
     fireEvent.keyDown(document, { key: 'Escape' });
-    expect(onClose).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledWith(expect.objectContaining({ key: 'Escape' }));
+  });
+
+  test('a mousedown outside fires onClose; one inside does not', () => {
+    const onClose = jest.fn();
+    render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={onClose} />);
+    fireEvent.mouseDown(screen.getByTestId('library-flip-popover'));
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.mouseDown(document.body);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('without an object it renders nothing and ignores Escape', () => {
+    const onClose = jest.fn();
+    render(<LibraryRowFlipPopover obj={null} onClose={onClose} />);
+    expect(screen.queryByTestId('library-flip-popover')).toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
 

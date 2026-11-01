@@ -1,6 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import RenameImpactDialog from './RenameImpactDialog';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
+
+const EscapeLayer = ({ onClose, children = null }) => {
+  useEscapeToClose(true, onClose);
+  return children;
+};
 
 const impact = {
   target: { type: 'models', name: 'orders', new_name: 'purchases', status: 'published' },
@@ -111,6 +117,25 @@ describe('dismissal', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
 
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  test('opened over another layer, Escape cancels only the dialog; the next one closes that layer', () => {
+    const onCancel = jest.fn();
+    const layerClose = jest.fn();
+    const { rerender } = render(<EscapeLayer onClose={layerClose} />);
+    const dialog = (
+      <RenameImpactDialog impact={impact} error={null} loading={false} onConfirm={jest.fn()} onCancel={onCancel} />
+    );
+    rerender(<EscapeLayer onClose={layerClose}>{dialog}</EscapeLayer>);
+
+    fireEvent.keyDown(screen.getByTestId('rename-impact-cancel'), { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(layerClose).not.toHaveBeenCalled();
+
+    rerender(<EscapeLayer onClose={layerClose} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(layerClose).toHaveBeenCalledTimes(1);
   });
 
   test('a backdrop click cancels, a click inside does not', () => {

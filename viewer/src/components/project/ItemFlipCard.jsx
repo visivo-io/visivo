@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PiX } from 'react-icons/pi';
 import MiniLineageCard from '../views/workspace/library/MiniLineageCard';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 /**
  * ItemFlipCard — true in-place flip-to-lineage card.
@@ -70,6 +71,9 @@ const ItemFlipCard = ({ box, obj, onClose, onExpand, reducedMotion = false, test
       height,
     };
   }, [box]);
+
+  // Escape flips the card back, like the X; several open cards close newest first.
+  useEscapeToClose(Boolean(obj && geometry), () => onClose?.());
 
   if (!obj || !geometry) return null;
 

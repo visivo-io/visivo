@@ -859,7 +859,28 @@ const createWorkspaceExplorationsSlice = (set, get) => {
         });
       }
 
+      const failedNames = new Set(results.filter(r => !r.success).map(r => r.name));
+      const dependsOnFailed = row => {
+        const text = JSON.stringify(row.config || {});
+        for (const failed of failedNames) {
+          if (failed !== row.name && text.includes(`ref(${failed})`)) return failed;
+        }
+        return row.parentModel && failedNames.has(row.parentModel) ? row.parentModel : null;
+      };
+
       for (const row of toPromote) {
+        const blockedBy = dependsOnFailed(row);
+        if (blockedBy) {
+          failedNames.add(row.name);
+          results.push({
+            type: row.type,
+            name: row.name,
+            tier: row.tier,
+            success: false,
+            error: `Not saved because "${blockedBy}", which it depends on, was not saved`,
+          });
+          continue;
+        }
         const saveActionName = SAVE_ACTION[row.type];
         const saveFn = saveActionName ? get()[saveActionName] : null;
         if (typeof saveFn !== 'function') {
@@ -870,6 +891,7 @@ const createWorkspaceExplorationsSlice = (set, get) => {
             success: false,
             error: `No save action registered for type "${row.type}"`,
           });
+          failedNames.add(row.name);
           continue;
         }
         // eslint-disable-next-line no-await-in-loop
@@ -882,7 +904,10 @@ const createWorkspaceExplorationsSlice = (set, get) => {
           success: saveSucceeded,
           error: saveSucceeded ? null : saveResult?.error || 'Save failed',
         });
-        if (!saveSucceeded) continue;
+        if (!saveSucceeded) {
+          failedNames.add(row.name);
+          continue;
+        }
 
         // eslint-disable-next-line no-await-in-loop
         await get().recordExplorationPromotion?.(id, row.type, row.name);

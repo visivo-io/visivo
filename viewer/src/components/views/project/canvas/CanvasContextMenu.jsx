@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useStore from '../../../../stores/store';
 import { parseRefValue } from '../../../../utils/refString';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 import { useWorkspaceCommit } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
 import { EXPLORE_THIS_TYPES } from '../../workspace/library/LibraryRow';
@@ -199,26 +200,31 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
     return () => root.removeEventListener('contextmenu', onContextMenu);
   }, [rootRef, onContextMenu]);
 
-  // Dismiss on outside click / Escape / scroll.
+  // Dismiss on outside click / scroll.
   useEffect(() => {
     if (!menu) return undefined;
     const onDocPointer = e => {
       if (menuRef.current && menuRef.current.contains(e.target)) return;
       setMenu(null);
     };
-    const onKey = e => {
-      if (e.key === 'Escape') setMenu(null);
-    };
     const onScroll = () => setMenu(null);
     document.addEventListener('pointerdown', onDocPointer, true);
-    document.addEventListener('keydown', onKey);
     window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('pointerdown', onDocPointer, true);
-      document.removeEventListener('keydown', onKey);
       window.removeEventListener('scroll', onScroll, true);
     };
   }, [menu]);
+
+  useEscapeToClose(Boolean(menu), () => setMenu(null));
+
+  // Focus the first action on open, so a focused keyboard region under the menu
+  // does not take the Escape that closes it.
+  const menuOpen = Boolean(menu);
+  useEffect(() => {
+    if (!menuOpen) return;
+    menuRef.current?.querySelector('[role="menuitem"]')?.focus({ preventScroll: true });
+  }, [menuOpen]);
 
   const commit = useCallback(
     (nextConfig, kind, extra) => {

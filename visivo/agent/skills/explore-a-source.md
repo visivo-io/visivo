@@ -15,8 +15,9 @@ YAML tells you. Look first.
    - `role` says what a column is for: `time` is an axis, `categorical` a
      split or filter, `numeric_continuous` a measure, `identifier` a lookup
      key (never a dimension), `geo_region`/`geo_point` a map.
-   - `cardinality_bucket` decides how: `few` splits a chart, `some` wants a
-     top-N or an input, `many`/`high` wants an input or a table.
+   - `cardinality` is the distinct-value count and decides how: up to 7
+     values splits a chart, 8–20 wants a top-N or an input, more than 20
+     wants an input or a table.
    - `top_n`, `null_pct`, `time_grain` and `stats` are the facts to quote
      back to the user instead of guessing.
 3. `query_source` for anything the cards do not answer (a GROUP BY, a date
@@ -34,7 +35,7 @@ YAML tells you. Look first.
    denominator)`. Restrict it to the rows where it means something (tips on
    card payments, churn on accounts that could churn).
 6. `infer_columns` on the SQL you mean to save, then `write_model`.
-   `profile_model` profiles a model a run has already built.
+   `profile_model` profiles a saved model, from its built data or its SQL.
 7. Deciding what to build? `score_candidates` with `models: [<model>]`
    proposes the metrics and dimensions to write first and a varied set of
    insights. Name the models; do not copy cards into the call.

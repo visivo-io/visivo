@@ -369,7 +369,7 @@ const ProjectEditor = () => {
               Dashboards, insights, and the data behind them.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {showSearch && (
               <div className="flex h-8 items-center gap-1.5 rounded-md bg-gray-100 px-2.5 text-[12.5px] text-gray-600">
                 <PiMagnifyingGlass className="h-3.5 w-3.5 text-gray-500" />

@@ -7,8 +7,8 @@
  *    properties so they ride on every event.
  *  - ENV-GATED: posthog initializes ONLY when a key is present (read by
  *    posthogEnv.js, which falls back to the public hardcoded ingestion key so
- *    telemetry is ON BY DEFAULT in distribution; host defaults to
- *    https://us.i.posthog.com or VITE_POSTHOG_HOST). Under jest the env module
+ *    telemetry is ON BY DEFAULT in distribution; host is VITE_POSTHOG_HOST or
+ *    DEFAULT_HOST below). Under jest the env module
  *    is stubbed to return null, so posthog NEVER initializes there and every
  *    capture is a guarded no-op.
  *  - OPT-OUT GATE: the host can disable telemetry by setting
@@ -35,6 +35,11 @@ import posthog from 'posthog-js';
 import { getPosthogConfig } from './posthogEnv';
 
 const SURFACE = 'viewer';
+
+// PostHog's managed reverse proxy on our own subdomain. Ad blockers drop
+// requests to *.posthog.com; ui_host keeps toolbar links on PostHog.
+const DEFAULT_HOST = 'https://e.visivo.io';
+const UI_HOST = 'https://us.posthog.com';
 
 let client = null; // the posthog-js instance once initialized
 let initStarted = false;
@@ -97,7 +102,8 @@ export function initPosthog() {
 
   try {
     posthog.init(config.key, {
-      api_host: config.host,
+      api_host: config.host || DEFAULT_HOST,
+      ui_host: UI_HOST,
       // Viewer is a CLI/embedded surface: never autocapture PII-bearing DOM,
       // and never load the session-recording bundle.
       autocapture: false,

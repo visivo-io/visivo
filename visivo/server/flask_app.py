@@ -5,6 +5,7 @@ from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
 from visivo.server.views import register_views
 from visivo.logger.logger import Logger
+from visivo.models.defaults import Defaults
 from visivo.server.repositories.exploration_repository import ExplorationRepository
 
 from visivo.telemetry.middleware import init_telemetry_middleware
@@ -26,6 +27,10 @@ from visivo.server.names import name_clash
 
 
 from visivo.server.constants import resolve_host
+
+
+def _settings_dump(setting):
+    return None if setting is None else setting.model_dump(mode="json", exclude_none=True)
 
 
 class FlaskApp:
@@ -115,25 +120,59 @@ class FlaskApp:
         # Initialize project manager (doesn't use DAG, just stores project and cache dir)
         self.project_manager = ProjectManager(project, output_dir)
 
+        # A project's first source becomes its default (VIS-1653). Wired here
+        # rather than inside SourceManager for the same reason `name_clash` is:
+        # the manager owns sources, not the project's defaults.
+        self.source_manager.on_first_source = self.adopt_default_source
+
         # Initialize telemetry middleware
         init_telemetry_middleware(self.app, project)
 
         register_views(self.app, self, output_dir)
 
+    def _object_managers_by_type(self):
+        return {
+            "source": self.source_manager,
+            "model": self.model_manager,
+            "dimension": self.dimension_manager,
+            "metric": self.metric_manager,
+            "relation": self.relation_manager,
+            "insight": self.insight_manager,
+            "input": self.input_manager,
+            "markdown": self.markdown_manager,
+            "chart": self.chart_manager,
+            "table": self.table_manager,
+            "dashboard": self.dashboard_manager,
+        }
+
     def _all_object_managers(self):
-        return [
-            self.source_manager,
-            self.model_manager,
-            self.dimension_manager,
-            self.metric_manager,
-            self.relation_manager,
-            self.insight_manager,
-            self.input_manager,
-            self.markdown_manager,
-            self.chart_manager,
-            self.table_manager,
-            self.dashboard_manager,
-        ]
+        return list(self._object_managers_by_type().values())
+
+    def adopt_default_source(self, source_name: str) -> bool:
+        """Make ``source_name`` the project default when there is none yet.
+
+        A SQL model with no ``source`` is only valid if the project names a
+        default (``ModelsHaveSourcesValidator``), so a new project that gains
+        its first source and no default fails the moment anything references
+        it — which is immediately.
+
+        Called only for a project's FIRST source, so there is nothing to choose
+        between. Deliberately not inferred at validation time: once a project
+        has several sources "the first available one" is an artefact of file
+        and include order, so the same project could resolve differently after
+        an unrelated edit. Writing it into the draft means the user sees it in
+        the diff, and it reaches the YAML on commit like any other edit.
+
+        Returns whether it wrote anything.
+        """
+        current = self._cached_defaults or self.project.defaults
+        if current is not None and current.source_name:
+            return False
+
+        base = current.model_dump(exclude_none=True) if current else {}
+        self._cached_defaults = Defaults(**{**base, "source_name": source_name})
+        Logger.instance().debug(f"Adopted '{source_name}' as the project default source")
+        return True
 
     def changed_project_settings(self) -> dict:
         """Draft project-level settings (``defaults``, ``theme``) that differ from the published ones."""
@@ -153,25 +192,33 @@ class FlaskApp:
             self.changed_project_settings()
         )
 
-    def clear_draft_caches(self) -> None:
-        """Drop every draft cache (Q15 last-write-wins on external YAML edits)."""
-        for manager in self._all_object_managers():
-            manager.clear_cache()
-        self._cached_defaults = None
-        self._cached_theme = None
+    def drop_stale_drafts(self, project: Project) -> list:
+        """Drop the drafts that ``project``, freshly compiled from disk, conflicts with.
 
-    def matches_served_project(self, project: Project) -> bool:
-        """True when ``project`` serializes identically to the currently served project.
-
-        Used by the watcher recompile to tell a genuine external YAML edit
-        (which drops drafts, last-write-wins) apart from a no-op save/touch that
-        recompiles to the same project (drafts must be preserved). Compares the
-        dereferenced serialized form, matching how ``_project_json`` is built.
+        Each manager drops only the drafts whose own object changed on disk, so
+        drafts of untouched objects survive a file edit. Draft ``defaults`` and
+        ``theme`` drop when that setting changed on disk. Returns
+        ``[{"type", "name"}]`` for each dropped draft that held a change.
         """
-        candidate_json = (
-            Serializer(project=project).dereference().model_dump_json(exclude_none=True)
-        )
-        return candidate_json == self._project_json
+        dag = project.dag()
+        dropped = [
+            {"type": type_name, "name": name}
+            for type_name, manager in self._object_managers_by_type().items()
+            for name in manager.drop_stale_drafts(dag)
+        ]
+        changed_settings = self.changed_project_settings()
+        for key in ("defaults", "theme"):
+            cache_attr = f"_cached_{key}"
+            if getattr(self, cache_attr) is None:
+                continue
+            if _settings_dump(getattr(project, key, None)) == _settings_dump(
+                getattr(self.project, key, None)
+            ):
+                continue
+            setattr(self, cache_attr, None)
+            if key in changed_settings:
+                dropped.append({"type": key, "name": key})
+        return dropped
 
     @property
     def project(self):

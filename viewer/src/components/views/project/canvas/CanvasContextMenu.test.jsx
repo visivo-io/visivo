@@ -46,7 +46,7 @@ const CONTAINER_DASH = {
 
 // Host renders fake Dashboard nodes (carrying data-canvas-path) + the menu under
 // a stub commit provider that captures the committed config.
-const Host = ({ commit, structure = 'leaf' }) => {
+const Host = ({ commit, structure = 'leaf', onRegionKeyDown }) => {
   const rootRef = useRef(null);
   return (
     <WorkspaceCommitProvider value={commit}>
@@ -65,6 +65,9 @@ const Host = ({ commit, structure = 'leaf' }) => {
             </div>
           )}
         </div>
+        {onRegionKeyDown && (
+          <div data-testid="kbd-region" tabIndex={0} onKeyDown={onRegionKeyDown} />
+        )}
         <CanvasContextMenu rootRef={rootRef} dashboardName="dash" />
       </div>
     </WorkspaceCommitProvider>
@@ -159,6 +162,32 @@ describe('CanvasContextMenu (VIS-781)', () => {
     expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+  });
+
+  test('opening the menu focuses its first action', () => {
+    renderHost({ commit: jest.fn() });
+    rightClick('r0i0');
+    expect(screen.getByTestId('canvas-ctx-open')).toHaveFocus();
+  });
+
+  test('Escape closes the menu before the canvas keyboard region acts on it', () => {
+    // The region mimics CanvasKeyboardLayer: it consumes Escape (deselect).
+    const onRegionEscape = jest.fn();
+    const onRegionKeyDown = e => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onRegionEscape();
+      }
+    };
+    renderHost({ commit: jest.fn(), onRegionKeyDown });
+    screen.getByTestId('kbd-region').focus();
+    rightClick('r0i0');
+    expect(screen.getByTestId('canvas-ctx-open')).toHaveFocus();
+    fireEvent.keyDown(screen.getByTestId('canvas-ctx-open'), { key: 'Escape' });
+    expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    expect(onRegionEscape).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByTestId('kbd-region'), { key: 'Escape' });
+    expect(onRegionEscape).toHaveBeenCalledTimes(1);
   });
 
   test('scroll dismisses the menu', () => {

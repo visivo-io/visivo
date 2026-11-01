@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 import useStore from '../../../stores/store';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 import { useLineageDag, computeLayout } from './useLineageDag';
 import SourceNode from './SourceNode';
 import ModelNode from './ModelNode';
@@ -385,27 +386,16 @@ const Lineage = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLoadDone, nodeSignature, selector, flowReady]);
 
-  // Global keyboard handler for Escape key
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        // Don't clear if user is typing in an input/textarea (except the selector input itself)
-        const target = e.target;
-        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-
-        // If there's a selector active and we're not in the edit panel, clear it
-        if (selector && !isInput) {
-          e.preventDefault();
-          e.stopPropagation();
-          setSelector('');
-          setFixedNode(null);
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selector]);
+  // Escape clears an active selector, unless focus is in a text field. As a layer,
+  // anything opened over the lineage (a context menu) closes first.
+  useEscapeToClose(Boolean(selector), event => {
+    const target = event.target;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+    setSelector('');
+    setFixedNode(null);
+  });
 
   // Node types for React Flow
   const nodeTypes = useMemo(

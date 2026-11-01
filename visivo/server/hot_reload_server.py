@@ -148,27 +148,6 @@ class HotReloadServer:
             one_shot: If True, server will shut down after on_server_ready callback completes
         """
         try:
-            # Add route for client-side reload script
-            @self.app.route("/hot-reload.js")
-            def hot_reload_script():
-                # The Workspace SPA sets window.__VISIVO_SOFT_RELOAD__ while
-                # mounted and handles the `project_changed` event itself
-                # (refetch + external-edit banner, VIS-808) — a hard reload
-                # here would wipe that UI state.
-                return """
-                    const socket = io();
-                    socket.on('reload', () => {
-                        if (window.__VISIVO_SOFT_RELOAD__) {
-                            console.log('Soft reload handled by app — skipping page reload.');
-                            return;
-                        }
-                        console.log('Reloading page...');
-                        window.location.reload();
-                    });
-                """, {
-                    "Content-Type": "application/javascript"
-                }
-
             # Start the Flask server
             self.run_server(host, port)
 

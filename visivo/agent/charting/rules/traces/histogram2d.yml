@@ -34,7 +34,7 @@ variations:
     then: "`z: ?{ tip_amount }` with `histfunc: avg`; the color becomes the average, not the count"
   - when: "the counts are heavily skewed"
     then: "`zsmooth: best` is cosmetic; a log color (`z` = ln(count) via a pre-binned heatmap) is honest"
-  - when: "a `few` categorical to compare"
+  - when: "a categorical of 2–7 values to compare"
     then: "small multiples (one chart per value); never `split`, the grids overlap"
 limits:
   series_ideal: 1

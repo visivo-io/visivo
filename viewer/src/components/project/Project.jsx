@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import useStore from '../../stores/store';
 import Dashboard from './Dashboard';
 import ProjectViewFlipLayer from './ProjectViewFlipLayer';
@@ -12,6 +12,17 @@ import useProjectChangeListener from '../views/workspace/useProjectChangeListene
 import { DashboardThemeRoot } from '../../theme/DashboardThemeContext';
 import ThemeModeToggle from '../../theme/ThemeModeToggle';
 
+export const closeDashboardNames = (names, wanted, limit = 3) => {
+  const target = (wanted || '').toLowerCase();
+  if (!target) return [];
+  return names
+    .filter(name => {
+      const candidate = name.toLowerCase();
+      return candidate.includes(target) || target.includes(candidate);
+    })
+    .slice(0, limit);
+};
+
 /**
  * Project - Container component for the new project view
  * Fetches data from stores and passes to Dashboard
@@ -23,9 +34,9 @@ import ThemeModeToggle from '../../theme/ThemeModeToggle';
  * deliberately the separate "consumer surface" and stays that way. Before
  * this hook was mounted here, committing from any `/workspace/...` tab hard-
  * reloaded every OTHER open tab sitting on `/project` or `/runs` (they never
- * set `window.__VISIVO_SOFT_RELOAD__`, so the injected `/hot-reload.js`
- * treated the commit-broadcast `reload` event as a real navigation and
- * called `window.location.reload()`), wiping any live client-side state
+ * set `window.__VISIVO_SOFT_RELOAD__`, so the hard-reload listener treated
+ * the commit-broadcast `reload` event as a real navigation and called
+ * `window.location.reload()`), wiping any live client-side state
  * there. Mounting the SAME hook the Workspace already uses is a mechanical,
  * behavior-preserving fix: it only sets a window flag + refetches the shared
  * store's collections on a backend recompile — it does not change `/project`
@@ -33,6 +44,7 @@ import ThemeModeToggle from '../../theme/ThemeModeToggle';
  */
 function Project() {
   const { dashboardName } = useParams();
+  const { pathname } = useLocation();
 
   // D7: soft-refresh on backend `project_changed` events instead of a hard
   // page reload — see the module docstring above.
@@ -118,6 +130,49 @@ function Project() {
       <div className="flex items-center justify-center h-full">
         <div className="text-gray-400">No dashboards found</div>
       </div>
+    );
+  }
+
+  if (dashboardName && !dashboards.some(d => d.name === dashboardName)) {
+    const marker = `/${encodeURIComponent(dashboardName)}`;
+    const markerAt = pathname.indexOf(marker);
+    const listPath = markerAt > 0 ? pathname.slice(0, markerAt) : '/';
+    const suggestions = closeDashboardNames(
+      dashboards.map(d => d.name),
+      dashboardName
+    );
+    return (
+      <Container className="min-h-screen">
+        <div
+          className="max-w-xl w-full mx-auto mt-16 px-4 text-center"
+          data-testid="dashboard-not-found"
+        >
+          <HiTemplate className="mx-auto h-10 w-10 text-gray-400" />
+          <h1 className="mt-2 text-lg font-medium text-gray-900 break-words">
+            No dashboard named {dashboardName}
+          </h1>
+          {suggestions.length > 0 && (
+            <p className="mt-2 text-sm text-gray-600">
+              Did you mean{' '}
+              {suggestions.map((name, index) => (
+                <React.Fragment key={name}>
+                  {index > 0 && ', '}
+                  <Link
+                    className="text-primary-600 underline"
+                    to={`${listPath === '/' ? '' : listPath}/${encodeURIComponent(name)}`}
+                  >
+                    {name}
+                  </Link>
+                </React.Fragment>
+              ))}
+              ?
+            </p>
+          )}
+          <Link className="mt-4 inline-block text-sm text-primary-600 underline" to={listPath}>
+            Back to the dashboard list
+          </Link>
+        </div>
+      </Container>
     );
   }
 

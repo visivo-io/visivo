@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useViewerNavigate } from '../../hooks/useViewerNavigate';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 import './onboarding.css';
 import { hasCompletedOnboarding, isOnboardingDismissed, readOnboardingState, writeOnboardingState } from './onboardingState';
@@ -160,18 +161,9 @@ export default function OnboardingCoach() {
     }
   }, [shouldRender, rect, itemId]);
 
-  // Esc-to-dismiss for keyboard users.
-  useEffect(() => {
-    if (!shouldRender || !itemId) return undefined;
-    const onKey = e => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        dismissCoach(itemId, setDismissedSet);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [shouldRender, itemId]);
+  useEscapeToClose(shouldRender && !!itemId && !!rect, () =>
+    dismissCoach(itemId, setDismissedSet)
+  );
 
   // When the user actually clicks the highlighted target, fire telemetry
   // so we can measure prompt → click conversion in PostHog.

@@ -37,7 +37,11 @@ MAX_BRIEF_BYTES = 20_000
 # The packaged skills' share of every prompt: the always-on bodies plus the
 # one-line index of everything else. The 48-trace-type reference lives below
 # this line as on-demand skills, which is what makes the budget holdable.
-MAX_ALWAYS_BYTES = 12_000
+#
+# Raised from 12_000 for the build-verification rule: a rule the agent needs
+# before it can finish any change cannot be read on demand, so it has to be
+# always-on and the budget has to cover it.
+MAX_ALWAYS_BYTES = 12_500
 
 FRONT_MATTER_FENCE = "---"
 

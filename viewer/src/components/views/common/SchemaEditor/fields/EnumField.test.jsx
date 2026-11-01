@@ -1,6 +1,7 @@
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { EnumField } from './EnumField';
+import useEscapeToClose from '../../../../../hooks/useEscapeToClose';
 
 describe('EnumField', () => {
   const defaultProps = {
@@ -110,5 +111,22 @@ describe('EnumField', () => {
     expect(listbox.getByText('lines')).toBeInTheDocument();
     expect(listbox.getByText('markers')).toBeInTheDocument();
     expect(listbox.getByText('lines+markers')).toBeInTheDocument();
+  });
+
+  it('Escape on the open MUI menu closes only the menu, not the layer under it', async () => {
+    const onLayerClose = jest.fn();
+    const Layer = () => {
+      useEscapeToClose(true, onLayerClose);
+      return <EnumField {...defaultProps} />;
+    };
+    render(<Layer />);
+
+    fireEvent.mouseDown(screen.getByRole('combobox'));
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+    expect(onLayerClose).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Escape' });
+    expect(onLayerClose).toHaveBeenCalledTimes(1);
   });
 });

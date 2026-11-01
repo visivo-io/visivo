@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 
 from pydantic import SecretStr, TypeAdapter, ValidationError
 
@@ -39,6 +39,12 @@ class SourceManager(ObjectManager[Source]):
         self._source_adapter = TypeAdapter(SourceField)
         # Where externalized credentials are written (<project_dir>/.env); cwd when None.
         self.project_dir = project_dir
+        # Injected by FlaskApp, like `name_clash`: called with the name of the
+        # FIRST source a project gains, so the project can adopt it as its
+        # default. Kept as a hook rather than a ProjectManager reference —
+        # a manager that knows about another manager is how the save path
+        # stops being one thing.
+        self.on_first_source: Optional[Callable[[str], None]] = None
 
     def validate_object(self, obj_data: dict) -> Source:
         """
@@ -75,8 +81,12 @@ class SourceManager(ObjectManager[Source]):
 
     def save(self, name: str, obj: Source) -> None:
         """Every draft write (API, rename, agent) lands here, so none can stage a
-        plaintext or masked secret."""
+        plaintext or masked secret — and none can leave a brand-new project
+        without a default source (VIS-1653)."""
+        was_first = obj is not None and not self.get_sources_list()
         super().save(name, self._protect_secrets(obj))
+        if was_first and self.on_first_source is not None:
+            self.on_first_source(name)
 
     def save_from_config(self, config: dict) -> Source:
         """

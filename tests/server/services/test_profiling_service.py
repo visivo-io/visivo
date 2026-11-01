@@ -558,7 +558,8 @@ class TestTheUnifiedShape:
         assert cards["amount"]["role"] == "numeric_discrete"
         assert (
             cards["category"]["role"] == "categorical"
-            and cards["category"]["cardinality_bucket"] == "few"
+            and isinstance(cards["category"]["cardinality"], int)
+            and "cardinality_bucket" not in cards["category"]
         )
         assert cards["day"]["role"] == "time" and cards["day"]["time_grain"] == "day"
 

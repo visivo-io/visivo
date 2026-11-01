@@ -152,12 +152,17 @@ def _manager_for(type_key):
 def _hydrated(client, type_key):
     manager = _manager_for(type_key)
     for envelope in client.objects(type_key):
-        config = envelope.get("config") or {}
+        config = dict(envelope.get("config") or {})
         name = envelope.get("name")
         if not name:
             continue
+        # The editor scopes a metric or dimension to its model by posting
+        # `parentModel` beside the config, and core stores it there.
+        parent = config.pop("parentModel", None)
         try:
             obj = manager.validate_object({**config, "name": name})
+            if parent:
+                obj.set_parent_name(parent)
         except Exception as error:
             # A row core stored that this visivo cannot parse — a newer field,
             # or something written by a different version. Skipping it beats
@@ -181,7 +186,13 @@ def _write_through(manager, client, type_key):
 
     def save(name, obj):
         original_save(name, obj)
-        client.save_object(type_key, name, obj.model_dump(exclude_none=True, mode="json"))
+        config = obj.model_dump(exclude_none=True, mode="json")
+        # The body the editor posts: a scoped field carries its model as
+        # `parentModel`, which model_dump leaves out with the private attribute.
+        parent = getattr(obj, "_parent_name", None)
+        if parent:
+            config["parentModel"] = parent
+        client.save_object(type_key, name, config)
 
     manager.save = save
 

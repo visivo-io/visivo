@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PiArrowSquareOut, PiArrowRight, PiCompass, PiPlusCircle } from 'react-icons/pi';
 import { getTypeIcon } from '../common/objectTypeConfigs';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 /**
  * OpenObjectContextMenu — VIS-811 / Track O O-2 (+ VIS-1067 flywheel entries).
@@ -67,21 +68,18 @@ const OpenObjectContextMenu = ({
   const prefix = testIdPrefix || 'open-object-ctx';
   const TypeIcon = obj?.type ? getTypeIcon(obj.type) : null;
 
+  useEscapeToClose(!!obj, () => onDismiss && onDismiss());
+
   useEffect(() => {
     const onDocPointer = e => {
       if (menuRef.current && menuRef.current.contains(e.target)) return;
       onDismiss && onDismiss();
     };
-    const onKey = e => {
-      if (e.key === 'Escape') onDismiss && onDismiss();
-    };
     const onScroll = () => onDismiss && onDismiss();
     document.addEventListener('pointerdown', onDocPointer, true);
-    document.addEventListener('keydown', onKey);
     window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('pointerdown', onDocPointer, true);
-      document.removeEventListener('keydown', onKey);
       window.removeEventListener('scroll', onScroll, true);
     };
   }, [onDismiss]);

@@ -39,6 +39,17 @@ describe('SliceBadge — menu integration', () => {
     expect(onChange).toHaveBeenCalledWith('[-1]');
   });
 
+  it('Escape closes the menu and returns focus to the badge', () => {
+    render(<SliceBadge slice="[0]" onChange={() => {}} slotShape="mixed" />);
+    const badge = screen.getByTestId('slice-badge');
+    fireEvent.click(badge);
+    expect(screen.getByTestId('slice-menu')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('slice-menu')).not.toBeInTheDocument();
+    expect(badge).toHaveAttribute('aria-expanded', 'false');
+    expect(badge).toHaveFocus();
+  });
+
   it('aria-expanded reflects open/closed state', () => {
     render(<SliceBadge slice="[0]" onChange={() => {}} slotShape="mixed" />);
     const badge = screen.getByTestId('slice-badge');

@@ -5,6 +5,8 @@ site_description: Documentation for Visivo, the AI-native open-source BI-as-code
   dashboards as version-controlled YAML, then explore them interactively with Insights.
   Develop locally with visivo serve and deploy to Visivo Cloud.
 site_author: Visivo
+hooks:
+  - mkdocs/hooks/redirects.py
 plugins:
   - mkdocs-video
   - autolinks
@@ -133,6 +135,7 @@ nav:
       - Deployment: topics/deployments.md
       - Static Distribution: topics/static-distribution.md
       - Telemetry: topics/telemetry.md
+      - Network Access: topics/network-access.md
   - Concepts:
       - Overview: concepts/index.md
       - Architecture: concepts/architecture.md

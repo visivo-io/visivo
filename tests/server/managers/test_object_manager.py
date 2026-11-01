@@ -256,6 +256,17 @@ class TestObjectManager:
 
         assert len(manager.cached_objects) == 0
 
+    def test_clear_cache_forgets_draft_renames(self):
+        """A rename record outliving its draft would send the next commit to
+        look for a name the YAML no longer holds."""
+        manager = ConcreteObjectManager()
+        manager.save("purchases", {"name": "purchases"})
+        manager.record_rename("orders", "purchases")
+
+        manager.clear_cache()
+
+        assert manager.renames == {}
+
     def test_clear_cache_preserves_published(self):
         """Test that clear_cache() does not affect published objects."""
         manager = ConcreteObjectManager()
@@ -280,6 +291,16 @@ class TestObjectManager:
         manager._published_objects["test"] = {"name": "test"}
 
         assert manager.has_unpublished_changes() is False
+
+    def test_has_unpublished_changes_true_for_a_pure_rename(self):
+        """A rename with no field edit leaves only the new name in the cache."""
+        manager = ConcreteObjectManager()
+        manager._published_objects["orders"] = {"name": "orders"}
+        manager.save("purchases", {"name": "purchases"})
+        manager.record_rename("orders", "purchases")
+
+        assert manager.get_status("purchases") == ObjectStatus.RENAMED
+        assert manager.has_unpublished_changes() is True
 
     def test_object_status_enum_values(self):
         """Test ObjectStatus enum values."""

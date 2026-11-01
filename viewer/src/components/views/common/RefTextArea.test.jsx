@@ -18,6 +18,7 @@ import React from 'react';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import RefTextArea from './RefTextArea';
 import useStore from '../../../stores/store';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
 
 // Build '${ref(name)}' / '${ref(name).prop}' without tripping
 // no-template-curly-in-string on every literal.
@@ -197,6 +198,20 @@ describe('RefTextArea — accessor dropdown', () => {
     fireEvent.mouseDown(document.body);
     expect(screen.queryByTestId('accessor-dropdown-sel')).not.toBeInTheDocument();
   });
+
+  test('Escape closes the accessor dropdown without emitting a change', () => {
+    const onChange = jest.fn();
+    render(
+      <RefTextArea value={R('sel', 'values')} onChange={onChange} allowedTypes={['input']} />
+    );
+
+    fireEvent.click(screen.getByTestId('accessor-sel'));
+    expect(screen.getByTestId('accessor-dropdown-sel')).toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByTestId('ref-textarea-editable'), { key: 'Escape' });
+    expect(screen.queryByTestId('accessor-dropdown-sel')).not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });
 
 describe('RefTextArea — @ mention dropdown', () => {
@@ -301,6 +316,24 @@ describe('RefTextArea — @ mention dropdown', () => {
 
     expect(screen.queryByTestId('mention-dropdown')).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalledWith(expect.stringContaining('ref('));
+  });
+
+  test('Escape on an open mention list leaves the layer under it open', () => {
+    const onLayerClose = jest.fn();
+    const Layer = () => {
+      useEscapeToClose(true, onLayerClose);
+      return <RefTextArea value="" onChange={jest.fn()} allowedTypes={['model']} />;
+    };
+    render(<Layer />);
+    const editable = screen.getByTestId('ref-textarea-editable');
+    typeText(editable, '@');
+
+    fireEvent.keyDown(editable, { key: 'Escape' });
+    expect(screen.queryByTestId('mention-dropdown')).not.toBeInTheDocument();
+    expect(onLayerClose).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(editable, { key: 'Escape' });
+    expect(onLayerClose).toHaveBeenCalledTimes(1);
   });
 
   test('clicking an item inserts its pill and serializes the ref', () => {
@@ -927,5 +960,17 @@ describe('RefTextArea — configurable chips', () => {
     clickChip();
     fireEvent.click(screen.getByTestId('pill-menu-remove'));
     expect(onChange).toHaveBeenCalledWith('sum()');
+  });
+
+  test('Escape closes the chip menu and puts focus back in the editor', () => {
+    const onChange = jest.fn();
+    render(<RefTextArea value={R('orders', 'amount')} onChange={onChange} configurableChips />);
+    clickChip();
+    expect(screen.getByTestId('pill-menu')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('pill-menu')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ref-textarea-editable')).toHaveFocus();
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

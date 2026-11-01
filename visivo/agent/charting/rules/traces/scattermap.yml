@@ -43,7 +43,7 @@ example: |
 variations:
   - when: "a metric per place"
     then: "`marker.size` (use `sqrt` so area, not diameter, is proportional) with `marker.sizemode: diameter`"
-  - when: "a categorical with `few` values"
+  - when: "a categorical with 2–7 values"
     then: "`split` (one series per value, theme-colored) rather than `marker.color`"
   - when: "the points are raw rows rather than aggregated places"
     then: "`cluster.enabled: true`, or aggregate to zone or grid in SQL"

@@ -1,11 +1,11 @@
 ---
 name: top_n
-summary: A `many`/`high` categorical ranked by a measure.
+summary: A categorical of more than 20 values ranked by a measure.
 ---
 
 # Top N
 
-**When:** a `many`/`high` categorical ranked by a measure.
+**When:** a categorical of more than 20 values ranked by a measure.
 
 **Wiring:** `filter: ${ref(M).rank_col} <= ${ref(I).value}`
 

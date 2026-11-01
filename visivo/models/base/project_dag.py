@@ -78,9 +78,12 @@ class ProjectDag(DiGraph):
             The single node with the given name
 
         Raises:
-            ValueError: If no node is found or multiple nodes are found with the same name
+            ValueError: If no node is found or multiple nodes are found with the same name.
+                The project itself never counts, so a project may share a name with an object.
         """
         descendants = all_descendants_with_name(name=name, dag=self, from_node=from_node)
+        if len(descendants) > 1:
+            descendants = [d for d in descendants if d.__class__.__name__ != "Project"]
 
         if len(descendants) == 0:
             if from_node:

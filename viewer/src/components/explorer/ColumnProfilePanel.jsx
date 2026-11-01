@@ -4,6 +4,7 @@ import { histogramTableLocally } from '../../duckdb/profiling';
 import ProfileStats from './ProfileStats';
 import Histogram from './Histogram';
 import { NUMERIC_TYPES } from '../../constants';
+import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 const isNumericType = type => {
   if (!type) return false;
@@ -79,6 +80,8 @@ const ColumnProfilePanel = ({ column, profile, db, tableName, rowCount, onClose,
       // Fallback: ignored in non-secure contexts
     }
   }, [profile, rowCount]);
+
+  useEscapeToClose(isOpen && !!profile, onClose);
 
   if (!isOpen || !profile) return null;
 

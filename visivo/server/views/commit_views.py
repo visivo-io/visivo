@@ -3,6 +3,7 @@ import os
 from dotenv import dotenv_values
 from flask import jsonify
 from visivo.logger.logger import Logger
+from visivo.parsers.file_names import PROJECT_FILE_NAME
 from visivo.server.managers.object_manager import ObjectStatus, location_free_dump
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.user_config import get_run_trigger
@@ -293,7 +294,7 @@ def register_commit_views(app, flask_app, output_dir):
     def commit_changes(project_id=None):
         """Write all cached changes to YAML files."""
         try:
-            # Build named_children dict for ProjectWriter
+            project_file_path = _project_file_path(flask_app)
             named_children = {}
             published_count = 0
 
@@ -307,7 +308,7 @@ def register_commit_views(app, flask_app, output_dir):
                         status=status,
                         **_renamed_child_args(flask_app.source_manager, name),
                         type_key="sources",
-                        project_file_path=flask_app.project.project_file_path,
+                        project_file_path=project_file_path,
                     )
                     named_children[name] = child_info
                     published_count += 1
@@ -322,7 +323,7 @@ def register_commit_views(app, flask_app, output_dir):
                         status=status,
                         **_renamed_child_args(flask_app.model_manager, name),
                         type_key="models",
-                        project_file_path=flask_app.project.project_file_path,
+                        project_file_path=project_file_path,
                     )
                     named_children[name] = child_info
                     published_count += 1
@@ -337,7 +338,7 @@ def register_commit_views(app, flask_app, output_dir):
                         status=status,
                         **_renamed_child_args(flask_app.dimension_manager, name),
                         type_key="dimensions",
-                        project_file_path=flask_app.project.project_file_path,
+                        project_file_path=project_file_path,
                         flask_app=flask_app,
                     )
                     named_children[name] = child_info
@@ -353,7 +354,7 @@ def register_commit_views(app, flask_app, output_dir):
                         status=status,
                         **_renamed_child_args(flask_app.metric_manager, name),
                         type_key="metrics",
-                        project_file_path=flask_app.project.project_file_path,
+                        project_file_path=project_file_path,
                         flask_app=flask_app,
                     )
                     named_children[name] = child_info
@@ -369,7 +370,7 @@ def register_commit_views(app, flask_app, output_dir):
                         status=status,
                         **_renamed_child_args(flask_app.relation_manager, name),
                         type_key="relations",
-                        project_file_path=flask_app.project.project_file_path,
+                        project_file_path=project_file_path,
                     )
                     named_children[name] = child_info
                     published_count += 1
@@ -384,7 +385,7 @@ def register_commit_views(app, flask_app, output_dir):
                         status=status,
                         **_renamed_child_args(flask_app.insight_manager, name),
                         type_key="insights",
-                        project_file_path=flask_app.project.project_file_path,
+                        project_file_path=project_file_path,
                     )
                     named_children[name] = child_info
                     published_count += 1
@@ -399,7 +400,7 @@ def register_commit_views(app, flask_app, output_dir):
                         status=status,
                         **_renamed_child_args(flask_app.markdown_manager, name),
                         type_key="markdowns",
-                        project_file_path=flask_app.project.project_file_path,
+                        project_file_path=project_file_path,
                     )
                     named_children[name] = child_info
                     published_count += 1
@@ -414,7 +415,7 @@ def register_commit_views(app, flask_app, output_dir):
                         status=status,
                         **_renamed_child_args(flask_app.chart_manager, name),
                         type_key="charts",
-                        project_file_path=flask_app.project.project_file_path,
+                        project_file_path=project_file_path,
                     )
                     named_children[name] = child_info
                     published_count += 1
@@ -429,7 +430,7 @@ def register_commit_views(app, flask_app, output_dir):
                         status=status,
                         **_renamed_child_args(flask_app.table_manager, name),
                         type_key="tables",
-                        project_file_path=flask_app.project.project_file_path,
+                        project_file_path=project_file_path,
                     )
                     named_children[name] = child_info
                     published_count += 1
@@ -444,7 +445,7 @@ def register_commit_views(app, flask_app, output_dir):
                         status=status,
                         **_renamed_child_args(flask_app.dashboard_manager, name),
                         type_key="dashboards",
-                        project_file_path=flask_app.project.project_file_path,
+                        project_file_path=project_file_path,
                     )
                     named_children[name] = child_info
                     published_count += 1
@@ -459,7 +460,7 @@ def register_commit_views(app, flask_app, output_dir):
                         status=status,
                         **_renamed_child_args(flask_app.input_manager, name),
                         type_key="inputs",
-                        project_file_path=flask_app.project.project_file_path,
+                        project_file_path=project_file_path,
                     )
                     named_children[name] = child_info
                     published_count += 1
@@ -467,8 +468,8 @@ def register_commit_views(app, flask_app, output_dir):
             for setting, cached in _cached_project_settings(flask_app).items():
                 named_children[f"project.{setting}"] = {
                     "status": "Modified",
-                    "file_path": flask_app.project.project_file_path,
-                    "new_file_path": flask_app.project.project_file_path,
+                    "file_path": project_file_path,
+                    "new_file_path": project_file_path,
                     "type_key": setting,
                     "top_level_key": setting,
                     "config": cached.model_dump(
@@ -522,7 +523,7 @@ def register_commit_views(app, flask_app, output_dir):
             if hot_reload_server:
                 hot_reload_server.pause_file_watcher()
             try:
-                # Use ProjectWriter to write changes
+                _ensure_project_file(project_file_path)
                 writer = ProjectWriter(named_children)
                 writer.update_file_contents()
                 try:
@@ -627,6 +628,25 @@ def register_commit_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error discarding changes: {str(e)}")
             return jsonify({"error": str(e)}), 500
+
+
+def _project_file_path(flask_app):
+    """The file new objects go to: the loaded project file, or
+    ``project.visivo.yml`` in the working dir when serve started without one."""
+    if flask_app.project.project_file_path:
+        return flask_app.project.project_file_path
+    working_dir = getattr(flask_app, "_working_dir", None) or os.getcwd()
+    return os.path.join(working_dir, PROJECT_FILE_NAME)
+
+
+def _ensure_project_file(project_file_path):
+    """Scaffold the project file the way ``visivo init`` does if it is missing."""
+    if os.path.exists(project_file_path):
+        return
+    from visivo.commands.init_phase import create_basic_project
+
+    project_dir = os.path.dirname(os.path.abspath(project_file_path))
+    create_basic_project(os.path.basename(project_dir), project_dir)
 
 
 def _validate_pending_project(flask_app):

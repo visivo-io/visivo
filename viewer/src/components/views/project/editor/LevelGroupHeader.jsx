@@ -8,6 +8,7 @@ import {
   PiCheck,
   PiX,
 } from 'react-icons/pi';
+import useEscapeToClose from '../../../../hooks/useEscapeToClose';
 
 /**
  * LevelGroupHeader — VIS-805 (M-1) + VIS-807 (M-2a).
@@ -17,7 +18,7 @@ import {
  *
  *   - Double-click the title → inline rename input (Enter commits, Esc cancels).
  *   - Reorder up / down arrows.
- *   - Delete with a small inline confirm popover.
+ *   - Delete with a small inline confirm popover (Esc cancels it).
  *
  * These are only rendered for configured (real) levels — the synthetic
  * "Unassigned" bucket passes `editable={false}` so it stays read-only. The
@@ -43,6 +44,12 @@ const LevelGroupHeader = ({
   const [draft, setDraft] = useState(title);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const inputRef = useRef(null);
+  const deleteButtonRef = useRef(null);
+
+  useEscapeToClose(confirmingDelete, () => {
+    setConfirmingDelete(false);
+    deleteButtonRef.current?.focus();
+  });
 
   useEffect(() => {
     if (renaming && inputRef.current) {
@@ -85,7 +92,7 @@ const LevelGroupHeader = ({
   return (
     <header
       data-testid={testId}
-      className="group/level relative mb-2 flex items-center gap-2 rounded-md py-1 pl-1 pr-1.5"
+      className="group/level relative mb-2 flex flex-wrap items-center gap-2 rounded-md py-1 pl-1 pr-1.5"
     >
       <button
         type="button"
@@ -163,6 +170,7 @@ const LevelGroupHeader = ({
             <PiArrowDown className="h-3.5 w-3.5" />
           </button>
           <button
+            ref={deleteButtonRef}
             type="button"
             onClick={e => {
               stop(e);

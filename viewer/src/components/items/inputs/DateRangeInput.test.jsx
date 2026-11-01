@@ -1,6 +1,15 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import DateRangeInput from './DateRangeInput';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
+
+const OuterLayer = ({ onClose, children }) => {
+  useEscapeToClose(true, onClose);
+  return <div>{children}</div>;
+};
+
+const triggerWithText = text =>
+  screen.getAllByRole('button').find(btn => btn.textContent?.includes(text));
 
 describe('DateRangeInput', () => {
   const defaultProps = {
@@ -301,5 +310,187 @@ describe('DateRangeInput', () => {
     // June 3 is in options, so it should not be disabled
     const day3Button = screen.getByRole('button', { name: '3' });
     expect(day3Button).not.toBeDisabled();
+  });
+
+  describe('Escape', () => {
+    it('closes the start picker and returns focus to its trigger', () => {
+      render(<DateRangeInput {...defaultProps} />);
+      const startButton = triggerWithText('Jun 2, 2024');
+      fireEvent.click(startButton);
+      expect(screen.getByText('June 2024')).toBeInTheDocument();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      expect(screen.queryByText('June 2024')).not.toBeInTheDocument();
+      expect(startButton).toHaveFocus();
+    });
+
+    it('closes the end picker and returns focus to its trigger', () => {
+      render(<DateRangeInput {...defaultProps} />);
+      const endButton = triggerWithText('Jun 4, 2024');
+      fireEvent.click(endButton);
+      expect(screen.getByText('June 2024')).toBeInTheDocument();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      expect(screen.queryByText('June 2024')).not.toBeInTheDocument();
+      expect(endButton).toHaveFocus();
+    });
+
+    it('closes only the picker inside an open layer, then the layer', () => {
+      const onOuterClose = jest.fn();
+      render(
+        <OuterLayer onClose={onOuterClose}>
+          <DateRangeInput {...defaultProps} />
+        </OuterLayer>
+      );
+      fireEvent.click(triggerWithText('Jun 2, 2024'));
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByText('June 2024')).not.toBeInTheDocument();
+      expect(onOuterClose).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(onOuterClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('open-ended ranges', () => {
+    it('picking only an end date selects every option up to it and closes the picker', () => {
+      const setInputJobValue = jest.fn();
+      render(
+        <DateRangeInput {...defaultProps} selectedValues={[]} setInputJobValue={setInputJobValue} />
+      );
+      fireEvent.click(triggerWithText('End date'));
+      fireEvent.click(screen.getByRole('button', { name: '3' }));
+
+      expect(setInputJobValue).toHaveBeenCalledWith('test-date-range', [
+        '2024-06-01',
+        '2024-06-02',
+        '2024-06-03',
+      ]);
+      expect(screen.queryByText('June 2024')).not.toBeInTheDocument();
+    });
+
+    it('picking only a start date selects every option from it', () => {
+      const setInputJobValue = jest.fn();
+      render(
+        <DateRangeInput {...defaultProps} selectedValues={[]} setInputJobValue={setInputJobValue} />
+      );
+      fireEvent.click(triggerWithText('Start date'));
+      fireEvent.click(screen.getByRole('button', { name: '3' }));
+
+      expect(setInputJobValue).toHaveBeenCalledWith('test-date-range', [
+        '2024-06-03',
+        '2024-06-04',
+        '2024-06-05',
+      ]);
+    });
+
+    it('swaps an end date picked before the start date', () => {
+      const setInputJobValue = jest.fn();
+      render(
+        <DateRangeInput
+          {...defaultProps}
+          selectedValues={['2024-06-02', '2024-06-03']}
+          setInputJobValue={setInputJobValue}
+        />
+      );
+      fireEvent.click(triggerWithText('Jun 3, 2024'));
+      fireEvent.click(screen.getByRole('button', { name: '1' }));
+
+      expect(setInputJobValue).toHaveBeenCalledWith('test-date-range', [
+        '2024-06-01',
+        '2024-06-02',
+      ]);
+    });
+
+    it('shows placeholders when no selected value parses as a date', () => {
+      render(<DateRangeInput {...defaultProps} selectedValues={['not-a-date']} />);
+      expect(screen.getByText('Start date')).toBeInTheDocument();
+      expect(screen.getByText('End date')).toBeInTheDocument();
+    });
+  });
+
+  it('renders the calendar in a portal outside the input row so ancestor overflow cannot clip it', () => {
+    const { container } = render(
+      <div style={{ overflow: 'hidden' }}>
+        <DateRangeInput {...defaultProps} />
+      </div>
+    );
+    const startButton = screen.getAllByRole('button').find(btn => btn.textContent?.includes('Jun 2, 2024'));
+    fireEvent.click(startButton);
+
+    const menu = screen.getByTestId('portal-dropdown-menu');
+    expect(container).not.toContainElement(menu);
+    expect(document.body).toContainElement(menu);
+    expect(menu.style.position).toBe('fixed');
+  });
+
+  it('keeps the calendar open on mousedown inside it and applies the clicked day', () => {
+    const setInputJobValue = jest.fn();
+    render(<DateRangeInput {...defaultProps} setInputJobValue={setInputJobValue} />);
+    const startButton = screen.getAllByRole('button').find(btn => btn.textContent?.includes('Jun 2, 2024'));
+    fireEvent.click(startButton);
+
+    const day = screen.getByRole('button', { name: '1' });
+    fireEvent.mouseDown(day);
+    expect(screen.getByText('June 2024')).toBeInTheDocument();
+    fireEvent.click(day);
+    expect(setInputJobValue).toHaveBeenCalledWith('test-date-range', [
+      '2024-06-01',
+      '2024-06-02',
+      '2024-06-03',
+      '2024-06-04',
+    ]);
+  });
+
+  it('closes the calendar on mousedown outside it', () => {
+    render(<DateRangeInput {...defaultProps} />);
+    const startButton = screen.getAllByRole('button').find(btn => btn.textContent?.includes('Jun 2, 2024'));
+    fireEvent.click(startButton);
+    expect(screen.getByText('June 2024')).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByText('June 2024')).not.toBeInTheDocument();
+  });
+
+  const openPicker = text =>
+    fireEvent.click(screen.getAllByRole('button').find(btn => btn.textContent?.includes(text)));
+
+  it('applies a day picked in the end calendar', () => {
+    const setInputJobValue = jest.fn();
+    render(<DateRangeInput {...defaultProps} setInputJobValue={setInputJobValue} />);
+    openPicker('Jun 4, 2024');
+    fireEvent.click(screen.getByRole('button', { name: '5' }));
+    expect(setInputJobValue).toHaveBeenCalledWith('test-date-range', [
+      '2024-06-02',
+      '2024-06-03',
+      '2024-06-04',
+      '2024-06-05',
+    ]);
+    expect(screen.queryByText('June 2024')).not.toBeInTheDocument();
+  });
+
+  it('swaps the bounds when the start is moved after the end', () => {
+    const setInputJobValue = jest.fn();
+    render(<DateRangeInput {...defaultProps} setInputJobValue={setInputJobValue} />);
+    openPicker('Jun 2, 2024');
+    fireEvent.click(screen.getByRole('button', { name: '5' }));
+    expect(setInputJobValue).toHaveBeenCalledWith('test-date-range', ['2024-06-04', '2024-06-05']);
+  });
+
+  it('treats a missing start or end as an open bound', () => {
+    const setInputJobValue = jest.fn();
+    const { rerender } = render(
+      <DateRangeInput {...defaultProps} selectedValues={[]} setInputJobValue={setInputJobValue} />
+    );
+    openPicker('End date');
+    fireEvent.click(screen.getByRole('button', { name: '2' }));
+    expect(setInputJobValue).toHaveBeenLastCalledWith('test-date-range', ['2024-06-01', '2024-06-02']);
+
+    rerender(<DateRangeInput {...defaultProps} selectedValues={[]} setInputJobValue={setInputJobValue} />);
+    openPicker('Start date');
+    fireEvent.click(screen.getByRole('button', { name: '4' }));
+    expect(setInputJobValue).toHaveBeenLastCalledWith('test-date-range', ['2024-06-04', '2024-06-05']);
   });
 });

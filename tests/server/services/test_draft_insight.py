@@ -178,6 +178,47 @@ class TestSubstituteInputs:
             == "'Queens' 'b', 'c' 4"
         )
 
+    def test_values_all_selects_every_option(self, monkeypatch):
+        options = ["a", "b", "c", "d", "e"]
+        explicit_all = MultiSelectInput(
+            name="explicit_all",
+            options=options,
+            display={"type": "checkboxes", "default": {"values": "all"}},
+        )
+        no_default = MultiSelectInput(name="no_default", options=options)
+        app = self._app(monkeypatch, {"explicit_all": explicit_all, "no_default": no_default})
+
+        assert default_selection(explicit_all) == options
+        assert default_selection(no_default) == options
+        assert (
+            substitute_inputs(app, "x in (${ref(explicit_all).values})", {}, {})
+            == "x in ('a', 'b', 'c', 'd', 'e')"
+        )
+        assert substitute_inputs(app, "x in (${ref(no_default).values})", {}, {}) == (
+            "x in ('a', 'b', 'c', 'd', 'e')"
+        )
+
+    def test_values_all_reads_query_options_and_falls_back_when_unavailable(self, monkeypatch):
+        queried = MultiSelectInput(
+            name="queried",
+            options="?{ select distinct x from ${ref(t)} }",
+            display={"type": "dropdown", "default": {"values": "all"}},
+        )
+        ranged = MultiSelectInput(
+            name="ranged",
+            range={"start": 0, "end": 10, "step": 1},
+        )
+        monkeypatch.setattr(module, "get_input_options", lambda obj, out: ["x", "y", "z"])
+        assert default_selection(queried, "/out") == ["x", "y", "z"]
+        assert default_selection(queried) is None
+        assert default_selection(ranged, "/out") is None
+
+        def missing(obj, out):
+            raise FileNotFoundError()
+
+        monkeypatch.setattr(module, "get_input_options", missing)
+        assert default_selection(queried, "/out") is None
+
     def test_a_repeated_reference_loads_its_options_once(self, monkeypatch):
         loads = []
         app = self._app(monkeypatch, {"min_x": Mock()}, loader=lambda *a: loads.append(a) or "4")

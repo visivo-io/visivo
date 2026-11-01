@@ -338,4 +338,24 @@ describe('PivotPlayground (VIS-1008)', () => {
     // The draft is still dirty — Save stays enabled for another attempt.
     expect(screen.getByTestId('pivot-playground-save')).not.toBeDisabled();
   });
+
+  test('Escape closes the save modal and keeps the dirty draft', () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: [{ name: 'sales-pivot-table', config: { name: 'sales-pivot-table' } }],
+      });
+    });
+    renderPlayground({ record: { name: 'sales-pivot-table' } });
+
+    fireEvent.click(screen.getByTestId('shelf-mock-columns-drop'));
+    fireEvent.click(screen.getByTestId('pivot-playground-save'));
+    expect(screen.getByTestId('pivot-save-modal')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('pivot-save-modal')).not.toBeInTheDocument();
+    expect(saveTable).not.toHaveBeenCalled();
+    expect(screen.getByTestId('pivot-playground-save')).not.toBeDisabled();
+  });
 });

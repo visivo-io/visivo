@@ -29,7 +29,12 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
 
   const [name, setName] = useState('');
 
-  const rename = useRenameFlow({ type: 'dashboard', recordName: dashboard?.name || '', name });
+  const rename = useRenameFlow({
+    type: 'dashboard',
+    recordName: dashboard?.name || '',
+    name,
+    onCancel: setName,
+  });
   const [rows, setRows] = useState([]);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -66,20 +71,12 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
     }
   }, [dashboard]);
 
-  const handleSubmit = async e => {
-    // A changed name in edit mode is a RENAME — its own server operation,
-    // confirmed first, because every `${ref()}` to this object moves with it.
-    if (!isCreate && rename.nameChanged) {
-      e.preventDefault();
-      rename.start();
-      return;
-    }
-    e.preventDefault();
+  const persist = async nameToSave => {
     setError(null);
     setSaving(true);
 
     const config = {
-      name: name.trim(),
+      name: nameToSave.trim(),
       type: 'internal',
     };
 
@@ -107,7 +104,18 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
 
     if (!result?.success) {
       setError(result?.error || 'Failed to save dashboard');
+      return false;
     }
+    return true;
+  };
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    if (!isCreate && rename.nameChanged) {
+      await rename.start(() => persist(dashboard.name));
+      return;
+    }
+    await persist(name);
   };
 
   const handleDelete = async () => {

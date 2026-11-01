@@ -1,6 +1,12 @@
 import React from 'react';
 import { render, fireEvent, screen } from '@testing-library/react';
 import Dropdown from './Dropdown';
+import useEscapeToClose from '../../../hooks/useEscapeToClose';
+
+const OuterLayer = ({ onClose, children }) => {
+  useEscapeToClose(true, onClose);
+  return <div>{children}</div>;
+};
 
 const options = ['Option A', 'Option B', 'Option C'];
 
@@ -164,12 +170,39 @@ describe('Dropdown Component', () => {
       expect(screen.queryByPlaceholderText('Search options...')).not.toBeInTheDocument();
     });
 
-    it('Escape closes the open menu', () => {
+    it('Escape closes the open menu and returns focus to the trigger', () => {
       render(<Dropdown options={options} name="test" />);
-      fireEvent.click(screen.getByRole('button'));
+      const trigger = screen.getByRole('button');
+      fireEvent.click(trigger);
       const search = screen.getByPlaceholderText('Search options...');
+      search.focus();
       fireEvent.keyDown(search, { key: 'Escape' });
       expect(screen.queryByPlaceholderText('Search options...')).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+    });
+
+    it('Escape closes the open menu when focus is elsewhere', () => {
+      render(<Dropdown options={options} name="test" />);
+      fireEvent.click(screen.getByRole('button'));
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByPlaceholderText('Search options...')).not.toBeInTheDocument();
+    });
+
+    it('Escape inside an open layer closes only the menu, then the layer', () => {
+      const onOuterClose = jest.fn();
+      render(
+        <OuterLayer onClose={onOuterClose}>
+          <Dropdown options={options} name="test" />
+        </OuterLayer>
+      );
+      fireEvent.click(screen.getByRole('button'));
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByPlaceholderText('Search options...')).not.toBeInTheDocument();
+      expect(onOuterClose).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(onOuterClose).toHaveBeenCalledTimes(1);
     });
 
     it('ArrowUp from no highlight wraps to the LAST option; Enter selects it', () => {
