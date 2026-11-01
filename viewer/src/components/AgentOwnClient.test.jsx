@@ -2,25 +2,21 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import AgentOwnClient, { buildSnippets, mcpUrl } from './AgentOwnClient';
 
-const setOrigin = origin => {
-  delete window.location;
-  window.location = { origin };
-};
-const originalLocation = window.location;
+const pageUrl = `${window.location.origin}/api/mcp/`;
+
 afterEach(() => {
-  window.location = originalLocation;
   delete navigator.clipboard;
 });
 
 describe('snippets', () => {
   test('use the page origin', () => {
-    setOrigin('http://localhost:8123');
     render(<AgentOwnClient />);
-    expect(screen.getByText(/claude mcp add --transport http visivo http:\/\/localhost:8123\/api\/mcp\//)).toBeInTheDocument();
-    const cursor = screen.getByTestId('agent-own-client-cursor');
-    expect(cursor).toHaveTextContent('"url": "http://localhost:8123/api/mcp/"');
+    expect(
+      screen.getByText(`claude mcp add --transport http visivo ${pageUrl}`)
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('agent-own-client-cursor')).toHaveTextContent(`"url": "${pageUrl}"`);
     expect(screen.getByTestId('agent-own-client-gemini')).toHaveTextContent(
-      '"httpUrl": "http://localhost:8123/api/mcp/"'
+      `"httpUrl": "${pageUrl}"`
     );
   });
 
@@ -29,9 +25,7 @@ describe('snippets', () => {
     ['http://192.168.1.20:8000', 'http://192.168.1.20:8000/api/mcp/'],
     ['http://devbox:8123', 'http://devbox:8123/api/mcp/'],
   ])('keep the host, scheme and port of %s', (origin, expected) => {
-    setOrigin(origin);
-    render(<AgentOwnClient />);
-    expect(screen.getByTestId('agent-own-client-cursor')).toHaveTextContent(`"url": "${expected}"`);
+    expect(mcpUrl(origin)).toBe(expected);
   });
 
   test.each(['', 'null'])('fall back to localhost:8000 when the origin is %p', origin => {
@@ -49,7 +43,6 @@ describe('snippets', () => {
   });
 
   test('link to the MCP guide', () => {
-    setOrigin('http://localhost:8000');
     render(<AgentOwnClient />);
     expect(screen.getByRole('link', { name: 'Read the MCP guide' })).toHaveAttribute(
       'href',
@@ -60,16 +53,13 @@ describe('snippets', () => {
 
 describe('copy buttons', () => {
   test('write the snippet to the clipboard from the click handler', async () => {
-    setOrigin('http://localhost:8000');
     const writeText = jest.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
     render(<AgentOwnClient />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy Claude Code snippet' }));
 
-    expect(writeText).toHaveBeenCalledWith(
-      'claude mcp add --transport http visivo http://localhost:8000/api/mcp/'
-    );
+    expect(writeText).toHaveBeenCalledWith(`claude mcp add --transport http visivo ${pageUrl}`);
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Copy Claude Code snippet' })).toHaveTextContent(
         'Copied'
@@ -78,7 +68,6 @@ describe('copy buttons', () => {
   });
 
   test('select the text and say so when the clipboard is unavailable', () => {
-    setOrigin('http://localhost:8000');
     render(<AgentOwnClient />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy Cursor snippet' }));
@@ -88,7 +77,6 @@ describe('copy buttons', () => {
   });
 
   test('fall back the same way when the write is rejected', async () => {
-    setOrigin('http://localhost:8000');
     Object.assign(navigator, { clipboard: { writeText: jest.fn().mockRejectedValue(new Error('no')) } });
     render(<AgentOwnClient />);
 
