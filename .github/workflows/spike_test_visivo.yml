@@ -108,6 +108,15 @@ jobs:
           --json --testLocationInResults --outputFile jest.json
           --coverage --coverageReporters=json-summary
           --coverageDirectory=../coverage-js
+      - name: Print totals
+        working-directory: viewer
+        run: |
+          node -e "
+          const fs = require('fs');
+          const j = JSON.parse(fs.readFileSync('jest.json'));
+          const s = JSON.parse(fs.readFileSync('../coverage-js/coverage-summary.json')).total;
+          console.log('SPIKE_RESULT ' + JSON.stringify({ totals: { suites: j.numTotalTestSuites, tests: j.numTotalTests, passed: j.numPassedTests, failed: j.numFailedTests, pending: j.numPendingTests }, lines: s.lines.pct, statements: s.statements.pct, branches: s.branches.pct, functions: s.functions.pct }));
+          "
 
   viewer-lint:
     runs-on: ubuntu-22.04

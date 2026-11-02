@@ -1,0 +1,182 @@
+name: Spike pytest shards
+
+on:
+  push:
+    branches: [spike/gha-test-visivo]
+
+env:
+  POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  STACKTRACE: "true"
+
+jobs:
+  baseline:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            .venv
+          key: py-${{ runner.os }}-${{ hashFiles('.python-version', 'poetry.lock', 'pyproject.toml') }}
+      - run: pip install poetry
+      - run: poetry install --with dev
+      - run: python -m pip --python .venv/bin/python install pytest-split
+      - run: >
+          poetry run pytest --json-report --json-report-omit log traceback streams
+          --cov=visivo --cov-report=
+          --store-durations --durations-path .test_durations --clean-durations
+        env:
+          COVERAGE_FILE: .coverage.result
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .test_durations
+          key: durations-${{ github.run_id }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pytest-baseline
+          retention-days: 3
+          include-hidden-files: true
+          path: |
+            .report.json
+            .coverage.result
+
+  variants:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { v: xdist4, total: 1, group: 1, xdist: 4 }
+          - { v: split2, total: 2, group: 1, xdist: 0 }
+          - { v: split2, total: 2, group: 2, xdist: 0 }
+          - { v: split3, total: 3, group: 1, xdist: 0 }
+          - { v: split3, total: 3, group: 2, xdist: 0 }
+          - { v: split3, total: 3, group: 3, xdist: 0 }
+          - { v: split4, total: 4, group: 1, xdist: 0 }
+          - { v: split4, total: 4, group: 2, xdist: 0 }
+          - { v: split4, total: 4, group: 3, xdist: 0 }
+          - { v: split4, total: 4, group: 4, xdist: 0 }
+          - { v: split2x4, total: 2, group: 1, xdist: 4 }
+          - { v: split2x4, total: 2, group: 2, xdist: 4 }
+          - { v: split3x4, total: 3, group: 1, xdist: 4 }
+          - { v: split3x4, total: 3, group: 2, xdist: 4 }
+          - { v: split3x4, total: 3, group: 3, xdist: 4 }
+    name: ${{ matrix.v }} group ${{ matrix.group }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            .venv
+          key: py-${{ runner.os }}-${{ hashFiles('.python-version', 'poetry.lock', 'pyproject.toml') }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: .test_durations
+          key: durations-none
+          restore-keys: durations-
+      - run: pip install poetry
+      - run: poetry install --with dev
+      - run: python -m pip --python .venv/bin/python install pytest-split pytest-xdist
+      - name: pytest
+        env:
+          COVERAGE_FILE: .coverage.result
+        run: |
+          args=()
+          if [ "${{ matrix.total }}" -gt 1 ]; then
+            args+=(--splits ${{ matrix.total }} --group ${{ matrix.group }} --durations-path .test_durations)
+          fi
+          if [ "${{ matrix.xdist }}" -gt 0 ]; then
+            args+=(-n ${{ matrix.xdist }})
+          fi
+          poetry run pytest --json-report --json-report-omit log traceback streams \
+            --cov=visivo --cov-report= "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pytest-${{ matrix.v }}-${{ matrix.group }}
+          retention-days: 3
+          include-hidden-files: true
+          path: |
+            .report.json
+            .coverage.result
+
+  merge:
+    needs: [baseline, variants]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        v: [xdist4, split2, split3, split4, split2x4, split3x4]
+    name: merge ${{ matrix.v }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: python -m pip install "coverage==7.13.5"
+      - uses: actions/download-artifact@v4
+        with:
+          path: arts
+          pattern: pytest-*
+      - name: Compare with baseline
+        run: |
+          python - <<'P'
+          import glob, json, os, subprocess
+          v = "${{ matrix.v }}"
+          def load(p):
+              out = {}
+              for t in json.load(open(p))["tests"]:
+                  out[t["nodeid"]] = t["outcome"]
+              return out
+          def cover(paths, name):
+              subprocess.run(["python", "-m", "coverage", "combine", "--keep", f"--data-file=.cov.{name}", *paths], check=True, capture_output=True)
+              r = subprocess.run(["python", "-m", "coverage", "report", f"--data-file=.cov.{name}", "--format=total", "--precision=2", "--ignore-errors"], capture_output=True, text=True)
+              return r.stdout.strip() or r.stderr.strip()[-200:]
+          dirs = [d for d in glob.glob(f"arts/pytest-{v}-*") if os.path.exists(d + "/.report.json")]
+          base = load("arts/pytest-baseline/.report.json")
+          got = {}
+          dupes = 0
+          for d in dirs:
+              for k, o in load(d + "/.report.json").items():
+                  dupes += k in got
+                  got[k] = o
+          count = lambda m: {o: sum(1 for x in m.values() if x == o) for o in sorted(set(m.values()))}
+          res = dict(variant=v, shards_with_report=len(dirs), base=count(base), got=count(got), dupes=dupes,
+                     missing=sorted(set(base) - set(got))[:10], missing_n=len(set(base) - set(got)),
+                     extra_n=len(set(got) - set(base)),
+                     changed=[(k, base[k], got[k]) for k in base if k in got and base[k] != got[k]][:15],
+                     cov_base=cover(["arts/pytest-baseline/.coverage.result"], "b"),
+                     cov_got=cover([d + "/.coverage.result" for d in dirs], "g"))
+          print("SPIKE_RESULT " + json.dumps(res))
+          P
+
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            .venv
+          key: py-${{ runner.os }}-${{ hashFiles('.python-version', 'poetry.lock', 'pyproject.toml') }}
+      - run: pip install poetry
+      - run: bash .github/spike_probe.sh
