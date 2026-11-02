@@ -212,7 +212,7 @@ jobs:
         working-directory: viewer
         env:
           SHARD_RESULT: ${{ needs.viewer-test.result }}
-          MIN_VIEWER_TESTS: "8000"
+          MIN_VIEWER_TESTS: "8001"
           NODE_PATH: node_modules
         run: |
           EXPECTED_SUITES=$(yarn -s jest --listTests --json | node -pe 'JSON.parse(require("fs").readFileSync(0)).length')
