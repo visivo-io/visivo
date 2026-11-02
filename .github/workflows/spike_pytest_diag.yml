@@ -1,0 +1,43 @@
+name: Spike pytest diagnosis
+
+on:
+  push:
+    branches: [spike/gha-pytest-diag]
+
+env:
+  POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  STACKTRACE: "true"
+
+jobs:
+  diag:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        rep: [1, 2, 3]
+        mode: [as-ci, as-ci-to-file, json-only, cov-only, plain-to-log]
+    name: ${{ matrix.mode }} ${{ matrix.rep }}
+    steps:
+      - run: lscpu | grep -E 'Model name|^CPU\(s\)' | sed 's/^/HW /'
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            .venv
+          key: py-${{ runner.os }}-${{ hashFiles('.python-version', 'poetry.lock', 'pyproject.toml') }}
+      - run: pip install poetry
+      - run: poetry install --with dev
+      - name: pytest
+        run: |
+          case "${{ matrix.mode }}" in
+            as-ci) poetry run pytest --json-report --cov=visivo --cov-report=json:coverage-python.json ;;
+            as-ci-to-file) poetry run pytest --json-report --cov=visivo --cov-report=json:coverage-python.json > /tmp/out.log 2>&1 ;;
+            json-only) poetry run pytest --json-report ;;
+            cov-only) poetry run pytest --cov=visivo --cov-report=json:coverage-python.json ;;
+            plain-to-log) poetry run pytest ;;
+          esac
