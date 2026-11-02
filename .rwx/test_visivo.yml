@@ -1,9 +1,4 @@
 on:
-  github:
-    push:
-      if: ${{ event.git.ref =~ '^refs/tags/v.+$' }}
-      init:
-        commit-sha: ${{ event.git.sha }}
   dispatch:
     key: visivo-test-chain
     init:
