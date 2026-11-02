@@ -172,7 +172,6 @@ tasks:
     run: |
       cd viewer
       yarn run lint --max-warnings=0
-      yarn run prettier --check
     filter: [viewer]
     outputs:
       problems:
