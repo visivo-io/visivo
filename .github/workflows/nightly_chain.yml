@@ -1,0 +1,59 @@
+name: nightly_chain
+
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Start the RWX run without a recent commit
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly_chain
+
+jobs:
+  chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check for a commit in the last 24 hours
+        id: recent
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          since=$(date -u -d '24 hours ago' +%FT%TZ)
+          count=$(gh api "repos/$GITHUB_REPOSITORY/commits?sha=$GITHUB_REF_NAME&since=$since&per_page=1" --jq length)
+          if [ "$count" -gt 0 ] || [ "$FORCE" = "true" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No commit on $GITHUB_REF_NAME since $since"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install the RWX CLI
+        if: steps.recent.outputs.run == 'true'
+        run: |
+          curl -fsSL https://github.com/rwx-cloud/rwx/releases/download/v3.36.1/rwx-linux-x86_64 -o "$RUNNER_TEMP/rwx"
+          chmod +x "$RUNNER_TEMP/rwx"
+
+      - name: Run the integration chain on RWX
+        if: steps.recent.outputs.run == 'true'
+        env:
+          RWX_ACCESS_TOKEN: ${{ secrets.RWX_ACCESS_TOKEN }}
+        run: '"$RUNNER_TEMP/rwx" dispatch visivo-test-chain --ref "$GITHUB_REF_NAME" --wait'
+
+      - name: Post the failure to Slack
+        if: failure() && github.ref == 'refs/heads/main'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -n "$SLACK_WEBHOOK_URL" ] || exit 0
+          curl -fsS -X POST -H 'Content-Type: application/json' \
+            -d "{\"text\":\"The nightly RWX integration chain failed: $RUN_URL\"}" "$SLACK_WEBHOOK_URL"

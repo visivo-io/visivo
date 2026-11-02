@@ -301,7 +301,7 @@ On pull request branches, viewer jobs skip when the same content already passed.
 
 A branch from before this workflow existed must merge `main` before it can pass, because `test-cli` needs `pytest-xdist` from `pyproject.toml`. Jobs test the pull request head, so a branch also keeps its own dependencies until it merges `main`.
 
-The database and packaging lanes stay in `.rwx/test_visivo.yml`.
+The database and packaging lanes stay in `.rwx/test_visivo.yml`. They run on each version tag and from `.github/workflows/nightly_chain.yml`, not on pull requests or on pushes to `main`. The nightly workflow starts the RWX run only when `main` has a commit from the last 24 hours, and it fails when the RWX run fails. To start it by hand, run `gh workflow run nightly_chain.yml`, and add `-f force=true` to skip the commit check.
 
 ## 📋 Code Style
 
