@@ -249,6 +249,8 @@ mkdocs build
 ./validate_mkdocs_build.sh
 ```
 
+PR runs check the docs but do not start a preview. To get a preview link on a PR, run `rwx dispatch visivo-docs-preview --ref <branch> --param pr-num=<number>`, or use "Dispatch a run" in the RWX UI.
+
 ## 🚢 Release Process
 
 Releases are created through GitHub Actions:
