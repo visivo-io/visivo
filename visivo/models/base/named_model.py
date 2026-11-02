@@ -43,6 +43,36 @@ def alpha_hash(text: str, length: int = 28) -> str:
 # validators, the JSON schema, and the viewer all read one definition.
 SQL_IDENTIFIER_NAME_PATTERN = r"^[a-zA-Z_][a-zA-Z0-9_]*$"
 
+# The grammar for a NEW name of every other object. Parsed YAML may still hold
+# older names outside it (spaces, quotes), so it is enforced where a name is
+# created, not on the model.
+NEW_NAME_PATTERN = r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
+
+NEW_NAME_MESSAGE = (
+    "Name must start with a letter or number and contain only letters, numbers, "
+    "underscores, and hyphens"
+)
+SQL_IDENTIFIER_NAME_MESSAGE = (
+    "Name must start with a letter or underscore and contain only letters, numbers, "
+    "and underscores — it becomes a SQL identifier"
+)
+
+
+def new_name_error(model_class, name: str) -> Optional[str]:
+    """Why ``name`` is not a valid new name for a ``model_class`` object, or ``None``.
+
+    A type that publishes a ``pattern`` on its ``name`` field uses it; every other
+    type uses ``NEW_NAME_PATTERN``. The viewer applies the same rule and messages.
+    """
+    field = getattr(model_class, "model_fields", {}).get("name")
+    extra = getattr(field, "json_schema_extra", None)
+    pattern = (extra if isinstance(extra, dict) else {}).get("pattern", NEW_NAME_PATTERN)
+    if re.fullmatch(pattern, name):
+        return None
+    return (
+        SQL_IDENTIFIER_NAME_MESSAGE if pattern == SQL_IDENTIFIER_NAME_PATTERN else NEW_NAME_MESSAGE
+    )
+
 
 class NamedModel(BaseModel):
     def id(self):
