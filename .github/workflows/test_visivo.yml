@@ -25,6 +25,7 @@ defaults:
     shell: bash
 
 env:
+  # The code under test comes from HEAD_SHA. CI tooling comes from .ci-tools, the commit that supplies this workflow.
   HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   # Branches skip viewer jobs whose content already passed. Main and tags always run them.
   USE_PASS_MARKER: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
@@ -41,7 +42,13 @@ jobs:
         with:
           ref: ${{ env.HEAD_SHA }}
           persist-credentials: false
-      - uses: ./.github/actions/setup-cli
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ci-tools/.github/actions/setup-cli
       - run: poetry install --with dev
       - run: >
           poetry run pytest -n 4 --json-report
@@ -71,7 +78,13 @@ jobs:
         with:
           ref: ${{ env.HEAD_SHA }}
           persist-credentials: false
-      - uses: ./.github/actions/setup-cli
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ci-tools/.github/actions/setup-cli
       - run: poetry install --with dev --no-root
       - run: poetry run black --check . --target-version py312
 
@@ -84,7 +97,13 @@ jobs:
         with:
           ref: ${{ env.HEAD_SHA }}
           persist-credentials: false
-      - uses: ./.github/actions/setup-cli
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ci-tools/.github/actions/setup-cli
       - run: poetry install --with dev
       - run: poetry run pytest tests/templates/test_samples.py -v --tb=short
 
@@ -100,9 +119,15 @@ jobs:
         with:
           ref: ${{ env.HEAD_SHA }}
           persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
       - id: key
         env:
-          CONTENT_HASH: ${{ hashFiles('viewer/**', 'visivo/**', '.github/workflows/test_visivo.yml', '.github/actions/setup-viewer/**', '.github/scripts/merge_viewer_shards.js') }}
+          CONTENT_HASH: ${{ hashFiles('viewer/**', 'visivo/**', '.ci-tools/.github/workflows/test_visivo.yml', '.ci-tools/.github/actions/setup-viewer/**', '.ci-tools/.github/scripts/merge_viewer_shards.js') }}
         run: echo "key=pass-viewer-test-$CONTENT_HASH" >> "$GITHUB_OUTPUT"
       - id: marker
         if: ${{ env.USE_PASS_MARKER == 'true' }}
@@ -129,7 +154,13 @@ jobs:
         with:
           ref: ${{ env.HEAD_SHA }}
           persist-credentials: false
-      - uses: ./.github/actions/setup-viewer
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ci-tools/.github/actions/setup-viewer
       - working-directory: viewer
         run: >
           yarn test --maxWorkers=4 --workerIdleMemoryLimit=1500MB
@@ -156,6 +187,12 @@ jobs:
         with:
           ref: ${{ env.HEAD_SHA }}
           persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
       - name: Restore the passed result
         if: ${{ needs.viewer-marker.outputs.hit == 'true' }}
         uses: actions/cache/restore@v4
@@ -164,7 +201,7 @@ jobs:
           key: ${{ needs.viewer-marker.outputs.key }}
           fail-on-cache-miss: true
       - if: ${{ needs.viewer-marker.outputs.hit != 'true' }}
-        uses: ./.github/actions/setup-viewer
+        uses: ./.ci-tools/.github/actions/setup-viewer
       - if: ${{ needs.viewer-marker.outputs.hit != 'true' }}
         uses: actions/download-artifact@v4
         with:
@@ -180,7 +217,7 @@ jobs:
         run: |
           EXPECTED_SUITES=$(yarn -s jest --listTests --json | node -pe 'JSON.parse(require("fs").readFileSync(0)).length')
           export EXPECTED_SUITES
-          node ../.github/scripts/merge_viewer_shards.js ../shards ../merged 4
+          node ../.ci-tools/.github/scripts/merge_viewer_shards.js ../shards ../merged 4
       - if: ${{ needs.viewer-marker.outputs.hit != 'true' }}
         uses: actions/cache/save@v4
         with:
@@ -201,9 +238,15 @@ jobs:
         with:
           ref: ${{ env.HEAD_SHA }}
           persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
       - id: key
         env:
-          CONTENT_HASH: ${{ hashFiles('viewer/**', '.github/workflows/test_visivo.yml', '.github/actions/setup-viewer/**') }}
+          CONTENT_HASH: ${{ hashFiles('viewer/**', '.ci-tools/.github/workflows/test_visivo.yml', '.ci-tools/.github/actions/setup-viewer/**') }}
         run: echo "key=pass-viewer-lint-$CONTENT_HASH" >> "$GITHUB_OUTPUT"
       - id: marker
         if: ${{ env.USE_PASS_MARKER == 'true' }}
@@ -213,7 +256,7 @@ jobs:
           key: ${{ steps.key.outputs.key }}
           lookup-only: true
       - if: ${{ steps.marker.outputs.cache-hit != 'true' }}
-        uses: ./.github/actions/setup-viewer
+        uses: ./.ci-tools/.github/actions/setup-viewer
       - if: ${{ steps.marker.outputs.cache-hit != 'true' }}
         working-directory: viewer
         run: yarn run lint --max-warnings=0
@@ -235,7 +278,13 @@ jobs:
           ref: ${{ env.HEAD_SHA }}
           fetch-depth: 0
           persist-credentials: false
-      - run: bash .github/scripts/pr_diff_stats.sh
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
+      - run: bash .ci-tools/.github/scripts/pr_diff_stats.sh
       - uses: actions/upload-artifact@v4
         with:
           name: diff-stats
@@ -263,6 +312,12 @@ jobs:
         with:
           ref: ${{ env.HEAD_SHA }}
           persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: diff-stats
@@ -273,11 +328,11 @@ jobs:
         with:
           name: viewer-coverage
           path: coverage-js
-      - run: bash .github/scripts/pr_summary_comment.sh
+      - run: bash .ci-tools/.github/scripts/pr_summary_comment.sh
       - name: Post comment
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: bash .github/scripts/post_pr_summary.sh
+        run: bash .ci-tools/.github/scripts/post_pr_summary.sh
