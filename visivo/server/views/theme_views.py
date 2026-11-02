@@ -2,12 +2,7 @@ from flask import jsonify, request
 from pydantic import ValidationError
 from visivo.logger.logger import Logger
 from visivo.models.theme import Theme
-
-
-def current_theme_config(flask_app):
-    """The draft theme if one is cached, otherwise the published one, as JSON-ready data."""
-    theme = flask_app._cached_theme or flask_app.project.theme
-    return theme.model_dump(mode="json", exclude_none=True) if theme else {}
+from visivo.server.services.theme_service import current_theme_config
 
 
 def register_theme_views(app, flask_app):

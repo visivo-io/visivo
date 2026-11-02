@@ -7,9 +7,6 @@ import os
 import time
 from datetime import datetime, timezone
 from typing import Dict, Any
-import pyarrow as pa
-import pyarrow.parquet as pq
-import duckdb
 import sqlglot
 from sqlglot import exp
 
@@ -71,6 +68,8 @@ class ProfilingService:
 
     def get_tier1_profile(self, model_name: str) -> Dict[str, Any]:
         """Row count, types and min/max/null counts from parquet metadata alone."""
+        import pyarrow.parquet as pq
+
         parquet_path = self.get_parquet_path(model_name)
         if not os.path.exists(parquet_path):
             raise FileNotFoundError(f"Parquet file not found for model: {model_name}")
@@ -146,6 +145,8 @@ class ProfilingService:
     def profile_model(self, model_name: str, columns=None, top_n: int = DEFAULT_TOP_N):
         """Profile a built model's parquet. The default request is cached per
         model until invalidated or ``CACHE_TTL_SECONDS`` passes."""
+        import duckdb
+
         columns = self.column_subset(columns)
         cacheable = columns is None and top_n == DEFAULT_TOP_N
         cache_key = f"tier2_{model_name}"
@@ -182,6 +183,9 @@ class ProfilingService:
         """Profile ``sql`` on ``source`` from a random sample of at most
         ``sample_rows`` rows, pulled in the source's dialect. A sample that
         fills the limit is followed by one ``COUNT(*)`` for the exact row count."""
+        import duckdb
+        import pyarrow as pa
+
         columns = self.column_subset(columns)
         dialect = source.get_sqlglot_dialect()
         parsed = sqlglot.parse_one(sql, read=dialect)
@@ -375,6 +379,8 @@ class ProfilingService:
     def get_histogram(self, model_name: str, column: str, bins: int = 20) -> Dict[str, Any]:
         """Bucket counts for a numeric column, top values for any other;
         ``bins`` is clamped to 5-100."""
+        import duckdb
+
         bins = max(5, min(100, bins))
 
         parquet_path = self.get_parquet_path(model_name)
@@ -416,7 +422,7 @@ class ProfilingService:
 
     def _get_numeric_histogram(
         self,
-        conn: duckdb.DuckDBPyConnection,
+        conn: "duckdb.DuckDBPyConnection",
         escaped_path: str,
         column: str,
         escaped_column: str,
@@ -485,7 +491,7 @@ class ProfilingService:
 
     def _get_categorical_histogram(
         self,
-        conn: duckdb.DuckDBPyConnection,
+        conn: "duckdb.DuckDBPyConnection",
         escaped_path: str,
         model_name: str,
         column: str,

@@ -6,7 +6,6 @@ from visivo.models.sources.database_file import DatabaseFileMixin
 from visivo.models.sources.source import ServerSource
 from pydantic import Field, PrivateAttr
 import click
-import duckdb
 import os
 from visivo.logger.logger import Logger
 from threading import Lock
@@ -76,6 +75,8 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
             return False
 
     def get_connection(self, read_only: bool = False, working_dir=None):
+        import duckdb
+
         """Return a DuckDBPyConnection using direct DuckDB connection with proper read_only support."""
         try:
             Logger.instance().debug(f"Getting connection for {self.name}, read_only={read_only}")

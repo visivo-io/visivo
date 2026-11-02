@@ -1,7 +1,6 @@
 from typing import Literal, Optional, Dict, List, Any
 from visivo.models.sources.base_duckdb_source import BaseDuckdbSource
 from pydantic import Field
-import duckdb
 import click
 import os
 from visivo.logger.logger import Logger
@@ -38,6 +37,8 @@ class ExcelFileSource(BaseDuckdbSource):
     )
 
     def get_connection(self, read_only: bool = False):
+        import duckdb
+
         """Create an in-memory DuckDB connection with the Excel file loaded as a view."""
         try:
             # Check if file exists

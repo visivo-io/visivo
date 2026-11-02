@@ -407,6 +407,51 @@ class TestAStaticFilterParsesInItsSourcesDialect:
         assert integration_app.insight_manager.get("north") is None
 
 
+class TestProjectId:
+    """One registry serves a server hosting one project and a server hosting
+    many, so `project_id` lives in the shared schemas and is ignored where
+    there is nothing to choose. A cloud-only variant would be the same tools
+    advertising different schemas."""
+
+    def test_every_project_scoped_tool_advertises_it(self):
+        without = {
+            name
+            for name, tool in TOOLS.items()
+            if "project_id" not in tool.input_schema["properties"]
+        }
+
+        assert without == {"get_schema", "read_skill"}
+
+    def test_it_is_never_required(self):
+        required = {
+            name
+            for name, tool in TOOLS.items()
+            if "project_id" in tool.input_schema.get("required", [])
+        }
+
+        assert required == set()
+
+    def test_a_call_carrying_one_is_served_not_refused(self, integration_app):
+        call(
+            integration_app,
+            "write_markdown",
+            {"config": {"name": "scoped", "content": "# hi"}, "project_id": "ignored-here"},
+        )
+
+        assert "scoped" in integration_app.markdown_manager.cached_objects
+
+    def test_no_handler_sees_it(self, integration_app):
+        """`recommend_charts` validates strictly and refuses an unknown key, so
+        it is the proof that `call` strips the id rather than passing it down."""
+        result = call(
+            integration_app,
+            "recommend_charts",
+            {"metrics": [], "dimensions": [], "project_id": "ignored-here"},
+        )
+
+        assert "recommendations" in result
+
+
 class TestTheCallingContract:
     def test_an_unknown_tool_is_a_reason_not_a_crash(self, integration_app):
         with pytest.raises(ToolError, match="No tool named 'fly'"):
