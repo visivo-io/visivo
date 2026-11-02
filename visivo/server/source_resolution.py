@@ -4,7 +4,6 @@ the uncommitted draft if there is one, else the committed object."""
 from visivo.models.base.context_string import ContextString
 from visivo.models.defaults import Defaults
 from visivo.query.patterns import ref_name
-from visivo.server.managers.object_manager import ObjectStatus
 
 
 def from_manager(flask_app, manager_name, name):
@@ -40,6 +39,8 @@ def find_object(flask_app, manager_name, project_attr, name):
 
 def marked_for_deletion(flask_app, manager_name, name):
     """True when the draft marks ``name`` for deletion in that manager."""
+    from visivo.server.managers.object_manager import ObjectStatus
+
     manager = getattr(flask_app, manager_name, None)
     status = getattr(manager, "get_status", None)
     if not callable(status):
