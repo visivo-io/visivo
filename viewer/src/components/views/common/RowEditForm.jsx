@@ -59,6 +59,11 @@ const RowEditForm = ({
   onItemRefChange,
   onItemChange,
   onSelectRef,
+  // The Edit panel renders every row and item at once and marks the selected
+  // one (VIS-1654). Both are optional: the bundled DashboardEditForm path
+  // passes neither and renders exactly as before.
+  outlineKey,
+  selectedKey,
 }) => {
   const items = row?.items || [];
 
@@ -85,7 +90,16 @@ const RowEditForm = ({
   };
 
   return (
-    <div className="p-3 bg-gray-50 border border-gray-200 rounded-md space-y-2" data-testid={`row-edit-form-${rowId}`}>
+    <div
+      className={`p-3 border rounded-md space-y-2 ${
+        outlineKey && selectedKey === outlineKey
+          ? 'bg-primary-100/55 border-primary-300'
+          : 'bg-gray-50 border-gray-200'
+      }`}
+      data-testid={`row-edit-form-${rowId}`}
+      data-outline-key={outlineKey}
+      data-selected={outlineKey && selectedKey === outlineKey ? 'true' : undefined}
+    >
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-gray-500">Row {rowIndex + 1}</span>
         <button
@@ -113,19 +127,32 @@ const RowEditForm = ({
 
       {/* Items */}
       <div className="space-y-2 pl-2 border-l-2 border-gray-300">
-        {items.map((item, itemIndex) => (
-          <ItemEditForm
-            key={itemIndex}
-            item={item}
-            itemId={`row-${rowId}-item-${itemIndex}`}
-            itemIndex={itemIndex}
-            leafDropZoneId={`row-${rowId}-item-${itemIndex}`}
-            onRemove={() => onRemoveItem(itemIndex)}
-            onChange={nextItem => handleItemChange(itemIndex, nextItem)}
-            onSelectRef={onSelectRef}
-            RowComponent={RowEditForm}
-          />
-        ))}
+        {items.map((item, itemIndex) => {
+          const itemKey = outlineKey ? `${outlineKey}.item.${itemIndex}` : undefined;
+          const itemSelected = Boolean(itemKey) && selectedKey === itemKey;
+          return (
+            <div
+              key={itemIndex}
+              data-testid={itemKey ? `edit-section-${itemKey}` : undefined}
+              data-outline-key={itemKey}
+              data-selected={itemSelected ? 'true' : undefined}
+              className={itemSelected ? 'rounded-md bg-primary-100/55 ring-1 ring-primary-300' : undefined}
+            >
+              <ItemEditForm
+                item={item}
+                itemId={`row-${rowId}-item-${itemIndex}`}
+                outlineKey={itemKey}
+                selectedKey={selectedKey}
+                itemIndex={itemIndex}
+                leafDropZoneId={`row-${rowId}-item-${itemIndex}`}
+                onRemove={() => onRemoveItem(itemIndex)}
+                onChange={nextItem => handleItemChange(itemIndex, nextItem)}
+                onSelectRef={onSelectRef}
+                RowComponent={RowEditForm}
+              />
+            </div>
+          );
+        })}
         <button
           type="button"
           onClick={onAddItem}

@@ -205,6 +205,11 @@ const ItemEditForm = ({
   onRemove,
   onSelectRef,
   RowComponent,
+  // This item's outline key and the selected one, so a nested row and its
+  // items mark themselves the same way a top-level one does (VIS-1654).
+  // Optional — call sites that do not track selection pass neither.
+  outlineKey,
+  selectedKey,
   leafDropZoneId,
 }) => {
   const isContainer = isContainerItem(item);
@@ -353,6 +358,8 @@ const ItemEditForm = ({
                   row={row}
                   rowId={`${itemId}-${rowIndex}`}
                   rowIndex={rowIndex}
+                  outlineKey={outlineKey ? `${outlineKey}.row.${rowIndex}` : undefined}
+                  selectedKey={selectedKey}
                   onRemoveRow={() => removeRow(rowIndex)}
                   onHeightChange={height => updateRow(rowIndex, { ...row, height })}
                   onAddItem={() => updateRow(rowIndex, appendEmptyItem(row))}
