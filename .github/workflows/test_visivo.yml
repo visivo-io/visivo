@@ -88,6 +88,25 @@ jobs:
       - run: poetry install --with dev
       - run: poetry run pytest tests/templates/test_samples.py -v --tb=short
 
+  trial-unsharded:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      NODE_OPTIONS: --max-old-space-size=2048
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-cli
+      - uses: ./.github/actions/setup-viewer
+      - run: poetry install --with dev
+      - run: poetry run pytest --cov=visivo --cov-report=json:unsharded-python.json
+      - working-directory: viewer
+        run: >
+          yarn test --maxWorkers=2 --workerIdleMemoryLimit=512MB
+          --coverage --coverageReporters=json-summary --coverageDirectory=../unsharded-js
+      - run: |
+          python -c "import json;print('UNSHARDED py', json.load(open('unsharded-python.json'))['totals']['percent_covered'])"
+          node -e "const t=require('./unsharded-js/coverage-summary.json').total;console.log('UNSHARDED js lines',t.lines.pct,'branches',t.branches.pct)"
+
   viewer-marker:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-22.04
