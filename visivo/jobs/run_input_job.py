@@ -30,6 +30,7 @@ from visivo.jobs.job import (
     format_message_success,
 )
 from visivo.models.diagnostic import Diagnostic, DiagnosticPhase
+from visivo.jobs.run_model_data_job import execute_and_get_result
 from visivo.jobs.utils import get_source_for_model
 from visivo.models.base.query_string import QueryString
 from visivo.models.inputs.types.single_select import SingleSelectInput
@@ -81,6 +82,7 @@ def _execute_query_for_options(
     input_name: str,
     output_dir: str,
     return_dataframe: bool = False,
+    timeout_s: Optional[float] = None,
 ) -> Union[List[str], Tuple[List[str], pl.DataFrame]]:
     """
     Execute a query to get options from a data source.
@@ -91,6 +93,7 @@ def _execute_query_for_options(
         input_name: Name of the input (for error messages)
         output_dir: Output directory
         return_dataframe: If True, also return the DataFrame for parquet writing
+        timeout_s: Raise QueryTimeout when the source has not answered in time
 
     Returns:
         List of option values as strings, or tuple of (list, DataFrame) if return_dataframe=True
@@ -160,8 +163,7 @@ def _execute_query_for_options(
         # If SQLGlot can't process it, use the original query
         pass
 
-    # Execute query on source
-    data = source.read_sql(resolved_query)
+    data = execute_and_get_result(source, resolved_query, timeout_s=timeout_s)["rows"]
 
     # Convert to DataFrame
     df = pl.DataFrame(data)
