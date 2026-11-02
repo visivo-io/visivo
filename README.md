@@ -217,3 +217,5 @@ Visivo collects anonymous usage telemetry (command names, no queries, no file co
 Visivo is released under the [GNU General Public License v3.0](license.txt).
 
 <!-- spike 6 -->
+
+<!-- spike 9 -->
