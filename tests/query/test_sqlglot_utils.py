@@ -1017,3 +1017,20 @@ class TestSortExpressionError:
 
         assert sort_expression_error("${ref(m).x} ${ref(direction).value}") is None
         assert sort_expression_error("count(${ref(m).x} ${ref(direction).value}") is not None
+
+    def test_an_unterminated_string_is_reported(self):
+        from visivo.query.sqlglot_utils import sort_expression_error
+
+        assert sort_expression_error("'abc DESC").startswith("Cannot parse sort expression")
+
+    def test_a_backtick_passes_when_no_dialect_is_known(self):
+        from visivo.query.sqlglot_utils import sort_expression_error
+
+        assert sort_expression_error("`total` DESC") is None
+        assert sort_expression_error("count(`total` DESC") is not None
+
+    def test_a_known_dialect_decides_alone(self):
+        from visivo.query.sqlglot_utils import sort_expression_error
+
+        assert sort_expression_error("`total` DESC", "bigquery") is None
+        assert sort_expression_error("`total` DESC", "postgres") is not None

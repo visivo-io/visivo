@@ -98,3 +98,12 @@ def test_insight_manager_saves_interaction_with_known_keys():
     insight = manager.save_from_config(insight_config({"filter": CLICK}))
 
     assert insight.interactions[0].filter.get_value() == "${ref(orders).region}"
+
+
+class TestSortParsing:
+    def test_a_backtick_sort_is_accepted(self):
+        assert InsightInteraction(sort="?{ `total` DESC }").sort
+
+    def test_an_unterminated_string_is_a_validation_error(self):
+        with pytest.raises(ValidationError, match="Cannot parse sort expression"):
+            InsightInteraction(sort="?{ 'abc }")
