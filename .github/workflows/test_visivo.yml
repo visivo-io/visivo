@@ -26,7 +26,7 @@ defaults:
 
 env:
   # The code under test comes from HEAD_SHA. CI tooling comes from .ci-tools, the commit that supplies this workflow.
-  HEAD_SHA: f9f19e01ee
+  HEAD_SHA: f9f19e01e38f7678d2a25d049aaaa4e151184ee9
   # Branches skip viewer jobs whose content already passed. Main and tags always run them.
   USE_PASS_MARKER: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
   POETRY_VIRTUALENVS_IN_PROJECT: "true"
