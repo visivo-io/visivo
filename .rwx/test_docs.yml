@@ -109,7 +109,7 @@ tasks:
   - key: comment-preview-link
     use: [code, github-cli]
     run: |
-      BODY="📚 Docs preview: $DOCS_PREVIEW_URL"
+      BODY="📚 Docs preview: $DOCS_PREVIEW_URL (built from ${COMMIT_SHA:0:7})"
       COMMENT_ID=$(gh api "repos/visivo-io/visivo/issues/$PR_NUM/comments" --jq '[.[] | select(.body | startswith("📚 Docs preview:"))][0].id // empty')
       if [ -n "$COMMENT_ID" ]; then
         gh api -X PATCH "repos/visivo-io/visivo/issues/comments/$COMMENT_ID" -f body="$BODY" > /dev/null
@@ -119,4 +119,5 @@ tasks:
     env:
       DOCS_PREVIEW_URL: ${{ tasks.docs-preview.app.url.friendly }}
       PR_NUM: ${{ init.pr-num }}
+      COMMIT_SHA: ${{ init.commit-sha }}
       GH_TOKEN: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
