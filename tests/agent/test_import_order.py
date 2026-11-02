@@ -30,6 +30,8 @@ ENTRY_POINTS = [
     "from visivo.agent.tools import TOOLS, call",
     "from visivo.agent.remote import build",
     "import visivo.server.views",
+    "import visivo.server.source_resolution",
+    "import visivo.server.model_sql_validation",
 ]
 
 
