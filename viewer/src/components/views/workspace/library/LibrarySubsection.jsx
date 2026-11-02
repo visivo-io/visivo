@@ -31,6 +31,9 @@ import { isLibrarySubsectionCollapsed } from '../../../../stores/libraryPrefsSto
  * rows, the parent hides it entirely; this component handles the "still has
  * rows" case.
  */
+const inlineOwner = (typeKey, obj) =>
+  (typeKey === 'metric' || typeKey === 'dimension') && !!obj.parentModel;
+
 const LibrarySubsection = ({
   typeKey,
   rows = [],
@@ -121,6 +124,12 @@ const LibrarySubsection = ({
                     onContextAction={onContextAction}
                     canAddToExploration={canAddToExploration}
                     nestedFields={nestedFieldsByModel?.[obj.name]}
+                    {...(inlineOwner(typeKey, obj)
+                      ? {
+                          showOwnerModel: true,
+                          testId: `library-row-${obj.type}-${obj.name}-in-${obj.parentModel}`,
+                        }
+                      : {})}
                   />
                 </li>
               ))}

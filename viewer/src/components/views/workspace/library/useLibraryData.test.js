@@ -121,7 +121,7 @@ describe('useLibraryData', () => {
   // Explore 2.0 Phase 3a — 02-architecture.md §4's DnD "payload gap": a
   // dropped field's ref-scoping and an input's `.value`/`.values` accessor
   // both depend on data the Library row previously didn't carry.
-  test('model-scoped fields group under their owner; unscoped stay top-level', () => {
+  test('model-scoped fields group under their owner AND are listed, with their owner, in the type lists', () => {
     act(() => {
       useStore.setState({
         dimensions: [
@@ -135,12 +135,12 @@ describe('useLibraryData', () => {
     });
     const { result } = renderHook(() => useLibraryData());
 
-    // A nested field is plain SQL where `${ref()}` is a save-time error, while
-    // a standalone one is authored WITH refs. Listing them side by side made
-    // two different things look identical, so scoped ones now live under their
-    // model (LibraryModelRow) and only unscoped ones remain top-level.
-    expect(result.current.dataLayer.dimension.map(d => d.name)).toEqual(['unscoped_dim']);
-    expect(result.current.dataLayer.metric).toEqual([]);
+    expect(result.current.dataLayer.dimension.map(d => d.name)).toEqual([
+      'scoped_dim',
+      'unscoped_dim',
+    ]);
+    expect(result.current.dataLayer.metric.map(m => m.name)).toEqual(['scoped_metric']);
+    expect(result.current.dataLayer.metric[0].parentModel).toBe('orders');
 
     const owned = result.current.nestedFieldsByModel.orders;
     expect(owned.dimension.map(d => d.name)).toEqual(['scoped_dim']);
@@ -150,7 +150,7 @@ describe('useLibraryData', () => {
     // decides `${ref(model).name}` vs a bare `${ref(name)}`.
     expect(owned.dimension[0].parentModel).toBe('orders');
     expect(owned.dimension[0].expression).toBe('UPPER(region)');
-    expect(result.current.dataLayer.dimension[0].parentModel).toBeNull();
+    expect(result.current.dataLayer.dimension[1].parentModel).toBeNull();
   });
 
   test('a model with no fields of its own gets no entry', () => {
