@@ -286,6 +286,19 @@ Releases are created through GitHub Actions:
 - Canvas mocking with `jest-canvas-mock`
 - Follow ESLint configuration in the project
 
+### Continuous Integration
+
+`.github/workflows/test_visivo.yml` runs on each non-draft pull request, each push to `main` and each version tag:
+
+- `test-cli`: `pytest -n 4` on one runner. `pytest -n 4` is also the fast local command.
+- `lint-cli`, `test-onboarding-samples`, `viewer-lint`.
+- `viewer-test`: four Jest shards. `viewer-test-merge` fails when a shard failed, when a shard's artifact is missing, or when the test count is short. If you remove many tests, lower `MIN_VIEWER_TESTS` in the workflow.
+- `diff-stats`, `post-comment`: the coverage summary comment on the pull request.
+
+On pull request branches, viewer jobs skip when the same content already passed. Draft pull requests run no jobs, and a pull request with merge conflicts does not run this workflow. To read a failure, run `gh run view <id> --log-failed`.
+
+The database and packaging lanes stay in `.rwx/test_visivo.yml`.
+
 ## 📋 Code Style
 
 ### Python

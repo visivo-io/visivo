@@ -1,0 +1,283 @@
+name: test_visivo
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+# Tag runs get a unique group, so they neither cancel nor get cancelled.
+concurrency:
+  group: >-
+    test-visivo-${{
+      github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number)
+      || startsWith(github.ref, 'refs/tags/') && format('tag-{0}', github.run_id)
+      || github.ref
+    }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  # Branches skip viewer jobs whose content already passed. Main and tags always run them.
+  USE_PASS_MARKER: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+  POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  STACKTRACE: "true"
+
+jobs:
+  test-cli:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cli
+      - run: poetry install --with dev
+      - run: >
+          poetry run pytest -n 4 --json-report
+          --cov=visivo --cov-report=json:coverage-python.json
+      - name: Post results
+        if: ${{ always() }}
+        env:
+          PYTEST_RESULTS_WEBHOOK: ${{ secrets.PYTEST_RESULTS_WEBHOOK }}
+        run: |
+          if [ -n "$PYTEST_RESULTS_WEBHOOK" ] && [ -f .report.json ]; then
+            curl -sS --max-time 30 -X POST -H "Content-Type: application/json" \
+              --data-binary @.report.json "$PYTEST_RESULTS_WEBHOOK" -o /dev/null \
+              || echo "::warning::The pytest results post failed"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-coverage
+          retention-days: 3
+          path: coverage-python.json
+
+  lint-cli:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cli
+      - run: poetry install --with dev --no-root
+      - run: poetry run black --check . --target-version py312
+
+  test-onboarding-samples:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cli
+      - run: poetry install --with dev
+      - run: poetry run pytest tests/templates/test_samples.py -v --tb=short
+
+  viewer-marker:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+      hit: ${{ steps.marker.outputs.cache-hit }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          persist-credentials: false
+      - id: key
+        env:
+          CONTENT_HASH: ${{ hashFiles('viewer/**', 'visivo/**', '.github/workflows/test_visivo.yml', '.github/actions/setup-viewer/**', '.github/scripts/merge_viewer_shards.js') }}
+        run: echo "key=pass-viewer-test-$CONTENT_HASH" >> "$GITHUB_OUTPUT"
+      - id: marker
+        if: ${{ env.USE_PASS_MARKER == 'true' }}
+        uses: actions/cache/restore@v4
+        with:
+          path: merged
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+
+  viewer-test:
+    needs: viewer-marker
+    if: ${{ needs.viewer-marker.outputs.hit != 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    name: viewer-test (${{ matrix.shard }}/4)
+    env:
+      NODE_OPTIONS: --max-old-space-size=2048
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-viewer
+      - working-directory: viewer
+        run: >
+          yarn test --maxWorkers=4 --workerIdleMemoryLimit=1500MB
+          --shard=${{ matrix.shard }}/4
+          --json --outputFile jest.json
+          --coverage --coverageReporters=json
+          --coverageDirectory=../coverage-js
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: viewer-shard-${{ matrix.shard }}
+          retention-days: 3
+          path: |
+            viewer/jest.json
+            coverage-js/coverage-final.json
+
+  viewer-test-merge:
+    needs: [viewer-marker, viewer-test]
+    if: ${{ !cancelled() && needs.viewer-marker.result == 'success' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          persist-credentials: false
+      - name: Restore the passed result
+        if: ${{ needs.viewer-marker.outputs.hit == 'true' }}
+        uses: actions/cache/restore@v4
+        with:
+          path: merged
+          key: ${{ needs.viewer-marker.outputs.key }}
+          fail-on-cache-miss: true
+      - if: ${{ needs.viewer-marker.outputs.hit != 'true' }}
+        uses: ./.github/actions/setup-viewer
+      - if: ${{ needs.viewer-marker.outputs.hit != 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: viewer-shard-*
+          path: shards
+      - name: Merge shards
+        if: ${{ needs.viewer-marker.outputs.hit != 'true' }}
+        working-directory: viewer
+        env:
+          SHARD_RESULT: ${{ needs.viewer-test.result }}
+          MIN_VIEWER_TESTS: "8000"
+          NODE_PATH: node_modules
+        run: |
+          EXPECTED_SUITES=$(yarn -s jest --listTests --json | node -pe 'JSON.parse(require("fs").readFileSync(0)).length')
+          export EXPECTED_SUITES
+          node ../.github/scripts/merge_viewer_shards.js ../shards ../merged 4
+      - if: ${{ needs.viewer-marker.outputs.hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: merged
+          key: ${{ needs.viewer-marker.outputs.key }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viewer-coverage
+          retention-days: 3
+          path: merged/coverage-summary.json
+
+  viewer-lint:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          persist-credentials: false
+      - id: key
+        env:
+          CONTENT_HASH: ${{ hashFiles('viewer/**', '.github/workflows/test_visivo.yml', '.github/actions/setup-viewer/**') }}
+        run: echo "key=pass-viewer-lint-$CONTENT_HASH" >> "$GITHUB_OUTPUT"
+      - id: marker
+        if: ${{ env.USE_PASS_MARKER == 'true' }}
+        uses: actions/cache/restore@v4
+        with:
+          path: .pass-marker
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+      - if: ${{ steps.marker.outputs.cache-hit != 'true' }}
+        uses: ./.github/actions/setup-viewer
+      - if: ${{ steps.marker.outputs.cache-hit != 'true' }}
+        working-directory: viewer
+        run: yarn run lint --max-warnings=0
+      - if: ${{ steps.marker.outputs.cache-hit != 'true' }}
+        run: mkdir -p .pass-marker && touch .pass-marker/ok
+      - if: ${{ steps.marker.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .pass-marker
+          key: ${{ steps.key.outputs.key }}
+
+  diff-stats:
+    if: ${{ github.event_name == 'pull_request' && !github.event.pull_request.draft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: bash .github/scripts/pr_diff_stats.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diff-stats
+          retention-days: 3
+          include-hidden-files: true
+          path: |
+            .diff_stats.env
+            .be_prod_files.txt
+            .fe_prod_files.txt
+
+  post-comment:
+    needs: [diff-stats, test-cli, viewer-test-merge]
+    if: >-
+      ${{ !cancelled()
+      && needs.diff-stats.result == 'success'
+      && needs.test-cli.result == 'success'
+      && needs.viewer-test-merge.result == 'success' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: diff-stats
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-coverage
+      - uses: actions/download-artifact@v4
+        with:
+          name: viewer-coverage
+          path: coverage-js
+      - run: bash .github/scripts/pr_summary_comment.sh
+      - name: Post comment
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: bash .github/scripts/post_pr_summary.sh
