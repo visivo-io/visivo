@@ -57,7 +57,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .pass-marker
-          key: pass-viewer-test-${{ hashFiles('viewer/**', 'visivo/**') }}
+          key: pass-viewer-test-${{ hashFiles('viewer/**', '!viewer/node_modules/**', 'visivo/**') }}
           lookup-only: true
       - uses: actions/setup-node@v6
         if: steps.marker.outputs.cache-hit != 'true'
@@ -84,7 +84,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .pass-marker
-          key: pass-viewer-test-${{ hashFiles('viewer/**', 'visivo/**') }}
+          key: ${{ steps.marker.outputs.cache-primary-key }}
 
   viewer-test-4-workers:
     runs-on: ubuntu-22.04
@@ -118,7 +118,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .pass-marker
-          key: pass-viewer-lint-${{ hashFiles('viewer/**') }}
+          key: pass-viewer-lint-${{ hashFiles('viewer/**', '!viewer/node_modules/**') }}
           lookup-only: true
       - uses: actions/setup-node@v6
         if: steps.marker.outputs.cache-hit != 'true'
@@ -143,4 +143,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .pass-marker
-          key: pass-viewer-lint-${{ hashFiles('viewer/**') }}
+          key: ${{ steps.marker.outputs.cache-primary-key }}
