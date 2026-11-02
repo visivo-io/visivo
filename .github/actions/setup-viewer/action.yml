@@ -1,0 +1,15 @@
+name: Set up the viewer
+description: Installs Node and the viewer dependencies.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version-file: viewer/.nvmrc
+    - uses: actions/cache@v4
+      with:
+        path: viewer/node_modules
+        key: nm-${{ runner.os }}-${{ hashFiles('viewer/.nvmrc', 'viewer/package.json', 'viewer/yarn.lock') }}
+    - shell: bash
+      working-directory: viewer
+      run: yarn install

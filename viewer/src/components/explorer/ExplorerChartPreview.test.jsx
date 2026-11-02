@@ -148,7 +148,7 @@ describe('ExplorerChartPreview', () => {
   // M28 — the height chain, pinned where CI can actually see it.
   //
   // The geometry proof lives in e2e/stories/explorer-chart-fills-pane.spec.mjs,
-  // but `.rwx/test_visivo.yml` runs `viewer-test` (jest) and `viewer-lint` and
+  // but `.github/workflows/test_visivo.yml` runs `viewer-test` (jest) and `viewer-lint` and
   // no Playwright story task at all, so that file only ever runs by hand. This
   // assertion is the half a merge gate sees. It is a class-string check
   // because the defect IS a class string: jsdom computes no layout, so nothing
