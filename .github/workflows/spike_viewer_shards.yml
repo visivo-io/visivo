@@ -26,6 +26,7 @@ jobs:
           - { total: 4, shard: 4 }
     name: shard ${{ matrix.shard }} of ${{ matrix.total }}
     steps:
+      - run: lscpu | grep -E 'Model name|^CPU\(s\)' | sed 's/^/HW /'
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
@@ -62,6 +63,7 @@ jobs:
         total: [2, 3, 4]
     name: merge ${{ matrix.total }} shards
     steps:
+      - run: lscpu | grep -E 'Model name|^CPU\(s\)' | sed 's/^/HW /'
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:

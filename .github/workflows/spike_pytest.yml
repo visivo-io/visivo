@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
+      - run: lscpu | grep -E 'Model name|^CPU\(s\)' | sed 's/^/HW /'
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
@@ -71,6 +72,7 @@ jobs:
           - { v: split3x4, total: 3, group: 3, xdist: 4 }
     name: ${{ matrix.v }} group ${{ matrix.group }}
     steps:
+      - run: lscpu | grep -E 'Model name|^CPU\(s\)' | sed 's/^/HW /'
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
@@ -123,6 +125,7 @@ jobs:
         v: [xdist4, split2, split3, split4, split2x4, split3x4]
     name: merge ${{ matrix.v }}
     steps:
+      - run: lscpu | grep -E 'Model name|^CPU\(s\)' | sed 's/^/HW /'
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
@@ -168,6 +171,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
+      - run: lscpu | grep -E 'Model name|^CPU\(s\)' | sed 's/^/HW /'
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:

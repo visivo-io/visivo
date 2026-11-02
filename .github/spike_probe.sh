@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Prints comparable machine and pytest timings. Same script on Actions and RWX.
 set -uo pipefail
-echo "PROBE lscpu"; lscpu | grep -E "Model name|^CPU\(s\)|Thread|Core|MHz|Hypervisor|L2|L3"
-echo "PROBE mem"; free -m | head -2
-echo "PROBE disk"; df -h . | tail -1
+lscpu | grep -E "Model name|^CPU\(s\)|Thread|Core|MHz|Hypervisor|L2|L3" | sed "s/^/PROBE /"
+free -m | head -2 | sed "s/^/PROBE /"
+df -h . | tail -1 | sed "s/^/PROBE /"
 PY=$(poetry run which python); echo "PROBE python $PY"
 $PY - <<'P'
 import sys, sysconfig, time, multiprocessing as mp, os, tempfile
@@ -15,7 +15,7 @@ def work(_=0):
     for i in range(20_000_000): s+=i*i%7
     return time.perf_counter()-t
 print("PROBE cpu1_s", round(work(),2))
-with mp.Pool(4) as p: print("PROBE cpu4x_s", [round(x,2) for x in p.map(work, range(4))])
+with mp.get_context('fork').Pool(4) as p: print("PROBE cpu4x_s", [round(x,2) for x in p.map(work, range(4))])
 t=time.perf_counter()
 with tempfile.TemporaryDirectory(dir=".") as d:
     for i in range(5000):
