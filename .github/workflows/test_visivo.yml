@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
   push:
-    branches: [main]
+    branches: [main, ci-trial/actions-move]
     tags: ["v*"]
 
 # Tag runs get a unique group, so they neither cancel nor get cancelled.
@@ -226,7 +226,7 @@ jobs:
           key: ${{ steps.key.outputs.key }}
 
   diff-stats:
-    if: ${{ github.event_name == 'pull_request' && !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
@@ -273,7 +273,7 @@ jobs:
         with:
           name: viewer-coverage
           path: coverage-js
-      - run: bash .github/scripts/pr_summary_comment.sh
+      - run: bash .github/scripts/pr_summary_comment.sh && cat /tmp/pr_comment.md
       - name: Post comment
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         continue-on-error: true
