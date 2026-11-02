@@ -51,18 +51,8 @@ jobs:
       - uses: ./.ci-tools/.github/actions/setup-cli
       - run: poetry install --with dev
       - run: >
-          poetry run pytest -n 4 --json-report
+          poetry run pytest -n 4
           --cov=visivo --cov-report=json:coverage-python.json
-      - name: Post results
-        if: ${{ always() }}
-        env:
-          PYTEST_RESULTS_WEBHOOK: ${{ secrets.PYTEST_RESULTS_WEBHOOK }}
-        run: |
-          if [ -n "$PYTEST_RESULTS_WEBHOOK" ] && [ -f .report.json ]; then
-            curl -sS --max-time 30 -X POST -H "Content-Type: application/json" \
-              --data-binary @.report.json "$PYTEST_RESULTS_WEBHOOK" -o /dev/null \
-              || echo "::warning::The pytest results post failed"
-          fi
       - uses: actions/upload-artifact@v4
         with:
           name: python-coverage
