@@ -16,7 +16,6 @@ import sqlglot
 
 from visivo.models.base.context_string import ContextString
 from visivo.query.patterns import REF_PROPERTY_PATTERN, extract_ref_names
-from visivo.server.source_resolution import default_source_name, find_source
 from visivo.query.sqlglot_utils import (
     unaliased_projection_message,
     unaliased_projections,
@@ -51,6 +50,10 @@ def dialect_for_model(flask_app, config) -> str:
     generic dialect, which still parses ordinary SQL. Refusing to validate would
     be worse than validating a little less precisely.
     """
+    # Imported here, not at module scope: source_resolution reaches the manager
+    # package, whose __init__ imports the manager that imports this module.
+    from visivo.server.source_resolution import default_source_name, find_source
+
     name = source_ref_name((config or {}).get("source")) or default_source_name(flask_app)
     if not isinstance(name, str) or not name:
         return None
