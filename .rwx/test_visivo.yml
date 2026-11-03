@@ -1,4 +1,16 @@
+# Unchanged main hits the cache on every task, so the nightly run of a commit
+# that already passed costs nothing.
 on:
+  cron:
+    - key: nightly-chain
+      schedule: "0 7 * * *"
+      init:
+        commit-sha: ${{ event.git.sha }}
+  github:
+    push:
+      if: ${{ event.git.ref =~ '^refs/tags/v.+$' }}
+      init:
+        commit-sha: ${{ event.git.sha }}
   dispatch:
     key: visivo-test-chain
     init:
