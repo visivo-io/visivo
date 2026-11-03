@@ -485,7 +485,11 @@ tasks:
     use: [code, uv-dbt]
     run: |
       cd test-projects/dbt
-      uv sync --frozen --no-install-project
+      # A uv-managed interpreter, not the system one. `python/install` puts
+      # both 3.12 and 3.14 at /usr/local/bin/python3, and test-dbt layers this
+      # task over visivo-install -- so a venv symlinked to that path resolves
+      # to 3.14 there and looks in an empty lib/python3.14/site-packages.
+      uv sync --frozen --no-install-project --python 3.12 --python-preference only-managed
     filter:
       - test-projects/dbt/uv.lock
       - test-projects/dbt/pyproject.toml
