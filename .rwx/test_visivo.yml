@@ -1,27 +1,27 @@
+# Unchanged main hits the cache on every task, so the nightly run of a commit
+# that already passed costs nothing.
 on:
+  cron:
+    - key: nightly-chain
+      schedule: "0 7 * * *"
+      init:
+        commit-sha: ${{ event.git.sha }}
   github:
-    pull_request:
-      if: ${{ event.github.pull_request.pull_request.draft == false }}
-      actions: [opened, reopened, synchronize, ready_for_review]
-      init:
-        commit-sha: ${{ event.git.sha }}
-        pr-num: ${{ event.github.pull_request.pull_request.number }}
     push:
-      if: ${{ event.git.branch == 'main' || event.git.ref =~ '^refs/tags/v.+$' }}
+      if: ${{ event.git.ref =~ '^refs/tags/v.+$' }}
       init:
         commit-sha: ${{ event.git.sha }}
-        pr-num: ""
+  dispatch:
+    key: visivo-test-chain
+    init:
+      commit-sha: ${{ event.git.sha }}
 
-# A stale run for a PR commit that's already been superseded by a newer push
-# is wasted compute — its result is thrown away either way once the newer one
-# lands, so cancel it outright instead of letting it finish. main/tag pushes
-# are excluded: a landed commit on main deserves its own completed test
-# record, not one a later merge can cancel out from under it.
+# Scoped to the commit, so a tag run and a nightly run of the same commit queue
+# and the second one reuses the cache. Neither can cancel the other.
 concurrency-pools:
-  - id: visivo-io/visivo:test-pr-${{ init.pr-num }}
-    if: ${{ init.pr-num != "" }}
+  - id: visivo-io/visivo:test-chain-${{ init.commit-sha }}
     capacity: 1
-    on-overflow: cancel-running
+    on-overflow: queue
 
 base:
   image: ubuntu:22.04
@@ -78,9 +78,26 @@ tasks:
       - poetry.lock
       - pyproject.toml
 
-  # Both of these were unfiltered, so any change anywhere rebuilt the wheel
-  # and the PyInstaller binary — and because a task's cache key includes its
-  # dependencies', that invalidated every integration lane below whose own
+  # The stub package lets pip resolve the wheel's dependencies from pyproject
+  # without the source, so a source change does not reinstall them. Floating
+  # dependencies stay frozen until pyproject.toml or poetry.lock changes.
+  - key: visivo-dependencies
+    use: cli-dependencies
+    run: |
+      mkdir visivo
+      touch visivo/__init__.py
+      poetry build --format wheel
+      pip install dist/visivo-*-py3-none-any.whl
+      pip uninstall --yes visivo
+      rm -rf visivo dist
+    filter:
+      - pyproject.toml
+      - poetry.lock
+      - README.md
+
+  # These tasks were unfiltered at first, so any change anywhere rebuilt the
+  # wheel and the PyInstaller binary — and because a task's cache key includes
+  # its dependencies', that invalidated every integration lane below whose own
   # `filter:` was therefore doing nothing.
   #
   # README.md is in the filter because `readme = "README.md"` in pyproject:
@@ -88,11 +105,11 @@ tasks:
   # filter strips every workspace file it does not name, so leaving it out
   # fails the build rather than merely over-caching.
   - key: visivo-pip-install
-    use: cli-dependencies
+    use: visivo-dependencies
     run: |
       poetry install --with dev
-      poetry build
-      pip install dist/visivo-*-py3-none-any.whl
+      poetry build --format wheel
+      pip install --no-deps dist/visivo-*-py3-none-any.whl
     filter:
       - pyproject.toml
       - poetry.lock
@@ -247,6 +264,8 @@ tasks:
     env:
       STACKTRACE: true
     filter: [visivo, viewer, test-projects/integration, scripts]
+    outputs:
+      filesystem: false
 
   - key: offline-guard
     # Keeps Phase 1 of "Complete Install" true. Every CDN fetch this project
@@ -295,6 +314,8 @@ tasks:
     env:
       STACKTRACE: true
     filter: [visivo, viewer, test-projects/integration]
+    outputs:
+      filesystem: false
 
   - key: binary-init-smoke
     # Runs the PyInstaller bundle (dist/visivo/visivo) end-to-end against
