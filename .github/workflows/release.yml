@@ -47,8 +47,8 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Setup Poetry
-        uses: Gr1N/setup-poetry@v9
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
 
       - name: Build App
         env:
@@ -57,15 +57,18 @@ jobs:
           cd viewer
           yarn install --network-timeout 600000 && yarn deploy
           cd ..
-          poetry install
-          poetry version ${{ inputs.version }}
+          uv sync --frozen
+          # Unlike `poetry version`, this rewrites uv.lock as well as
+          # pyproject.toml. The commit step below adds everything, so the lock
+          # travels with the bump -- it must, or the next --frozen sync fails.
+          uv version ${{ inputs.version }}
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > ${{ matrix.version_file }}
-          poetry run write-schema-json
-          poetry run copy-install-script
+          uv run write-schema-json
+          uv run copy-install-script
           ls
 
       - name: Build Artifact
-        run: poetry run build
+        run: uv run build
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
@@ -94,17 +97,20 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Setup Poetry
-        uses: Gr1N/setup-poetry@v9
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
 
       - name: Build App
         run: |
           cd viewer && yarn install && yarn deploy && cd ..
-          poetry install
-          poetry version ${{ inputs.version }}
+          uv sync --frozen
+          # Unlike `poetry version`, this rewrites uv.lock as well as
+          # pyproject.toml. The commit step below adds everything, so the lock
+          # travels with the bump -- it must, or the next --frozen sync fails.
+          uv version ${{ inputs.version }}
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo/version.py
-          poetry run write-schema-json
-          poetry run copy-install-script
+          uv run write-schema-json
+          uv run copy-install-script
 
       - name: Commit changes
         uses: EndBug/add-and-commit@v10
@@ -158,9 +164,8 @@ jobs:
         id: publish
         if: ${{ inputs.dryrun == false }}
         run: |
-          poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
-          poetry build
-          poetry publish
+          uv build
+          uv publish --token ${{ secrets.PYPI_TOKEN }}
 
       - name: Trigger Core Deployment
         if: ${{ inputs.dryrun == false }}

@@ -61,7 +61,7 @@ Environment: macOS arm64, pyenv CPython 3.14.6, Nuitka **4.1.3**, clang 21.
 | | `--version` wall-clock |
 |---|---|
 | Nuitka binary (warm) | ~2.5–2.8 s |
-| `poetry run visivo` (interpreted) | ~6.3 s |
+| `uv run visivo` (interpreted) | ~6.3 s |
 
 **~2.5 s is dominated by the eager import of all 14 subcommands** in
 `command_line.py` — Nuitka compiles that graph but can't skip it. **VIS-1191

@@ -8,7 +8,7 @@ on every PR — it makes three classes of regression impossible to merge:
 1. ``test_committed_schema_is_fresh`` — the committed
    ``visivo/src/visivo_project_schema.json`` must equal a freshly generated
    schema. Fails when someone edits a Pydantic model but forgets to run
-   ``poetry run write-schema-json``. (This is the repo's standing rule; here CI
+   ``uv run write-schema-json``. (This is the repo's standing rule; here CI
    enforces it.)
 
 2. ``test_no_empty_reference_descriptions`` — every user-facing model that gets
@@ -75,7 +75,7 @@ def test_committed_schema_is_fresh():
     """The committed schema JSON must equal a freshly generated schema.
 
     If this fails, a Pydantic model changed without regenerating the schema.
-    Fix by running ``poetry run write-schema-json`` and committing
+    Fix by running ``uv run write-schema-json`` and committing
     ``visivo/src/visivo_project_schema.json``.
     """
     committed = SCHEMA_FILE.read_text()
@@ -86,13 +86,13 @@ def test_committed_schema_is_fresh():
     # raw ``generate_schema()`` string, so the bytes should match too).
     assert json.loads(committed) == json.loads(fresh), (
         "Committed schema is stale. A Pydantic model changed but the schema was "
-        "not regenerated. Run `poetry run write-schema-json` and commit "
+        "not regenerated. Run `uv run write-schema-json` and commit "
         f"{SCHEMA_FILE}."
     )
     assert committed == fresh, (
         "Committed schema bytes differ from a freshly generated schema (the "
         "parsed JSON is equal, so this is a formatting drift). Run "
-        f"`poetry run write-schema-json` and commit {SCHEMA_FILE}."
+        f"`uv run write-schema-json` and commit {SCHEMA_FILE}."
     )
 
 

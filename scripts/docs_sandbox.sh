@@ -102,7 +102,7 @@ start_docs() {
         (
             cd "$PROJECT_DIR"
             export PYTHONPATH="$PROJECT_DIR"
-            exec poetry run mkdocs serve -a "127.0.0.1:$DOCS_PORT"
+            exec uv run mkdocs serve -a "127.0.0.1:$DOCS_PORT"
         ) > "$PID_DIR/mkdocs.log" 2>&1 < /dev/null &
         echo $! > "$docs_pid_file"
     fi
