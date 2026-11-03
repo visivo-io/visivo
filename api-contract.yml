@@ -8,10 +8,15 @@
 # Fields: path (template), verbs (what the viewer sends), serves (which surfaces answer),
 # cloud_equivalent or reason (required when studio serves a path and the cloud does not).
 #
+# `server_only` at the bottom is the other direction: Flask routes under /api/ that the viewer
+# never requests, each with a reason. Those rules all start from the viewer, so without that
+# section a route nothing in the viewer calls is unreachable by the check.
+#
 # Checked by tests/server/test_api_contract.py here and by the cloud's parity test. The check fails
 # on a viewer path with no entry, a `cloud` claim the cloud routes do not honor, a `studio` claim
-# the Flask routes do not honor, a studio-only entry with no equivalent and no reason, and an
-# entry that nothing references. Generated route tables are never committed.
+# the Flask routes do not honor, a studio-only entry with no equivalent and no reason, an entry
+# that nothing references, a Flask /api/ route in neither entries nor server_only, and a
+# server_only line for a route Flask no longer serves. Generated route tables are never committed.
 version: 1
 entries:
   sourcesList:
@@ -679,3 +684,64 @@ literals:
   serves:
   - studio
   cloud_equivalent: /api/projects/draft/
+
+# Flask routes under /api/ that the viewer never requests. Every one carries a
+# reason, because a route with no entry and no reason is exactly how /api/mcp/
+# stayed invisible for the whole life of the endpoint: the rest of this file is
+# checked from the viewer outwards, so a route nothing in the viewer calls was
+# unreachable by the check.
+#
+# Being here is not an exemption. The path must exist on Flask, so the list
+# cannot rot, and a NEW route lands here only by someone writing the sentence.
+server_only:
+- path: /api/mcp/
+  reason: The MCP endpoint external clients POST to. The viewer only renders its
+    URL for a person to paste into a client config; it never requests it. Cloud
+    will serve the same shape (VIS-1665).
+- path: /api/auth/authorize-device-token/callback/{}/
+  reason: Where the browser lands at the end of `visivo authorize`. The cloud
+    sign-in page redirects here; no viewer code calls it.
+# The agent tab's four paths are dual-mounted: project-scoped (the entries
+# above, which core can serve) and unversioned. `visivo serve` hosts one
+# project and ignores the id, so one tab drives either server.
+- path: /api/agent/
+  reason: Unversioned alias of the agentSessions entry.
+- path: /api/agent/{}/
+  reason: Unversioned alias of the agentSession entry.
+- path: /api/agent/{}/cancel/
+  reason: Unversioned alias of the agentSessionCancel entry.
+- path: /api/agent/actions/
+  reason: Unversioned alias of the agentActions entry.
+- path: /api/agent/captures/{}.png
+  reason: Serves a screenshot the agent captured. Referenced by URL from inside
+    a transcript, not fetched through the registry.
+- path: /api/projects/{}/agent/captures/{}.png
+  reason: Project-scoped form of the capture path above.
+- path: /api/models/{}/profile/
+  reason: The agent's profiling tools. The viewer profiles locally in DuckDB.
+- path: /api/models/{}/histogram/{}/
+  reason: As above — the viewer's column histogram comes from
+    `histogramTableLocally`, never from the server.
+- path: /api/files/{}/
+  reason: Data by content hash. The CLI reads these during `visivo deploy`.
+- path: /api/files/{}/{}/
+  reason: Run-scoped form of the path above.
+# Below here is debt, not design. Each needs an audit (VIS-1685): a route with
+# no caller is either a missing registry key or a route to delete, and leaving
+# it unlisted is what let the others hide.
+- path: /api/source-connections/{}/
+  reason: The per-job poll for a connection test. Its collection path is the
+    sourceConnections entry; this one has no registry key and should get one.
+- path: /api/project/named_children/
+  reason: Referenced only by the committed `visivo/dist` bundle, not by any
+    current viewer source. Stale on one side or the other.
+- path: /api/schema/
+  reason: No caller found in this repo.
+- path: /api/project_history/
+  reason: No caller found in this repo.
+- path: /api/insight-jobs/hash
+  reason: No caller found in this repo.
+- path: /api/cloud/stages/
+  reason: No caller found in this repo.
+- path: /api/project/init/
+  reason: No caller found in this repo.
