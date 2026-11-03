@@ -3,12 +3,27 @@ on:
     pull_request:
       if: ${{ event.github.pull_request.pull_request.draft == false }}
       actions: [opened, reopened, synchronize, ready_for_review]
+      target: [docs-parity, mkdocs, check-for-spelling-errors]
       init:
         commit-sha: ${{ event.git.sha }}
         pr-num: ${{ event.github.pull_request.pull_request.number }}
+        run-kind: pr
+  dispatch:
+    key: visivo-docs-preview
+    params:
+      - key: pr-num
+        name: PR number
+        description: The PR that gets the preview link. Dispatch on the PR's branch.
+        required: true
+    target: [docs-preview, comment-preview-link]
+    init:
+      commit-sha: ${{ event.git.sha }}
+      pr-num: ${{ event.dispatch.params.pr-num }}
+      run-kind: preview
+    title: Docs preview for PR ${{ init.pr-num }}
 
 concurrency-pools:
-  - id: visivo-io/visivo:docs-pr-${{ init.pr-num }}
+  - id: visivo-io/visivo:docs-${{ init.run-kind }}-${{ init.pr-num }}
     if: ${{ init.pr-num != "" }}
     capacity: 1
     on-overflow: cancel-running
@@ -80,7 +95,7 @@ tasks:
   - key: github-cli
     call: github/install-cli 1.0.11
 
-  # Per-PR docs preview app. Serves the built site (site_dir: mkdocs_build) on an
+  # Docs preview app, started only by the visivo-docs-preview dispatch. Serves the built site (site_dir: mkdocs_build) on an
   # on-demand rwx.run URL; spins down after 10 min idle and re-materializes from
   # the task cache when the URL is hit again.
   - key: docs-preview
@@ -94,13 +109,15 @@ tasks:
   - key: comment-preview-link
     use: [code, github-cli]
     run: |
-      BODY="📚 Docs preview: $DOCS_PREVIEW_URL"
-      COMMENT_ID=$(gh api "repos/visivo-io/visivo/issues/${{ init.pr-num }}/comments" --jq '[.[] | select(.body | startswith("📚 Docs preview:"))][0].id // empty')
+      BODY="📚 Docs preview: $DOCS_PREVIEW_URL (built from ${COMMIT_SHA:0:7})"
+      COMMENT_ID=$(gh api "repos/visivo-io/visivo/issues/$PR_NUM/comments" --jq '[.[] | select(.body | startswith("📚 Docs preview:"))][0].id // empty')
       if [ -n "$COMMENT_ID" ]; then
         gh api -X PATCH "repos/visivo-io/visivo/issues/comments/$COMMENT_ID" -f body="$BODY" > /dev/null
       else
-        gh pr comment ${{ init.pr-num }} --body "$BODY"
+        gh pr comment "$PR_NUM" --body "$BODY"
       fi
     env:
       DOCS_PREVIEW_URL: ${{ tasks.docs-preview.app.url.friendly }}
+      PR_NUM: ${{ init.pr-num }}
+      COMMIT_SHA: ${{ init.commit-sha }}
       GH_TOKEN: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
