@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import Home from './Home';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { futureFlags } from '../router-config';
@@ -42,7 +42,19 @@ const buildRouter = () =>
     }
   );
 
-const renderWithStore = storeState => {
+const routerSettled = router =>
+  new Promise(resolve => {
+    if (router.state.initialized) return resolve();
+    const unsubscribe = router.subscribe(state => {
+      if (!state.initialized) return;
+      unsubscribe();
+      resolve();
+    });
+  });
+
+// Waits for the loader inside act, so the slow first render of this
+// tree happens before any waitFor or findBy starts its wall-clock timeout.
+const renderWithStore = async storeState => {
   useStore.mockImplementation(cb =>
     cb({
       isNewProject: false,
@@ -54,23 +66,23 @@ const renderWithStore = storeState => {
     })
   );
 
-  return render(
+  const router = buildRouter();
+  render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={buildRouter()} future={futureFlags} />
+      <RouterProvider router={router} future={futureFlags} />
     </QueryClientProvider>
   );
+  await act(() => routerSettled(router));
 };
 
 test('renders error message', async () => {
-  renderWithStore({ isNewProject: false, isOnboardingRequested: false });
+  await renderWithStore({ isNewProject: false, isOnboardingRequested: false });
 
-  await waitFor(() => {
-    expect(screen.getByText('Error Message')).toBeInTheDocument();
-  });
+  expect(screen.getByText('Error Message')).toBeInTheDocument();
 });
 
 test('redirects to /onboarding when isOnboardingRequested is true', async () => {
-  renderWithStore({ isNewProject: false, isOnboardingRequested: true });
+  await renderWithStore({ isNewProject: false, isOnboardingRequested: true });
 
   await waitFor(() => {
     expect(screen.getByTestId('onboarding-route')).toBeInTheDocument();
@@ -78,7 +90,7 @@ test('redirects to /onboarding when isOnboardingRequested is true', async () => 
 });
 
 test('does not redirect when isOnboardingRequested is false', async () => {
-  renderWithStore({ isNewProject: false, isOnboardingRequested: false });
+  await renderWithStore({ isNewProject: false, isOnboardingRequested: false });
 
   // Should NOT navigate to onboarding; the home page renders instead.
   await waitFor(() => {
@@ -87,7 +99,7 @@ test('does not redirect when isOnboardingRequested is false', async () => {
 });
 
 test('renders the three navigation cards at the root route', async () => {
-  renderWithStore({});
+  await renderWithStore({});
   await waitFor(() => {
     expect(screen.getByText('Explore and analyze your data')).toBeInTheDocument();
   });
@@ -96,7 +108,7 @@ test('renders the three navigation cards at the root route', async () => {
 });
 
 test('shows a full-screen loading state while isNewProject is still unknown', async () => {
-  renderWithStore({ isNewProject: undefined });
+  await renderWithStore({ isNewProject: undefined });
   expect(await screen.findByRole('status')).toBeInTheDocument();
   // None of the home chrome renders yet.
   expect(screen.queryByText('Explore and analyze your data')).not.toBeInTheDocument();
@@ -105,7 +117,7 @@ test('shows a full-screen loading state while isNewProject is still unknown', as
 test('probes capabilities then refreshes commit status when a project is active', async () => {
   const fetchCapabilities = jest.fn().mockResolvedValue(undefined);
   const checkCommitStatus = jest.fn().mockResolvedValue(undefined);
-  renderWithStore({
+  await renderWithStore({
     project: { id: 'proj-1' },
     fetchCapabilities,
     checkCommitStatus,
@@ -116,14 +128,14 @@ test('probes capabilities then refreshes commit status when a project is active'
 });
 
 test('restricts the tools to Dashboards when capabilities say not-a-draft', async () => {
-  renderWithStore({ capabilities: { is_draft: false } });
+  await renderWithStore({ capabilities: { is_draft: false } });
   expect(await screen.findByTitle('Dashboards')).toBeInTheDocument();
   expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
   expect(screen.queryByTitle('Workspace')).not.toBeInTheDocument();
 });
 
 test('keeps the full tool set while on an editable draft', async () => {
-  renderWithStore({ capabilities: { is_draft: true } });
+  await renderWithStore({ capabilities: { is_draft: true } });
   expect(await screen.findByTitle('Workspace')).toBeInTheDocument();
   expect(screen.getByTitle('Runs')).toBeInTheDocument();
   expect(screen.getByTitle('Dashboards')).toBeInTheDocument();
@@ -133,7 +145,7 @@ test('keeps the full tool set while on an editable draft', async () => {
 
 test('Deploy button toggles the deploy modal open', async () => {
   // Deploy surfaces on a clean project (nothing to commit, ready to ship).
-  renderWithStore({ hasUncommittedChanges: false });
+  await renderWithStore({ hasUncommittedChanges: false });
   expect(await screen.findByTitle('Deploy')).toBeInTheDocument();
   expect(screen.queryByTestId('deploy-modal-open')).not.toBeInTheDocument();
   fireEvent.click(screen.getByTitle('Deploy'));
@@ -142,7 +154,7 @@ test('Deploy button toggles the deploy modal open', async () => {
 
 test('Commit button opens the commit modal and badges the pending count', async () => {
   const openCommitModal = jest.fn();
-  renderWithStore({ hasUncommittedChanges: true, pendingCount: 4, openCommitModal });
+  await renderWithStore({ hasUncommittedChanges: true, pendingCount: 4, openCommitModal });
   expect(await screen.findByTitle('Commit changes')).toBeInTheDocument();
   expect(screen.getByTitle('Commit changes')).toHaveTextContent(/Commit\s*4/);
   fireEvent.click(screen.getByTitle('Commit changes'));
@@ -151,7 +163,7 @@ test('Commit button opens the commit modal and badges the pending count', async 
 
 test('Discard all changes confirms first, then drops them', async () => {
   const discardChanges = jest.fn().mockResolvedValue({ success: true });
-  renderWithStore({ hasUncommittedChanges: true, pendingCount: 2, discardChanges });
+  await renderWithStore({ hasUncommittedChanges: true, pendingCount: 2, discardChanges });
 
   fireEvent.click(await screen.findByLabelText('Commit options'));
   fireEvent.click(screen.getByText('Discard all changes'));
@@ -166,7 +178,7 @@ test('Discard all changes confirms first, then drops them', async () => {
 
 test('Cancelling the discard dialog keeps the changes', async () => {
   const discardChanges = jest.fn();
-  renderWithStore({ hasUncommittedChanges: true, pendingCount: 2, discardChanges });
+  await renderWithStore({ hasUncommittedChanges: true, pendingCount: 2, discardChanges });
 
   fireEvent.click(await screen.findByLabelText('Commit options'));
   fireEvent.click(screen.getByText('Discard all changes'));

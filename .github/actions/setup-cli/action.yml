@@ -1,0 +1,16 @@
+name: Set up the CLI
+description: Installs Python and Poetry, and restores the cached virtualenv.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v6
+      with:
+        python-version-file: .python-version
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/pip
+          .venv
+        key: py-${{ runner.os }}-${{ hashFiles('.python-version', 'poetry.lock', 'pyproject.toml') }}
+    - shell: bash
+      run: pip install poetry
