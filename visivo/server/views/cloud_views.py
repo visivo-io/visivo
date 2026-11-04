@@ -103,7 +103,7 @@ def register_cloud_views(app, flask_app, output_dir):
             user_dir=os.path.expanduser("~"),
             working_dir=flask_app._working_dir,
             output_dir=output_dir,
-            stage=stage,
+            branch=stage,
             host=_host(),
             deploy_id=deploy_id,
         )
