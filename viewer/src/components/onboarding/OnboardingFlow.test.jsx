@@ -1,8 +1,8 @@
 import React from 'react';
-import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-import OnboardingFlow from './OnboardingFlow';
+import OnboardingFlow, { sampleDestination } from './OnboardingFlow';
 import useStore from '../../stores/store';
 import {
   clearOnboardingState,
@@ -76,186 +76,200 @@ const renderFlow = () =>
     </MemoryRouter>
   );
 
+
+const startTour = (role = 'analytics_engineer') => {
+  fireEvent.click(screen.getByTestId('onb-start-tour'));
+  fireEvent.click(screen.getByTestId(`onb-role-${role}`));
+  fireEvent.click(screen.getByTestId('onb-role-continue'));
+};
+
 describe('OnboardingFlow', () => {
-  test('renders welcome and progresses to role on continue', () => {
+  test('opens on the start screen with every sample and no progress bar', () => {
     renderFlow();
-    expect(screen.getByTestId('onb-step-welcome')).toBeInTheDocument();
+    expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
     expect(screen.getByText(/Welcome to Visivo/)).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('onb-welcome-continue'));
-    expect(screen.getByTestId('onb-role-grid')).toBeInTheDocument();
+    for (const name of ['ev-sales', 'github-releases', 'college-football']) {
+      expect(screen.getByTestId(`onb-sample-${name}`)).toBeInTheDocument();
+    }
+    expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();
+    expect(screen.queryByTestId('onboarding-progress')).not.toBeInTheDocument();
+    expect(getEventBuffer().map(e => e.event)).toContain('onboarding_data_seen');
   });
 
-  test('skip-confirm flow navigates to /editor with telemetry', () => {
+  test('never claims more source types than the source picker offers', () => {
     renderFlow();
-    fireEvent.click(screen.getByTestId('onb-welcome-skip'));
-    expect(screen.getByText('Skip onboarding?')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('onb-skip-confirm'));
+    expect(screen.queryByText(/\+ ?\d+ more/)).not.toBeInTheDocument();
+  });
+
+  test('start empty navigates to /editor with telemetry and dismisses the checklist', () => {
+    renderFlow();
+    fireEvent.click(screen.getByTestId('onb-start-empty'));
     expect(mockNavigate).toHaveBeenCalledWith('/editor', { replace: true });
-    const events = getEventBuffer().map(e => e.event);
-    expect(events).toContain('onboarding_opt_out_clicked');
+    expect(getEventBuffer().map(e => e.event)).toContain('onboarding_opt_out_clicked');
     expect(readOnboardingState()).toMatchObject({
       path: 'skipped',
       checklist_dismissed: true,
     });
   });
 
-  test('role tile selection unlocks continue and stores role', () => {
+  test('ev-sales is the suggested sample when no role is chosen', () => {
     renderFlow();
-    fireEvent.click(screen.getByTestId('onb-welcome-continue'));
-    const continueBtn = screen.getByTestId('onb-role-continue');
-    expect(continueBtn).toBeDisabled();
-    fireEvent.click(screen.getByTestId('onb-role-analytics_engineer'));
-    expect(continueBtn).not.toBeDisabled();
-    fireEvent.click(continueBtn);
-    expect(screen.getByTestId('onb-step-concept-1')).toBeInTheDocument();
-    const events = getEventBuffer().map(e => e.event);
-    expect(events).toContain('onboarding_role_chosen');
+    expect(within(screen.getByTestId('onb-sample-ev-sales')).getByText('Suggested')).toBeInTheDocument();
   });
 
-  test('walks through all 7 concept screens then lands on data step', () => {
+  test('a stale step index from an older flow still opens on the start screen', () => {
+    writeOnboardingState({ last_step_idx: 11 });
     renderFlow();
-    fireEvent.click(screen.getByTestId('onb-welcome-continue'));
-    fireEvent.click(screen.getByTestId('onb-role-software_engineer'));
-    fireEvent.click(screen.getByTestId('onb-role-continue'));
-    for (let i = 1; i <= 7; i++) {
-      expect(screen.getByTestId(`onb-step-concept-${i}`)).toBeInTheDocument();
-      fireEvent.click(screen.getByTestId('onb-concept-continue'));
-    }
-    expect(screen.getByTestId('onb-step-data')).toBeInTheDocument();
+    expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
   });
 
-  test('software engineer sees github-releases sample marked as Suggested', () => {
-    renderFlow();
-    fireEvent.click(screen.getByTestId('onb-welcome-continue'));
-    fireEvent.click(screen.getByTestId('onb-role-software_engineer'));
-    fireEvent.click(screen.getByTestId('onb-role-continue'));
-    for (let i = 0; i < 7; i++) {
-      fireEvent.click(screen.getByTestId('onb-concept-continue'));
-    }
-    fireEvent.click(screen.getByTestId('onb-data-sample'));
-    const tile = screen.getByTestId('onb-sample-github-releases');
-    expect(within(tile).getByText('Suggested')).toBeInTheDocument();
-  });
+  describe('concept tour', () => {
+    test('role selection unlocks continue and stores role', () => {
+      renderFlow();
+      fireEvent.click(screen.getByTestId('onb-start-tour'));
+      const continueBtn = screen.getByTestId('onb-role-continue');
+      expect(continueBtn).toBeDisabled();
+      fireEvent.click(screen.getByTestId('onb-role-analytics_engineer'));
+      expect(continueBtn).not.toBeDisabled();
+      fireEvent.click(continueBtn);
+      expect(screen.getByTestId('onb-step-concept-1')).toBeInTheDocument();
+      expect(getEventBuffer().map(e => e.event)).toContain('onboarding_role_chosen');
+    });
 
-  test('connect-data path opens modal and proceeds to cloud step on success', async () => {
-    renderFlow();
-    fireEvent.click(screen.getByTestId('onb-welcome-continue'));
-    fireEvent.click(screen.getByTestId('onb-role-analytics_engineer'));
-    fireEvent.click(screen.getByTestId('onb-role-continue'));
-    for (let i = 0; i < 7; i++) {
-      fireEvent.click(screen.getByTestId('onb-concept-continue'));
-    }
-    fireEvent.click(screen.getByTestId('onb-data-connect'));
-    expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('mock-connect'));
-    expect(await screen.findByTestId('onb-step-cloud')).toBeInTheDocument();
-    const events = getEventBuffer().map(e => e.event);
-    expect(events).toContain('onboarding_data_connect_succeeded');
-  });
+    test('walks all 7 concepts and returns to the start screen', () => {
+      renderFlow();
+      startTour('software_engineer');
+      for (let i = 1; i <= 7; i++) {
+        expect(screen.getByTestId(`onb-step-concept-${i}`)).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('onb-concept-continue'));
+      }
+      expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
+    });
 
-  test('cloud "maybe later" advances to handoff', () => {
-    renderFlow();
-    fireEvent.click(screen.getByTestId('onb-welcome-continue'));
-    fireEvent.click(screen.getByTestId('onb-role-other'));
-    fireEvent.click(screen.getByTestId('onb-role-continue'));
-    for (let i = 0; i < 7; i++) {
-      fireEvent.click(screen.getByTestId('onb-concept-continue'));
-    }
-    fireEvent.click(screen.getByTestId('onb-data-sample'));
-    // "Pick a sample" sub-screen visible
-    expect(screen.getByText(/Pick a sample to start with/)).toBeInTheDocument();
-  });
+    test('the last concept offers to pick a sample', () => {
+      renderFlow();
+      startTour();
+      for (let i = 1; i < 7; i++) fireEvent.click(screen.getByTestId('onb-concept-continue'));
+      expect(screen.getByTestId('onb-concept-continue')).toHaveTextContent('Pick a sample');
+    });
 
-  // Walks welcome → role → all 7 concepts, landing on the data step.
-  const goToDataStep = (role = 'analytics_engineer') => {
-    fireEvent.click(screen.getByTestId('onb-welcome-continue'));
-    fireEvent.click(screen.getByTestId(`onb-role-${role}`));
-    fireEvent.click(screen.getByTestId('onb-role-continue'));
-    for (let i = 0; i < 7; i++) {
-      fireEvent.click(screen.getByTestId('onb-concept-continue'));
-    }
-    expect(screen.getByTestId('onb-step-data')).toBeInTheDocument();
-  };
+    test('the chosen role picks the suggested sample', () => {
+      renderFlow();
+      startTour('software_engineer');
+      for (let i = 0; i < 7; i++) fireEvent.click(screen.getByTestId('onb-concept-continue'));
+      const tile = screen.getByTestId('onb-sample-github-releases');
+      expect(within(tile).getByText('Suggested')).toBeInTheDocument();
+    });
 
-  const pickSample = async () => {
-    fireEvent.click(screen.getByTestId('onb-data-sample'));
-    fireEvent.click(screen.getByTestId('onb-sample-github-releases'));
-    expect(await screen.findByTestId('onb-step-cloud')).toBeInTheDocument();
-  };
-
-  describe('back navigation', () => {
     test('the Back button on a concept returns to the previous step with telemetry', () => {
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-welcome-continue'));
-      fireEvent.click(screen.getByTestId('onb-role-software_engineer'));
-      fireEvent.click(screen.getByTestId('onb-role-continue'));
+      startTour('software_engineer');
       expect(screen.getByTestId('onb-step-concept-1')).toBeInTheDocument();
       fireEvent.click(screen.getByTestId('onb-back'));
       expect(screen.getByTestId('onb-role-grid')).toBeInTheDocument();
       expect(getEventBuffer().map(e => e.event)).toContain('onboarding_concept_back_clicked');
     });
 
-    test('ArrowLeft goes back a step, but not from the welcome screen', () => {
+    test('ArrowLeft goes back a step, but not from the start screen', () => {
       renderFlow();
-      // On welcome (step 0) the key is a no-op.
       fireEvent.keyDown(window, { key: 'ArrowLeft' });
-      expect(screen.getByTestId('onb-step-welcome')).toBeInTheDocument();
+      expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('onb-welcome-continue'));
+      fireEvent.click(screen.getByTestId('onb-start-tour'));
       fireEvent.keyDown(window, { key: 'ArrowLeft' });
-      expect(screen.getByTestId('onb-step-welcome')).toBeInTheDocument();
+      expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
     });
 
     test('the mini-DAG jumps back to an earlier concept', () => {
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-welcome-continue'));
-      fireEvent.click(screen.getByTestId('onb-role-software_engineer'));
-      fireEvent.click(screen.getByTestId('onb-role-continue'));
-      // Advance to concept 2 so the Source node is lit-but-not-current.
+      startTour('software_engineer');
       fireEvent.click(screen.getByTestId('onb-concept-continue'));
       expect(screen.getByTestId('onb-step-concept-2')).toBeInTheDocument();
-
       fireEvent.click(screen.getByLabelText('Go back to Source'));
       expect(screen.getByTestId('onb-step-concept-1')).toBeInTheDocument();
-      expect(getEventBuffer().map(e => e.event)).toContain('onboarding_concept_back_clicked');
+    });
+
+    test('switching role clears previously dismissed coach hints', () => {
+      writeOnboardingState({ coach_dismissed: ['deploy_hint'] });
+      renderFlow();
+      fireEvent.click(screen.getByTestId('onb-start-tour'));
+      fireEvent.click(screen.getByTestId('onb-role-analytics_engineer'));
+      expect(readOnboardingState().coach_dismissed).toEqual([]);
     });
   });
 
   describe('sample import', () => {
-    test('importing a sample posts to load_example and advances to cloud', async () => {
+    test('one click loads the sample and opens its dashboard', async () => {
       renderFlow();
-      goToDataStep('software_engineer');
-      await pickSample();
+      fireEvent.click(screen.getByTestId('onb-sample-ev-sales'));
+      await waitFor(() =>
+        expect(mockNavigate).toHaveBeenCalledWith('/project/EV%20Sales%20Overview', {
+          replace: true,
+        })
+      );
       const loadCall = global.fetch.mock.calls.find(([url]) => url === '/api/project/load_example/');
-      expect(loadCall).toBeTruthy();
       expect(JSON.parse(loadCall[1].body)).toMatchObject({
         project_dir: '/tmp/demo',
         project_name: 'Quickstart Visivo',
+        example_type: 'ev-sales',
       });
+      const persisted = readOnboardingState();
+      expect(persisted).toMatchObject({
+        path: 'sample',
+        sample: 'ev-sales',
+        destination: '/project/EV%20Sales%20Overview',
+      });
+      expect(persisted.completed_at).toBeTruthy();
+      const events = getEventBuffer().map(e => e.event);
+      expect(events).toEqual(expect.arrayContaining(['onboarding_sample_picked', 'onboarding_completed']));
     });
 
-    test('a failed import surfaces a dismissible error banner and stays on data', async () => {
+    test('shows a building status and disables every choice while the sample loads', async () => {
+      global.fetch = jest.fn(() => new Promise(() => {}));
+      renderFlow();
+      fireEvent.click(screen.getByTestId('onb-sample-college-football'));
+      expect(await screen.findByTestId('onb-sample-loading')).toHaveTextContent(
+        'Building College Football'
+      );
+      expect(screen.getByTestId('onb-sample-ev-sales')).toBeDisabled();
+      expect(screen.getByTestId('onb-data-connect')).toBeDisabled();
+      expect(screen.getByTestId('onb-start-empty')).toBeDisabled();
+    });
+
+    test('a failed import surfaces a dismissible error banner and stays on start', async () => {
       global.fetch = jest.fn(() =>
         Promise.resolve({ ok: false, json: () => Promise.resolve({ message: 'Import exploded' }) })
       );
       renderFlow();
-      goToDataStep();
-      fireEvent.click(screen.getByTestId('onb-data-sample'));
       fireEvent.click(screen.getByTestId('onb-sample-github-releases'));
 
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent('Import exploded');
-      expect(screen.getByTestId('onb-step-data')).toBeInTheDocument();
+      expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
+      expect(screen.getByTestId('onb-sample-github-releases')).not.toBeDisabled();
+      expect(mockNavigate).not.toHaveBeenCalled();
 
       fireEvent.click(within(alert).getByText('✕'));
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    test('suppresses the hard page reload while mounted and restores it after', () => {
+      window.__VISIVO_SOFT_RELOAD__ = undefined;
+      const { unmount } = renderFlow();
+      expect(window.__VISIVO_SOFT_RELOAD__).toBe(true);
+      unmount();
+      expect(window.__VISIVO_SOFT_RELOAD__).toBeUndefined();
+    });
+
+    test('sampleDestination falls back to the dashboard list', () => {
+      expect(sampleDestination({ dashboard: 'A/B Test' })).toBe('/project/A%2FB%20Test');
+      expect(sampleDestination({})).toBe('/project');
     });
   });
 
   describe('source connect flow', () => {
     test('closes the source modal via the ✕ button and the backdrop', () => {
       const { container } = renderFlow();
-      goToDataStep();
       fireEvent.click(screen.getByTestId('onb-data-connect'));
       expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
       fireEvent.click(screen.getByLabelText('Close'));
@@ -269,11 +283,10 @@ describe('OnboardingFlow', () => {
 
     test('Escape closes the source modal, but not while a save is in flight', async () => {
       renderFlow();
-      goToDataStep();
       fireEvent.click(screen.getByTestId('onb-data-connect'));
       fireEvent.keyDown(document, { key: 'Escape' });
       expect(screen.queryByTestId('onb-source-modal')).not.toBeInTheDocument();
-      expect(screen.getByTestId('onb-step-data')).toBeInTheDocument();
+      expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
 
       global.fetch = jest.fn(() => new Promise(() => {}));
       fireEvent.click(screen.getByTestId('onb-data-connect'));
@@ -281,6 +294,19 @@ describe('OnboardingFlow', () => {
       await waitFor(() => expect(global.fetch).toHaveBeenCalled());
       fireEvent.keyDown(document, { key: 'Escape' });
       expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
+    });
+
+    test('a connected source goes straight to the explorer and persists completion', async () => {
+      renderFlow();
+      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      fireEvent.click(screen.getByText('mock-connect'));
+      await waitFor(() =>
+        expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
+      );
+      expect(readOnboardingState()).toMatchObject({ path: 'data', source_connected: true });
+      expect(getEventBuffer().map(e => e.event)).toEqual(
+        expect.arrayContaining(['onboarding_data_connect_succeeded', 'onboarding_completed'])
+      );
     });
 
     test('a file-based source uploads the file and finalizes with its dashboard', async () => {
@@ -297,19 +323,13 @@ describe('OnboardingFlow', () => {
             json: () => Promise.resolve({ dashboard: { name: 'generated-dashboard' } }),
           });
         }
-        if (url === '/api/project/finalize/') {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-        }
         return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
       });
       renderFlow();
-      goToDataStep();
       fireEvent.click(screen.getByTestId('onb-data-connect'));
       fireEvent.click(screen.getByText('mock-connect-file'));
 
-      expect(await screen.findByTestId('onb-step-cloud')).toBeInTheDocument();
-      const uploadCall = global.fetch.mock.calls.find(([url]) => url === '/api/source/upload/');
-      expect(uploadCall).toBeTruthy();
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
       const finalizeCall = global.fetch.mock.calls.find(([url]) => url === '/api/project/finalize/');
       expect(JSON.parse(finalizeCall[1].body).dashboards).toEqual([
         { name: 'generated-dashboard' },
@@ -321,7 +341,6 @@ describe('OnboardingFlow', () => {
         Promise.resolve({ ok: false, json: () => Promise.resolve({ message: 'bad creds' }) })
       );
       renderFlow();
-      goToDataStep();
       fireEvent.click(screen.getByTestId('onb-data-connect'));
       fireEvent.click(screen.getByText('mock-connect'));
 
@@ -343,109 +362,11 @@ describe('OnboardingFlow', () => {
         });
       });
       renderFlow();
-      goToDataStep();
       fireEvent.click(screen.getByTestId('onb-data-connect'));
       fireEvent.click(screen.getByText('mock-connect'));
 
       expect(await screen.findByRole('alert')).toHaveTextContent('finalize failed');
-    });
-  });
-
-  describe('cloud + handoff', () => {
-    test('sample path hands off to /project and persists completion', async () => {
-      renderFlow();
-      goToDataStep();
-      await pickSample();
-
-      jest.useFakeTimers();
-      fireEvent.click(screen.getByTestId('onb-cloud-later'));
-      expect(screen.getByTestId('onb-step-handoff')).toBeInTheDocument();
-
-      await act(async () => {
-        jest.advanceTimersByTime(1400);
-      });
-      await waitFor(() =>
-        expect(mockNavigate).toHaveBeenCalledWith('/project', { replace: true })
-      );
-      const persisted = readOnboardingState();
-      expect(persisted.completed_at).toBeTruthy();
-      expect(persisted.path).toBe('sample');
-      expect(persisted.destination).toBe('/project');
-    });
-
-    test('connected-source path hands off to /workspace/exploration', async () => {
-      renderFlow();
-      goToDataStep();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
-      fireEvent.click(screen.getByText('mock-connect'));
-      expect(await screen.findByTestId('onb-step-cloud')).toBeInTheDocument();
-
-      jest.useFakeTimers();
-      fireEvent.click(screen.getByTestId('onb-cloud-later'));
-      await act(async () => {
-        jest.advanceTimersByTime(1400);
-      });
-      await waitFor(() =>
-        expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
-      );
-      expect(readOnboardingState().source_connected).toBe(true);
-    });
-
-    test('cloud signup marks the account connected and finishes to handoff', async () => {
-      const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
-      renderFlow();
-      goToDataStep();
-      await pickSample();
-
-      jest.useFakeTimers();
-      fireEvent.click(screen.getByTestId('onb-cloud-signup'));
-      expect(openSpy).toHaveBeenCalledWith(
-        'https://app.visivo.io/register',
-        '_blank',
-        'noopener'
-      );
-      await act(async () => {
-        jest.advanceTimersByTime(1500); // simulated auth completes
-      });
-      fireEvent.click(screen.getByTestId('onb-cloud-finish'));
-      expect(screen.getByTestId('onb-step-handoff')).toBeInTheDocument();
-
-      await act(async () => {
-        jest.advanceTimersByTime(1400);
-      });
-      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
-      expect(readOnboardingState().cloud_connected).toBe(true);
-      openSpy.mockRestore();
-    });
-  });
-
-  describe('persisted state', () => {
-    test('cancelling the skip confirm keeps the user on welcome', () => {
-      renderFlow();
-      fireEvent.click(screen.getByTestId('onb-welcome-skip'));
-      expect(screen.getByText('Skip onboarding?')).toBeInTheDocument();
-      fireEvent.click(screen.getByText('Cancel'));
-      expect(screen.queryByText('Skip onboarding?')).not.toBeInTheDocument();
-      expect(screen.getByTestId('onb-step-welcome')).toBeInTheDocument();
       expect(mockNavigate).not.toHaveBeenCalled();
-    });
-
-    test('Escape cancels the skip confirm and keeps the user on welcome', () => {
-      renderFlow();
-      fireEvent.click(screen.getByTestId('onb-welcome-skip'));
-      expect(screen.getByText('Skip onboarding?')).toBeInTheDocument();
-      fireEvent.keyDown(document, { key: 'Escape' });
-      expect(screen.queryByText('Skip onboarding?')).not.toBeInTheDocument();
-      expect(screen.getByTestId('onb-step-welcome')).toBeInTheDocument();
-      expect(mockNavigate).not.toHaveBeenCalled();
-    });
-
-    test('switching role clears previously dismissed coach hints', () => {
-      writeOnboardingState({ coach_dismissed: ['deploy_hint'] });
-      renderFlow();
-      fireEvent.click(screen.getByTestId('onb-welcome-continue'));
-      fireEvent.click(screen.getByTestId('onb-role-analytics_engineer'));
-      expect(readOnboardingState().coach_dismissed).toEqual([]);
     });
   });
 });

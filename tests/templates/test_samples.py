@@ -198,3 +198,29 @@ def test_bundled_sample_runs_end_to_end(example_type, sample_dir, tmp_path):
         f"stdout:\n{result.stdout}\n"
         f"stderr:\n{result.stderr}"
     )
+
+
+CONCEPTS_JS = (
+    Path(__file__).resolve().parents[2]
+    / "viewer"
+    / "src"
+    / "components"
+    / "onboarding"
+    / "concepts.js"
+)
+
+
+@pytest.mark.parametrize("example_type,dir_name", SAMPLES)
+def test_viewer_manifest_names_the_sample_first_dashboard(example_type, dir_name):
+    """The onboarding start screen opens `/project/<dashboard>` after a sample
+    loads; a renamed dashboard would land new users on a not-found page."""
+    import re
+
+    project = yaml.safe_load(
+        (_bundled_samples_root() / dir_name / "project.visivo.yml").read_text()
+    )
+    first_dashboard = project["dashboards"][0]["name"]
+    source = CONCEPTS_JS.read_text()
+    block = re.search(rf"apiKey: '{dir_name}',\s*dashboard: '([^']+)'", source)
+    assert block, f"concepts.js SAMPLES['{dir_name}'] has no dashboard entry"
+    assert block.group(1) == first_dashboard

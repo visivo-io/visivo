@@ -1,7 +1,15 @@
 import os
+from urllib.parse import quote
 import click
 from visivo.commands.options import project_dir
 from visivo.models.example_type import ExampleTypeEnum
+
+
+def first_dashboard_path(project):
+    dashboards = project.dashboards or []
+    if not dashboards:
+        return None
+    return f"/project/{quote(dashboards[0].name, safe='')}"
 
 
 @click.command()
@@ -44,6 +52,7 @@ def init(project_dir, example, bare, headless, no_onboarding, port):
     and continues into `visivo serve` to open the in-browser onboarding wizard.
 
     Use --example to start from a bundled example project instead of the scaffold.
+    The example is built before the browser opens on its dashboard.
     Use --bare to skip auto-launching the dev server.
     Use --headless to skip opening the browser.
     Use --no-onboarding to skip the ?onboarding=1 query param when launching the browser.
@@ -61,8 +70,10 @@ def init(project_dir, example, bare, headless, no_onboarding, port):
     if bare:
         return
 
-    # Auto-launch the dev server pointed at the freshly-initialized project.
-    final_project_dir = project_dir or "."
+    # Serve from inside the new project, exactly like `cd <dir> && visivo serve`,
+    # so a sample's relative database paths resolve.
+    final_project_dir = os.path.abspath(project_dir or ".")
+    os.chdir(final_project_dir)
     from visivo.commands.serve_phase import serve_phase
     from visivo.commands.parse_project_phase import parse_project_phase
 
@@ -77,6 +88,8 @@ def init(project_dir, example, bare, headless, no_onboarding, port):
         dbt_target=None,
     )
 
+    open_path = first_dashboard_path(project) if example else None
+
     server, on_change, on_ready = serve_phase(
         output_dir=output_dir,
         working_dir=os.path.abspath(final_project_dir),
@@ -89,6 +102,7 @@ def init(project_dir, example, bare, headless, no_onboarding, port):
         new=not headless,
         onboarding=not no_onboarding,
         no_deprecation_warnings=False,
+        open_path=open_path,
     )
 
     Logger.instance().info(f"Server running at {server_url}")
