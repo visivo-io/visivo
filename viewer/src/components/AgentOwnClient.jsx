@@ -3,6 +3,20 @@ import React, { useRef, useState } from 'react';
 const DOCS_URL = 'https://docs.visivo.io/ai/mcp/';
 const DEFAULT_ORIGIN = 'http://localhost:8000';
 
+const VISIVO_HOST = /(^|\.)visivo\.io$/i;
+
+/**
+ * Whether to offer a bring-your-own-client setup at all.
+ *
+ * TEMPORARY, and removed by VIS-1665. The snippets below are built from the
+ * page origin, so in cloud they hand out `https://app.visivo.io/api/mcp/` --
+ * a route core does not serve. Telling someone to point Claude Code at an
+ * endpoint that 404s is worse than not mentioning it, so cloud says nothing
+ * until that endpoint exists. Local `visivo serve` is unaffected.
+ */
+export const offersOwnClient = (hostname = window.location.hostname) =>
+  !VISIVO_HOST.test(hostname || '');
+
 export const mcpUrl = (origin = window.location.origin) =>
   `${origin && origin !== 'null' ? origin : DEFAULT_ORIGIN}/api/mcp/`;
 
@@ -86,35 +100,61 @@ const Snippet = ({ snippet }) => {
   );
 };
 
-const AgentOwnClient = () => {
+// Collapsed until asked for: the panel is help, and leaving it open made
+// wiring up a third-party client look like the expected way to start rather
+// than one option. An inline disclosure rather than a layer over the page, so
+// Escape has nothing to close here.
+const AgentOwnClient = ({ hostname }) => {
+  const [open, setOpen] = useState(false);
+
+  // `hostname` is for tests; undefined reads window.location.
+  if (!offersOwnClient(hostname)) return null;
+
   const snippets = buildSnippets(mcpUrl());
   return (
     <section
       aria-labelledby="agent-own-client-heading"
-      className="mb-4 rounded-lg border border-gray-200 bg-white p-4"
+      className="mb-4 rounded-lg border border-gray-200 bg-white"
       data-testid="agent-own-client"
     >
-      <h2 id="agent-own-client-heading" className="text-base font-semibold text-gray-800">
-        Use your own agent
+      <h2>
+        <button
+          type="button"
+          onClick={() => setOpen(current => !current)}
+          aria-expanded={open}
+          aria-controls="agent-own-client-panel"
+          className="flex w-full items-center justify-between gap-2 rounded-lg p-4 text-left hover:bg-gray-50"
+        >
+          <span id="agent-own-client-heading" className="text-base font-semibold text-gray-800">
+            Use your own agent
+          </span>
+          <span className="shrink-0 text-xs font-medium text-gray-500">
+            {open ? 'Hide' : 'Show'}
+          </span>
+        </button>
       </h2>
-      <p className="mb-3 mt-1 text-sm text-gray-600">
-        Connect Claude Code, Cursor or Gemini CLI to this project over MCP. Keep{' '}
-        <code className="rounded bg-gray-100 px-1">visivo serve</code> running while the agent
-        works.
-      </p>
-      <div className="space-y-4">
-        {snippets.map(snippet => (
-          <Snippet key={snippet.id} snippet={snippet} />
-        ))}
-      </div>
-      <a
-        href={DOCS_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-3 inline-block text-sm font-medium text-primary-600 underline"
-      >
-        Read the MCP guide
-      </a>
+      {open && (
+        <div id="agent-own-client-panel" className="px-4 pb-4">
+          <p className="mb-3 text-sm text-gray-600">
+            Connect Claude Code, Cursor or Gemini CLI to this project over MCP. Keep{' '}
+            <code className="rounded bg-gray-100 px-1">visivo serve</code> running while the agent
+            works.
+          </p>
+          <div className="space-y-4">
+            {snippets.map(snippet => (
+              <Snippet key={snippet.id} snippet={snippet} />
+            ))}
+          </div>
+          <a
+            href={DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-block text-sm font-medium text-primary-600 underline"
+          >
+            Read the MCP guide
+          </a>
+        </div>
+      )}
     </section>
   );
 };
