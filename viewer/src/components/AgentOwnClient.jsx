@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { HiChevronRight } from 'react-icons/hi';
 
 const DOCS_URL = 'https://docs.visivo.io/ai/mcp/';
 const DEFAULT_ORIGIN = 'http://localhost:8000';
@@ -114,7 +115,7 @@ const AgentOwnClient = ({ hostname }) => {
   return (
     <section
       aria-labelledby="agent-own-client-heading"
-      className="mb-4 rounded-lg border border-gray-200 bg-white"
+      className="mb-4"
       data-testid="agent-own-client"
     >
       <h2>
@@ -123,18 +124,19 @@ const AgentOwnClient = ({ hostname }) => {
           onClick={() => setOpen(current => !current)}
           aria-expanded={open}
           aria-controls="agent-own-client-panel"
-          className="flex w-full items-center justify-between gap-2 rounded-lg p-4 text-left hover:bg-gray-50"
+          className="flex items-center gap-1.5 py-1 text-left text-gray-500 hover:text-gray-700"
         >
-          <span id="agent-own-client-heading" className="text-base font-semibold text-gray-800">
-            Use your own agent
-          </span>
-          <span className="shrink-0 text-xs font-medium text-gray-500">
-            {open ? 'Hide' : 'Show'}
-          </span>
+          <span id="agent-own-client-heading" className="text-sm">Use your own agent</span>
+          <HiChevronRight
+            aria-hidden="true"
+            className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
+              open ? 'rotate-90' : ''
+            }`}
+          />
         </button>
       </h2>
       {open && (
-        <div id="agent-own-client-panel" className="px-4 pb-4">
+        <div id="agent-own-client-panel" className="mt-2">
           <p className="mb-3 text-sm text-gray-600">
             Connect Claude Code, Cursor or Gemini CLI to this project over MCP. Keep{' '}
             <code className="rounded bg-gray-100 px-1">visivo serve</code> running while the agent
