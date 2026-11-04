@@ -14,16 +14,11 @@ models:
   - name: trips
     sql: |
       SELECT
-        t.tpep_pickup_datetime AS pickup_at,
         CAST(date_trunc('week', t.tpep_pickup_datetime) AS DATE) AS pickup_week,
         hour(t.tpep_pickup_datetime) AS pickup_hour,
-        dayname(t.tpep_pickup_datetime) AS pickup_weekday,
         isodow(t.tpep_pickup_datetime) AS pickup_weekday_num,
         z.Borough AS borough,
-        z.Zone AS pickup_zone,
         t.PULocationID AS pickup_location_id,
-        t.passenger_count,
-        t.trip_distance,
         t.fare_amount,
         t.tip_amount,
         t.total_amount,
@@ -43,11 +38,9 @@ models:
       - name: tip_rate
         expression: SUM(tip_amount) / SUM(fare_amount)
         description: Tips as a share of metered fares
-      - name: avg_distance
-        expression: AVG(trip_distance)
     dimensions:
       - name: day_type
-        expression: CASE WHEN isodow(pickup_at) IN (6, 7) THEN 'Weekend' ELSE 'Weekday' END
+        expression: CASE WHEN pickup_weekday_num IN (6, 7) THEN 'Weekend' ELSE 'Weekday' END
 
   - name: zones
     sql: SELECT LocationID AS location_id, Borough AS borough, Zone AS zone, service_zone FROM taxi_zones
