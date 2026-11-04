@@ -450,6 +450,7 @@ def test_cloud_deploy_success(client):
         assert response.status_code == 200
         assert data["message"] == "Deployment initiated successfully"
         mock_deploy_phase.assert_called_once()
+        assert mock_deploy_phase.call_args.kwargs["branch"] == "pre-test"
 
 
 def test_get_job_status_valid_id(client):

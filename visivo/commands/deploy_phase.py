@@ -1095,8 +1095,43 @@ def upload_resources(resources_by_segment, project_id, json_headers, host):
         Logger.instance().success(f"\t{len(configs)} {segment} created")
 
 
+SYNC_ACTION = "cloud_changes_not_in_repo"
+
+
+def _json(response):
+    try:
+        body = response.json()
+    except ValueError:
+        return {}
+    return body if isinstance(body, dict) else {}
+
+
+def sync_message(sync, host):
+    """The text for a deploy the cloud reports out of sync with cloud edits."""
+    lines = [sync.get("detail", "")]
+    for commit in sync.get("cloud_commits", [])[:5]:
+        author = commit.get("author") or "unknown"
+        lines.append(f"  - {commit.get('message') or '(no message)'} ({author})")
+    if len(sync.get("cloud_commits", [])) > 5:
+        lines.append(f"  - and {len(sync['cloud_commits']) - 5} more")
+    path = sync.get("connect_github_path")
+    if path:
+        lines.append(
+            "Connect this project to GitHub so cloud edits open pull requests on your repo "
+            f"and CLI and cloud edits stay in sync: {host}{path}"
+        )
+    return "\n".join(lines)
+
+
 def deploy_phase(
-    working_dir, user_dir, output_dir, branch, host, deploy_id=None, run_id=DEFAULT_RUN_ID
+    working_dir,
+    user_dir,
+    output_dir,
+    branch,
+    host,
+    deploy_id=None,
+    run_id=DEFAULT_RUN_ID,
+    force=False,
 ):
     """
     Synchronous function to manage the deployment, including initiating asynchronous operations.
@@ -1109,6 +1144,7 @@ def deploy_phase(
         host: Deployment host
         deploy_id: Optional deployment ID for tracking
         run_id: Run ID for file organization (default: "main")
+        force: Deploy over commits made in the cloud since the last CLI deploy
     """
 
     run_output_dir = f"{output_dir}/{run_id}"
@@ -1172,6 +1208,8 @@ def deploy_phase(
         "cli_version": project_json["cli_version"],
         "stage": branch,
     }
+    if force:
+        body["force"] = True
     json_headers = {
         "content-type": "application/json",
         "Authorization": f"Api-Key {profile_token}",
@@ -1193,11 +1231,21 @@ def deploy_phase(
         raise click.ClickException(f"Token not authorized for host: {host}")
     if response.status_code == 404:
         raise click.ClickException(f"404 error raised. Does your user have an account?")
+    if response.status_code == 409 and _json(response).get("action") == SYNC_ACTION:
+        message = (
+            sync_message(_json(response), host)
+            + "\nTo replace the cloud changes with your local files, run `visivo deploy --force`."
+        )
+        if deploy_id:
+            send_progress(message, "info", 400)
+        raise click.ClickException(message)
     if response.status_code == 201:
         Logger.instance().success(
             f"Project uploaded in {time() - upload_project_start_time:.2f} seconds"
         )
         project_data = response.json()
+        if project_data.get("sync_warning"):
+            Logger.instance().warn(sync_message(project_data["sync_warning"], host))
         project_id = project_data["id"]
         project_url = project_data["url"]
 

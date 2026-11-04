@@ -530,3 +530,154 @@ def test_upload_project_settings_raises_on_other_theme_errors(requests_mock):
     requests_mock.post("http://host/api/theme/?project_id=p1", status_code=400)
     with pytest.raises(requests.HTTPError):
         upload_project_settings({"theme": {"mode": "dark"}}, "p1", {}, "http://host")
+
+
+@pytest.fixture(autouse=False)
+def skip_run_output_check():
+    with mock.patch("visivo.commands.deploy_phase.verify_run_output"):
+        yield
+
+
+def _deployable_project():
+    project = ProjectFactory()
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
+    working_dir = os.path.dirname(tmp)
+    temp_file(PROFILE_FILE_NAME, "token: value", working_dir + "/.visivo")
+    return working_dir
+
+
+SYNC_REFUSAL = {
+    "action": "cloud_changes_not_in_repo",
+    "detail": "'project' on branch 'stage' has 1 commit made in Visivo Cloud since the last CLI deploy.",
+    "blocked": True,
+    "forced": False,
+    "cloud_commits": [{"id": "c1", "message": "Fix revenue", "author": "Sam"}],
+    "open_drafts": [],
+    "connect_github_path": "/acme/github?project=project",
+}
+
+
+def test_deploy_refused_over_cloud_commits_names_them_and_links_github(
+    requests_mock, skip_run_output_check
+):
+    working_dir = _deployable_project()
+    requests_mock.post("http://host/api/projects/", json=SYNC_REFUSAL, status_code=409)
+
+    with pytest.raises(click.ClickException) as exc:
+        deploy_phase(
+            branch="stage",
+            working_dir=working_dir,
+            user_dir=working_dir,
+            output_dir=temp_folder(),
+            host="http://host",
+        )
+
+    message = str(exc.value)
+    assert "1 commit made in Visivo Cloud" in message
+    assert "Fix revenue (Sam)" in message
+    assert "http://host/acme/github?project=project" in message
+    assert "visivo deploy --force" in message
+    assert [r.method for r in requests_mock.request_history] == ["POST"]
+    assert "force" not in requests_mock.request_history[0].json()
+
+
+def test_deploy_with_force_asks_the_cloud_to_replace_cloud_commits(
+    requests_mock, skip_run_output_check
+):
+    working_dir = _deployable_project()
+    requests_mock.post("http://host/api/projects/", status_code=401)
+
+    with pytest.raises(click.ClickException):
+        deploy_phase(
+            branch="stage",
+            working_dir=working_dir,
+            user_dir=working_dir,
+            output_dir=temp_folder(),
+            host="http://host",
+            force=True,
+        )
+
+    assert requests_mock.request_history[0].json()["force"] is True
+
+
+def test_an_unrelated_conflict_is_still_an_unexpected_error(requests_mock, skip_run_output_check):
+    working_dir = _deployable_project()
+    requests_mock.post("http://host/api/projects/", text="not json", status_code=409)
+
+    with pytest.raises(click.ClickException) as exc:
+        deploy_phase(
+            branch="stage",
+            working_dir=working_dir,
+            user_dir=working_dir,
+            output_dir=temp_folder(),
+            host="http://host",
+        )
+
+    assert "unexpected error" in str(exc.value)
+
+
+def test_sync_message_for_open_drafts_links_github_without_a_commit_list():
+    from visivo.commands.deploy_phase import sync_message
+
+    message = sync_message(
+        {
+            "detail": "1 cloud draft of 'shop' on branch 'main' has uncommitted changes.",
+            "cloud_commits": [],
+            "connect_github_path": "/acme/github?project=shop",
+        },
+        "https://app.visivo.io",
+    )
+
+    assert message.splitlines() == [
+        "1 cloud draft of 'shop' on branch 'main' has uncommitted changes.",
+        "Connect this project to GitHub so cloud edits open pull requests on your repo and "
+        "CLI and cloud edits stay in sync: https://app.visivo.io/acme/github?project=shop",
+    ]
+
+
+def test_sync_message_caps_the_commit_list():
+    from visivo.commands.deploy_phase import sync_message
+
+    commits = [{"message": f"c{i}", "author": "Sam"} for i in range(7)]
+    message = sync_message({"detail": "d", "cloud_commits": commits}, "http://host")
+
+    assert "c4 (Sam)" in message
+    assert "c5 (Sam)" not in message
+    assert "and 2 more" in message
+
+
+def test_a_deploy_with_a_sync_warning_prints_it_and_continues(requests_mock, skip_run_output_check):
+    from visivo.logger.logger import Logger
+
+    working_dir = _deployable_project()
+    warning = {
+        **SYNC_REFUSAL,
+        "blocked": False,
+        "cloud_commits": [],
+        "detail": "1 cloud draft of 'project' on branch 'stage' has uncommitted changes.",
+    }
+    requests_mock.post(
+        "http://host/api/projects/",
+        json={"id": "p1", "url": "/acme/stage/project", "sync_warning": warning},
+        status_code=201,
+    )
+
+    class Stop(Exception):
+        pass
+
+    with (
+        mock.patch.object(Logger.instance(), "warn") as warn,
+        mock.patch("visivo.commands.deploy_phase.upload_resources", side_effect=Stop),
+    ):
+        with pytest.raises(Stop):
+            deploy_phase(
+                branch="stage",
+                working_dir=working_dir,
+                user_dir=working_dir,
+                output_dir=temp_folder(),
+                host="http://host",
+            )
+
+    [message] = [call.args[0] for call in warn.call_args_list]
+    assert "1 cloud draft" in message
+    assert "http://host/acme/github?project=project" in message
