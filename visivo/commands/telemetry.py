@@ -26,9 +26,7 @@ def telemetry():
 
 
 def _echo(message):
-    spinner = Logger.instance().spinner
-    if spinner:
-        spinner.stop()
+    Logger.instance().stop_spinner()
     click.echo(message)
 
 

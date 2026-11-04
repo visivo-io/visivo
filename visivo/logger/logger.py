@@ -26,6 +26,10 @@ class Logger:
             self.spinner.start()
             self.echo = None
 
+    def stop_spinner(self):
+        if self.spinner:
+            self.spinner.stop()
+
     def debug(self, message: str):
         if os.environ.get("DEBUG") == "true":
             if self.echo:
