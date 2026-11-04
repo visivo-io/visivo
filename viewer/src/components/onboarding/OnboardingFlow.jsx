@@ -2,12 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import './onboarding.css';
 import { CONCEPTS } from './concepts';
-import Welcome from './screens/Welcome';
 import Role from './screens/Role';
 import Concept from './screens/Concept';
-import Data from './screens/Data';
-import Cloud from './screens/Cloud';
-import Handoff from './screens/Handoff';
+import Start from './screens/Start';
 import { fireEvent } from './telemetry';
 import { readOnboardingState, writeOnboardingState } from './onboardingState';
 import SourceEditForm from '../views/common/SourceEditForm';
@@ -18,13 +15,14 @@ import useEscapeToClose from '../../hooks/useEscapeToClose';
 
 function buildSteps() {
   return [
-    { kind: 'welcome' },
+    { kind: 'start' },
     { kind: 'role' },
     ...CONCEPTS.map((c, i) => ({ kind: 'concept', concept: c, idx: i + 1 })),
-    { kind: 'data' },
-    { kind: 'cloud' },
-    { kind: 'handoff' },
   ];
+}
+
+export function sampleDestination(sample) {
+  return sample?.dashboard ? `/project/${encodeURIComponent(sample.dashboard)}` : '/project';
 }
 
 export default function OnboardingFlow() {
@@ -39,7 +37,7 @@ export default function OnboardingFlow() {
   const startTs = useRef(Date.now());
 
   const steps = useMemo(buildSteps, []);
-  const [stepIdx, setStepIdx] = useState(() => persisted.current.last_step_idx ?? 0);
+  const [stepIdx, setStepIdx] = useState(0);
   const [role, setRoleRaw] = useState(persisted.current.role ?? '');
   // Wrapping setRole so that switching role mid-flow clears the per-item
   // coach_dismissed set. Otherwise a user who picks "Other" first and
@@ -59,20 +57,22 @@ export default function OnboardingFlow() {
     });
   }, []);
   const [showSourceModal, setShowSourceModal] = useState(false);
-  const [showSkipConfirm, setShowSkipConfirm] = useState(false);
-  const [outcome, setOutcome] = useState({
-    path: null,
-    sample: null,
-    sourceConnected: false,
-    cloudConnected: false,
-  });
   const [sampleLoading, setSampleLoading] = useState(false);
   const [sampleLoadingText, setSampleLoadingText] = useState('');
   const [errorMessage, setErrorMessage] = useState(null);
   const [sourceSaving, setSourceSaving] = useState(false);
 
   useEscapeToClose(showSourceModal, () => !sourceSaving && setShowSourceModal(false));
-  useEscapeToClose(showSkipConfirm, () => setShowSkipConfirm(false));
+
+  // Loading a sample makes the server broadcast `reload`; a hard page reload
+  // here would drop the pending navigation to the sample's dashboard.
+  useEffect(() => {
+    const previous = window.__VISIVO_SOFT_RELOAD__;
+    window.__VISIVO_SOFT_RELOAD__ = true;
+    return () => {
+      window.__VISIVO_SOFT_RELOAD__ = previous;
+    };
+  }, []);
 
   const fire = useCallback((event, props = {}) => {
     fireEvent(event, { role: role || null, ...props });
@@ -97,7 +97,8 @@ export default function OnboardingFlow() {
   }, [stepIdx, role, persistProgress]);
 
   const current = steps[stepIdx];
-  const goNext = () => setStepIdx(i => Math.min(i + 1, steps.length - 1));
+  const isLastStep = stepIdx >= steps.length - 1;
+  const goNext = () => setStepIdx(i => (i >= steps.length - 1 ? 0 : i + 1));
   const handleBack = () => {
     if (stepIdx === 0) return;
     if (current?.kind === 'concept') {
@@ -117,43 +118,48 @@ export default function OnboardingFlow() {
     [steps, fire]
   );
 
-  // keyboard nav: ← goes back, except on welcome/handoff
+  // keyboard nav: ← goes back a step in the concept tour
   useEffect(() => {
     const onKey = e => {
-      // Don't hijack arrow keys while a modal is open (the source/skip dialogs
-      // sit on top of the flow) or while the user is typing in a field —
-      // otherwise ← quietly navigates the flow behind the open form.
-      if (showSourceModal || showSkipConfirm) return;
+      // Skip while the source dialog is open or a field has focus, so ← never
+      // moves the flow behind an open form.
+      if (showSourceModal) return;
       const el = e.target;
       const tag = el?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) return;
-      if (e.key === 'ArrowLeft' && stepIdx > 0 && current?.kind !== 'handoff') handleBack();
+      if (e.key === 'ArrowLeft' && stepIdx > 0) handleBack();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepIdx, current, showSourceModal, showSkipConfirm]);
+  }, [stepIdx, current, showSourceModal]);
 
   const completeAndNavigate = useCallback(
-    destination => {
-      const completedAt = new Date().toISOString();
+    ({ destination, path, sample = null, sourceConnected = false }) => {
       const totalDurationMs = Date.now() - startTs.current;
+      fire('onboarding_completed', {
+        path,
+        total_duration_ms: totalDurationMs,
+        source_connected: sourceConnected,
+        cloud_connected: false,
+      });
       writeOnboardingState({
         ...persisted.current,
-        completed_at: completedAt,
-        path: outcome.path,
-        sample: outcome.sample,
-        source_connected: outcome.sourceConnected,
-        cloud_connected: outcome.cloudConnected,
+        completed_at: new Date().toISOString(),
+        path,
+        sample,
+        source_connected: sourceConnected,
+        cloud_connected: false,
         total_duration_ms: totalDurationMs,
         destination,
       });
       // Refresh the project so isNewProject flips and Home renders the real app
-      fetchProject?.().finally(() => {
+      const refreshed = fetchProject ? fetchProject() : Promise.resolve();
+      Promise.resolve(refreshed).finally(() => {
         navigate(destination, { replace: true });
       });
     },
-    [navigate, outcome, fetchProject]
+    [navigate, fetchProject, fire]
   );
 
   const handleSkip = useCallback(() => {
@@ -171,7 +177,7 @@ export default function OnboardingFlow() {
   const handleSamplePick = useCallback(
     async sample => {
       setSampleLoading(true);
-      setSampleLoadingText('Importing example…');
+      setSampleLoadingText(`Building ${sample.title}…`);
       setErrorMessage(null);
       try {
         const res = await fetch('/api/project/load_example/', {
@@ -187,29 +193,31 @@ export default function OnboardingFlow() {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.message || 'Failed to import the example dashboard.');
         }
-        setSampleLoadingText('Preparing project…');
-        setOutcome(o => ({ ...o, path: 'sample', sample: sample.name }));
-        // Brief says cloud comes after data either way.
-        const cloudIdx = steps.findIndex(s => s.kind === 'cloud');
-        setStepIdx(cloudIdx);
+        setSampleLoadingText('Opening the dashboard…');
+        completeAndNavigate({
+          destination: sampleDestination(sample),
+          path: 'sample',
+          sample: sample.name,
+        });
       } catch (err) {
         setErrorMessage(err.message || 'Failed to import sample.');
-      } finally {
         setSampleLoading(false);
       }
     },
-    [projectDir, projectName, steps]
+    [projectDir, projectName, completeAndNavigate]
   );
 
   const handleConnected = useCallback(
     sourceType => {
       fire('onboarding_data_connect_succeeded', { source_type: sourceType });
       setShowSourceModal(false);
-      setOutcome(o => ({ ...o, path: 'data', sourceConnected: true }));
-      const cloudIdx = steps.findIndex(s => s.kind === 'cloud');
-      setStepIdx(cloudIdx);
+      completeAndNavigate({
+        destination: '/workspace/exploration',
+        path: 'data',
+        sourceConnected: true,
+      });
     },
-    [fire, steps]
+    [fire, completeAndNavigate]
   );
 
   const handleSourceFormSave = useCallback(
@@ -287,27 +295,24 @@ export default function OnboardingFlow() {
     [projectDir, projectName, handleConnected]
   );
 
-  const handleHandoff = useCallback(() => {
-    let destination = '/editor';
-    if (outcome.sourceConnected) destination = '/workspace/exploration';
-    else if (outcome.path === 'sample') destination = '/project';
-    setTimeout(() => completeAndNavigate(destination), 1400);
-    return destination;
-  }, [outcome, completeAndNavigate]);
-
   // Render current step
   let body = null;
-  if (current?.kind === 'welcome') {
+  if (current.kind === 'start') {
     body = (
-      <Welcome
-        onContinue={goNext}
-        onSkip={() => setShowSkipConfirm(true)}
+      <Start
+        role={role}
+        onConnectClick={() => setShowSourceModal(true)}
+        onSamplePick={handleSamplePick}
+        onStartEmpty={handleSkip}
+        onTakeTour={goNext}
         fire={fire}
+        isLoadingSample={sampleLoading}
+        loadingText={sampleLoadingText}
       />
     );
-  } else if (current?.kind === 'role') {
+  } else if (current.kind === 'role') {
     body = <Role role={role} onPick={setRole} onContinue={goNext} fire={fire} />;
-  } else if (current?.kind === 'concept') {
+  } else if (current.kind === 'concept') {
     body = (
       <Concept
         concept={current.concept}
@@ -317,66 +322,25 @@ export default function OnboardingFlow() {
         fire={fire}
       />
     );
-  } else if (current?.kind === 'data') {
-    body = (
-      <Data
-        role={role || 'other'}
-        onConnectClick={() => setShowSourceModal(true)}
-        onSamplePick={handleSamplePick}
-        fire={fire}
-        isLoadingSample={sampleLoading}
-        loadingText={sampleLoadingText}
-      />
-    );
-  } else if (current?.kind === 'cloud') {
-    body = (
-      <Cloud
-        role={role || 'other'}
-        connected={outcome.cloudConnected}
-        onConnect={() => setOutcome(o => ({ ...o, cloudConnected: true }))}
-        onLater={goNext}
-        onConnectedDone={goNext}
-        fire={fire}
-      />
-    );
-  } else if (current?.kind === 'handoff') {
-    let destination = '/editor';
-    if (outcome.sourceConnected) destination = '/workspace/exploration';
-    else if (outcome.path === 'sample') destination = '/project';
-    body = (
-      <Handoff
-        destination={destination}
-        totalDurationMs={Date.now() - startTs.current}
-        sourceConnected={outcome.sourceConnected}
-        cloudConnected={outcome.cloudConnected}
-        fire={fire}
-      />
-    );
   }
 
-  // Auto-handoff trigger
-  useEffect(() => {
-    if (current?.kind === 'handoff') {
-      handleHandoff();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.kind]);
-
-  const total = steps.length - 1; // exclude handoff itself
-  const progress = Math.min(stepIdx / total, 1);
+  const progress = Math.min(stepIdx / (steps.length - 1), 1);
+  const isTour = current.kind !== 'start';
 
   return (
     <div className="onb-frame" data-testid="onboarding-frame">
       <div className="onb-branch">
-        <div className="onb-progress">
-          <div
-            className="onb-progress__fill"
-            style={{ width: `${progress * 100}%` }}
-            data-testid="onboarding-progress"
-          />
-        </div>
+        {isTour && (
+          <div className="onb-progress">
+            <div
+              className="onb-progress__fill"
+              style={{ width: `${progress * 100}%` }}
+              data-testid="onboarding-progress"
+            />
+          </div>
+        )}
 
-        {current?.kind !== 'handoff' && (
+        {isTour && (
           <div className="onb-meta">
             <button
               className="onb-meta__back"
@@ -391,17 +355,9 @@ export default function OnboardingFlow() {
               Visivo onboarding
             </span>
             <span className="onb-meta__step" data-testid="onb-step-label">
-              {current?.kind === 'concept'
+              {current.kind === 'concept'
                 ? `Concept ${current.idx} of ${CONCEPTS.length}`
-                : current?.kind === 'welcome'
-                ? 'Welcome'
-                : current?.kind === 'role'
-                ? 'Step 1'
-                : current?.kind === 'data'
-                ? 'Connect your data'
-                : current?.kind === 'cloud'
-                ? 'Cloud (optional)'
-                : ''}
+                : 'Concept tour'}
             </span>
           </div>
         )}
@@ -422,7 +378,8 @@ export default function OnboardingFlow() {
               data-testid="onb-concept-continue"
               style={{ boxShadow: '0 10px 30px -12px rgba(0,0,0,0.25)' }}
             >
-              Continue <span style={{ opacity: 0.7 }}>→</span>
+              {isLastStep ? 'Pick a sample' : 'Continue'}{' '}
+              <span style={{ opacity: 0.7 }}>→</span>
             </button>
           </div>
         )}
@@ -497,32 +454,6 @@ export default function OnboardingFlow() {
           </div>
         )}
 
-        {showSkipConfirm && (
-          <div className="onb-modal-backdrop" onClick={() => setShowSkipConfirm(false)}>
-            <div className="onb-confirm" onClick={e => e.stopPropagation()}>
-              <h3>Skip onboarding?</h3>
-              <p>
-                You'll go straight to the editor with an empty project. You can re-trigger this
-                later from the Help menu.
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                <button
-                  className="onb-btn onb-btn--ghost"
-                  onClick={() => setShowSkipConfirm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="onb-btn onb-btn--secondary"
-                  onClick={handleSkip}
-                  data-testid="onb-skip-confirm"
-                >
-                  Yes, skip
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

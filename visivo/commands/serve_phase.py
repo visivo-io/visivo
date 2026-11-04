@@ -12,6 +12,12 @@ import os
 import traceback
 
 
+def browser_url(server_url, onboarding=False, open_path=None):
+    if open_path:
+        return f"{server_url}{open_path}"
+    return f"{server_url}/?onboarding=1" if onboarding else server_url
+
+
 def serve_phase(
     output_dir,
     working_dir,
@@ -25,6 +31,7 @@ def serve_phase(
     onboarding=False,
     no_deprecation_warnings=False,
     host=None,
+    open_path=None,
     port=None,
 ):
 
@@ -147,7 +154,8 @@ def serve_phase(
                 Logger.instance().info("View your project at: " + server_url)
                 try:
                     if new:
-                        open_url = f"{server_url}/?onboarding=1" if onboarding else server_url
+                        open_url = browser_url(server_url, onboarding, open_path)
+                        Logger.instance().info(f"Opening {open_url}")
                         webbrowser.open(open_url, new=0, autoraise=True)
                 except Exception as e:
                     error_message = str(e)

@@ -11,7 +11,7 @@ nvm use
 
 if [ -n "$1" ]; then
   echo "=== Running tests matching: $1 ==="
-  yarn test --watchAll=false --testPathPattern="$1"
+  yarn test --watchAll=false --testPathPatterns="$1"
 else
   echo "=== Running all tests ==="
   yarn test --watchAll=false

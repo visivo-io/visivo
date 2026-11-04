@@ -286,3 +286,15 @@ def test_two_objects_named_like_the_project_are_still_ambiguous():
 
     with pytest.raises(ValueError, match="points to multiple objects"):
         Project(**project.model_dump())
+
+
+def test_get_diff_dag_filter_against_an_unnamed_empty_project_selects_everything():
+    """VIS-1710: loading a sample resets the served project to a bare Project();
+    diffing against it must select every node so the sample builds."""
+    new_project = ProjectFactory()
+
+    diff_filter = new_project.dag().get_diff_dag_filter(Project(), None)
+
+    names = {part.rstrip("+") for part in diff_filter.split(",") if part}
+    assert new_project.dashboards[0].name in names
+    assert len(names) > 1
