@@ -22,6 +22,43 @@ def normalize_deployment_root(deployment_root):
     return f"/{deployment_root}" if deployment_root else ""
 
 
+DUCKDB_CDN_FLAG = "window.duckdbFromCdn = true;"
+
+
+def copy_parquet_compacted(src, dst):
+    """Copy a parquet file into a dist, re-encoded smaller when that helps.
+
+    A dist is downloaded by every visitor, so its data files are written once
+    more with a higher ZSTD level and one large row group. The run writes
+    them for fast local reads, not for the wire. The smaller of the two files
+    ships, and a file DuckDB cannot rewrite ships as it is.
+    """
+    import os
+    import shutil
+
+    tmp = f"{dst}.compact"
+    try:
+        import duckdb
+
+        with duckdb.connect() as conn:
+            conn.execute(
+                "COPY (SELECT * FROM read_parquet(?)) TO '"
+                + tmp.replace("'", "''")
+                + "' (FORMAT parquet, COMPRESSION zstd, COMPRESSION_LEVEL 9,"
+                " ROW_GROUP_SIZE 1000000)",
+                [src],
+            )
+        if os.path.getsize(tmp) < os.path.getsize(src):
+            os.replace(tmp, dst)
+            return
+    except Exception as e:
+        Logger.instance().debug(f"Copying {os.path.basename(src)} as it is: {e}")
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+    shutil.copyfile(src, dst)
+
+
 def _current_artifacts(json_paths):
     """One artifact per object name, dropping residue from older runs.
 
@@ -82,6 +119,7 @@ def dist_phase(
     dbt_profile: str = None,
     dbt_target: str = None,
     deployment_root: str = None,
+    duckdb_from_cdn: bool = False,
 ):
     import os
     import json
@@ -189,7 +227,7 @@ def dist_phase(
                 continue
             for parquet_file in glob(f"{files_src}/*.parquet"):
                 filename = os.path.basename(parquet_file)
-                shutil.copyfile(parquet_file, f"{dist_dir}/data/files/{filename}")
+                copy_parquet_compacted(parquet_file, f"{dist_dir}/data/files/{filename}")
 
         # Generate models.json for dist mode.
         #
@@ -344,6 +382,12 @@ def dist_phase(
                 "window.deploymentRoot = '';",
                 f"window.deploymentRoot = '{deployment_root}';",
             )
+            if duckdb_from_cdn:
+                content = content.replace(
+                    "window.deploymentRoot = ",
+                    f"{DUCKDB_CDN_FLAG}\n      window.deploymentRoot = ",
+                    1,
+                )
             content = content.replace(
                 'href="/',
                 f'href="{deployment_root}/',

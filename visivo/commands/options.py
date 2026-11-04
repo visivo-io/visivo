@@ -242,6 +242,19 @@ def new(function):
     return function
 
 
+def duckdb_from_cdn(function):
+    click.option(
+        "--duckdb-from-cdn",
+        is_flag=True,
+        default=False,
+        help=(
+            "Load the DuckDB-WASM engine from the jsDelivr CDN instead of from the dist. "
+            "Use it when your host cannot serve the 34 MB .wasm file compressed."
+        ),
+    )(function)
+    return function
+
+
 def deployment_root(function):
     click.option(
         "-dr",
