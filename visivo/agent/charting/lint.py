@@ -74,7 +74,11 @@ def warnings(app, type_key, config):
     if type_key == "inputs":
         return _date_range(config)
     if type_key == "charts":
-        return _axis_titles(app, config) + _formats(config.get("layout"))
+        return (
+            _axis_titles(app, config)
+            + _formats(config.get("layout"))
+            + _layout_inputs(app, config.get("layout"))
+        )
     return []
 
 
@@ -195,6 +199,21 @@ def _formats(node):
             )
         else:
             found.extend(_formats(value))
+    return found
+
+
+def _layout_inputs(app, layout):
+    if getattr(app, "input_manager", None) is None:
+        return []
+    found = []
+    for path, value in _strings(layout, "layout"):
+        for name in sorted(extract_ref_names(value)):
+            if not _is_input(app, name):
+                found.append(
+                    f"`{path}` refers to `${{ref({name})}}`, but no input named `{name}` exists, "
+                    "so the text shows the raw reference. Write the input first with "
+                    "write_input, or fix the name."
+                )
     return found
 
 
