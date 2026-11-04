@@ -112,6 +112,12 @@ jobs:
           uv run write-schema-json
           uv run copy-install-script
 
+      # Before the tag and the GitHub release, so a package PyPI would refuse stops the release here.
+      - name: Build Python package
+        run: |
+          uv build
+          python .github/scripts/check_dist.py dist
+
       - name: Commit changes
         uses: EndBug/add-and-commit@v10
         if: ${{ inputs.dryrun == false }}
@@ -163,9 +169,7 @@ jobs:
       - name: Publish
         id: publish
         if: ${{ inputs.dryrun == false }}
-        run: |
-          uv build
-          uv publish --token ${{ secrets.PYPI_TOKEN }}
+        run: uv publish --token ${{ secrets.PYPI_TOKEN }} dist/*
 
       - name: Trigger Core Deployment
         if: ${{ inputs.dryrun == false }}
