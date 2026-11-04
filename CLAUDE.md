@@ -21,13 +21,13 @@ When one is justified, keep it to a line or two — state the constraint, not th
 - **Important**: The `nvm use` command reads the `.nvmrc` file in the viewer directory to select the correct Node version
 
 ### Python CLI Development
-- **Install dependencies**: `poetry install`
-- **Run tests**: `poetry run pytest`
-- **Format code**: `poetry run black .` (line length: 100)
+- **Install dependencies**: `uv sync`
+- **Run tests**: `uv run pytest`
+- **Format code**: `uv run black .` (line length: 100)
 - **Install package locally**: `pip install -e .`
 - **Run CLI**: `visivo [command]`
 - **Ensure python file formatting**: ensure that all python files are formatted in accordance with our black settings
-- When editing the python in @visivo/ remember to run - `poetry run black .`
+- When editing the python in @visivo/ remember to run - `uv run black .`
 ### JavaScript Viewer Development
 - **Install dependencies**: `yarn install` (in `viewer/` directory)
 - **Run tests**: `yarn test`
@@ -113,7 +113,7 @@ Each CLI command follows a consistent pattern:
 
 ## Development Workflow
 
-1. **Python changes**: Edit in `visivo/`, test with `poetry run pytest`, install with `pip install -e .`
+1. **Python changes**: Edit in `visivo/`, test with `uv run pytest`, install with `pip install -e .`
 2. **Viewer changes**: Edit in `viewer/src/`, test with `yarn test`, run with `yarn start`
 3. **Integration**: Use `yarn deploy` to build viewer into CLI package
 4. **Testing**: Use projects in `test-projects/` for end-to-end testing
@@ -270,16 +270,16 @@ fork the palette in a single component.
 ## Mandatory Testing Protocol
 
 ### After EVERY code edit:
-- **Python edits** → `poetry run pytest tests/ -x --tb=short -q` (fail-fast, quiet)
+- **Python edits** → `uv run pytest tests/ -x --tb=short -q` (fail-fast, quiet)
 - **JS edits** → `cd viewer && source ~/.nvm/nvm.sh; nvm use; yarn test --watchAll=false --testPathPatterns="<changed-component>"`
 - **Always** run `yarn lint` after JS changes
-- **Python formatting** → `poetry run black --check visivo/` after Python changes
+- **Python formatting** → `uv run black --check visivo/` after Python changes
 
 ### After completing a feature or phase:
-1. ALL Python tests: `poetry run pytest tests/ -x --tb=short`
+1. ALL Python tests: `uv run pytest tests/ -x --tb=short`
 2. ALL JS tests: `cd viewer && source ~/.nvm/nvm.sh; nvm use; yarn test --watchAll=false`
 3. JS lint: `cd viewer && source ~/.nvm/nvm.sh; nvm use; yarn lint`
-4. Black check: `poetry run black --check visivo/`
+4. Black check: `uv run black --check visivo/`
 5. Sandbox endpoint tests (if backend changed): `bash scripts/run_sandbox_tests.sh`
 6. Playwright story tests (if UI changed): `cd viewer && npx playwright test e2e/stories/ --reporter=list`
 

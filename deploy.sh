@@ -1,3 +1,3 @@
-pip install poetry
-poetry install
-poetry run mkdocs build
+pip install uv
+uv sync
+uv run mkdocs build

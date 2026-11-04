@@ -390,3 +390,39 @@ class TestSnowflakeSourceGetSchema:
         # Verify metadata
         assert schema["metadata"]["default_schema"] == "EDW"
         assert schema["metadata"]["total_tables"] == 3
+
+
+class TestProtocolIsAConnectArg:
+    """`protocol` must not reach the URL query string.
+
+    snowflake-sqlalchemy refuses connection parameters there from 1.10 --
+    "Connection parameter 'protocol' cannot be set via the URL query string
+    for safety reasons" -- and the published constraint is `>=1.6.1,<2`, so a
+    fresh `pip install visivo` resolves to a version that rejects it. CI did
+    not catch it because poetry.lock pinned 1.9.0 long after users had moved
+    past it.
+    """
+
+    def _source(self, **extra):
+        return SnowflakeSource(
+            name="source",
+            type="snowflake",
+            database="db",
+            account="acct",
+            username="user",
+            password="pw",
+            **extra,
+        )
+
+    def test_it_is_passed_through_connect_args(self):
+        source = self._source(protocol="https")
+
+        assert source.connect_args()["protocol"] == "https"
+
+    def test_it_is_absent_from_the_url(self):
+        url = str(self._source(protocol="https").url())
+
+        assert "protocol" not in url
+
+    def test_no_protocol_means_no_connect_arg(self):
+        assert "protocol" not in self._source().connect_args()

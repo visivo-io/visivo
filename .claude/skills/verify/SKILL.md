@@ -21,11 +21,11 @@ All commands run from the `visivo/` repo root.
 ### Python
 
 ```bash
-poetry run pytest tests/ -x --tb=short -q
-poetry run black --check --target-version py312 .
+uv run pytest tests/ -x --tb=short -q
+uv run black --check --target-version py312 .
 ```
 
-If Black reports unformatted files in your changed paths, run `poetry run black .` and re-check.
+If Black reports unformatted files in your changed paths, run `uv run black .` and re-check.
 
 ### Pydantic models
 

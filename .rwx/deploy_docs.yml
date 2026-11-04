@@ -30,23 +30,23 @@ tasks:
 
   - key: Install-CLI-Dependencies
     use: [code, python]
-    run: pip install poetry && poetry install --with dev
+    run: pip install uv && uv sync --frozen
 
   - key: Generate-Schema
     use: [Install-CLI-Dependencies]
     run: |
-      poetry run pytest tests/parsers/test_schema_generator.py 
+      uv run pytest tests/parsers/test_schema_generator.py 
       find tmp -name visivo_schema.json -exec cp {} ./mkdocs/assets \;
 
   - key: Generate-Configuration-Files
     use: [Generate-Schema]
-    run: poetry run python mkdocs/src/write_mkdocs_markdown_files.py
+    run: uv run python mkdocs/src/write_mkdocs_markdown_files.py
 
   - key: Deploy-mkdocs-to-docs-site
     use: [Generate-Configuration-Files]
     run: |
-      PYTHONPATH=$PWD poetry run mkdocs build
-      PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
+      PYTHONPATH=$PWD uv run mkdocs build
+      PYTHONPATH=$PWD uv run mkdocs gh-deploy --force
     env:
       GITHUB_ACCESS_TOKEN: ${{ secrets.VISIVO_GITHUB_GENERAL_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.VISIVO_GITHUB_GENERAL_TOKEN }}

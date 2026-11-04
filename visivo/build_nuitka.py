@@ -18,9 +18,9 @@ which Nuitka supports — so the data must land under the visivo package dir.
 Requires Nuitka >= 4.1 (the repo's pinned 2.x fails: no such --enable-plugin,
 and pyenv's --enable-shared trips static-libpython detection). Bumping the pin
 without disturbing other deps is deferred to VIS-1192 — for now:
-    poetry run pip install -U 'nuitka>=4.1'
+    uv pip install -U 'nuitka>=4.1'
 
-Run:  poetry run python visivo/build_nuitka.py
+Run:  uv run python visivo/build_nuitka.py
 Out:  dist-nuitka/command_line.dist/visivo-app
 """
 
@@ -74,7 +74,7 @@ def build():
         f"--include-data-dir={HERE / 'schema'}=visivo/schema",
         f"--include-data-dir={HERE / 'viewers'}=visivo/viewers",
         # What the viewer fetches from /api/schema, written by
-        # `poetry run write-schema-json`.
+        # `uv run write-schema-json`.
         f"--include-data-dir={HERE / 'src'}=visivo/src",
         # The agent reads its skills and chart rules from disk at runtime.
         f"--include-data-dir={HERE / 'agent' / 'skills'}=visivo/agent/skills",
