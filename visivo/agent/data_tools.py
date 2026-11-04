@@ -281,6 +281,34 @@ def _query_strings(node, path):
             yield from _query_strings(getattr(node, field), f"{path}.{field}" if path else field)
 
 
+FANOUT_SKILL_HINT = "read_skill('join-models-safely') gives the safe patterns."
+
+
+def probe_relation(app, relation):
+    """``(cardinality, warning)`` for ``relation``, measured on its models'
+    source: which side repeats its join key. ``(None, None)`` when it cannot
+    be measured."""
+    from visivo.server.services import join_cardinality
+
+    sides = join_cardinality.relation_sides(app, relation)
+    if sides is None:
+        return None, None
+    kind = join_cardinality.cardinality(sides)
+    shape = {side.model: "one" if side.stats.unique else "many" for side in sides}
+    warning = join_cardinality.relation_warning(relation, sides)
+    if warning:
+        warning += f" {FANOUT_SKILL_HINT}"
+    return {"kind": kind, **shape}, warning
+
+
+def fanout_warnings(app, config):
+    """The insight's props that count a row once per match of a join (fan-out)."""
+    from visivo.server.services.join_cardinality import insight_fanout_warnings
+
+    found = insight_fanout_warnings(app, config)
+    return found + [FANOUT_SKILL_HINT] if found else []
+
+
 # A preview that cannot run server-side, rather than one that failed.
 _UNJUDGED_PREVIEWS = {"requires_client_lane", "multi_source", "model_not_run"}
 
@@ -562,12 +590,16 @@ def _preview_insight_handler(app, arguments):
         inputs_substituted=substituted,
         execution_time_ms=result.get("execution_time_ms"),
     )
+    warnings = fanout_warnings(app, config)
     if not result["rows"]:
-        payload["warnings"] = [
+        warnings.insert(
+            0,
             "The query returned 0 rows, so the chart would be empty. Check filter values "
             "against the data (string matches are case-sensitive) with profile_columns "
-            "or preview_table."
-        ]
+            "or preview_table.",
+        )
+    if warnings:
+        payload["warnings"] = warnings
     return _within_bytes(payload)
 
 

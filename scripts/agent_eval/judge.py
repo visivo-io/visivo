@@ -24,6 +24,16 @@ JUDGE_TIMEOUT_SECONDS = 600
 MAX_OBJECTS_CHARS = 60_000
 
 
+def _truth(summary):
+    truth = summary.get("truth")
+    if not truth:
+        return ""
+    return (
+        f"Ground truth, measured on the data: {truth}\n"
+        "Compare the numbers on the dashboard with it.\n"
+    )
+
+
 def judge_prompt(run_dir, summary):
     objects = open(os.path.join(run_dir, "objects.json")).read()
     if len(objects) > MAX_OBJECTS_CHARS:
@@ -39,6 +49,7 @@ def judge_prompt(run_dir, summary):
 
 Expected: {', '.join(summary['expects']) or 'nothing beyond the rubric'}.
 Dashboard name asked for: {summary['expected_dashboard'] or 'agent chooses'}.
+{_truth(summary)}
 
 ## Screenshots (in the current directory; Read each one)
 

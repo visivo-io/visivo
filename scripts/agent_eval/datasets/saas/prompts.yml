@@ -51,3 +51,19 @@ prompts:
       Build a dashboard called accounts-table with a table of our biggest
       accounts: current plan, seats, MRR, signup date and whether they churned.
     expects: [table_used, formatted_columns]
+
+  - id: fanout
+    dashboard: plan-history
+    prompt: >-
+      Build a dashboard called plan-history. For each plan in the
+      subscription history, show how many accounts have been on it at any
+      point, broken down by industry. Put the number of accounts that have
+      ever paid (any plan other than Free) at the top.
+    expects: [answers_question, no_join_fanout]
+    truth: >-
+      Accounts that have ever been on each plan (count distinct account_id in
+      subscriptions_monthly): Free 2828, Team 586, Starter 361, Enterprise 32.
+      Accounts that have ever paid: 947. A join of accounts to
+      subscriptions_monthly that counts rows instead of distinct accounts gives
+      Free 14888, Team 3351, Starter 2266, Enterprise 143 and 5760 paid: those
+      numbers are fan-out and score metric_semantics 0.

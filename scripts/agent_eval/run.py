@@ -481,6 +481,7 @@ def run_one(serve, condition, item, model, run_dir, dataset):
         "prompt": item["prompt"],
         "expected_dashboard": item.get("dashboard"),
         "expects": item.get("expects", []),
+        "truth": item.get("truth"),
         "condition": condition,
         "model": model if condition != "builtin" else "builtin",
         "client": {k: v for k, v in client.items() if k != "calls"},
