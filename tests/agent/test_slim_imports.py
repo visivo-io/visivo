@@ -5,11 +5,27 @@ pods never run a query, so duckdb, polars and pyarrow there would be tens of
 megabytes of import for code that cannot execute -- which is why core carried no
 visivo dependency at all until this was true.
 
-"Slim" is a property of where the imports sit, not of a package boundary, so
-only a test keeps it. Both leaks this caught at the start were invisible from
-the import statement alone: `_write_handler` imported `run_views` above the
-guard meant to skip it, and two source models imported a package they never
-used.
+Nothing in this repo declares a slim dependency set, and nothing should: an
+extra can only ADD dependencies, so there is no `visivo[slim]` that subtracts
+duckdb from the default install. The consumer expresses it instead, which for
+core is uv:
+
+    [tool.uv]
+    override-dependencies = [
+      "duckdb ; sys_platform == 'nonesuch'",
+      "polars ; sys_platform == 'nonesuch'",
+      "pyarrow ; sys_platform == 'nonesuch'",
+    ]
+
+An always-false marker drops the edge. Measured against this branch: 118
+packages installed, none of them duckdb, polars, pyarrow or Flask, and all 65
+tools answer.
+
+So "slim" is a property of where the imports sit, not of a package boundary,
+and only a test keeps it. Both leaks this caught at the start were invisible
+from the import statement alone: `_write_handler` imported `run_views` above
+the guard meant to skip it, and two source models imported a package they
+never used.
 
 These run in a FRESH interpreter on purpose, the same reason
 `test_import_order.py` does: by the time a normal test executes, pytest has
@@ -77,8 +93,8 @@ def test_serving_a_write_loads_no_warehouse_package():
     leaked = [name for name in result.stdout.strip().split(",") if name]
     assert not leaked, (
         f"Importing the registry and serving a write loaded {leaked}. "
-        "Move the import into the function that uses it rather than adding it "
-        "to constraints/slim-requirements.txt."
+        "Move the import into the function that uses it, rather than widening "
+        "what a consumer has to install."
     )
 
 
