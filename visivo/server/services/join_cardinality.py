@@ -165,18 +165,24 @@ def _named(items, name):
 
 
 def _metric(app, model_name, field):
-    """The metric ``field`` of ``model_name``, or the standalone metric
-    ``model_name`` when ``field`` is ``None``."""
-    if field is None:
-        metric = from_manager(app, "metric_manager", model_name)
-        return metric if getattr(metric, "_parent_name", None) is None else None
-    found = _named(getattr(find_model(app, model_name), "metrics", None), field)
-    if found is not None:
-        return found
-    metric = from_manager(app, "metric_manager", field)
-    if metric is not None and getattr(metric, "_parent_name", None) == model_name:
-        return metric
-    return None
+    """``(metric, owner model)`` for ``${ref(model_name).field}``, or for
+    ``${ref(model_name)}`` naming a metric when ``field`` is ``None``. The
+    draft tier wins over a published model's nested metric."""
+    name = model_name if field is None else field
+    metric = from_manager(app, "metric_manager", name)
+    owner = getattr(metric, "_parent_name", None)
+    if metric is not None and (field is None or owner == model_name):
+        return metric, owner
+    models = (
+        [find_model(app, model_name)]
+        if field is not None
+        else app.model_manager.get_all_objects_list()
+    )
+    for model in models:
+        nested = _named(getattr(model, "metrics", None), name)
+        if nested is not None:
+            return nested, model.name
+    return None, None
 
 
 def _expanded_sql(app, text, model=None, depth=0):
@@ -186,9 +192,8 @@ def _expanded_sql(app, text, model=None, depth=0):
         raise ValueError("metrics nest too deep")
 
     def replace(model_name, field):
-        metric = _metric(app, model_name, field)
+        metric, owner = _metric(app, model_name, field)
         if metric is not None:
-            owner = model_name if field else None
             return f"({_expanded_sql(app, metric.expression, owner, depth + 1)})"
         return _qualified(model_name, field) if field else f'"{model_name}"'
 

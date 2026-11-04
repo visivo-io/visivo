@@ -213,6 +213,20 @@ class TestInsightFanOut:
 
         assert _fanout(_insight(models, "?{${ref(accounts).scoped_count}}"))
 
+    def test_a_draft_fix_to_a_published_metric_clears_the_warning(self, models):
+        assert _fanout(_insight(models, "?{${ref(accounts).account_count}}"))
+        fixed = {
+            "name": "account_count",
+            "model": "accounts",
+            "expression": "count(distinct account_id)",
+        }
+        call(models, "write_metric", {"config": fixed})
+
+        assert not _fanout(_insight(models, "?{${ref(accounts).account_count}}"))
+
+    def test_a_model_metric_named_without_its_model_is_read_through(self, models):
+        assert _fanout(_insight(models, "?{${ref(account_count)}}"))
+
     def test_metrics_nested_past_the_limit_are_not_judged(self, models, monkeypatch):
         from visivo.server.services import join_cardinality
 
