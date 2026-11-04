@@ -1,0 +1,1 @@
+var e=(e=``)=>e.trim().toLowerCase().replace(/\s+/g,`-`).replace(/\[|\]/g,``).replace(/\./g,`-`);export{e as t};

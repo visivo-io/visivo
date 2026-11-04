@@ -1,6 +1,6 @@
 [project]
 name = "visivo"
-version = "2.2.1"
+version = "2.3.0"
 description = "Visivo CLI for BI and visualizations as code"
 authors = [
     {name = "Visivo People"}
