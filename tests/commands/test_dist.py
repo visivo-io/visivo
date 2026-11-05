@@ -624,3 +624,89 @@ def test_dist_with_stacktrace_env_reraises_the_original_error(
     result = runner.invoke(dist, ["--output-dir", output_dir, "--dist-dir", dist_dir])
     assert result.exit_code != 0
     assert isinstance(result.exception, FileNotFoundError)
+
+
+def _run_and_dist(working_dir, output_dir, dist_dir, *extra):
+    from visivo.commands.run import run
+
+    run_result = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"])
+    assert run_result.exit_code == 0, run_result.output
+    result = runner.invoke(
+        dist,
+        ["-w", working_dir, "-s", "source", "--output-dir", output_dir, "--dist-dir", dist_dir]
+        + list(extra),
+    )
+    assert result.exit_code == 0, result.output
+
+
+def test_dist_ships_parquet_never_larger_with_the_same_rows(
+    setup_table_project, output_dir, dist_dir
+):
+    import duckdb
+    from glob import glob
+
+    _, working_dir = setup_table_project
+    _run_and_dist(working_dir, output_dir, dist_dir)
+
+    shipped = glob(os.path.join(dist_dir, "data", "files", "*.parquet"))
+    assert shipped
+    for path in shipped:
+        [original] = glob(os.path.join(output_dir, "main", "*", os.path.basename(path)))
+        assert os.path.getsize(path) <= os.path.getsize(original)
+        assert (
+            duckdb.sql(f"SELECT * FROM read_parquet('{path}') ORDER BY ALL").fetchall()
+            == duckdb.sql(f"SELECT * FROM read_parquet('{original}') ORDER BY ALL").fetchall()
+        )
+
+
+class TestCopyParquetCompacted:
+    def test_a_compressible_file_gets_smaller_with_the_same_rows(self, tmp_path):
+        import duckdb
+        from visivo.commands.dist_phase import copy_parquet_compacted
+
+        src, dst = str(tmp_path / "src.parquet"), str(tmp_path / "dst.parquet")
+        duckdb.sql(
+            f"COPY (SELECT i, 'borough-' || (i % 5) AS b FROM range(200000) t(i)) TO '{src}' "
+            "(FORMAT parquet, COMPRESSION uncompressed, ROW_GROUP_SIZE 10000)"
+        )
+
+        copy_parquet_compacted(src, dst)
+
+        assert os.path.getsize(dst) < os.path.getsize(src)
+        assert duckdb.sql(f"SELECT count(*), sum(i) FROM '{dst}'").fetchall() == [
+            (200000, sum(range(200000)))
+        ]
+        assert not os.path.exists(f"{dst}.compact")
+
+    def test_a_file_duckdb_cannot_read_is_copied_as_it_is(self, tmp_path):
+        from visivo.commands.dist_phase import copy_parquet_compacted
+
+        src, dst = tmp_path / "src.parquet", tmp_path / "dst.parquet"
+        src.write_bytes(b"not parquet")
+
+        copy_parquet_compacted(str(src), str(dst))
+
+        assert dst.read_bytes() == b"not parquet"
+        assert not os.path.exists(f"{dst}.compact")
+
+
+def test_dist_can_load_duckdb_from_the_cdn(setup_project, output_dir, dist_dir):
+    from visivo.commands.dist_phase import DUCKDB_CDN_FLAG
+
+    _, working_dir = setup_project
+    _run_and_dist(working_dir, output_dir, dist_dir, "--duckdb-from-cdn")
+
+    with open(os.path.join(dist_dir, "index.html")) as f:
+        html = f.read()
+    assert DUCKDB_CDN_FLAG in html
+    assert html.index(DUCKDB_CDN_FLAG) < html.index("window.deploymentRoot")
+
+
+def test_dist_loads_duckdb_from_the_dist_by_default(setup_project, output_dir, dist_dir):
+    from visivo.commands.dist_phase import DUCKDB_CDN_FLAG
+
+    _, working_dir = setup_project
+    _run_and_dist(working_dir, output_dir, dist_dir)
+
+    with open(os.path.join(dist_dir, "index.html")) as f:
+        assert DUCKDB_CDN_FLAG not in f.read()

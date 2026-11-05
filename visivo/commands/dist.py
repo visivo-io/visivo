@@ -7,6 +7,7 @@ from visivo.commands.options import (
     dbt_target,
     dist_dir,
     deployment_root,
+    duckdb_from_cdn,
 )
 
 
@@ -18,7 +19,17 @@ from visivo.commands.options import (
 @dbt_target
 @dist_dir
 @deployment_root
-def dist(working_dir, output_dir, source, dbt_profile, dbt_target, dist_dir, deployment_root):
+@duckdb_from_cdn
+def dist(
+    working_dir,
+    output_dir,
+    source,
+    dbt_profile,
+    dbt_target,
+    dist_dir,
+    deployment_root,
+    duckdb_from_cdn,
+):
     """
     Creates a distributable version of this dashboard and stores it in a 'dist' folder.
     This folder can be statically deployed to any web server, hosting service, or bucket storage.
@@ -39,6 +50,7 @@ def dist(working_dir, output_dir, source, dbt_profile, dbt_target, dist_dir, dep
         dbt_target=dbt_target,
         dist_dir=dist_dir,
         deployment_root=deployment_root,
+        duckdb_from_cdn=duckdb_from_cdn,
     )
     Logger.instance().success(f"Created dist folder: {dist_dir}")
     Logger.instance().info(
