@@ -6,17 +6,8 @@ const DEFAULT_ORIGIN = 'http://localhost:8000';
 
 const VISIVO_HOST = /(^|\.)visivo\.io$/i;
 
-/**
- * Whether to offer a bring-your-own-client setup at all.
- *
- * TEMPORARY, and removed by VIS-1665. The snippets below are built from the
- * page origin, so in cloud they hand out `https://app.visivo.io/api/mcp/` --
- * a route core does not serve. Telling someone to point Claude Code at an
- * endpoint that 404s is worse than not mentioning it, so cloud says nothing
- * until that endpoint exists. Local `visivo serve` is unaffected.
- */
-export const offersOwnClient = (hostname = window.location.hostname) =>
-  !VISIVO_HOST.test(hostname || '');
+export const isCloudHost = (hostname = window.location.hostname) =>
+  VISIVO_HOST.test(hostname || '');
 
 export const mcpUrl = (origin = window.location.origin) =>
   `${origin && origin !== 'null' ? origin : DEFAULT_ORIGIN}/api/mcp/`;
@@ -108,9 +99,6 @@ const Snippet = ({ snippet }) => {
 const AgentOwnClient = ({ hostname }) => {
   const [open, setOpen] = useState(false);
 
-  // `hostname` is for tests; undefined reads window.location.
-  if (!offersOwnClient(hostname)) return null;
-
   const snippets = buildSnippets(mcpUrl());
   return (
     <section
@@ -137,11 +125,19 @@ const AgentOwnClient = ({ hostname }) => {
       </h2>
       {open && (
         <div id="agent-own-client-panel" className="mt-2">
-          <p className="mb-3 text-sm text-gray-600">
-            Connect Claude Code, Cursor or Gemini CLI to this project over MCP. Keep{' '}
-            <code className="rounded bg-gray-100 px-1">visivo serve</code> running while the agent
-            works.
-          </p>
+          {/* `hostname` is for tests; undefined reads window.location. */}
+          {isCloudHost(hostname) ? (
+            <p className="mb-3 text-sm text-gray-600">
+              Connect Claude Code, Cursor or Gemini CLI to your projects over MCP. Your browser
+              asks you to approve the connection the first time.
+            </p>
+          ) : (
+            <p className="mb-3 text-sm text-gray-600">
+              Connect Claude Code, Cursor or Gemini CLI to this project over MCP. Keep{' '}
+              <code className="rounded bg-gray-100 px-1">visivo serve</code> running while the agent
+              works.
+            </p>
+          )}
           <div className="space-y-4">
             {snippets.map(snippet => (
               <Snippet key={snippet.id} snippet={snippet} />
