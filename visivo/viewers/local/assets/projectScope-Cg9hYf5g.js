@@ -1,0 +1,1 @@
+var e=(e,t)=>t?`${e}${e.includes(`?`)?`&`:`?`}project_id=${encodeURIComponent(t)}`:e;export{e as t};

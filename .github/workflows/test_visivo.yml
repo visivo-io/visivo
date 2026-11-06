@@ -78,6 +78,25 @@ jobs:
       - run: uv sync --frozen --no-install-project
       - run: uv run black --check . --target-version py312
 
+  package-cli:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ci-tools/.github/actions/setup-cli
+      - run: uv build
+      - run: python .ci-tools/.github/scripts/check_dist.py dist
+
   test-onboarding-samples:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-22.04
