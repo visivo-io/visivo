@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import AgentOwnClient, { buildSnippets, mcpUrl, offersOwnClient } from './AgentOwnClient';
+import AgentOwnClient, { buildSnippets, isCloudHost, mcpUrl } from './AgentOwnClient';
 
 const pageUrl = `${window.location.origin}/api/mcp/`;
 
@@ -119,31 +119,33 @@ describe('collapsing', () => {
   });
 });
 
-describe('where it is offered', () => {
-  // Removed with the guard itself (VIS-1665), once cloud serves /api/mcp/.
-  test.each(['app.visivo.io', 'visivo.io', 'APP.VISIVO.IO'])(
-    'stays hidden on %s, where the endpoint does not exist',
-    hostname => {
-      expect(offersOwnClient(hostname)).toBe(false);
-    }
-  );
-
-  test.each(['localhost', '127.0.0.1', 'devbox', 'notvisivo.io', 'visivo.io.example.com'])(
-    'is offered on %s',
-    hostname => {
-      expect(offersOwnClient(hostname)).toBe(true);
-    }
-  );
-
-  test('renders nothing at all on a visivo.io host', () => {
-    render(<AgentOwnClient hostname="app.visivo.io" />);
-
-    expect(screen.queryByTestId('agent-own-client')).not.toBeInTheDocument();
+describe('what it says', () => {
+  test.each(['app.visivo.io', 'visivo.io', 'APP.VISIVO.IO'])('%s is cloud', hostname => {
+    expect(isCloudHost(hostname)).toBe(true);
   });
 
-  test('still renders where the endpoint exists', () => {
-    render(<AgentOwnClient hostname="localhost" />);
+  test.each(['localhost', '127.0.0.1', 'devbox', 'notvisivo.io', 'visivo.io.example.com'])(
+    '%s is not cloud',
+    hostname => {
+      expect(isCloudHost(hostname)).toBe(false);
+    }
+  );
 
-    expect(screen.getByTestId('agent-own-client')).toBeInTheDocument();
+  const open = hostname => {
+    render(<AgentOwnClient hostname={hostname} />);
+    fireEvent.click(screen.getByRole('button', { name: /use your own agent/i }));
+  };
+
+  test('cloud is offered, and says the browser asks for approval', () => {
+    open('app.visivo.io');
+
+    expect(screen.getByText(/asks you to approve the connection/i)).toBeInTheDocument();
+    expect(screen.queryByText('visivo serve')).not.toBeInTheDocument();
+  });
+
+  test('local says to keep the server running', () => {
+    open('localhost');
+
+    expect(screen.getByText('visivo serve')).toBeInTheDocument();
   });
 });
