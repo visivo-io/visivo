@@ -41,12 +41,13 @@ def wait_for_runs(app, timeout=RUN_SETTLE_TIMEOUT_SECONDS):
 
     active = _active_states()
     deadline = time.time() + timeout
-    while time.time() < deadline:
+    while True:
         runs = manager.list(limit=1)
         if not runs or runs[0].get("state") not in active:
             return True
+        if time.time() >= deadline:
+            return False
         time.sleep(_POLL_SECONDS)
-    return False
 
 
 def verdict(app, timeout=RUN_SETTLE_TIMEOUT_SECONDS):
@@ -70,7 +71,7 @@ def verdict(app, timeout=RUN_SETTLE_TIMEOUT_SECONDS):
     }
     if not settled:
         result["note"] = (
-            f"Still building after {timeout}s. The changes may yet be fine; "
+            "Still building. The changes may yet be fine; "
             "check again rather than reporting a failure."
         )
         return result
