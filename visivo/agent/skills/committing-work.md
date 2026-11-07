@@ -19,8 +19,8 @@ A draft is configuration; only a build turns it into data a chart can read. A
 data write reports `change: "ran"` (a build started) or `"staged"` (nothing
 built).
 
-Before saying the work is done, call `check_runs`: it waits for a build in
-flight and reports whether the newest run succeeded.
+Before saying the work is done, call `check_runs`: it reports whether the newest
+run succeeded.
 
 - `ok: false` — read `diagnostics`; each names the object, field and usually the
   fix. Change what it names and check again. Never reply as though a failed
