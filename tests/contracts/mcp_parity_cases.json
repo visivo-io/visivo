@@ -1,0 +1,127 @@
+{
+  "_comment": [
+    "Golden cases for the MCP wire protocol — the CROSS-REPO contract.",
+    "",
+    "Two servers answer MCP: visivo's at visivo/server/views/mcp_views.py, and",
+    "core's at api/apps/mcp/. They share visivo.agent.mcp_protocol, so most of",
+    "what they send is the same objects rather than two implementations — but",
+    "the transports are separate code, and a transport can drop a field, change",
+    "a status code, or turn a tool refusal into a protocol error without either",
+    "repo's own tests noticing.",
+    "",
+    "This file is what keeps them honest. visivo asserts its endpoint against",
+    "it in tests/contracts/test_mcp_parity_contract.py; core asserts its own",
+    "against the same file. A case added here must pass on both sides.",
+    "",
+    "Each case: `request` is the JSON-RPC body to POST. `expect` says what must",
+    "be true of the response — `status`, `result_keys`, `jsonrpc_error_code`,",
+    "`is_error`, or `text_contains`. Shapes, not values: the cases must not",
+    "depend on which project is loaded, because the two sides load different",
+    "ones."
+  ],
+  "cases": [
+    {
+      "name": "initialize returns the handshake",
+      "request": {"jsonrpc": "2.0", "id": 1, "method": "initialize"},
+      "expect": {
+        "status": 200,
+        "result_keys": ["protocolVersion", "capabilities", "serverInfo", "instructions"]
+      }
+    },
+    {
+      "name": "the protocol version is the one both sides agree on",
+      "request": {"jsonrpc": "2.0", "id": 1, "method": "initialize"},
+      "expect": {"status": 200, "result_equals": {"protocolVersion": "2025-06-18"}}
+    },
+    {
+      "name": "the server identifies itself as visivo",
+      "request": {"jsonrpc": "2.0", "id": 1, "method": "initialize"},
+      "expect": {"status": 200, "server_name": "visivo"}
+    },
+    {
+      "name": "the instructions say writes are drafts",
+      "request": {"jsonrpc": "2.0", "id": 1, "method": "initialize"},
+      "expect": {"status": 200, "instructions_contain": ["draft", "get_schema"]}
+    },
+    {
+      "name": "a notification is accepted with no body",
+      "request": {"jsonrpc": "2.0", "method": "notifications/initialized"},
+      "expect": {"status": 202, "empty_body": true}
+    },
+    {
+      "name": "tools/list offers every tool in the registry",
+      "request": {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+      "expect": {"status": 200, "lists_every_registry_tool": true}
+    },
+    {
+      "name": "every advertised tool has a description and an object schema",
+      "request": {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+      "expect": {"status": 200, "tools_are_well_formed": true}
+    },
+    {
+      "name": "no advertised tool promotes work",
+      "request": {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+      "expect": {"status": 200, "no_tool_name_contains": ["commit", "publish", "merge"]}
+    },
+    {
+      "name": "resources/list offers the packaged skills",
+      "request": {"jsonrpc": "2.0", "id": 1, "method": "resources/list"},
+      "expect": {"status": 200, "result_keys": ["resources"], "resources_are_skills": true}
+    },
+    {
+      "name": "a resource that does not exist is a protocol error, not a tool error",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "resources/read",
+        "params": {"uri": "visivo://skills/no-such-skill"}
+      },
+      "expect": {"status": 200, "jsonrpc_error_code": -32602}
+    },
+    {
+      "name": "an unknown method is a protocol error",
+      "request": {"jsonrpc": "2.0", "id": 1, "method": "no/such/method"},
+      "expect": {"status": 200, "jsonrpc_error_code": -32601}
+    },
+    {
+      "name": "an unknown tool is an error RESULT, not a protocol error",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {"name": "no_such_tool", "arguments": {}}
+      },
+      "expect": {"status": 200, "is_error": true}
+    },
+    {
+      "name": "a refused tool comes back as an error RESULT the model can read",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {"name": "get_source", "arguments": {"name": "definitely-not-a-source"}}
+      },
+      "expect": {"status": 200, "is_error": true}
+    },
+    {
+      "name": "an invalid config is refused as a result, not a crash",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {"name": "validate_markdown", "arguments": {"config": {"name": "x"}}}
+      },
+      "expect": {"status": 200}
+    },
+    {
+      "name": "a non-object body is a parse error",
+      "request": [1, 2, 3],
+      "expect": {"status": 200, "jsonrpc_error_code": -32700}
+    },
+    {
+      "name": "a body with no method is an invalid request",
+      "request": {"jsonrpc": "2.0", "id": 1},
+      "expect": {"status": 200, "jsonrpc_error_code": -32600}
+    }
+  ]
+}
