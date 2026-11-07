@@ -96,6 +96,8 @@ A few things differ from a local server:
   then pass its `project_id` to each project tool.
 - **Your role still applies.** A connection can only change what you can change in
   the editor, and it cannot edit a protected default branch.
+- **`check_runs` answers at once.** If a build is still running it returns
+  `settled: false`, so call it again until the build finishes.
 - **Warehouse tools are not available yet.** `query_source`, `preview_table`,
   `preview_insight`, `describe_source`, `profile_columns`, `profile_model`,
   `infer_columns` and `screenshot_dashboard` return an error that says so. Use
