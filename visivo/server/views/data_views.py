@@ -2,7 +2,7 @@ import datetime
 import json
 import os
 import re
-from flask import jsonify, request, send_file, send_from_directory
+from flask import jsonify, send_from_directory
 from visivo.utils import VIEWER_PATH
 from visivo.telemetry.config import is_telemetry_enabled, is_ci_environment
 from visivo.server.views.theme_views import current_theme_config
@@ -53,7 +53,7 @@ def register_data_views(app, flask_app, output_dir):
         if path.startswith("api/"):
             return jsonify({"message": f"No API route at /{path}"}), 404
 
-        regex =r"\S*(\.png|\.ico|\.js|\.css|\.wasm|\.webmanifest|\.js\.map|\.css\.map)$"
+        regex = r"\S*(\.png|\.ico|\.js|\.css|\.wasm|\.webmanifest|\.js\.map|\.css\.map)$"
         if re.match(regex, path):
             return send_from_directory(VIEWER_PATH, path)
 

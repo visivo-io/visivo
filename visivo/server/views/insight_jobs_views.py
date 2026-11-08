@@ -3,7 +3,6 @@ import os
 from flask import jsonify, request
 
 from visivo.logger.logger import Logger
-from visivo.models.base.named_model import alpha_hash
 from visivo.constants import DEFAULT_RUN_ID
 
 
@@ -75,4 +74,3 @@ def register_insight_jobs_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error fetching insights data: {str(e)}")
             return jsonify({"error": str(e)}), 500
-
