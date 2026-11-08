@@ -287,20 +287,14 @@ entries:
     verbs: []
     serves:
     - studio
-    reason: >-
-      Cloud has no such route: DashboardDetail serves GET and POST on
-      /api/dashboards/{name}/ and nothing else. The viewer calls this anyway
-      (api/dashboards.js), so deleting a dashboard in cloud 404s. The claim was
-      `cloud` until the gap was found; it now says what is true, and VIS-1686
-      tracks adding the route.
+    - cloud
   dashboardValidate:
     path: /api/dashboards/{name}/validate/
     verbs:
     - POST
     serves:
     - studio
-    reason: >-
-      Cloud has no such route, as with dashboardDelete above. VIS-1686.
+    - cloud
   defaults:
     path: /api/defaults/
     verbs: []
