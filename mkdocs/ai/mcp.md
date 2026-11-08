@@ -103,10 +103,11 @@ A few things differ from a local server:
   the editor, and it cannot edit a protected default branch.
 - **`check_runs` answers at once.** If a build is still running it returns
   `settled: false`, so call it again until the build finishes.
-- **Warehouse tools are not available yet.** `query_source`, `preview_table`,
+- **Warehouse tools have 45 seconds.** `query_source`, `preview_table`,
   `preview_insight`, `describe_source`, `profile_columns`, `profile_model`,
-  `infer_columns` and `screenshot_dashboard` return an error that says so. Use
-  `check_runs` to see a build's result.
+  `infer_columns` and `screenshot_dashboard` run in Visivo's runner, which has the
+  warehouse drivers and a browser. A call that takes longer is stopped, and the
+  error says to ask for less, for example with a `LIMIT`.
 
 To disconnect a client, remove it from the client's MCP settings. Access also ends
 when you leave the account.
