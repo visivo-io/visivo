@@ -21,9 +21,9 @@ const URL_PATTERNS = {
     sourceValidate: '/api/sources/{name}/validate/',
     // Connection tests are their own collection: the credentials being tested
     // may not belong to a saved source yet, so there is no {name} to nest
-    // under. POST starts a job; its detail hangs off this path with the job id
-    // appended, which is what runOnDemandJob does.
+    // under. POST starts a job, and the job is polled at its own key.
     sourceConnections: '/api/source-connections/',
+    sourceConnectionJob: '/api/source-connections/{jobId}/',
 
     modelsList: '/api/models/',
     modelDetail: '/api/models/{name}/',

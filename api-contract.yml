@@ -45,6 +45,12 @@ entries:
     serves:
     - studio
     - cloud
+  sourceConnectionJob:
+    path: /api/source-connections/{jobId}/
+    verbs: []
+    serves:
+    - studio
+    - cloud
   modelsList:
     path: /api/models/
     verbs: []
@@ -732,22 +738,3 @@ server_only:
   reason: Data by content hash. The CLI reads these during `visivo deploy`.
 - path: /api/files/{}/{}/
   reason: Run-scoped form of the path above.
-# Below here is debt, not design. Each needs an audit (VIS-1685): a route with
-# no caller is either a missing registry key or a route to delete, and leaving
-# it unlisted is what let the others hide.
-- path: /api/source-connections/{}/
-  reason: The per-job poll for a connection test. Its collection path is the
-    sourceConnections entry; this one has no registry key and should get one.
-- path: /api/project/named_children/
-  reason: Referenced only by the committed `visivo/dist` bundle, not by any
-    current viewer source. Stale on one side or the other.
-- path: /api/schema/
-  reason: No caller found in this repo.
-- path: /api/project_history/
-  reason: No caller found in this repo.
-- path: /api/insight-jobs/hash
-  reason: No caller found in this repo.
-- path: /api/cloud/stages/
-  reason: No caller found in this repo.
-- path: /api/project/init/
-  reason: No caller found in this repo.

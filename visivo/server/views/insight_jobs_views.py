@@ -76,25 +76,3 @@ def register_insight_jobs_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error fetching insights data: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/insight-jobs/hash", methods=["POST"])
-    def compute_insight_hash():
-        """Compute name_hash for a given insight or model name.
-
-        This ensures the frontend uses the same hashing logic as the backend.
-        POST body: {"name": "insight_or_model_name"}
-        Returns: {"name_hash": "m..."}
-        """
-        try:
-            data = request.get_json()
-            if not data or "name" not in data:
-                return jsonify({"error": "name field is required in request body"}), 400
-
-            name = data["name"]
-            name_hash = alpha_hash(name)
-
-            Logger.instance().debug(f"Computed hash for '{name}': {name_hash}")
-            return jsonify({"name": name, "name_hash": name_hash})
-
-        except Exception as e:
-            Logger.instance().error(f"Error computing hash: {str(e)}")
-            return jsonify({"error": str(e)}), 500

@@ -26,7 +26,6 @@ PACKAGE = REPO / "visivo"
 # the point: a new runtime resource has to be declared to both builders, and
 # this is what remembers to ask.
 RUNTIME_DATA = {
-    "visivo/src": "the project schema the viewer fetches from /api/schema",
     "visivo/schema": "per-trace plotly schemas",
     "visivo/viewers": "the built React viewer",
     "visivo/agent/skills": "agent skills, INCLUDING the charts/ and interactions/ namespaces",
@@ -37,6 +36,7 @@ RUNTIME_DATA = {
 
 # Data files in the package that nothing reads at run time.
 NOT_RUNTIME = {
+    "visivo/src/visivo_project_schema.json": "written by write-schema-json for editors and the docs",
     "visivo/agent/charting/families.json": "written by families_export for the viewer build",
 }
 
