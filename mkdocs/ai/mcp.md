@@ -94,6 +94,11 @@ A few things differ from a local server:
 
 - **One connection reaches every account you belong to.** Call `list_projects`,
   then pass its `project_id` to each project tool.
+- **Changes go to a draft.** The projects `list_projects` returns are deploys,
+  which cannot change. Call `start_edit` to get your draft of one, and pass the
+  draft's `project_id` to the tools that write. If changes on that branch need a
+  pull request, `create_branch` puts your draft on a new branch instead. Nothing
+  commits or merges until a person does it in Visivo.
 - **Your role still applies.** A connection can only change what you can change in
   the editor, and it cannot edit a protected default branch.
 - **`check_runs` answers at once.** If a build is still running it returns
