@@ -9,15 +9,20 @@ PyInstaller build was missing three things at once this way — the project
 schema the viewer fetches, two thirds of the agent's skills, and every chart
 rule — and nothing said so.
 
-These tests read the build scripts rather than a built artifact, because
-building takes minutes and the omission is visible in the arguments.
+These tests run each build script with its freezer stubbed out and check the
+arguments it would pass, because building takes minutes.
 """
 
 import re
 import subprocess
+import sys
 from pathlib import Path
 
+import PyInstaller.__main__
 import pytest
+
+from visivo import build as pyinstaller_build
+from visivo import build_nuitka
 
 REPO = Path(__file__).parent.parent
 PACKAGE = REPO / "visivo"
@@ -41,15 +46,34 @@ NOT_RUNTIME = {
 }
 
 
+def _pyinstaller_args(debug=False):
+    captured = []
+    argv = ["build", "--debug"] if debug else ["build"]
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(PyInstaller.__main__, "run", captured.extend)
+        mp.setattr(sys, "argv", argv)
+        pyinstaller_build.build()
+    return captured
+
+
+def _nuitka_args():
+    captured = []
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(build_nuitka.subprocess, "run", lambda args, check: captured.extend(args))
+        build_nuitka.build()
+    return captured
+
+
 def _build_args(script):
     """The argument list a build script passes to its freezer, as one string."""
-    return (PACKAGE / script).read_text()
+    args = _pyinstaller_args() if script == "build.py" else _nuitka_args()
+    return " ".join(args)
 
 
 @pytest.mark.parametrize("resource,why", sorted(RUNTIME_DATA.items()))
 def test_pyinstaller_ships_every_runtime_resource(resource, why):
     args = _build_args("build.py")
-    assert resource in args, f"build.py does not ship {resource} — {why}"
+    assert f":{resource}" in args, f"build.py does not ship {resource} — {why}"
 
 
 @pytest.mark.parametrize("resource,why", sorted(RUNTIME_DATA.items()))
@@ -57,10 +81,19 @@ def test_nuitka_ships_every_runtime_resource(resource, why):
     """The two builders must agree. They did not: each shipped something the
     other dropped, so which one released decided which features worked."""
     args = _build_args("build_nuitka.py")
-    # Nuitka takes paths built from `HERE`, so match on the tail.
-    tail = resource.split("visivo/", 1)[1]
-    parts = [f"'{part}'" for part in tail.split("/")]
-    assert all(part in args for part in parts), f"build_nuitka.py does not ship {resource} — {why}"
+    assert f"={resource}" in args, f"build_nuitka.py does not ship {resource} — {why}"
+
+
+@pytest.mark.parametrize("script", ["build.py", "build_nuitka.py"])
+def test_no_build_ships_visivo_src(script):
+    """visivo/src holds editor and docs files that nothing reads at run time."""
+    assert "visivo/src" not in _build_args(script)
+
+
+def test_pyinstaller_debug_flag_adds_import_tracing(capsys):
+    assert "--debug=imports" not in _pyinstaller_args()
+    assert "--debug=imports" in _pyinstaller_args(debug=True)
+    assert "DEBUG mode" in capsys.readouterr().out
 
 
 def _tracked_package_files(repo):
