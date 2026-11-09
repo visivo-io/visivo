@@ -151,16 +151,8 @@ def manifest_entries(manifest):
 
 
 def unlisted_flask_problems(manifest, flask):
-    """Flask /api/ routes the manifest does not account for, and the reverse.
-
-    Every other rule here starts from the viewer, so a route no viewer code
-    calls could not be reached by any of them -- which is how `/api/mcp/` went
-    the whole life of the endpoint in neither urls.js nor this manifest. This
-    rule starts from the route table instead.
-
-    `/api/` only: the SPA shell and the static `/data/` files are served by the
-    same app and are not API surface.
-    """
+    """Flask /api/ routes in neither `entries` nor `server_only`, and `server_only`
+    lines for routes Flask no longer serves."""
     entries = manifest_entries(manifest)
     declared = {normalise(spec["path"]) for spec in manifest.get("server_only") or []}
     problems = []
@@ -169,11 +161,8 @@ def unlisted_flask_problems(manifest, flask):
             continue
         problems.append(
             f"Flask serves {path} and the manifest does not account for it. "
-            "Add an entry if the viewer requests it, or a server_only line "
-            "saying who does."
+            "Add an entry if the viewer calls it, otherwise a server_only line."
         )
-    # Kept honest in both directions: a server_only line for a route that no
-    # longer exists is a sentence nobody will re-read.
     for path in sorted(declared - set(flask)):
         problems.append(f"server_only lists {path}, which Flask does not serve")
     return problems

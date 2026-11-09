@@ -22,9 +22,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.pool import NullPool
 from visivo.logger.logger import Logger
-import polars as pl
 from copy import deepcopy
-import pyarrow as pa
 import json
 from datetime import datetime, date, time
 from decimal import Decimal
@@ -48,6 +46,8 @@ def _sqlalchemy_type_for(polars_dtype):
     Anything without a natural SQL equivalent is written as text — see
     ``_cast_unsupported_columns_to_string``, which stringifies the matching column.
     """
+    import polars as pl
+
     if polars_dtype == pl.Boolean:
         return Boolean
     if polars_dtype.is_integer():
@@ -72,6 +72,8 @@ def _cast_unsupported_columns_to_string(data_frame):
     ``map_elements`` instead — the alternative is the whole seed failing on one
     nested column.
     """
+    import polars as pl
+
     unsupported = [
         name
         for name, dtype in data_frame.schema.items()

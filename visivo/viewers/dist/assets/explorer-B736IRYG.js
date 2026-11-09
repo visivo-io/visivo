@@ -1,1 +1,0 @@
-import{c as e,n as t}from"./URLContext-BgzAr746.js";import{Y as n}from"./index-CxY-59AK.js";var r=async(r,i=null)=>{let a=n(t(`explorerDiff`),i),o=await e(a,{method:`POST`,headers:{"Content-Type":`application/json`},body:JSON.stringify(r)});return o.status===200?await o.json():null};export{r as fetchDiff};

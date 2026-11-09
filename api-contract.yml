@@ -8,15 +8,9 @@
 # Fields: path (template), verbs (what the viewer sends), serves (which surfaces answer),
 # cloud_equivalent or reason (required when studio serves a path and the cloud does not).
 #
-# `server_only` at the bottom is the other direction: Flask routes under /api/ that the viewer
-# never requests, each with a reason. Those rules all start from the viewer, so without that
-# section a route nothing in the viewer calls is unreachable by the check.
+# `server_only`: Flask /api/ routes the viewer never calls but that still need tracking.
 #
-# Checked by tests/server/test_api_contract.py here and by the cloud's parity test. The check fails
-# on a viewer path with no entry, a `cloud` claim the cloud routes do not honor, a `studio` claim
-# the Flask routes do not honor, a studio-only entry with no equivalent and no reason, an entry
-# that nothing references, a Flask /api/ route in neither entries nor server_only, and a
-# server_only line for a route Flask no longer serves. Generated route tables are never committed.
+# Checked by tests/server/test_api_contract.py and by the cloud's parity test.
 version: 1
 entries:
   sourcesList:
@@ -691,14 +685,8 @@ literals:
   - studio
   cloud_equivalent: /api/projects/draft/
 
-# Flask routes under /api/ that the viewer never requests. Every one carries a
-# reason, because a route with no entry and no reason is exactly how /api/mcp/
-# stayed invisible for the whole life of the endpoint: the rest of this file is
-# checked from the viewer outwards, so a route nothing in the viewer calls was
-# unreachable by the check.
-#
-# Being here is not an exemption. The path must exist on Flask, so the list
-# cannot rot, and a NEW route lands here only by someone writing the sentence.
+# Flask /api/ routes the viewer never calls but that still need tracking, each
+# with who calls it.
 server_only:
 - path: /api/mcp/
   reason: The MCP endpoint external clients POST to. The viewer only renders its
@@ -707,9 +695,6 @@ server_only:
 - path: /api/auth/authorize-device-token/callback/{}/
   reason: Where the browser lands at the end of `visivo authorize`. The cloud
     sign-in page redirects here; no viewer code calls it.
-# The agent tab's four paths are dual-mounted: project-scoped (the entries
-# above, which core can serve) and unversioned. `visivo serve` hosts one
-# project and ignores the id, so one tab drives either server.
 - path: /api/agent/
   reason: Unversioned alias of the agentSessions entry.
 - path: /api/agent/{}/
