@@ -792,23 +792,19 @@ class RecordingConnection:
 
 @pytest.fixture
 def recorded_connections(monkeypatch):
-    import types
-
     import duckdb
 
-    from visivo.server.services import profiling_service as module
-
     connections = []
+    real_connect = duckdb.connect
 
     def connect(*args, **kwargs):
-        connections.append(RecordingConnection(duckdb.connect(*args, **kwargs)))
+        connections.append(RecordingConnection(real_connect(*args, **kwargs)))
         return connections[-1]
 
-    monkeypatch.setattr(
-        module,
-        "duckdb",
-        types.SimpleNamespace(connect=connect, DuckDBPyConnection=duckdb.DuckDBPyConnection),
-    )
+    # Patched on duckdb rather than on the profiling module, which imports it
+    # inside the functions that connect — so there is no module attribute to
+    # replace, and this works wherever the import sits.
+    monkeypatch.setattr(duckdb, "connect", connect)
     return connections
 
 

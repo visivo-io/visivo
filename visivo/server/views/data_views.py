@@ -5,7 +5,7 @@ import re
 from flask import jsonify, request, send_file, send_from_directory
 from visivo.utils import SCHEMA_FILE, VIEWER_PATH
 from visivo.telemetry.config import is_telemetry_enabled, is_ci_environment
-from visivo.server.views.theme_views import current_theme_config
+from visivo.server.services.theme_service import current_theme_config
 
 
 def register_data_views(app, flask_app, output_dir):
