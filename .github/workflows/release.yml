@@ -161,6 +161,7 @@ jobs:
           done
 
       - name: Create version release
+        if: ${{ inputs.dryrun == false }}
         run: |
           gh release create "v${{ inputs.version }}" -t "Release v${{ inputs.version }}" --generate-notes ./dists/*
         env:
