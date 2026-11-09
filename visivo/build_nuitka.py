@@ -73,9 +73,6 @@ def build():
         # importlib.resources.files("visivo") finds them.
         f"--include-data-dir={HERE / 'schema'}=visivo/schema",
         f"--include-data-dir={HERE / 'viewers'}=visivo/viewers",
-        # What the viewer fetches from /api/schema, written by
-        # `uv run write-schema-json`.
-        f"--include-data-dir={HERE / 'src'}=visivo/src",
         # The agent reads its skills and chart rules from disk at runtime.
         f"--include-data-dir={HERE / 'agent' / 'skills'}=visivo/agent/skills",
         f"--include-data-dir={HERE / 'agent' / 'charting' / 'rules'}=visivo/agent/charting/rules",
