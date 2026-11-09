@@ -76,6 +76,42 @@ Start Gemini CLI in the project and use `/mcp` to check the connection. See
 [Gemini CLI's MCP guide](https://geminicli.com/docs/tools/mcp-server/) for settings
 and tool approvals.
 
+## Connect to Visivo Cloud
+
+Point the same clients at your Cloud deployment instead of a local server. For
+Claude Code:
+
+```bash
+claude mcp add --transport http visivo https://app.visivo.io/api/mcp/
+```
+
+Unlike the local endpoint, the Cloud endpoint requires authorization. The first
+time your client connects, your browser opens and asks you to sign in and approve
+it. The client handles the rest with OAuth 2.1, and no key goes in its
+configuration.
+
+A few things differ from a local server:
+
+- **One connection reaches every account you belong to.** Call `list_projects`,
+  then pass its `project_id` to each project tool.
+- **Changes go to a draft.** The projects `list_projects` returns are deploys,
+  which cannot change. Call `start_edit` to get your draft of one, and pass the
+  draft's `project_id` to the tools that write. If changes on that branch need a
+  pull request, `create_branch` puts your draft on a new branch instead. Nothing
+  commits or merges until a person does it in Visivo.
+- **Your role still applies.** A connection can only change what you can change in
+  the editor, and it cannot edit a protected default branch.
+- **`check_runs` answers at once.** If a build is still running it returns
+  `settled: false`, so call it again until the build finishes.
+- **Warehouse tools have 45 seconds.** `query_source`, `preview_table`,
+  `preview_insight`, `describe_source`, `profile_columns`, `profile_model`,
+  `infer_columns` and `screenshot_dashboard` run in Visivo's runner, which has the
+  warehouse drivers and a browser. A call that takes longer is stopped, and the
+  error says to ask for less, for example with a `LIMIT`.
+
+To disconnect a client, remove it from the client's MCP settings. Access also ends
+when you leave the account.
+
 ## Discover and use the tools
 
 The server supports `initialize`, `tools/list`, and `tools/call` over JSON-RPC.
