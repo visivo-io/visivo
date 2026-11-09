@@ -455,7 +455,9 @@ def _get_run_handler(app, arguments):
 def _check_runs_handler(app, arguments):
     from visivo.agent import runs
 
-    return runs.verdict(app)
+    # A host whose requests each hold a web worker sets this to 0.
+    timeout = getattr(app, "run_settle_timeout", runs.RUN_SETTLE_TIMEOUT_SECONDS)
+    return runs.verdict(app, timeout=timeout)
 
 
 def _theme_config(app):
@@ -969,13 +971,14 @@ _HAND_WRITTEN = {
     "check_runs": Tool(
         name="check_runs",
         description=(
-            "Whether the project builds. Waits for a build in flight to finish, "
-            "then reports whether the newest run succeeded, with the "
-            "diagnostics and log tail of one that did not. Call this before you "
-            "say a change is done: a write that changes data starts a build, "
-            "and until it finishes nobody knows whether what you wrote works. "
-            "`ok` is true only when nothing is still building and the newest "
-            "run succeeded."
+            "Whether the project builds. Reports whether the newest run "
+            "succeeded, with the diagnostics and log tail of one that did not. "
+            "Call this before you say a change is done: a write that changes "
+            "data starts a build, and until it finishes nobody knows whether "
+            "what you wrote works. `ok` is true only when nothing is still "
+            "building and the newest run succeeded. `settled: false` means a "
+            "build is still in flight, so call this again. A local server may "
+            "wait briefly for it first; Visivo Cloud answers at once."
         ),
         input_schema={"type": "object", "properties": {}},
         handler=_check_runs_handler,

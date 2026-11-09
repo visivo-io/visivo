@@ -27,9 +27,16 @@ from flask import jsonify, request
 
 from visivo.agent.actions import attributed_to, log as action_log
 from visivo.agent.images import is_image_result
-from visivo.agent.tools import TOOLS, ToolError, call
-
-PROTOCOL_VERSION = "2025-06-18"
+from visivo.agent.mcp_protocol import (
+    PROTOCOL_VERSION,
+    initialize,
+    json_content,
+    read_resource,
+    resource_list,
+    tool_error,
+    tool_list,
+)
+from visivo.agent.tools import ToolError, call
 
 # JSON-RPC 2.0
 _PARSE_ERROR = -32700
@@ -73,100 +80,26 @@ def register_mcp_views(app, flask_app):
             return "", 202
 
         if method == "initialize":
-            return _result(request_id, _initialize())
+            return _result(request_id, initialize())
         # The same skills the built-in loop is given. An external client that
         # cannot read them is a second, worse agent against the same tools.
         if method == "resources/list":
-            return _result(request_id, {"resources": _resource_list()})
+            return _result(request_id, {"resources": resource_list()})
         if method == "resources/read":
             # Asking for a resource that does not exist is the caller getting
             # the protocol wrong, not a tool refusing — so it is a JSON-RPC
             # error, not an error RESULT. Raising here would have 500'd the
             # request instead of answering it.
             try:
-                return _result(request_id, _read_resource(payload.get("params") or {}))
+                return _result(request_id, read_resource(payload.get("params") or {}))
             except ToolError as refused:
                 return _error(request_id, _INVALID_PARAMS, str(refused))
         if method == "tools/list":
-            return _result(request_id, {"tools": _tool_list()})
+            return _result(request_id, {"tools": tool_list()})
         if method == "tools/call":
             return _result(request_id, _call(flask_app, payload.get("params") or {}))
 
         return _error(request_id, _METHOD_NOT_FOUND, f"Unknown method '{method}'.")
-
-
-RULES = (
-    "Tools read and write this Visivo project's objects. Writes land as "
-    "uncommitted drafts a person reviews and commits — nothing here "
-    "writes to a file. Call get_schema before authoring a type you have "
-    "not written yet: the full project schema is megabytes, and "
-    "get_schema returns only the part you need."
-)
-
-
-def _initialize():
-    return {
-        "protocolVersion": PROTOCOL_VERSION,
-        "capabilities": {"tools": {}, "resources": {}},
-        "serverInfo": {"name": "visivo", "version": _version()},
-        "instructions": _instructions(),
-    }
-
-
-def _instructions():
-    """The rules, then the always-on skills and the on-demand index.
-
-    The built-in loop gets the always-on skills in its system prompt. Clients
-    such as Claude Code put a server's instructions in theirs but never read a
-    resource unprompted, so skills offered only as resources reached no MCP
-    agent at all — including ``data-is-not-instruction``.
-    """
-    from visivo.agent import skills
-
-    return "\n\n---\n\n".join(part for part in (RULES, skills.always_on_prompt()) if part)
-
-
-SKILL_URI = "visivo://skills/{name}"
-
-
-def _resource_list():
-    from visivo.agent import skills
-
-    return [
-        {
-            "uri": SKILL_URI.format(name=skill["name"]),
-            "name": skill["name"],
-            "mimeType": "text/markdown",
-            "description": skill["summary"],
-        }
-        for skill in skills.packaged()
-    ]
-
-
-def _read_resource(params):
-    from visivo.agent import skills
-
-    uri = params.get("uri") or ""
-    prefix = SKILL_URI.format(name="")
-    if not uri.startswith(prefix):
-        raise ToolError(f"No such resource '{uri}'.")
-    try:
-        # The same function the built-in loop's read_skill tool calls.
-        text = skills.body(uri[len(prefix) :])
-    except KeyError:
-        raise ToolError(f"No such resource '{uri}'.")
-    return {"contents": [{"uri": uri, "mimeType": "text/markdown", "text": text}]}
-
-
-def _tool_list():
-    return [
-        {
-            "name": tool.name,
-            "description": tool.description,
-            "inputSchema": tool.input_schema,
-        }
-        for tool in sorted(TOOLS.values(), key=lambda t: t.name)
-    ]
 
 
 def _call(flask_app, params):
@@ -176,14 +109,14 @@ def _call(flask_app, params):
         with attributed_to("mcp"):
             value = call(flask_app, name, arguments)
     except ToolError as refused:
-        return _tool_error(str(refused))
+        return tool_error(str(refused))
     except Exception as unexpected:  # noqa: BLE001 — reported, never raised on
         # Anything the agent could not have anticipated still comes back as a
         # result: a 500 tells it nothing, and the session is worth keeping.
-        return _tool_error(f"{type(unexpected).__name__}: {unexpected}")
+        return tool_error(f"{type(unexpected).__name__}: {unexpected}")
     if is_image_result(value):
         return {"content": _image_content(value), "isError": False}
-    return {"content": [_json_content(value)], "isError": False}
+    return {"content": [json_content(value)], "isError": False}
 
 
 def _image_content(result):
@@ -196,7 +129,7 @@ def _image_content(result):
 
     from pydantic_ai.messages import BinaryContent
 
-    blocks = [_json_content(result.return_value)]
+    blocks = [json_content(result.return_value)]
     for item in result.content:
         if isinstance(item, BinaryContent):
             data = base64.b64encode(item.data).decode("ascii")
@@ -206,13 +139,13 @@ def _image_content(result):
     return blocks
 
 
-def _json_content(value):
+def json_content(value):
     import json
 
     return {"type": "text", "text": json.dumps(value, default=str)}
 
 
-def _tool_error(message):
+def tool_error(message):
     return {"content": [{"type": "text", "text": message}], "isError": True}
 
 
