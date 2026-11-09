@@ -49,9 +49,9 @@ jobs:
           sparse-checkout: .github
           persist-credentials: false
       - uses: ./.ci-tools/.github/actions/setup-cli
-      - run: poetry install --with dev
+      - run: uv sync --frozen
       - run: >
-          poetry run pytest -n 4
+          uv run pytest -n 4
           --cov=visivo --cov-report=json:coverage-python.json
       - uses: actions/upload-artifact@v4
         with:
@@ -75,8 +75,27 @@ jobs:
           sparse-checkout: .github
           persist-credentials: false
       - uses: ./.ci-tools/.github/actions/setup-cli
-      - run: poetry install --with dev --no-root
-      - run: poetry run black --check . --target-version py312
+      - run: uv sync --frozen --no-install-project
+      - run: uv run black --check . --target-version py312
+
+  package-cli:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-tools
+          sparse-checkout: .github
+          persist-credentials: false
+      - uses: ./.ci-tools/.github/actions/setup-cli
+      - run: uv build
+      - run: python .ci-tools/.github/scripts/check_dist.py dist
 
   test-onboarding-samples:
     if: ${{ !github.event.pull_request.draft }}
@@ -94,8 +113,8 @@ jobs:
           sparse-checkout: .github
           persist-credentials: false
       - uses: ./.ci-tools/.github/actions/setup-cli
-      - run: poetry install --with dev
-      - run: poetry run pytest tests/templates/test_samples.py -v --tb=short
+      - run: uv sync --frozen
+      - run: uv run pytest tests/templates/test_samples.py -v --tb=short
 
   viewer-marker:
     if: ${{ !github.event.pull_request.draft }}

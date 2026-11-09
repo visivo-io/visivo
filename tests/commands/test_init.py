@@ -73,3 +73,52 @@ def test_init_basic_creates_simple_project():
     assert "models:" in project_content
     assert "insights:" in project_content
     assert "dashboards:" in project_content
+
+
+def _fake_serve_phase(captured):
+    def fake(**kwargs):
+        captured.update(kwargs)
+        return MagicMock(), MagicMock(), MagicMock()
+
+    return fake
+
+
+def test_init_example_opens_the_browser_on_the_sample_dashboard(monkeypatch):
+    monkeypatch.chdir(os.getcwd())
+    tmp = temp_folder()
+    project_dir = os.path.abspath(os.path.join(tmp, "ev"))
+    captured = {}
+    with patch("visivo.commands.serve_phase.serve_phase", _fake_serve_phase(captured)):
+        response = runner.invoke(
+            init, args=["--project-dir", project_dir, "--example", "ev-sales", "--port", "8123"]
+        )
+
+    assert response.exit_code == 0, response.output
+    assert captured["open_path"] == "/project/EV%20Sales%20Overview"
+    assert captured["new"] is True
+    assert captured["skip_compile"] is False
+    assert os.getcwd() == os.path.abspath(project_dir)
+    assert captured["working_dir"] == os.path.abspath(project_dir)
+
+
+def test_init_scaffold_opens_the_onboarding_start_screen(monkeypatch):
+    monkeypatch.chdir(os.getcwd())
+    tmp = temp_folder()
+    captured = {}
+    with patch("visivo.commands.serve_phase.serve_phase", _fake_serve_phase(captured)):
+        response = runner.invoke(init, args=["--project-dir", tmp, "--headless"])
+
+    assert response.exit_code == 0, response.output
+    assert captured["open_path"] is None
+    assert captured["onboarding"] is True
+    assert captured["new"] is False
+
+
+def test_first_dashboard_path_quotes_the_name_and_handles_no_dashboards():
+    from visivo.commands.init import first_dashboard_path
+    from visivo.models.dashboard import Dashboard
+    from visivo.models.project import Project
+
+    assert first_dashboard_path(Project(name="p")) is None
+    project = Project(name="p", dashboards=[Dashboard(name="A/B Overview"), Dashboard(name="z")])
+    assert first_dashboard_path(project) == "/project/A%2FB%20Overview"

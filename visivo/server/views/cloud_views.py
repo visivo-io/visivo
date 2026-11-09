@@ -17,11 +17,7 @@ def register_cloud_views(app, flask_app, output_dir):
     def _host():
         return flask_app.host
 
-    # Both nouns for one release (VIS-1352). The viewer asks for `branches` now;
-    # a viewer build that predates the rename still asks for `stages`, and the
-    # two are served by the same handler rather than by two that can drift.
     @app.route("/api/cloud/branches/", methods=["GET"])
-    @app.route("/api/cloud/stages/", methods=["GET"])
     def cloud_branches():
         token = get_existing_token(host=_host())
 
@@ -46,8 +42,6 @@ def register_cloud_views(app, flask_app, output_dir):
                 {
                     "message": "Branches fetched successfully",
                     "branches": payload,
-                    # The old key too, for a viewer build that predates the rename.
-                    "stages": payload,
                 }
             )
 
@@ -57,7 +51,6 @@ def register_cloud_views(app, flask_app, output_dir):
         return jsonify({"message": "Something went wrong!", "stage": response.json()}), 500
 
     @app.route("/api/cloud/branches/", methods=["POST"])
-    @app.route("/api/cloud/stages/", methods=["POST"])
     def create_cloud_branch():
         data = request.get_json()
         name = data.get("name", "")
@@ -86,8 +79,6 @@ def register_cloud_views(app, flask_app, output_dir):
                 {
                     "message": "Branch created successfully",
                     "branch": payload,
-                    # The old key too, for a viewer build predating the rename.
-                    "stage": payload,
                 }
             )
 
@@ -103,7 +94,7 @@ def register_cloud_views(app, flask_app, output_dir):
             user_dir=os.path.expanduser("~"),
             working_dir=flask_app._working_dir,
             output_dir=output_dir,
-            stage=stage,
+            branch=stage,
             host=_host(),
             deploy_id=deploy_id,
         )

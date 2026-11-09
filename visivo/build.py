@@ -10,7 +10,7 @@ def build():
     """Build the Visivo executable using PyInstaller.
 
     Use --debug flag to enable debug mode for troubleshooting missing modules:
-        poetry run build --debug
+        uv run build --debug
     """
     debug_mode = "--debug" in sys.argv
 
@@ -65,11 +65,6 @@ def build():
         "visivo/schema/*.json:visivo/schema",
         "--add-data",
         "visivo/viewers/*:visivo/viewers",
-        # What the viewer fetches from /api/schema. Written by
-        # `poetry run write-schema-json` into a directory nothing else here
-        # covers, so leaving it out ships a binary whose schema endpoint 404s.
-        "--add-data",
-        "visivo/src/*.json:visivo/src",
         # Data the analyser cannot find by following imports: the policy is read
         # as JSON and the skills as markdown, so neither is referenced by a
         # module the build can trace.

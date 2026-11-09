@@ -1,15 +1,13 @@
 /**
- * End-to-end test for the empty-repo onboarding flow.
+ * End-to-end test for the empty-repo first run.
  *
  * What this exercises:
- *   1. visivo serve runs in a directory with no project.visivo.yml at all
- *      (the new-project bootstrap path that previously crashed with
- *      "traces — Extra inputs are not permitted").
- *   2. The user lands on /onboarding, walks role → 7 concepts → data
- *      step → cloud (skip) → handoff.
- *   3. The handoff routes them to a real viewer route based on their
- *      data-step choice; the post-flow checklist mounts in the viewer
- *      chrome.
+ *   1. visivo serve runs in a directory with no project.visivo.yml at all.
+ *   2. The user lands on the /onboarding start screen: sample tiles first,
+ *      then "connect your own data", "start empty" and the concept tour.
+ *   3. One click on a sample writes it into the folder, builds it, and opens
+ *      its dashboard with data drawn, with no Run click and no checklist on
+ *      top of the charts.
  *
  * The runner spawns a one-off sandbox pointed at a fresh tmp directory.
  * The sandbox script (visivo/scripts/sandbox.sh) honors
@@ -108,7 +106,7 @@ test.describe('Empty-repo onboarding flow', () => {
     await expect(page.getByTestId('onboarding-frame')).toBeVisible();
   });
 
-  test('walks welcome → role → 7 concepts → data step', async ({ page }) => {
+  async function freshOnboarding(page) {
     await page.goto(`http://localhost:${FRONTEND_PORT}/onboarding`);
     await page.evaluate(() => {
       try {
@@ -118,54 +116,70 @@ test.describe('Empty-repo onboarding flow', () => {
       }
     });
     await page.goto(`http://localhost:${FRONTEND_PORT}/onboarding`);
-    await page.waitForSelector('[data-testid="onboarding-frame"]');
-    await page.getByTestId('onb-welcome-continue').click();
+    await expect(page.getByTestId('onb-step-start')).toBeVisible();
+  }
+
+  test('the start screen offers the samples and the concept tour', async ({ page }) => {
+    await freshOnboarding(page);
+    await expect(page.getByTestId('onb-sample-ev-sales')).toBeVisible();
+    await page.getByTestId('onb-start-tour').click();
     await page.getByTestId('onb-role-software_engineer').click();
     await page.getByTestId('onb-role-continue').click();
     for (let i = 1; i <= 7; i++) {
       await expect(page.getByTestId(`onb-step-concept-${i}`)).toBeVisible();
       await page.getByTestId('onb-concept-continue').click();
     }
-    await expect(page.getByTestId('onb-step-data')).toBeVisible();
+    await expect(page.getByTestId('onb-step-start')).toBeVisible();
   });
 
-  test('connecting a real DuckDB source advances to cloud and shows checklist post-flow', async ({
-    page,
-  }) => {
-    await page.goto(`http://localhost:${FRONTEND_PORT}/onboarding`);
-    await page.evaluate(() => {
-      try {
-        window.localStorage.removeItem('visivo.onboarding.v1');
-      } catch {
-        /* ignore */
-      }
-    });
-    await page.goto(`http://localhost:${FRONTEND_PORT}/onboarding`);
-    await page.getByTestId('onb-welcome-continue').click();
-    await page.getByTestId('onb-role-analytics_engineer').click();
-    await page.getByTestId('onb-role-continue').click();
-    for (let i = 0; i < 7; i++) await page.getByTestId('onb-concept-continue').click();
+  test('connect your own data opens the source dialog from the start screen', async ({ page }) => {
+    await freshOnboarding(page);
     await page.getByTestId('onb-data-connect').click();
     await expect(page.getByTestId('onb-source-modal')).toBeVisible();
-    // The source modal mounts the existing SourceEditForm. We don't drive
-    // the full create here (the form is exercised in its own unit tests);
-    // verifying the modal opens from the data step is what matters for
-    // the empty-repo path.
     await expect(page.getByText('Add a Source')).toBeVisible();
   });
 
-  test('skip-onboarding from welcome lands the user on /editor', async ({ page }) => {
-    await page.goto(`http://localhost:${FRONTEND_PORT}/onboarding`);
-    await page.evaluate(() => {
-      try {
-        window.localStorage.removeItem('visivo.onboarding.v1');
-      } catch {
-        /* ignore */
-      }
-    });
-    await page.goto(`http://localhost:${FRONTEND_PORT}/onboarding`);
-    await page.getByTestId('onb-welcome-skip').click();
-    await page.getByTestId('onb-skip-confirm').click();
-    await page.waitForURL(/\/editor$/, { timeout: 10000 });
+  test('start empty lands the user in the editor', async ({ page }) => {
+    await freshOnboarding(page);
+    await page.getByTestId('onb-start-empty').click();
+    await page.waitForURL(/\/workspace\?view=project$|\/editor$/, { timeout: 10000 });
+  });
+
+  // Mutates the project directory, so it runs last.
+  test('one click on a sample opens its dashboard with data drawn', async ({ page }) => {
+    test.setTimeout(90000);
+    await freshOnboarding(page);
+    const started = Date.now();
+    await page.getByTestId('onb-sample-ev-sales').click();
+    await expect(page.getByTestId('onb-sample-loading')).toBeVisible();
+
+    await page.waitForURL(/\/project\/EV%20Sales%20Overview$/, { timeout: 60000 });
+    const plots = page.locator('.js-plotly-plot');
+    await expect(plots.first()).toBeVisible({ timeout: 30000 });
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              Array.from(document.querySelectorAll('.js-plotly-plot')).filter(p =>
+                p.querySelector('g.trace, g.indicator')
+              ).length
+          ),
+        { timeout: 30000 }
+      )
+      .toBeGreaterThan(0);
+    expect(Date.now() - started).toBeLessThan(60000);
+    await expect(page.getByText(/No insight files found/i)).toHaveCount(0);
+
+    const checklist = page.getByTestId('onboarding-checklist');
+    await expect(checklist).toBeVisible();
+    const box = await checklist.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box.y + box.height).toBeGreaterThan(viewport.height - 40);
+
+    const persisted = await page.evaluate(() =>
+      JSON.parse(window.localStorage.getItem('visivo.onboarding.v1') || '{}')
+    );
+    expect(persisted).toMatchObject({ path: 'sample', sample: 'ev-sales' });
   });
 });

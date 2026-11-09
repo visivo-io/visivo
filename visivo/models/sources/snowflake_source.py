@@ -110,9 +110,14 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
         return self._resolve_field(self.timezone)
 
     def connect_args(self):
+        # `protocol` goes here rather than into URL(): snowflake-sqlalchemy
+        # refuses connection parameters in the URL query string from 1.10, and
+        # it is the parameter that error names.
+        args = {"protocol": self.protocol} if self.protocol else {}
+
         private_key_path = self.get_private_key_path()
         if not private_key_path:
-            return {}
+            return args
 
         from cryptography.hazmat.backends import default_backend
         from cryptography.hazmat.primitives import serialization
@@ -131,9 +136,7 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
                 encryption_algorithm=serialization.NoEncryption(),
             )
 
-            return {
-                "private_key": pkb,
-            }
+            return {**args, "private_key": pkb}
 
     def get_connection_dialect(self):
         return "snowflake"
@@ -169,8 +172,6 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
             url_attributes["host"] = host
         if self.port:
             url_attributes["port"] = self.get_port()
-        if self.protocol:
-            url_attributes["protocol"] = self.protocol
 
         database = self.get_database()
         if database:

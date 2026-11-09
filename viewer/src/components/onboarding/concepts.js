@@ -260,6 +260,7 @@ export const SAMPLES = {
     art: 'bars-warm',
     schema: 'duckdb · 5 charts',
     apiKey: 'ev-sales',
+    dashboard: 'EV Sales Overview',
   },
   'github-releases': {
     name: 'github-releases',
@@ -268,6 +269,7 @@ export const SAMPLES = {
     art: 'line-up',
     schema: 'duckdb · 5 charts',
     apiKey: 'github-releases',
+    dashboard: 'GitHub Releases Overview',
   },
   'college-football': {
     name: 'college-football',
@@ -276,6 +278,7 @@ export const SAMPLES = {
     art: 'scatter',
     schema: 'duckdb · 5 charts',
     apiKey: 'college-football',
+    dashboard: 'College Football Overview',
   },
 };
 

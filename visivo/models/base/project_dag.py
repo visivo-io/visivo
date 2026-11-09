@@ -154,8 +154,9 @@ class ProjectDag(DiGraph):
                     # If unnamed node, continue searching its children
                     for child in self.successors(current):
                         stack.append((current_parent, child))
-        project = named_dag.get_root_nodes()[0]
-        named_dag.remove_node(project)
+        roots = named_dag.get_root_nodes()
+        if roots:
+            named_dag.remove_node(roots[0])
         return named_dag
 
     def get_named_children(self, node_name: str) -> List[str]:

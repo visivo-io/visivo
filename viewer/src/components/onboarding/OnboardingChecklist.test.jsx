@@ -33,9 +33,9 @@ afterEach(() => setViewerBase(''));
 
 const ROUTER_FUTURE = { v7_startTransition: true, v7_relativeSplatPath: true };
 
-const renderChecklist = () =>
+const renderChecklist = (path = '/') =>
   render(
-    <MemoryRouter future={ROUTER_FUTURE}>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={[path]}>
       <OnboardingChecklist />
     </MemoryRouter>
   );
@@ -285,5 +285,44 @@ describe('OnboardingChecklist', () => {
       </MemoryRouter>
     );
     expect(screen.queryByTestId('onboarding-checklist')).not.toBeInTheDocument();
+  });
+
+  describe('placement', () => {
+    const originalWidth = window.innerWidth;
+    afterEach(() => {
+      window.innerWidth = originalWidth;
+    });
+
+    test('a dragged position pins top/left and releases the bottom anchor', () => {
+      writeOnboardingState({ completed_at: '2026-01-01', checklist_top: 80, checklist_left: 40 });
+      renderChecklist();
+      const el = screen.getByTestId('onboarding-checklist');
+      expect(el.style.top).toBe('80px');
+      expect(el.style.left).toBe('40px');
+      expect(el.style.bottom).toBe('auto');
+    });
+
+    test('starts expanded on a desktop viewport', () => {
+      window.innerWidth = 1440;
+      writeOnboardingState({ completed_at: '2026-01-01' });
+      renderChecklist();
+      expect(screen.getByTestId('onb-checklist-connect_source')).toBeInTheDocument();
+    });
+
+    test('starts collapsed over a dashboard so the charts stay visible', () => {
+      window.innerWidth = 1440;
+      writeOnboardingState({ completed_at: '2026-01-01' });
+      renderChecklist('/project/EV%20Sales%20Overview');
+      expect(screen.getByTestId('onboarding-checklist')).toBeInTheDocument();
+      expect(screen.queryByTestId('onb-checklist-connect_source')).not.toBeInTheDocument();
+    });
+
+    test('starts collapsed on a phone viewport so it does not cover the dashboard', () => {
+      window.innerWidth = 390;
+      writeOnboardingState({ completed_at: '2026-01-01' });
+      renderChecklist();
+      expect(screen.getByTestId('onboarding-checklist')).toBeInTheDocument();
+      expect(screen.queryByTestId('onb-checklist-connect_source')).not.toBeInTheDocument();
+    });
   });
 });

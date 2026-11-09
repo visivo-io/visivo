@@ -257,6 +257,50 @@ class TestWaitingForABuild:
 
         assert run_helpers.wait_for_runs(integration_app, timeout=0.05) is False
 
+    def test_no_timeout_still_sees_a_finished_build(self, integration_app, runs, monkeypatch):
+        from visivo.agent import runs as run_helpers
+
+        monkeypatch.setattr(
+            integration_app.run_manager,
+            "list",
+            lambda limit=1: [{"state": RunState.SUCCEEDED.value}],
+        )
+
+        assert run_helpers.wait_for_runs(integration_app, timeout=0) is True
+
+    def test_no_timeout_answers_without_sleeping(self, integration_app, runs, monkeypatch):
+        from visivo.agent import runs as run_helpers
+
+        monkeypatch.setattr(
+            integration_app.run_manager, "list", lambda limit=1: [{"state": RunState.RUNNING.value}]
+        )
+
+        def must_not_sleep(_seconds):
+            raise AssertionError("waited for a build")
+
+        monkeypatch.setattr(run_helpers.time, "sleep", must_not_sleep)
+
+        assert run_helpers.wait_for_runs(integration_app, timeout=0) is False
+
+    def test_a_host_can_make_check_runs_answer_at_once(self, integration_app, runs, monkeypatch):
+        from visivo.agent import runs as run_helpers
+        from visivo.agent.tools import call
+
+        run = runs.create(dag_filter="+orders+")
+        runs.set_state(run.id, RunState.RUNNING)
+
+        def must_not_sleep(_seconds):
+            raise AssertionError("waited for a build")
+
+        monkeypatch.setattr(run_helpers.time, "sleep", must_not_sleep)
+        integration_app.run_settle_timeout = 0
+
+        result = call(integration_app, "check_runs", {})
+
+        assert result["settled"] is False
+        assert result["ok"] is False
+        assert result["state"] == "running"
+
     def test_a_server_with_no_run_manager_is_not_blocked(self, integration_app):
         """Minimal harnesses and any surface without runs still work."""
         from visivo.agent import runs as run_helpers

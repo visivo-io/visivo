@@ -46,13 +46,6 @@ def client(app):
     return app.test_client()
 
 
-def test_missing_project_name(client):
-    """Test POST /api/project/init when project name is missing."""
-    res = client.post("/api/project/init/", json={"project_dir": "/tmp/somepath"})
-    assert res.status_code == 400
-    assert b"Project name is required" in res.data
-
-
 def test_create_project_with_file_upload(client):
     """Test POST /api/source/upload with a CSV file upload."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -369,7 +362,7 @@ def test_authorize_device_token_callback_token_valid_token(client):
         assert "<html>OK</html>" in response.get_data(as_text=True)
 
 
-def test_get_cloud_stages_success(client):
+def test_get_cloud_branches_success(client):
     mock_token = "test123"
     mock_res_data = [{"name": "dev"}, {"name": "prod"}]
 
@@ -381,18 +374,15 @@ def test_get_cloud_stages_success(client):
         mock_req.return_value.status_code = 200
         mock_req.return_value.json.return_value = mock_res_data
 
-        response = client.get("/api/cloud/stages/")
+        response = client.get("/api/cloud/branches/")
         data = response.get_json()
 
         assert response.status_code == 200
         assert data["message"] == "Branches fetched successfully"
-        # Both keys for one release (VIS-1352): a viewer build that predates the
-        # rename still reads `stages`.
         assert data["branches"] == mock_res_data
-        assert data["stages"] == mock_res_data
 
 
-def test_get_cloud_stages_unauthorized(client):
+def test_get_cloud_branches_unauthorized(client):
     mock_token = "test123"
     with (
         patch("visivo.server.views.cloud_views.get_existing_token", return_value=mock_token),
@@ -404,14 +394,14 @@ def test_get_cloud_stages_unauthorized(client):
 
         mock_req.return_value = mock_response
 
-        response = client.get("/api/cloud/stages/")
+        response = client.get("/api/cloud/branches/")
         data = response.get_json()
 
         assert response.status_code == 401
         assert data["message"] == "UnAuthorized access"
 
 
-def test_create_cloud_stages_success(client):
+def test_create_cloud_branch_success(client):
     mock_token = "test123"
     payload = {"name": "prod"}
     mock_response_data = {"id": 1, "name": "prod"}
@@ -423,19 +413,17 @@ def test_create_cloud_stages_success(client):
         mock_post.return_value.json.return_value = mock_response_data
 
         headers = {"Authorization": f"Api-Key {mock_token}"}
-        response = client.post("/api/cloud/stages/", json=payload, headers=headers)
+        response = client.post("/api/cloud/branches/", json=payload, headers=headers)
 
         data = response.get_json()
 
         assert response.status_code == 200
         assert data["message"] == "Branch created successfully"
-        # Both keys for one release (VIS-1352).
         assert data["branch"] == mock_response_data
-        assert data["stage"] == mock_response_data
 
 
-def test_create_cloud_stages_missing_name(client):
-    res = client.post("/api/cloud/stages/", json={})
+def test_create_cloud_branch_missing_name(client):
+    res = client.post("/api/cloud/branches/", json={})
     data = res.get_json()
 
     assert res.status_code == 400
@@ -450,6 +438,7 @@ def test_cloud_deploy_success(client):
         assert response.status_code == 200
         assert data["message"] == "Deployment initiated successfully"
         mock_deploy_phase.assert_called_once()
+        assert mock_deploy_phase.call_args.kwargs["branch"] == "pre-test"
 
 
 def test_get_job_status_valid_id(client):
@@ -524,23 +513,6 @@ def test_serve_insight_data_by_name_default_run_id(client, output_dir):
     assert data[0]["id"] == insight_name
     assert data[0]["hello"] == "world"
     assert data[0]["default"] == "run"
-
-
-def test_cloud_branches_is_served_under_both_nouns(client):
-    """The viewer asks for `branches` now; a build that predates the rename
-    still asks for `stages`, and both have to reach the same handler
-    (VIS-1352)."""
-    from unittest.mock import patch
-
-    with patch("visivo.server.views.cloud_views.get_existing_token", return_value="t"):
-        with patch("visivo.server.views.cloud_views.requests.get") as mock_get:
-            mock_get.return_value.status_code = 200
-            mock_get.return_value.json.return_value = [{"name": "main"}]
-
-            old = client.get("/api/cloud/stages/").get_json()
-            new = client.get("/api/cloud/branches/").get_json()
-
-    assert old["branches"] == new["branches"] == [{"name": "main"}]
 
 
 def test_deploy_is_not_offered_archived_branches(client):
@@ -654,3 +626,20 @@ def test_load_example_resets_served_project_before_change_handler(output_dir, mo
     assert response.status_code == 200
     flask_app.hot_reload_server.on_project_change.assert_called_once()
     assert seen["served_name"] != example.name
+
+
+def test_an_api_path_with_no_route_is_a_404_not_the_page(client):
+    """The catch-all serves the viewer's HTML with a 200, which a caller of a
+    removed route would read as success (VIS-1685)."""
+    for path in ("/api/schema/", "/api/cloud/stages/", "/api/no-such-thing/"):
+        response = client.get(path)
+
+        assert response.status_code == 404, path
+        assert response.is_json, path
+
+
+def test_a_page_path_still_gets_the_viewer(client):
+    response = client.get("/workspace/dashboard/sales")
+
+    assert response.status_code == 200
+    assert "text/html" in response.content_type

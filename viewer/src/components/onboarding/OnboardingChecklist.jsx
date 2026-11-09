@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useViewerNavigate } from '../../hooks/useViewerNavigate';
 
 import './onboarding.css';
@@ -13,6 +14,8 @@ const VIEWPORT_PAD = 8;
 function readDismissed() {
   return isOnboardingDismissed();
 }
+
+const NARROW_VIEWPORT = 768;
 
 function clampToViewport(top, left, height) {
   if (typeof window === 'undefined') return { top, left };
@@ -42,7 +45,14 @@ export default function OnboardingChecklist() {
   // minted; a fresh mint would strand them somewhere with nothing to chart).
   const workspaceActiveObject = useStore(s => s.workspaceActiveObject);
   const workspaceExplorationsOrder = useStore(s => s.workspaceExplorations?.order);
-  const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
+  // Start folded over a dashboard (where a new user lands after picking a
+  // sample) and on phones, so the card never covers the charts.
+  const [collapsed, setCollapsed] = useState(
+    () =>
+      /\/project\/[^/]+/.test(location.pathname) ||
+      (typeof window !== 'undefined' && window.innerWidth < NARROW_VIEWPORT)
+  );
   const [dismissed, setDismissed] = useState(readDismissed());
 
   const persistedRole = (readOnboardingState() || {}).role || null;
@@ -253,7 +263,7 @@ export default function OnboardingChecklist() {
   const dashLen = total ? (completed / total) * 88 : 0;
 
   const positionStyle = position
-    ? { top: position.top, left: position.left, right: 'auto' }
+    ? { top: position.top, left: position.left, right: 'auto', bottom: 'auto' }
     : undefined;
 
   return (

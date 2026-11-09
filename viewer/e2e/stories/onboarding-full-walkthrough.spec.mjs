@@ -3,12 +3,9 @@
  *
  * One end-to-end journey:
  *
- *   /onboarding welcome
- *     → role pick (analytics_engineer)
- *     → 7 concept screens
- *     → data step (connect path)
- *     → cloud screen ("maybe later")
- *     → handoff
+ *   /onboarding start screen
+ *     → concept tour: role pick (analytics_engineer) → 7 concept screens
+ *     → back on the start screen (connect path)
  *     → /editor empty state with the post-flow checklist visible
  *   then post-handoff:
  *     → checklist shows the analytics_engineer item set
@@ -46,13 +43,13 @@ async function clickThroughConcepts(page) {
 }
 
 test.describe('Onboarding — full walkthrough', () => {
-  // 13+ user actions (welcome → role → 7 concepts → data → /editor →
+  // 13+ user actions (start → role → 7 concepts → start → /editor →
   // /project → /editor) walk through more UI than any other onboarding
   // spec. Under parallel sweep load the default 30s timeout is too tight
   // — give it 90s of runway. In isolation the test settles in ~10s.
   test.setTimeout(90_000);
 
-  test('welcome → handoff → checklist flips view_project on /project visit, auto-dismisses at 100%', async ({
+  test('start → tour → checklist checklist flips view_project on /project visit, auto-dismisses at 100%', async ({
     page,
   }) => {
     // 1) Start fresh
@@ -61,9 +58,9 @@ test.describe('Onboarding — full walkthrough', () => {
     await page.goto(`${BASE}/onboarding`);
     await page.waitForSelector('[data-testid="onboarding-frame"]', { timeout: 15000 });
 
-    // 2) Welcome → Continue
-    await expect(page.getByTestId('onb-step-welcome')).toBeVisible();
-    await page.getByTestId('onb-welcome-continue').click();
+    // 2) Start screen → concept tour
+    await expect(page.getByTestId('onb-step-start')).toBeVisible();
+    await page.getByTestId('onb-start-tour').click();
 
     // 3) Role picker — analytics_engineer
     await expect(page.getByTestId('onb-role-grid')).toBeVisible();
@@ -73,21 +70,17 @@ test.describe('Onboarding — full walkthrough', () => {
     // 4) Concept screens — 7 in a row for analytics_engineer
     await clickThroughConcepts(page);
 
-    // 5) Data step — open the connect modal then close it (no real
+    // 5) Back on the start screen — open the connect modal then close it (no real
     //    backend connect needed; the integration project's source list
     //    is already populated which satisfies connect_source post-handoff).
-    await expect(page.getByTestId('onb-step-data')).toBeVisible();
+    await expect(page.getByTestId('onb-step-start')).toBeVisible();
     await page.getByTestId('onb-data-connect').click();
     await expect(page.getByTestId('onb-source-modal')).toBeVisible();
     await page.locator('.onb-modal__close').click();
     await expect(page.getByTestId('onb-source-modal')).toHaveCount(0);
 
-    // 6) Need to actually proceed past data step — go back, pick the
-    //    sample sub-screen (visual confirm of suggested badge), then
-    //    skip the rest of the flow via welcome's path. The role-aware
-    //    flow doesn't have a "go to handoff" without a data outcome,
-    //    so simulate completion by injecting a completed state and
-    //    routing to /editor where the checklist + coach should mount.
+    // 6) Simulate a completed connect path by injecting a completed state
+    //    and routing to /editor where the checklist + coach should mount.
     await page.evaluate(() => {
       window.localStorage.setItem(
         'visivo.onboarding.v1',

@@ -26,7 +26,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 INTEGRATION_DIR="${VISIVO_SANDBOX_PROJECT_DIR:-$PROJECT_DIR/test-projects/integration}"
 VIEWER_DIR="$PROJECT_DIR/viewer"
 VENV_ACTIVATE="$PROJECT_DIR/venv14/bin/activate"
-# Fall back to poetry's .venv if venv14 isn't present.
+# Fall back to uv's .venv if venv14 isn't present.
 if [ ! -f "$VENV_ACTIVATE" ] && [ -f "$PROJECT_DIR/.venv/bin/activate" ]; then
     VENV_ACTIVATE="$PROJECT_DIR/.venv/bin/activate"
 fi

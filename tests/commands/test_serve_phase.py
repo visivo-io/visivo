@@ -14,7 +14,7 @@ from tests.factories.model_factories import (
 )
 from tests.support.utils import temp_folder
 from visivo.agent.actions import log
-from visivo.commands.serve_phase import serve_phase
+from visivo.commands.serve_phase import browser_url, serve_phase
 from visivo.commands.utils import create_file_database
 from visivo.server.hot_reload_server import HotReloadServer
 
@@ -534,3 +534,92 @@ def test_a_browser_that_will_not_open_is_logged_not_raised(
     on_server_ready()
 
     assert error.call_args[0][0].startswith("no browser\nTraceback")
+
+
+@pytest.mark.parametrize(
+    "onboarding, open_path, expected",
+    [
+        (False, None, "http://localhost:8000"),
+        (True, None, "http://localhost:8000/?onboarding=1"),
+        (
+            True,
+            "/project/EV%20Sales%20Overview",
+            "http://localhost:8000/project/EV%20Sales%20Overview",
+        ),
+    ],
+)
+def test_browser_url(onboarding, open_path, expected):
+    assert browser_url("http://localhost:8000", onboarding, open_path) == expected
+
+
+def test_the_browser_opens_on_the_requested_path_after_the_first_build(
+    test_project, output_dir, server_url, mocker
+):
+    os.makedirs(output_dir, exist_ok=True)
+    _, _, on_server_ready = serve_phase(
+        output_dir=output_dir,
+        working_dir=".",
+        default_source=None,
+        dag_filter=None,
+        threads=1,
+        skip_compile=True,
+        project=test_project,
+        server_url=server_url,
+        new=True,
+        onboarding=True,
+        open_path="/project/Sales",
+    )
+    _skip_run(mocker)
+    opened = mocker.patch("visivo.commands.serve_phase.webbrowser.open")
+
+    on_server_ready()
+
+    assert opened.call_args[0][0] == f"{server_url}/project/Sales"
+
+
+def test_loading_a_sample_into_a_fresh_init_builds_its_insights(server_url, monkeypatch):
+    """VIS-1710: `visivo init` serves the scaffold; picking a sample in the
+    browser must leave every insight of the sample built before the route
+    returns, so its dashboard opens with data instead of a spinner."""
+    import glob
+
+    from visivo.commands.init_phase import create_basic_project
+    from visivo.commands.parse_project_phase import parse_project_phase
+
+    working_dir = os.path.abspath(os.path.join(temp_folder(), "fresh"))
+    create_basic_project("fresh", working_dir)
+    monkeypatch.chdir(working_dir)
+    output_dir = os.path.join(working_dir, "target")
+    project = parse_project_phase(
+        working_dir=working_dir,
+        output_dir=output_dir,
+        default_source=None,
+        dbt_profile=None,
+        dbt_target=None,
+    )
+    server, _, on_server_ready = serve_phase(
+        output_dir=output_dir,
+        working_dir=working_dir,
+        default_source=None,
+        dag_filter=None,
+        threads=None,
+        skip_compile=False,
+        project=project,
+        server_url=server_url,
+        onboarding=True,
+    )
+    on_server_ready()
+
+    response = server.app.test_client().post(
+        "/api/project/load_example/",
+        data=json.dumps(
+            {"project_name": "fresh", "project_dir": working_dir, "example_type": "ev-sales"}
+        ),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    with open(os.path.join(output_dir, "error.json")) as f:
+        assert json.load(f) == {}
+    built = glob.glob(os.path.join(output_dir, "**", "insights", "*.json"), recursive=True)
+    assert built, "no insight files were built for the sample"

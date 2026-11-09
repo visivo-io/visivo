@@ -2,13 +2,13 @@
 # One-shot docs generation + build pipeline for the MkDocs site.
 #
 # Pipeline:
-#   1. Preflight  — verify the poetry env can import visivo + mkdocs-material
+#   1. Preflight  — verify the uv env can import visivo + mkdocs-material
 #   2. Schema     — write generate_schema() straight to mkdocs/assets/visivo_schema.json
 #                   (fast, ~2s). --ci-parity instead runs the schema pytest and copies
 #                   the NEWEST tmp/**/visivo_schema.json, matching .rwx/test_docs.yml.
-#   3. Markdown   — poetry run python mkdocs/src/write_mkdocs_markdown_files.py
+#   3. Markdown   — uv run python mkdocs/src/write_mkdocs_markdown_files.py
 #                   (NOTE: this rewrites the committed mkdocs.yml nav in place)
-#   4. Build      — PYTHONPATH=$PWD poetry run mkdocs build, teed to tmp/docs/build_stdout.txt
+#   4. Build      — PYTHONPATH=$PWD uv run mkdocs build, teed to tmp/docs/build_stdout.txt
 #   5. Spellcheck — fail on any "WARNING -  mkdocs_spellcheck" line in the build output
 #
 # Usage:
@@ -40,17 +40,17 @@ for arg in "$@"; do
 done
 
 # --- 1. Preflight -----------------------------------------------------------
-if ! poetry run python -c "import visivo, material" >/dev/null 2>&1; then
-    echo "ERROR: the poetry env cannot import visivo and/or mkdocs-material."
+if ! uv run python -c "import visivo, material" >/dev/null 2>&1; then
+    echo "ERROR: the uv env cannot import visivo and/or mkdocs-material."
     echo "Remediation:"
-    echo "  poetry env use /opt/homebrew/bin/python3.12 && poetry install --with dev"
+    echo "  uv sync"
     exit 1
 fi
 
 # --- 2. Schema --------------------------------------------------------------
 if [ "$CI_PARITY" = true ]; then
     echo "==> Schema (--ci-parity): running tests/parsers/test_schema_generator.py..."
-    poetry run pytest tests/parsers/test_schema_generator.py
+    uv run pytest tests/parsers/test_schema_generator.py
     # CI uses `find tmp -name visivo_schema.json -exec cp {}` which grabs ANY match;
     # locally tmp/ can hold stale schemas from old runs, so copy only the NEWEST.
     newest_schema=$(find tmp -name visivo_schema.json -print0 2>/dev/null \
@@ -63,12 +63,12 @@ if [ "$CI_PARITY" = true ]; then
     echo "Copied $newest_schema -> mkdocs/assets/visivo_schema.json"
 else
     echo "==> Schema (fast path): writing mkdocs/assets/visivo_schema.json..."
-    poetry run python -c "from visivo.parsers.schema_generator import generate_schema; from pathlib import Path; Path('mkdocs/assets/visivo_schema.json').write_text(generate_schema())"
+    uv run python -c "from visivo.parsers.schema_generator import generate_schema; from pathlib import Path; Path('mkdocs/assets/visivo_schema.json').write_text(generate_schema())"
 fi
 
 # --- 3. Markdown generation -------------------------------------------------
 echo "==> Generating reference markdown (rewrites mkdocs.yml nav in place)..."
-poetry run python mkdocs/src/write_mkdocs_markdown_files.py
+uv run python mkdocs/src/write_mkdocs_markdown_files.py
 if ! git diff --quiet mkdocs.yml; then
     echo ""
     echo "#####################################################################"
@@ -92,7 +92,7 @@ if [ "$STRICT" = true ]; then
     build_args+=(-s)
 fi
 echo "==> Building docs (mkdocs build ${build_args[*]})..."
-PYTHONPATH="$PROJECT_DIR" poetry run mkdocs build "${build_args[@]}" 2>&1 \
+PYTHONPATH="$PROJECT_DIR" uv run mkdocs build "${build_args[@]}" 2>&1 \
     | tee tmp/docs/build_stdout.txt
 build_status=${PIPESTATUS[0]}
 if [ "$build_status" -ne 0 ]; then

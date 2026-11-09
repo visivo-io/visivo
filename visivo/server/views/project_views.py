@@ -25,14 +25,6 @@ from visivo.models.example_type import ExampleTypeEnum
 
 
 def register_project_views(app, flask_app, output_dir):
-    @app.route("/api/project/named_children/", methods=["GET"])
-    def named_children():
-        named_children = flask_app._project.named_child_nodes()
-        if named_children:
-            return jsonify(named_children)
-        else:
-            return jsonify({})
-
     @app.route("/api/project/project_file_path/", methods=["GET"])
     def project_file_path():
         project_file_path = flask_app._project.project_file_path
@@ -88,21 +80,6 @@ def register_project_views(app, flask_app, output_dir):
                 flask_app.hot_reload_server.on_project_change()
                 Logger.instance().debug("Resumed file watcher after example load")
                 flask_app.hot_reload_server.socketio.emit("reload")
-
-    @app.route("/api/project/init/", methods=["POST"])
-    def init_project():
-        data = request.get_json()
-        project_name = data.get("project_name", "").strip()
-        project_dir = data.get("project_dir", "").strip()
-
-        if not project_name:
-            return jsonify({"message": "Project name is required"}), 400
-
-        project_path = (
-            os.path.join(project_dir, "project.visivo.yml") if project_dir else "project.visivo.yml"
-        )
-
-        return jsonify({"message": "Project initialized", "project_file_path": project_path})
 
     @app.route("/api/source/create/", methods=["POST"])
     def create_source_api():

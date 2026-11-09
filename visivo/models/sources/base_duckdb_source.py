@@ -4,7 +4,6 @@ Base class for sources that use DuckDB as their underlying engine.
 
 from typing import Dict, List, Any, Optional, ClassVar, Set, Tuple
 from abc import abstractmethod
-import duckdb
 import click
 from visivo.models.sources.source import Source
 from visivo.logger.logger import Logger

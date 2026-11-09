@@ -27,6 +27,7 @@ hijacked agent is a draft someone can discard.
 """
 
 import re
+from dataclasses import replace
 from typing import Dict, get_args
 
 from visivo.agent import images
@@ -220,11 +221,18 @@ def _write_handler(type_key):
         if model:
             obj.set_parent_name(model)
 
-        # Local import: run_views reaches back into the server package, and the
-        # tool registry is imported from it.
-        from visivo.server.views.run_views import resource_fingerprint, stage_and_maybe_run
+        # Only a server with a staged_manager stages locally; in cloud the
+        # manager wrote through to core, whose handler stages the draft. The
+        # import belongs inside the guard because run_views reaches into the
+        # server package, pulling Flask and the warehouse drivers with it.
+        staging = getattr(app, "staged_manager", None) is not None
+        if staging:
+            from visivo.server.views.run_views import (
+                resource_fingerprint,
+                stage_and_maybe_run,
+            )
 
-        before = resource_fingerprint(app, type_key, name)
+            before = resource_fingerprint(app, type_key, name)
         # Into the draft tier, never the filesystem. See the module docstring.
         try:
             manager.save(name, obj)
@@ -234,18 +242,7 @@ def _write_handler(type_key):
         # POST /api/<type>/<name>/. The agent saves in-process, so without this
         # its writes stage nothing (leaving the top bar on Deploy) and never
         # trigger a run, however run_trigger is set.
-        #
-        # In cloud there is no local staging to do: the manager wrote THROUGH
-        # to core's per-name endpoint, and core's own handler stages the draft
-        # and requests the auto-run. Calling this there raised
-        # AttributeError('staged_manager') — after the save had already
-        # landed, so every write reported failure, the model retried, and the
-        # object was written twice.
-        outcome = (
-            stage_and_maybe_run(app, type_key, name, before)
-            if getattr(app, "staged_manager", None) is not None
-            else None
-        )
+        outcome = stage_and_maybe_run(app, type_key, name, before) if staging else None
         result = {"name": name, "status": "draft"}
         if outcome:
             result["change"] = outcome
@@ -476,12 +473,14 @@ def _get_run_handler(app, arguments):
 def _check_runs_handler(app, arguments):
     from visivo.agent import runs
 
-    return runs.verdict(app)
+    # A host whose requests each hold a web worker sets this to 0.
+    timeout = getattr(app, "run_settle_timeout", runs.RUN_SETTLE_TIMEOUT_SECONDS)
+    return runs.verdict(app, timeout=timeout)
 
 
 def _theme_config(app):
     """The draft theme if one is cached, otherwise the published one."""
-    from visivo.server.views.theme_views import current_theme_config
+    from visivo.server.services.theme_service import current_theme_config
 
     return current_theme_config(app)
 
@@ -990,13 +989,14 @@ _HAND_WRITTEN = {
     "check_runs": Tool(
         name="check_runs",
         description=(
-            "Whether the project builds. Waits for a build in flight to finish, "
-            "then reports whether the newest run succeeded, with the "
-            "diagnostics and log tail of one that did not. Call this before you "
-            "say a change is done: a write that changes data starts a build, "
-            "and until it finishes nobody knows whether what you wrote works. "
-            "`ok` is true only when nothing is still building and the newest "
-            "run succeeded."
+            "Whether the project builds. Reports whether the newest run "
+            "succeeded, with the diagnostics and log tail of one that did not. "
+            "Call this before you say a change is done: a write that changes "
+            "data starts a build, and until it finishes nobody knows whether "
+            "what you wrote works. `ok` is true only when nothing is still "
+            "building and the newest run succeeded. `settled: false` means a "
+            "build is still in flight, so call this again. A local server may "
+            "wait briefly for it first; Visivo Cloud answers at once."
         ),
         input_schema={"type": "object", "properties": {}},
         handler=_check_runs_handler,
@@ -1028,7 +1028,43 @@ _HAND_WRITTEN = {
 _SPECIAL_TOOLS = {**_HAND_WRITTEN, **DATA_TOOLS, **SCREENSHOT_TOOLS}
 SPECIAL_TOOL_NAMES = frozenset(_SPECIAL_TOOLS)
 
-TOOLS: Dict[str, Tool] = {**_generated_tools(), **_SPECIAL_TOOLS}
+
+PROJECT_ID = "project_id"
+
+_PROJECT_ID_PROPERTY = {
+    "type": "string",
+    "description": (
+        "Which project to act on. Required where an account has many, as in "
+        "Visivo Cloud; ignored by `visivo serve`, which hosts one."
+    ),
+}
+
+# Tools whose answer is the same whatever project you are in.
+_PROJECT_INDEPENDENT = frozenset({"get_schema", "read_skill"})
+
+
+def _project_scoped(tools):
+    """Give every project-scoped tool an optional ``project_id``.
+
+    Applied over the registry rather than written into each schema so a new
+    tool gets it by construction, and so one definition serves both servers: a
+    cloud-only variant would be the same tools advertising different schemas.
+    """
+    scoped = {}
+    for name, tool in tools.items():
+        if name in _PROJECT_INDEPENDENT:
+            scoped[name] = tool
+            continue
+        schema = dict(tool.input_schema)
+        schema["properties"] = {
+            **schema.get("properties", {}),
+            PROJECT_ID: _PROJECT_ID_PROPERTY,
+        }
+        scoped[name] = replace(tool, input_schema=schema)
+    return scoped
+
+
+TOOLS: Dict[str, Tool] = _project_scoped({**_generated_tools(), **_SPECIAL_TOOLS})
 
 
 def tool_names():
@@ -1109,7 +1145,10 @@ def call(app, name, arguments=None):
     both arrive through this function, and a log that only covered one of them
     would mean the registry was being bypassed.
     """
-    arguments = arguments or {}
+    # Addressed to the server, not the tool: by the time a handler runs the
+    # caller has already resolved it to the managers being acted on. Stripped
+    # rather than passed through because some handlers validate strictly.
+    arguments = {key: value for key, value in (arguments or {}).items() if key != PROJECT_ID}
     obj = _object_of(name, arguments)
     tool = TOOLS.get(name)
     if tool is None:

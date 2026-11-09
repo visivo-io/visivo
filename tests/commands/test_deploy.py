@@ -106,3 +106,23 @@ def test_deploy_with_symbol_stage():
         in response.output
     )
     assert response.exit_code == 2
+
+
+def test_deploy_passes_force_to_the_deploy_phase():
+    from unittest import mock
+
+    with mock.patch("visivo.commands.deploy_phase.deploy_phase", return_value="/a/b/c") as phase:
+        response = runner.invoke(deploy, ["-s", "stage", "--force"])
+
+    assert response.exit_code == 0, response.output
+    assert phase.call_args.kwargs["force"] is True
+
+
+def test_deploy_does_not_force_by_default():
+    from unittest import mock
+
+    with mock.patch("visivo.commands.deploy_phase.deploy_phase", return_value="/a/b/c") as phase:
+        response = runner.invoke(deploy, ["-s", "stage"])
+
+    assert response.exit_code == 0, response.output
+    assert phase.call_args.kwargs["force"] is False

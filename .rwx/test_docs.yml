@@ -53,9 +53,9 @@ tasks:
 
   - key: cli-dependencies
     use: [code, python]
-    run: pip install poetry && poetry install --with dev --no-root
+    run: pip install uv && uv sync --frozen --no-install-project
     filter:
-      - poetry.lock
+      - uv.lock
       - pyproject.toml
 
   # Docs-vs-code parity guard (VIS-874). Fast static checks that keep the
@@ -70,20 +70,20 @@ tasks:
   - key: docs-parity
     use: cli-dependencies
     run: |
-      poetry install --with dev
-      poetry run pytest tests/docs/test_docs_parity.py tests/docs/test_docs_examples.py -v --tb=short
+      uv sync --frozen
+      uv run pytest tests/docs/test_docs_parity.py tests/docs/test_docs_examples.py -v --tb=short
 
   - key: mkdocs
     use: cli-dependencies
     run: |
-      poetry install --with dev
-      poetry run pytest tests/parsers/test_schema_generator.py
+      uv sync --frozen
+      uv run pytest tests/parsers/test_schema_generator.py
       find tmp -name visivo_schema.json -exec cp {} ./mkdocs/assets \;
-      poetry run python mkdocs/src/write_mkdocs_markdown_files.py
-      poetry run mkdocs serve > mkdocs.log 2>&1 &
+      uv run python mkdocs/src/write_mkdocs_markdown_files.py
+      uv run mkdocs serve > mkdocs.log 2>&1 &
       sh mkdocs/check-connection.sh
       wget --recursive --no-verbose --spider http://127.0.0.1:8000/ 2>&1 | grep -v -E 'OK$|^unlink|\.tmp\.tmp'
-      PYTHONPATH=$PWD poetry run mkdocs build 2>&1 | tee build_stdout.txt
+      PYTHONPATH=$PWD uv run mkdocs build 2>&1 | tee build_stdout.txt
 
   - key: check-for-spelling-errors
     use: mkdocs

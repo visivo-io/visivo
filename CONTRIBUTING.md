@@ -12,23 +12,23 @@ Visivo consists of two main components:
 
 - Python 3.12+ (development and release builds use 3.14.6)
 - Node.js 20+
-- Poetry (Python package manager)
+- uv (Python package and project manager)
 - Yarn (JavaScript package manager)
 - Docker and Docker Compose (for integration testing with databases)
 
 ## 🐍 CLI Development
 
-The Python CLI is located in the `visivo` folder and uses Poetry for dependency management.
+The Python CLI is located in the `visivo` folder and uses uv for dependency management.
 
 ### Setup
 
 ```bash
-# Install Poetry if you haven't already
-pip install poetry
+# Install uv if you haven't already
+pip install uv
 
 # Install dependencies
 cd visivo
-poetry install
+uv sync
 
 # Install Visivo in development mode (links to your local files)
 pip install -e .
@@ -38,13 +38,13 @@ pip install -e .
 
 ```bash
 # Run tests
-poetry run pytest
+uv run pytest
 
 # Run specific test
-poetry run pytest tests/telemetry/test_config.py -xvs
+uv run pytest tests/telemetry/test_config.py -xvs
 
 # Format code (line length: 100)
-poetry run black .
+uv run black .
 
 # Start the server
 visivo serve
@@ -257,17 +257,17 @@ Releases are created through GitHub Actions:
 
 1. **Generate Schema JSON**:
    ```bash
-   poetry run write-schema-json
+   uv run write-schema-json
    ```
 
 2. **Copy Install Script**:
    ```bash
-   poetry run copy-install-script
+   uv run copy-install-script
    ```
 
 3. **Build Binary** (handled by CI):
    ```bash
-   poetry run build
+   uv run build
    ```
 
 4. **Create Release**: Use the "Create Release" GitHub Action with version number (e.g., `1.3.4` without the `v` prefix)
@@ -308,7 +308,7 @@ The database and packaging lanes stay in `.rwx/test_visivo.yml`. They run nightl
 ### Python
 - Use Black formatter with 100 character line limit
 - Configuration in `pyproject.toml`
-- Run `poetry run black .` before committing
+- Run `uv run black .` before committing
 
 ### JavaScript/TypeScript
 - Use Prettier for formatting

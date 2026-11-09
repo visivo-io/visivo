@@ -7,7 +7,7 @@
  *   3. CLI continues into `visivo serve` and opens the browser at
  *      `http://localhost:8000/?onboarding=1`
  *   4. The viewer redirects from `/` -> `/onboarding` and renders the
- *      onboarding flow (OnboardingFlow / Welcome screen).
+ *      onboarding start screen (sample tiles first).
  *
  * For E2E we don't actually run `visivo init` (heavy + slow). Instead we hit
  * the running sandbox at the equivalent URL and verify the routing lands on
@@ -34,13 +34,14 @@ test.describe('visivo init launches onboarding', () => {
     await expect(page).toHaveURL(/\/onboarding/);
   });
 
-  test('Step 2: Onboarding flow renders the welcome screen', async ({ page }) => {
+  test('Step 2: Onboarding flow renders the start screen', async ({ page }) => {
     await page.goto(`${BASE_URL}/?onboarding=1`);
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByTestId('onboarding-frame')).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('heading', { name: /Welcome to Visivo/i })).toBeVisible();
-    await expect(page.getByTestId('onb-welcome-skip')).toBeVisible();
+    await expect(page.getByTestId('onb-sample-ev-sales')).toBeVisible();
+    await expect(page.getByTestId('onb-start-empty')).toBeVisible();
 
     await page.screenshot({
       path: 'e2e/screenshots/init-launches-onboarding.png',
