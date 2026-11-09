@@ -268,15 +268,25 @@ def _write_handler(type_key):
                     "everything built on it will not build until it runs. Fix the SQL, "
                     "querying the source's own tables, and write the model again."
                 )
-        if type_key == "insights":
-            from visivo.agent.data_tools import probe_insight
+        if type_key == "relations":
+            from visivo.agent.data_tools import probe_relation
 
-            problems = probe_insight(app, obj.model_dump(exclude_none=True, mode="json"))
+            cardinality, warning = probe_relation(app, obj)
+            if cardinality:
+                result["cardinality"] = cardinality
+            if warning:
+                found.append(warning)
+        if type_key == "insights":
+            from visivo.agent.data_tools import fanout_warnings, probe_insight
+
+            dumped = obj.model_dump(exclude_none=True, mode="json")
+            problems = probe_insight(app, dumped)
             if problems:
                 found += problems + [
                     "Call preview_insight to see the rows, fix the props, and write the "
                     "insight again."
                 ]
+            found += fanout_warnings(app, dumped)
         if type_key == "inputs":
             from visivo.agent.data_tools import probe_input
 
@@ -366,6 +376,12 @@ _PER_TYPE = {
 }
 
 
+_RELATION_NOTE = (
+    " Join on a key that is unique on one side. The result gives the measured "
+    "`cardinality` and warns when a join repeats rows (fan-out); read_skill"
+    "('join-models-safely') before a relation or a chart that reads two models."
+)
+
 _SCOPED_NOTE = (
     " Put `model: <model name>` in the config to scope the {singular} to that model, "
     "as score_candidates' semantic_layer lists it; its expression then uses the "
@@ -381,6 +397,8 @@ def _generated_tools():
             name = f"{verb}_{singular}" if verb != "list" else f"list_{type_key}"
             if verb in ("write", "validate") and type_key in _MODEL_SCOPED:
                 description += _SCOPED_NOTE
+            if verb == "write" and type_key == "relations":
+                description += _RELATION_NOTE
             tools[name] = Tool(
                 name=name,
                 description=description.format(singular=singular, plural=type_key),

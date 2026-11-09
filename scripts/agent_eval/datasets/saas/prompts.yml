@@ -51,3 +51,74 @@ prompts:
       Build a dashboard called accounts-table with a table of our biggest
       accounts: current plan, seats, MRR, signup date and whether they churned.
     expects: [table_used, formatted_columns]
+
+  - id: fanout
+    dashboard: plan-history
+    prompt: >-
+      Build a dashboard called plan-history. For each plan in the
+      subscription history, show how many accounts have been on it at any
+      point, broken down by industry. Put the number of accounts that have
+      ever paid (any plan other than Free) at the top.
+    expects: [answers_question, no_join_fanout]
+    truth: >-
+      Accounts that have ever been on each plan (count distinct account_id in
+      subscriptions_monthly): Free 2828, Team 586, Starter 361, Enterprise 32.
+      Accounts that have ever paid: 947. A join of accounts to
+      subscriptions_monthly that counts rows instead of distinct accounts gives
+      Free 14888, Team 3351, Starter 2266, Enterprise 143 and 5760 paid: those
+      numbers are fan-out and score metric_semantics 0.
+
+  - id: semantic
+    dashboard: plan-accounts
+    prompt: >-
+      Set up our semantic layer so anyone can slice accounts by subscription
+      data: a relation between accounts and subscriptions_monthly, an
+      account_count metric on accounts and an mrr metric on
+      subscriptions_monthly. Then build a dashboard called plan-accounts that
+      uses them: account_count by subscription plan over the whole history,
+      and MRR by industry for June 2024.
+    expects: [answers_question, no_join_fanout, semantic_layer_used]
+    truth: >-
+      Accounts that have ever been on each subscription plan (count distinct
+      account_id): Free 2828, Team 586, Starter 361, Enterprise 32. A count
+      that is not distinct across the relation gives Free 14888, Team 3351,
+      Starter 2266, Enterprise 143: that is fan-out and scores
+      metric_semantics 0. MRR by industry in June 2024: Manufacturing 76516,
+      Media 60602, SaaS 57091, Healthcare 46943, Fintech 42952, Logistics
+      42401, Education 40495, Retail 39128.
+
+  - id: existing-relation
+    dashboard: accounts-by-plan
+    setup:
+      - type: models
+        config:
+          name: accounts
+          sql: select * from accounts
+          source: ${ref(saas)}
+          metrics:
+            - name: account_count
+              expression: count(account_id)
+      - type: models
+        config:
+          name: subscriptions_monthly
+          sql: select * from subscriptions_monthly
+          source: ${ref(saas)}
+          metrics:
+            - name: total_mrr
+              expression: sum(mrr)
+      - type: relations
+        config:
+          name: accounts_to_subscriptions
+          condition: ${ref(accounts).account_id} = ${ref(subscriptions_monthly).account_id}
+    prompt: >-
+      Our semantic layer already has accounts, subscriptions_monthly, the
+      relation between them and an account_count metric. Use them to build a
+      dashboard called accounts-by-plan with account_count for each
+      subscription plan over the whole history.
+    expects: [answers_question, no_join_fanout, semantic_layer_used]
+    truth: >-
+      Accounts that have ever been on each subscription plan (count distinct
+      account_id): Free 2828, Team 586, Starter 361, Enterprise 32. The
+      existing account_count metric is count(account_id), so across the
+      relation it gives Free 14888, Team 3351, Starter 2266, Enterprise 143:
+      that is fan-out and scores metric_semantics 0.

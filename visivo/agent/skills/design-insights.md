@@ -17,7 +17,8 @@ of the same metric is the failure this prevents.
    grain?, rows}]`, `by` two columns for a cross-tab; `correlations:
    [{model, columns: [a, b], r, method}]`, or `pairs` where it asks for them).
 2. Write `semantic_layer` before any insight: its metrics and dimensions go
-   under their model (`write_model`), relations with `write_relation`.
+   under their model (`write_model`), relations with `write_relation`
+   on a key that is unique on one side (`join-models-safely`).
    Insights then read `${ref(model).name}`, so a number means one thing on
    every chart and in the Explorer.
 3. Pass each candidate's `request` to `recommend_charts`, its

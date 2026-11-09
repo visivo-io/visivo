@@ -171,6 +171,14 @@ class Serve:
             time.sleep(2)
         raise RuntimeError("The reset run did not finish.")
 
+    def seed(self, setup):
+        """Write a prompt's starting objects as drafts, the way a person's edit does."""
+        for item in setup or []:
+            config = item["config"]
+            status, reply = self.http("POST", f"/api/{item['type']}/{config['name']}/", config)
+            if status >= 400:
+                raise RuntimeError(f"Setup {item['type']} {config['name']} refused: {reply}")
+
     def snapshot(self):
         objects = {}
         for type_key in OBJECT_TYPES:
@@ -465,6 +473,7 @@ def inspect_dashboards(serve, objects, run_dir):
 def run_one(serve, condition, item, model, run_dir, dataset):
     os.makedirs(run_dir, exist_ok=True)
     serve.reset()
+    serve.seed(item.get("setup"))
     if condition == "builtin":
         client = run_builtin(serve, item["prompt"], run_dir)
     else:
@@ -481,6 +490,7 @@ def run_one(serve, condition, item, model, run_dir, dataset):
         "prompt": item["prompt"],
         "expected_dashboard": item.get("dashboard"),
         "expects": item.get("expects", []),
+        "truth": item.get("truth"),
         "condition": condition,
         "model": model if condition != "builtin" else "builtin",
         "client": {k: v for k, v in client.items() if k != "calls"},

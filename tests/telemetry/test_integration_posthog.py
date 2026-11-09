@@ -23,8 +23,11 @@ class TestPostHogIntegration:
     """Fast integration tests for PostHog telemetry."""
 
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def setup(self, monkeypatch):
         """Setup for each test."""
+        # Another test can leave a disabled global client behind, and
+        # get_telemetry_client would return it here.
+        monkeypatch.setattr("visivo.telemetry.client._global_client", None)
         # Save original env
         self.original_disabled = os.environ.get("VISIVO_TELEMETRY_DISABLED")
 
