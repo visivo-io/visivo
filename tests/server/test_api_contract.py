@@ -150,6 +150,24 @@ def manifest_entries(manifest):
     return entries
 
 
+def unlisted_flask_problems(manifest, flask):
+    """Flask /api/ routes in neither `entries` nor `server_only`, and `server_only`
+    lines for routes Flask no longer serves."""
+    entries = manifest_entries(manifest)
+    declared = {normalise(spec["path"]) for spec in manifest.get("server_only") or []}
+    problems = []
+    for path in sorted(flask):
+        if not path.startswith("/api/") or path in entries or path in declared:
+            continue
+        problems.append(
+            f"Flask serves {path} and the manifest does not account for it. "
+            "Add an entry if the viewer calls it, otherwise a server_only line."
+        )
+    for path in sorted(declared - set(flask)):
+        problems.append(f"server_only lists {path}, which Flask does not serve")
+    return problems
+
+
 def contract_problems(manifest, flask, viewer):
     """Every way the manifest, the Flask routes and the viewer can disagree, as sentences."""
     entries = manifest_entries(manifest)
@@ -190,6 +208,14 @@ def contract_problems(manifest, flask, viewer):
     return problems
 
 
+def test_every_api_route_is_accounted_for():
+    manifest = yaml.safe_load((REPO / "api-contract.yml").read_text())
+
+    problems = unlisted_flask_problems(manifest, flask_paths())
+
+    assert not problems, "\n".join(problems)
+
+
 def test_manifest_matches_viewer_and_flask():
     manifest = yaml.safe_load(MANIFEST.read_text())
     problems = contract_problems(manifest, flask_paths(), viewer_paths())
@@ -200,6 +226,35 @@ def test_every_viewer_registry_key_is_in_the_manifest():
     manifest = yaml.safe_load(MANIFEST.read_text())
     missing = sorted(set(registry()) - set(manifest["entries"]))
     assert not missing, f"registry keys without a manifest entry: {missing}"
+
+
+def test_unlisted_flask_problems_detects_each_failure():
+    """The rule engine against hand-built input, so a passing suite is not
+    standing on the real manifest happening to be complete."""
+    manifest = {
+        "entries": {"sources": {"path": "/api/sources/"}},
+        "server_only": [
+            {"path": "/api/agent/actions/", "reason": "alias"},
+            {"path": "/api/deleted/", "reason": "gone from Flask"},
+        ],
+    }
+    flask = {
+        "/api/sources/": {"GET"},
+        "/api/agent/actions/": {"GET"},
+        "/api/undeclared/": {"POST"},
+        "/": {"GET"},
+        "/data/{}": {"GET"},
+    }
+
+    problems = unlisted_flask_problems(manifest, flask)
+
+    assert len(problems) == 2
+    assert any("/api/undeclared/" in p for p in problems)
+    assert any("/api/deleted/" in p and "does not serve" in p for p in problems)
+    # The shell and the static data files share the app and are not API surface.
+    assert not any(
+        p.endswith("/ and the manifest does not account for it.") and "/data" in p for p in problems
+    )
 
 
 def test_contract_problems_detects_each_failure():

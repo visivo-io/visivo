@@ -1,9 +1,9 @@
 // Coverage for the async test-connection contract in api/sources.js.
 //
 // The op is asynchronous on both servers: POST answers 202 {job_id}, then the
-// job is polled at <path><job_id>/. Cloud has no alternative — the test runs on
-// a warm runner pool whose pods deny all ingress — and the local server matches
-// so there is one code path.
+// job is polled at the sourceConnectionJob key. Cloud has no alternative — the
+// test runs on a warm runner pool whose pods deny all ingress — and the local
+// server matches so there is one code path.
 //
 // The point of these is the RETURN SHAPE: it is unchanged by the conversion, so
 // sourceStore/SourceEditForm/SourceEditorModal needed no edit.
@@ -12,7 +12,7 @@ import { apiFetch } from './utils';
 
 jest.mock('./utils', () => ({ apiFetch: jest.fn() }));
 jest.mock('../contexts/URLContext', () => ({
-  getUrl: key => `/api/${key}/`,
+  getUrl: (key, params) => (params?.jobId ? `/api/${key}/${params.jobId}/` : `/api/${key}/`),
 }));
 
 const accepted = jobId => ({ status: 202, json: async () => ({ job_id: jobId }) });
@@ -39,8 +39,8 @@ describe('testSourceConnection', () => {
     expect(startUrl).toBe('/api/sourceConnections/');
     expect(options.method).toBe('POST');
     expect(JSON.parse(options.body)).toEqual({ name: 'db' });
-    // The job hangs off the same path the start request used.
-    expect(apiFetch).toHaveBeenLastCalledWith('/api/sourceConnections/job-1/');
+    // Polled at its own registry key, so the contract check sees the path.
+    expect(apiFetch).toHaveBeenLastCalledWith('/api/sourceConnectionJob/job-1/');
   });
 
   it('reports a refused connection in the shape the form renders', async () => {

@@ -2,23 +2,13 @@ import datetime
 import json
 import os
 import re
-from flask import jsonify, request, send_file, send_from_directory
-from visivo.utils import SCHEMA_FILE, VIEWER_PATH
+from flask import jsonify, send_from_directory
+from visivo.utils import VIEWER_PATH
 from visivo.telemetry.config import is_telemetry_enabled, is_ci_environment
-from visivo.server.views.theme_views import current_theme_config
+from visivo.server.services.theme_service import current_theme_config
 
 
 def register_data_views(app, flask_app, output_dir):
-    @app.route("/api/schema/")
-    def schema_api():
-        if os.path.exists(SCHEMA_FILE):
-            return send_file(SCHEMA_FILE)
-        else:
-            return (
-                jsonify({"message": f"Schema file not found: {SCHEMA_FILE}"}),
-                404,
-            )
-
     @app.route("/api/error/")
     def error_api():
         if os.path.exists(f"{output_dir}/error.json"):
@@ -55,18 +45,14 @@ def register_data_views(app, flask_app, output_dir):
             "status": "draft",
         }
 
-    @app.route("/api/project_history/")
-    def project_history_api():
-        return [
-            {
-                "id": "id",
-                "created_at": datetime.datetime.now().isoformat(),
-            }
-        ]
-
     @app.route("/", defaults={"path": "index.html"})
     @app.route("/<path:path>")
     def viewer_file(path):
+        # An /api/ path that reached the catch-all names no route. The page's
+        # HTML with a 200 would read to a stale caller as success.
+        if path.startswith("api/"):
+            return jsonify({"message": f"No API route at /{path}"}), 404
+
         regex = r"\S*(\.png|\.ico|\.js|\.css|\.wasm|\.webmanifest|\.js\.map|\.css\.map)$"
         if re.match(regex, path):
             return send_from_directory(VIEWER_PATH, path)

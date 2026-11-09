@@ -25,8 +25,6 @@ Diagnostic files:
 
 from typing import List
 
-import polars as pl
-
 
 def write_dicts_to_parquet(data: List[dict], path: str, columns: List[str] = None) -> None:
     """Write a list-of-dicts to parquet at ``path``.
@@ -50,6 +48,8 @@ def write_dicts_to_parquet(data: List[dict], path: str, columns: List[str] = Non
             DuckDB can read, so an empty result is written with these
             columns (typed NULL) instead.
     """
+    import polars as pl
+
     if not data and columns:
         pl.DataFrame(schema={name: pl.Null for name in columns}).write_parquet(path)
         return

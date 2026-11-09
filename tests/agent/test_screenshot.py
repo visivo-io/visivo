@@ -470,8 +470,11 @@ class TestTheToolIsOffered:
         turn a prompt injection into an SSRF with a browser attached."""
         schema = TOOLS["screenshot_dashboard"].input_schema
 
-        assert set(schema["properties"]) == {"name", "full_page"}
+        assert set(schema["properties"]) == {"name", "full_page", "project_id"}
         assert schema["required"] == ["name"]
+        # Stated outright so the set equality above cannot be relaxed into
+        # admitting one: an address the caller supplies is the whole risk.
+        assert not any("url" in prop or "host" in prop for prop in schema["properties"])
 
 
 class TestTheCaptureReachesTheAgentTab:

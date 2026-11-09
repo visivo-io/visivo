@@ -106,7 +106,7 @@ export const testSourceConnection = async config => {
     },
     body: JSON.stringify(config),
   });
-  const job = await runOnDemandJob(path, response);
+  const job = await runOnDemandJob(jobId => getUrl('sourceConnectionJob', { jobId }), response);
   return job.ok
     ? job.result
     : { status: 'connection_failed', error: job.error || 'Connection test failed' };
