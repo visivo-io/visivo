@@ -26,7 +26,11 @@ import urllib.request
 import yaml
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import scorecard  # noqa: E402
+
 OBJECT_TYPES = [
+    "sources",
     "models",
     "dimensions",
     "metrics",
@@ -491,6 +495,7 @@ def run_one(serve, condition, item, model, run_dir, dataset):
         "expected_dashboard": item.get("dashboard"),
         "expects": item.get("expects", []),
         "truth": item.get("truth"),
+        "route": item.get("route"),
         "condition": condition,
         "model": model if condition != "builtin" else "builtin",
         "client": {k: v for k, v in client.items() if k != "calls"},
@@ -500,6 +505,8 @@ def run_one(serve, condition, item, model, run_dir, dataset):
         "dashboards": inspect_dashboards(serve, objects, run_dir),
         "final_run": final_run(serve),
     }
+    if item.get("route") == "file":
+        summary["file_reference"] = scorecard.file_reference(item.get("setup"), objects)
     expected = item.get("dashboard")
     summary["expected_dashboard_built"] = (
         bool(summary["dashboards"]) if expected is None else expected in summary["dashboards"]

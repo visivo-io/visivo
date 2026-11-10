@@ -14,6 +14,12 @@ The databases are not committed. Build them once:
 | `taxi` | 150k NYC yellow-cab trips, Q1 2024 (public domain): transactions, time, money, geography | `bash scripts/agent_eval/datasets/taxi/seed.sh` |
 | `saas` | Seeded synthetic B2B SaaS: accounts, users, an event log and monthly MRR | `python scripts/agent_eval/datasets/saas/seed.py` |
 | `climate` | Our World in Data CO2 (CC BY 4.0): a country-by-year panel with ~75 measures and aggregate rows | `bash scripts/agent_eval/datasets/climate/seed.sh` |
+| `first-dashboard` | The first-dashboard path: 10 messy imported files and 3 databases. Each prompt adds its one source in `setup` | `python scripts/agent_eval/datasets/first-dashboard/seed.py` |
+| `first-dashboard-example` | The EV Sales example and the three starter prompts the agent tab offers on it | Nothing: the project is `visivo/templates/samples/ev-sales` |
+
+A prompt can name a `route` (`example`, `file` or `database`). On the `file`
+route, `summary.json` records `file_reference`: whether the imported source is
+unchanged and no second source reads its file.
 
 ## Set up
 
@@ -43,6 +49,21 @@ python scripts/agent_eval/run.py --dataset taxi --conditions mcp --repeats 2 --o
 python scripts/agent_eval/judge.py --runs /tmp/eval/r1
 python scripts/agent_eval/report.py --runs /tmp/eval/r1 --out /tmp/eval/r1/report.html
 ```
+
+Score a dataset that has a `pass_bar` (prompts that must pass per route) and
+get the credit p50 and p90 per route as a markdown table:
+
+```bash
+python scripts/agent_eval/scorecard.py --runs /tmp/eval/r1
+```
+
+A run passes when it built the dashboard the prompt named, every visual
+rendered, the last build did not fail and, on the `file` route, the file
+reference is kept. The command exits 1 when a route misses its bar.
+
+The viewer's starter prompts (`viewer/src/components/agentStarterPrompts.json`)
+must equal the `chip: true` prompts of `first-dashboard-example`; a test fails
+otherwise. Add a chip there, score it, then add it to the viewer.
 
 Each run discards all drafts first, so runs do not see each other's work. Do
 not open the eval sandbox in a browser while a run is in progress: opening a

@@ -12,6 +12,7 @@ import { subscribe } from '../events/eventSource';
 import { AGENT_ACTIVITY } from '../events/topics';
 import AgentAuthorize from './AgentAuthorize';
 import useAuthorization from '../hooks/useAuthorization';
+import starterPrompts from './agentStarterPrompts.json';
 
 /**
  * A conversation with the built-in loop.
@@ -51,6 +52,10 @@ const AgentPrompt = () => {
   // Addressed per project, so the same component drives a local loop and a
   // cloud one without knowing which it has.
   const projectId = useStore(state => state.project?.id);
+  const projectName = useStore(state => state.project?.name);
+  const starters = Object.hasOwn(starterPrompts, projectName ?? '')
+    ? starterPrompts[projectName]
+    : null;
   const [prompt, setPrompt] = useState('');
   const [session, setSession] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -291,6 +296,8 @@ const AgentPrompt = () => {
         className="w-full resize-y rounded-md border border-gray-300 p-2 text-sm focus:border-primary focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
       />
 
+      {!session && !prompt && starters && <StarterPrompts prompts={starters} onPick={setPrompt} />}
+
       <div className="flex items-center gap-3 mt-2">
         {running ? (
           <button
@@ -344,6 +351,29 @@ const AgentPrompt = () => {
     </div>
   );
 };
+
+/**
+ * Prompts scored by the agent eval (first-dashboard-example) for an example
+ * project. A pick fills the box and does not send: sending spends credit.
+ */
+function StarterPrompts({ prompts, onPick }) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-2" data-testid="agent-starter-prompts">
+      <span className="w-full text-xs text-gray-500">Try one:</span>
+      {prompts.map(text => (
+        <button
+          key={text}
+          type="button"
+          onClick={() => onPick(text)}
+          className="max-w-full rounded-2xl border border-gray-300 bg-white px-3 py-1 text-left text-xs text-gray-700 hover:border-primary hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          data-testid="agent-starter-prompt"
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Runs of consecutive calls become one group; text stays between them. */
 function group(items) {
