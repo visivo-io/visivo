@@ -281,7 +281,7 @@ def test_authorize_with_ci_true_does_not_prompt(monkeypatch):
     assert Logger.instance().spinner is None
     assert result.exit_code == 1
     assert "http://localhost:3030/authorize-device?" in result.output
-    assert "No token received." in result.output
+    assert "No token received in" in result.output
 
 
 def test_authorize_existing_token_without_tty_keeps_token(monkeypatch):
@@ -343,3 +343,145 @@ def test_authorize_without_tty_prints_url_when_browser_fails(monkeypatch):
     assert result.exit_code == 0
     assert "couldn't automatically open" in result.output
     assert result.output.count("http://localhost:3030/authorize-device?") >= 2
+
+
+def _capture_wait(monkeypatch, result):
+    waits = []
+
+    def fake_wait(timeout=None):
+        waits.append(timeout)
+        return result
+
+    monkeypatch.setattr(token_received_event, "wait", fake_wait)
+    return waits
+
+
+def test_authorize_without_tty_waits_longer_by_default(monkeypatch):
+    from visivo.commands.authorize import NON_INTERACTIVE_WAIT_TIME
+
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    waits = _capture_wait(monkeypatch, True)
+
+    result = CliRunner().invoke(authorize, ["--host", "http://localhost:3030"])
+
+    assert result.exit_code == 0
+    assert waits == [NON_INTERACTIVE_WAIT_TIME]
+    assert NON_INTERACTIVE_WAIT_TIME == 600
+    assert f"timeout: {NON_INTERACTIVE_WAIT_TIME}s" in result.output
+
+
+def test_authorize_in_a_terminal_keeps_the_short_wait(monkeypatch, interactive):
+    from visivo.commands.authorize import CALLBACK_RESPONSE_WAIT_TIME
+
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    waits = _capture_wait(monkeypatch, True)
+
+    result = CliRunner().invoke(authorize, ["--host", "http://localhost:3030"])
+
+    assert result.exit_code == 0
+    assert waits == [CALLBACK_RESPONSE_WAIT_TIME]
+
+
+def test_authorize_timeout_option_overrides_the_default(monkeypatch):
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    waits = _capture_wait(monkeypatch, True)
+
+    result = CliRunner().invoke(authorize, ["--host", "http://localhost:3030", "--timeout", "42"])
+
+    assert result.exit_code == 0
+    assert waits == [42]
+    assert "timeout: 42s" in result.output
+
+
+def test_authorize_timeout_option_rejects_zero(monkeypatch):
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+
+    result = CliRunner().invoke(authorize, ["--host", "http://localhost:3030", "--timeout", "0"])
+
+    assert result.exit_code == 2
+
+
+def test_authorize_without_tty_timeout_says_how_to_resume(monkeypatch):
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    _capture_wait(monkeypatch, False)
+
+    result = CliRunner().invoke(authorize, ["--host", "http://localhost:3030", "--timeout", "5"])
+
+    assert result.exit_code == 1
+    assert "No token received in 5s." in result.output
+    assert "still works" in result.output
+    assert "click Authorize on that page" in result.output
+
+
+def test_authorize_interactive_cancel_says_how_to_resume(monkeypatch, interactive):
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    _capture_wait(monkeypatch, False)
+
+    result = CliRunner().invoke(authorize, ["--host", "http://localhost:3030"], input="y\n")
+
+    assert result.exit_code == 0
+    assert "click Authorize on that page" in result.output
+
+
+def test_authorize_resume_uses_the_same_callback_address(monkeypatch):
+    from visivo.tokens.server import FLASK_PORT
+
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    _capture_wait(monkeypatch, True)
+    opened = _capture_opened_url(monkeypatch)
+
+    CliRunner().invoke(authorize, ["--host", "http://localhost:3030"])
+    CliRunner().invoke(authorize, ["--host", "http://localhost:3030"])
+
+    redirects = [
+        urllib.parse.parse_qs(urllib.parse.urlparse(u).query)["redirect_url"] for u in opened
+    ]
+    assert redirects[0] == redirects[1] == [f"http://localhost:{FLASK_PORT}/authorize-device-token"]
+
+
+def test_authorize_interactive_continue_waits_without_a_limit(monkeypatch, interactive):
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    waits = []
+
+    def fake_wait(timeout=None):
+        waits.append(timeout)
+        return timeout is None
+
+    monkeypatch.setattr(token_received_event, "wait", fake_wait)
+
+    result = CliRunner().invoke(authorize, ["--host", "http://localhost:3030"], input="n\n")
+
+    assert result.exit_code == 0
+    assert waits == [120, None]
+    assert "Continuing to wait for token" in result.output
+
+
+def test_authorize_ctrl_c_cancels(monkeypatch):
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+
+    def interrupted(timeout=None):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(token_received_event, "wait", interrupted)
+
+    result = CliRunner().invoke(authorize, ["--host", "http://localhost:3030"])
+
+    assert result.exit_code == 0
+    assert "cancelled by user" in result.output
+
+
+def test_authorize_continues_when_machine_id_fails(monkeypatch):
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    monkeypatch.setattr("visivo.commands.authorize.is_telemetry_enabled", lambda: True)
+
+    def broken():
+        raise OSError("no id")
+
+    monkeypatch.setattr("visivo.commands.authorize.get_machine_id", broken)
+    _capture_wait(monkeypatch, True)
+    opened = _capture_opened_url(monkeypatch)
+
+    result = CliRunner().invoke(authorize, ["--host", "http://localhost:3030"])
+
+    assert result.exit_code == 0
+    assert "machine_id" not in opened[0]

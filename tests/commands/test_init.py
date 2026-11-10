@@ -122,3 +122,39 @@ def test_first_dashboard_path_quotes_the_name_and_handles_no_dashboards():
     assert first_dashboard_path(Project(name="p")) is None
     project = Project(name="p", dashboards=[Dashboard(name="A/B Overview"), Dashboard(name="z")])
     assert first_dashboard_path(project) == "/project/A%2FB%20Overview"
+
+
+def test_init_example_prints_cloud_next_steps_once_the_sample_is_built(monkeypatch):
+    monkeypatch.chdir(os.getcwd())
+    tmp = temp_folder()
+    project_dir = os.path.abspath(os.path.join(tmp, "gh"))
+    server = MagicMock()
+    built = MagicMock()
+    logged = MagicMock()
+    monkeypatch.setattr("visivo.commands.cloud_next_steps.log_cloud_next_steps", logged)
+    with patch(
+        "visivo.commands.serve_phase.serve_phase", lambda **kwargs: (server, MagicMock(), built)
+    ):
+        response = runner.invoke(
+            init, args=["--project-dir", project_dir, "--example", "github-releases"]
+        )
+
+    assert response.exit_code == 0, response.output
+    logged.assert_not_called()
+    server.serve.call_args.kwargs["on_server_ready"]()
+    built.assert_called_once()
+    logged.assert_called_once_with("github-releases")
+
+
+def test_init_scaffold_does_not_wrap_on_ready(monkeypatch):
+    monkeypatch.chdir(os.getcwd())
+    tmp = temp_folder()
+    server = MagicMock()
+    on_ready = MagicMock()
+    with patch(
+        "visivo.commands.serve_phase.serve_phase", lambda **kwargs: (server, MagicMock(), on_ready)
+    ):
+        response = runner.invoke(init, args=["--project-dir", tmp, "--headless"])
+
+    assert response.exit_code == 0, response.output
+    assert server.serve.call_args.kwargs["on_server_ready"] is on_ready

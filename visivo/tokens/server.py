@@ -5,6 +5,7 @@ from threading import Event
 from werkzeug.serving import make_server
 
 from visivo.logger.logger import Logger
+from visivo.tokens.log_redaction import install_request_log_redaction
 from visivo.tokens.token_functions import validate_and_store_token
 from visivo.tokens.web_utils import generate_success_html_response
 
@@ -57,6 +58,7 @@ def run_flask_server(base_url, port=5001):
     Werkzeug 2.1 and also can't be invoked from outside a request context.
     """
     callback_server.config["BASE_URL"] = base_url
+    install_request_log_redaction()
     server = make_server("localhost", port, callback_server)
     _server_holder["server"] = server
     try:

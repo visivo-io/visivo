@@ -37,6 +37,7 @@ def register_project_views(app, flask_app, output_dir):
     def load_example_project():
         """Load example project from GitHub"""
         from visivo.commands.init_phase import load_example_project as load_example
+        from visivo.commands.cloud_next_steps import log_cloud_next_steps
 
         data = request.get_json()
         project_name = data.get("project_name", "").strip()
@@ -67,6 +68,7 @@ def register_project_views(app, flask_app, output_dir):
                 except Exception as e:
                     Logger.instance().error(f"Error parsing project: {str(e)}")
 
+            log_cloud_next_steps(example_type)
             return jsonify({"message": "Project created successfully"}), 200
 
         except Exception as e:

@@ -273,6 +273,9 @@ def test_load_example_project_success(client, monkeypatch):
         "visivo.server.views.project_views.ParserFactory", lambda: MockParserFactory()
     )
 
+    logged = mock.MagicMock()
+    monkeypatch.setattr("visivo.commands.cloud_next_steps.log_cloud_next_steps", logged)
+
     # Make the API call
     response = client.post(
         "/api/project/load_example/",
@@ -283,6 +286,64 @@ def test_load_example_project_success(client, monkeypatch):
     # Assert successful project load
     assert response.status_code == 200
     assert response.get_json()["message"] == "Project created successfully"
+    logged.assert_called_once_with("github-releases")
+
+
+def _post_load_example(client, payload):
+    return client.post(
+        "/api/project/load_example/", data=json.dumps(payload), content_type="application/json"
+    )
+
+
+def test_load_example_requires_a_project_name(client, monkeypatch):
+    logged = mock.MagicMock()
+    monkeypatch.setattr("visivo.commands.cloud_next_steps.log_cloud_next_steps", logged)
+
+    response = _post_load_example(client, {"project_name": "  ", "example_type": "ev-sales"})
+
+    assert response.status_code == 400
+    logged.assert_not_called()
+
+
+def test_load_example_failure_does_not_offer_publishing(client, monkeypatch):
+    logged = mock.MagicMock()
+    monkeypatch.setattr("visivo.commands.cloud_next_steps.log_cloud_next_steps", logged)
+
+    def broken(*args):
+        raise FileNotFoundError("no sample")
+
+    monkeypatch.setattr("visivo.commands.init_phase.load_example_project", broken)
+
+    response = _post_load_example(client, {"project_name": "p", "example_type": "ev-sales"})
+
+    assert response.status_code == 500
+    assert "no sample" in response.get_json()["message"]
+    logged.assert_not_called()
+
+
+def test_load_example_parse_error_still_offers_publishing(client, monkeypatch, tmp_path):
+    logged = mock.MagicMock()
+    monkeypatch.setattr("visivo.commands.cloud_next_steps.log_cloud_next_steps", logged)
+    project_file = tmp_path / "project.visivo.yml"
+    project_file.write_text("name: p\n")
+    monkeypatch.setattr(
+        "visivo.commands.init_phase.load_example_project", lambda *args: str(project_file)
+    )
+
+    class BrokenParserFactory:
+        def build(self, project_file, files):
+            raise ValueError("bad yaml")
+
+    monkeypatch.setattr(
+        "visivo.server.views.project_views.ParserFactory", lambda: BrokenParserFactory()
+    )
+
+    response = _post_load_example(
+        client, {"project_name": "p", "example_type": "ev-sales", "project_dir": str(tmp_path)}
+    )
+
+    assert response.status_code == 200
+    logged.assert_called_once_with("ev-sales")
 
 
 def test_authorize_status_says_yes_without_handing_over_the_token(client):

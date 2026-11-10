@@ -24,6 +24,10 @@ const AgentAuthorize = ({ host, working, message, onAuthorize }) => (
       Ask for a model, a chart, a dashboard. Everything it writes lands as an
       uncommitted draft for you to review before anything is committed.
     </p>
+    <p className="mt-2 text-sm text-gray-600" data-testid="agent-authorize-credit">
+      A free Visivo account starts with <span className="font-medium text-gray-900">$30 of
+      credit</span> for the agent. No card needed.
+    </p>
 
     <button
       onClick={onAuthorize}
