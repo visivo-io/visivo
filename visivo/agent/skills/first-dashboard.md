@@ -1,6 +1,6 @@
 ---
 name: first-dashboard
-summary: Build a person's first working dashboard from an example, an imported file or a new database.
+summary: Read first when asked for a dashboard from a just-uploaded file, a just-connected database or an example project.
 ---
 
 # Build a first dashboard
