@@ -1,6 +1,13 @@
 import os
 from typing import Optional
 
+URI_DATABASE_PREFIXES = ("md:", "s3://", "https://")
+
+
+def is_uri_database(database) -> bool:
+    """True when ``database`` names a remote database (MotherDuck, S3, HTTPS), not a local file."""
+    return str(database or "").lower().startswith(URI_DATABASE_PREFIXES)
+
 
 def resolve_database_path(database: str, project_dir: Optional[str] = None) -> str:
     if project_dir and not os.path.isabs(database):
@@ -21,7 +28,7 @@ class DatabaseFileMixin:
         for attachment in getattr(self, "attach", None) or []:
             databases.append(attachment.source.get_database())
         for database in databases:
-            if not database or database == ":memory:":
+            if not database or database == ":memory:" or is_uri_database(database):
                 continue
             path = resolve_database_path(str(database), project_dir)
             if not os.path.isfile(path):

@@ -162,6 +162,26 @@ def test_create_sqlite_project_source_only(client):
         assert b"Source created" in res.data
 
 
+def test_create_duckdb_source_keeps_a_uri_database_verbatim(client):
+    """POST /api/source/create/ must not join a md: path to the project dir or
+    create local files for it."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        res = client.post(
+            "/api/source/create/",
+            data={
+                "project_name": "Remote Project",
+                "source_type": "duckdb",
+                "source_name": "remote",
+                "database": "md:my_db",
+                "project_dir": tmpdir,
+            },
+        )
+        assert res.status_code == 200
+        assert json.loads(res.data)["source"]["database"] == "md:my_db"
+        assert not (Path(tmpdir) / "md:my_db").exists()
+        assert [p.name for p in Path(tmpdir).iterdir() if p.name != ".env"] == []
+
+
 def test_create_postgres_source_externalizes_credentials(client):
     """POST /api/source/create with a postgres source must move the entered
     credentials into .env, reference them via ${env.*} in the returned source,
@@ -527,6 +547,65 @@ def test_deploy_is_not_offered_archived_branches(client):
             client.get("/api/cloud/branches/")
 
     assert mock_get.call_args.kwargs["params"] == {"archived": "false"}
+
+
+def _branches_response(branches, home=None, home_status=200):
+    def fake_get(url, **kwargs):
+        response = MagicMock()
+        if url.endswith("/api/projects/home/"):
+            if isinstance(home, Exception):
+                raise home
+            response.status_code = home_status
+            response.json.return_value = home
+        else:
+            response.status_code = 200
+            response.json.return_value = branches
+        return response
+
+    return fake_get
+
+
+@pytest.mark.parametrize(
+    "branches, home, home_status, expected",
+    [
+        ([], None, 200, None),
+        ([{"name": "dev"}], None, 200, "dev"),
+        ([{"name": "dev"}, {"name": "main"}], {"default_branch": "main"}, 200, "main"),
+        ([{"name": "dev"}, {"name": "main"}], {"default_branch": "archived"}, 200, "dev"),
+        ([{"name": "dev"}, {"name": "main"}], {"default_branch": "main"}, 500, "dev"),
+        ([{"name": "dev"}, {"name": "main"}], ConnectionError("down"), 200, "dev"),
+    ],
+)
+def test_the_deploy_dialog_is_told_the_account_default_branch(
+    client, branches, home, home_status, expected
+):
+    """The dialog preselects the account branch instead of an empty selector."""
+    with (
+        patch("visivo.server.views.cloud_views.get_existing_token", return_value="t"),
+        patch(
+            "visivo.server.views.cloud_views.requests.get",
+            side_effect=_branches_response(branches, home, home_status),
+        ),
+    ):
+        data = client.get("/api/cloud/branches/").get_json()
+
+    assert data["branches"] == branches
+    assert data["default_branch"] == expected
+
+
+def test_the_live_preview_url_is_on_the_host_this_serve_is_bound_to(output_dir):
+    """`VISIVO_HOST` / `--host` must move the preview link too, not only the deploy."""
+    from visivo.server.store import background_jobs
+
+    served = FlaskApp(os.path.abspath(output_dir), ProjectFactory(), host="http://localhost:8000")
+    served.app.config["TESTING"] = True
+    background_jobs["host-test"] = {"status": 201, "project_url": "/project/abc"}
+    try:
+        body = served.app.test_client().get("/api/cloud/job/status/host-test/").get_json()
+    finally:
+        background_jobs.pop("host-test", None)
+
+    assert body["project_url"] == "http://localhost:8000/project/abc"
 
 
 def test_the_device_callback_names_the_port_serve_is_on(output_dir):

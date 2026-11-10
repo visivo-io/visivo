@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Literal, Optional, List, Any
 from visivo.models.base.base_model import BaseModel
 from visivo.models.sources.base_duckdb_source import BaseDuckdbSource
-from visivo.models.sources.database_file import DatabaseFileMixin
+from visivo.models.sources.database_file import DatabaseFileMixin, is_uri_database
 from visivo.models.sources.source import ServerSource
 from pydantic import Field, PrivateAttr
 import click
@@ -82,7 +82,8 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
             Logger.instance().debug(f"Getting connection for {self.name}, read_only={read_only}")
 
             database_path = self.database
-            if working_dir:
+            remote = is_uri_database(database_path)
+            if working_dir and not remote:
                 database_path = str(working_dir / Path(self.database))
 
             # An in-memory database is never persisted, so read-only has
@@ -95,7 +96,7 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
                 read_only = False
 
             # Ensure database file exists for write operations
-            if not read_only and not os.path.exists(database_path):
+            if not read_only and not remote and not os.path.exists(database_path):
                 Logger.instance().debug(
                     f"Database file {database_path} does not exist, creating it"
                 )
