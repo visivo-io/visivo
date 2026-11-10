@@ -130,7 +130,7 @@ describe('AgentPrompt', () => {
     expect(await screen.findByTestId('agent-notice-busy')).toBeInTheDocument();
   });
 
-  it('surfaces a failure with its reason', async () => {
+  it('surfaces a failure with its reason behind Show details', async () => {
     startAgentSession.mockResolvedValue({ session: session('running') });
     fetchAgentSession.mockResolvedValue(session('failed', { error: 'the provider said no' }));
     render(<AgentPrompt />);
@@ -138,7 +138,69 @@ describe('AgentPrompt', () => {
     await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
     await userEvent.click(screen.getByTestId('agent-send'));
 
-    expect(await screen.findByTestId('agent-failed')).toHaveTextContent('the provider said no');
+    const failed = await screen.findByTestId('agent-failed');
+    expect(failed).toHaveTextContent('The agent stopped because of an error.');
+    expect(failed).not.toHaveTextContent('the provider said no');
+    await userEvent.click(screen.getByTestId('agent-failed-toggle'));
+    expect(screen.getByTestId('agent-failed-details')).toHaveTextContent('the provider said no');
+  });
+
+  it('replaces a raw provider status with plain copy', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(session('failed', { error: 'TurnFailed 503' }));
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    const failed = await screen.findByTestId('agent-failed');
+    expect(failed).toHaveTextContent('The AI model is busy right now.');
+    expect(failed).not.toHaveTextContent('TurnFailed');
+    expect(failed).toHaveAttribute('data-failure-code', 'provider_busy');
+  });
+
+  it('says the agent could not start, with the reason behind Show details', async () => {
+    startAgentSession.mockRejectedValue(new Error('Failed to start the agent'));
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    const notice = await screen.findByTestId('agent-notice-error');
+    expect(notice).toHaveAttribute('data-failure-code', 'start_failed');
+    expect(notice).toHaveTextContent('The agent could not start.');
+    await userEvent.click(screen.getByTestId('agent-notice-error-toggle'));
+    expect(screen.getByTestId('agent-notice-error-details')).toHaveTextContent(
+      'Failed to start the agent'
+    );
+  });
+
+  it('says the agent could not be stopped', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(session('running'));
+    cancelAgentSession.mockRejectedValue(new Error('Failed to stop the agent'));
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+    await userEvent.click(await screen.findByTestId('agent-stop'));
+
+    const notice = await screen.findByTestId('agent-notice-error');
+    expect(notice).toHaveAttribute('data-failure-code', 'stop_failed');
+    expect(notice).toHaveTextContent('The agent could not be stopped.');
+  });
+
+  it('shows a waiting line while the turn is queued', async () => {
+    startAgentSession.mockResolvedValue({ session: session('queued') });
+    fetchAgentSession.mockResolvedValue(session('queued'));
+    render(<AgentPrompt />);
+
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
+    await userEvent.click(screen.getByTestId('agent-send'));
+
+    expect(await screen.findByTestId('agent-working')).toHaveTextContent(
+      'Waiting for the agent to start…'
+    );
   });
 
   it('keeps the prompt when it could not be sent, so it is not retyped', async () => {
@@ -330,9 +392,10 @@ describe('AgentPrompt — when polling itself is broken', () => {
     await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
     await userEvent.click(screen.getByTestId('agent-send'));
 
-    expect(await screen.findByTestId('agent-notice-error', {}, { timeout: 10000 })).toHaveTextContent(
-      /Lost contact with the agent/
-    );
+    const notice = await screen.findByTestId('agent-notice-error', {}, { timeout: 10000 });
+    expect(notice).toHaveTextContent(/Lost contact with the agent/);
+    expect(notice).toHaveAttribute('data-failure-code', 'lost_contact');
+    expect(notice).not.toHaveTextContent('url.replace');
   }, 15000);
 });
 
@@ -646,7 +709,14 @@ describe('running out of credit mid-turn', () => {
     await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
     await userEvent.click(screen.getByTestId('agent-send'));
 
-    expect(await screen.findByTestId('agent-failed')).toHaveTextContent('something actually broke');
+    expect(await screen.findByTestId('agent-failed')).toHaveAttribute(
+      'data-failure-code',
+      'unknown'
+    );
+    await userEvent.click(screen.getByTestId('agent-failed-toggle'));
+    expect(screen.getByTestId('agent-failed-details')).toHaveTextContent(
+      'something actually broke'
+    );
     expect(screen.queryByTestId('agent-limit-reached')).not.toBeInTheDocument();
   });
 });

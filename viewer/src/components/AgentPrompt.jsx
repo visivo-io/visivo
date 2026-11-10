@@ -12,6 +12,8 @@ import { subscribe } from '../events/eventSource';
 import { AGENT_ACTIVITY } from '../events/topics';
 import AgentAuthorize from './AgentAuthorize';
 import useAuthorization from '../hooks/useAuthorization';
+import AgentFailure from './AgentFailure';
+import { agentProgressLine } from '../utils/agentFailureCopy';
 
 /**
  * A conversation with the built-in loop.
@@ -127,10 +129,7 @@ const AgentPrompt = () => {
           consecutiveFailures += 1;
           if (consecutiveFailures >= POLL_FAILURES_BEFORE_GIVING_UP) {
             stopPolling();
-            setNotice({
-              kind: 'error',
-              text: `Lost contact with the agent: ${error.message}`,
-            });
+            setNotice({ kind: 'error', context: 'poll', text: error.message });
           }
         }
       };
@@ -222,7 +221,7 @@ const AgentPrompt = () => {
       setModelSource(result.session.model_source || null);
       poll(result.session.id);
     } catch (error) {
-      setNotice({ kind: 'error', text: error.message });
+      setNotice({ kind: 'error', context: 'start', text: error.message });
     } finally {
       setStarting(false);
     }
@@ -235,7 +234,7 @@ const AgentPrompt = () => {
       setSession(result.session);
       stopPolling();
     } catch (error) {
-      setNotice({ kind: 'error', text: error.message });
+      setNotice({ kind: 'error', context: 'stop', text: error.message });
     }
   };
 
@@ -312,12 +311,20 @@ const AgentPrompt = () => {
         )}
         {running && (
           <span className="text-sm text-gray-500" data-testid="agent-working">
-            Working… every change lands as a draft you can review.
+            {agentProgressLine(session.state)}
           </span>
         )}
       </div>
 
-      {notice && (
+      {notice?.kind === 'error' && (
+        <AgentFailure
+          error={notice.text}
+          context={notice.context}
+          className="mt-3"
+          testId="agent-notice-error"
+        />
+      )}
+      {notice && notice.kind !== 'error' && (
         <div
           className={`mt-3 rounded-md p-3 text-sm ${
             // Both of these are "here is what to do", so they read as
@@ -483,11 +490,7 @@ function Outcome({ session }) {
       </div>
     );
   }
-  return (
-    <div className="mt-3 rounded-md bg-highlight-50 p-3 text-sm text-highlight-900" data-testid="agent-failed">
-      {session.error || 'The agent failed.'}
-    </div>
-  );
+  return <AgentFailure error={session.error} className="mt-3" testId="agent-failed" />;
 }
 
 export default AgentPrompt;
