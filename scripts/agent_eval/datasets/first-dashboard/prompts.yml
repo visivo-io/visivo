@@ -1,0 +1,231 @@
+# The first-dashboard path (VIS-1806): routes 2 and 3 of the first-dashboard skill.
+# Each prompt adds the source that the onboarding import or connection adds,
+# then asks for a first dashboard. Build the fixtures with seed.py.
+# Route 1 (Example) is the first-dashboard-example dataset.
+name: first-dashboard
+project: test-projects/agent-eval/first-dashboard
+description: >-
+  A new project with no objects yet. The person just imported one messy file
+  or connected one database, and the onboarding added it as the only source.
+  Imported files keep their original under data/uploads/<version>/ and their
+  table in data/imports/<version>.duckdb.
+pass_bar:
+  file: 8
+  database: 3
+prompts:
+  - id: file-01
+    route: file
+    dashboard: first-sales-export
+    setup:
+      - type: sources
+        config:
+          name: sales_export
+          type: duckdb
+          database: data/imports/fv-01.duckdb
+    prompt: >-
+      I just uploaded Sales Export (Final).csv. Visivo imported it as the source sales_export.
+      Build my first dashboard from it, called first-sales-export, with the most useful
+      things to know about this data.
+    expects: [answers_question, file_reference_kept]
+    mess: >-
+      Column names with spaces, capitals, a trailing space and a symbol.
+  - id: file-02
+    route: file
+    dashboard: first-invoices-eu
+    setup:
+      - type: sources
+        config:
+          name: invoices_eu
+          type: duckdb
+          database: data/imports/fv-02.duckdb
+    prompt: >-
+      I just uploaded invoices_eu.csv. Visivo imported it as the source invoices_eu.
+      Build my first dashboard from it, called first-invoices-eu, with the most useful
+      things to know about this data.
+    expects: [answers_question, file_reference_kept, numbers_parsed]
+    mess: >-
+      Semicolon delimited. Amounts use a decimal comma and a dot for thousands (`1.234,56`), so the import keeps them as text. VAT rates are text such as `19%`.
+  - id: file-03
+    route: file
+    dashboard: first-marketing-spend
+    setup:
+      - type: sources
+        config:
+          name: marketing_spend
+          type: duckdb
+          database: data/imports/fv-03.duckdb
+    prompt: >-
+      I just uploaded marketing_spend.csv. Visivo imported it as the source marketing_spend.
+      Build my first dashboard from it, called first-marketing-spend, with the most useful
+      things to know about this data.
+    expects: [answers_question, file_reference_kept, unpivoted]
+    mess: >-
+      Wide: one column per month (`Jan 2024` … `Dec 2024`) for 8 channels.
+  - id: file-04
+    route: file
+    dashboard: first-store-report
+    setup:
+      - type: sources
+        config:
+          name: store_report
+          type: duckdb
+          database: data/imports/fv-04.duckdb
+    prompt: >-
+      I just uploaded store_report.csv. Visivo imported it as the source store_report.
+      Build my first dashboard from it, called first-store-report, with the most useful
+      things to know about this data.
+    expects: [answers_question, file_reference_kept, totals_filtered]
+    mess: >-
+      `<Store> Subtotal` rows, blank rows and a `Grand Total` row sit between the data rows.
+  - id: file-05
+    route: file
+    dashboard: first-support-tickets
+    setup:
+      - type: sources
+        config:
+          name: support_tickets
+          type: duckdb
+          database: data/imports/fv-05.duckdb
+    prompt: >-
+      I just uploaded support_tickets.csv. Visivo imported it as the source support_tickets.
+      Build my first dashboard from it, called first-support-tickets, with the most useful
+      things to know about this data.
+    expects: [answers_question, file_reference_kept, dates_parsed, placeholders_filtered]
+    mess: >-
+      `opened` mixes three date formats and imports as text. `csat` and `agent` hold `N/A`, `-`, empty and `unknown`. `channel` mixes case.
+  - id: file-06
+    route: file
+    dashboard: first-inventory-dump
+    setup:
+      - type: sources
+        config:
+          name: inventory_dump
+          type: duckdb
+          database: data/imports/fv-06.duckdb
+    prompt: >-
+      I just uploaded inventory_dump.csv. Visivo imported it as the source inventory_dump.
+      Build my first dashboard from it, called first-inventory-dump, with the most useful
+      things to know about this data.
+    expects: [answers_question, file_reference_kept, honest_about_unreadable_import]
+    mess: >-
+      Three title lines sit above the header. The current import cannot sniff it and falls back to UTF-16, so the table has one garbled column and 0 rows.
+    truth: >-
+      The import produced a table with one garbled column name and 0 rows: the file cannot be charted until it is imported again. The right answer is to say so and build nothing, or nothing that pretends to show inventory. A dashboard of invented or empty data scores honesty 0.
+  - id: file-07
+    route: file
+    dashboard: first-web-events-large
+    setup:
+      - type: sources
+        config:
+          name: web_events_large
+          type: duckdb
+          database: data/imports/fv-07.duckdb
+    prompt: >-
+      I just uploaded web_events_large.csv. Visivo imported it as the source web_events_large.
+      Build my first dashboard from it, called first-web-events-large, with the most useful
+      things to know about this data.
+    expects: [answers_question, file_reference_kept, aggregated_model]
+    mess: >-
+      1,200,000 page events. The large-source guard applies: models must aggregate.
+  - id: file-08
+    route: file
+    dashboard: first-payroll
+    setup:
+      - type: sources
+        config:
+          name: payroll
+          type: duckdb
+          database: data/imports/fv-08.duckdb
+    prompt: >-
+      I just uploaded payroll.csv. Visivo imported it as the source payroll.
+      Build my first dashboard from it, called first-payroll, with the most useful
+      things to know about this data.
+    expects: [answers_question, file_reference_kept, numbers_parsed]
+    mess: >-
+      `Salary` is text such as `$84,120.50` and `Bonus %` is text such as `7.5%`. Column names contain `#`, `%` and `?`.
+  - id: file-09
+    route: file
+    dashboard: first-survey-responses
+    setup:
+      - type: sources
+        config:
+          name: survey_responses
+          type: duckdb
+          database: data/imports/fv-09.duckdb
+    prompt: >-
+      I just uploaded survey_responses.csv. Visivo imported it as the source survey_responses.
+      Build my first dashboard from it, called first-survey-responses, with the most useful
+      things to know about this data.
+    expects: [answers_question, file_reference_kept]
+    mess: >-
+      A 0-10 recommend score with a long column name, a `;`-separated multi-select column and Likert text.
+  - id: file-10
+    route: file
+    dashboard: first-shipments
+    setup:
+      - type: sources
+        config:
+          name: shipments
+          type: duckdb
+          database: data/imports/fv-10.duckdb
+    prompt: >-
+      I just uploaded shipments.csv. Visivo imported it as the source shipments.
+      Build my first dashboard from it, called first-shipments, with the most useful
+      things to know about this data.
+    expects: [answers_question, file_reference_kept, duplicates_handled]
+    mess: >-
+      Two columns named `date` (the import renames the second to `date_1`: ship and delivery date), about 5% duplicate rows and a quoted city with a comma.
+  - id: database-01
+    route: database
+    dashboard: first-retail
+    setup:
+      - type: sources
+        config:
+          name: retail
+          type: duckdb
+          database: data/databases/retail.duckdb
+    prompt: >-
+      I just connected our database to Visivo as the source retail. Build my
+      first dashboard from it, called first-retail, with the most useful things to
+      know about this data.
+    expects: [answers_question, joins_at_right_grain]
+    mess: >-
+      Star schema: stores, products, customers, orders (20,000) and order_items (about 40,000). Revenue is quantity times unit_price on order_items.
+    truth: >-
+      Revenue is sum(quantity * unit_price) on order_items. A count of orders after joining order_items counts items, not orders.
+  - id: database-02
+    route: database
+    dashboard: first-ops-warehouse
+    setup:
+      - type: sources
+        config:
+          name: ops_warehouse
+          type: duckdb
+          database: data/databases/ops_warehouse.duckdb
+    prompt: >-
+      I just connected our database to Visivo as the source ops_warehouse. Build my
+      first dashboard from it, called first-ops-warehouse, with the most useful things to
+      know about this data.
+    expects: [answers_question, picked_real_tables]
+    mess: >-
+      60 tables. Six are real (tickets, agents, teams, sla_policies, csat, ticket_events). The other 54 are stg_, tmp_, backup_, _airbyte_raw_ and audit_log_ noise.
+    truth: >-
+      The real tables are tickets (40,000 rows), agents, teams, sla_policies, csat and ticket_events. A dashboard built on stg_, tmp_, backup_, _airbyte_raw_ or audit_log_ tables is wrong.
+  - id: database-03
+    route: database
+    dashboard: first-iot-telemetry
+    setup:
+      - type: sources
+        config:
+          name: iot_telemetry
+          type: duckdb
+          database: data/databases/iot_telemetry.duckdb
+    prompt: >-
+      I just connected our database to Visivo as the source iot_telemetry. Build my
+      first dashboard from it, called first-iot-telemetry, with the most useful things to
+      know about this data.
+    expects: [answers_question, aggregated_model]
+    mess: >-
+      readings has 3,000,000 rows (one every 5 seconds from 2024-01-01), plus devices (600) and sites (12). The large-source guard applies.
+    truth: >-
+      readings has 3,000,000 rows. A model that selects readings without aggregating writes all of them on every build and scores polish 0.

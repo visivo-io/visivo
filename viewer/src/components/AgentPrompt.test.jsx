@@ -1,8 +1,10 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import AgentPrompt from './AgentPrompt';
+import starterPrompts from './agentStarterPrompts.json';
+import useStore from '../stores/store';
 import { futureFlags } from '../router-config';
 import {
   cancelAgentSession,
@@ -648,5 +650,82 @@ describe('running out of credit mid-turn', () => {
 
     expect(await screen.findByTestId('agent-failed')).toHaveTextContent('something actually broke');
     expect(screen.queryByTestId('agent-limit-reached')).not.toBeInTheDocument();
+  });
+});
+
+describe('AgentPrompt starter prompts', () => {
+  afterEach(() => {
+    cleanup();
+    useStore.setState({ project: null });
+  });
+
+  const starters = starterPrompts['EV Sales'];
+
+  // The authorization check and the resume both settle after mount.
+  const renderSettled = async () => {
+    render(<AgentPrompt />);
+    await screen.findByTestId('agent-send');
+    await waitFor(() => expect(listAgentSessions).toHaveBeenCalled());
+  };
+
+  it('offers the scored prompts on the EV Sales example', async () => {
+    useStore.setState({ project: { id: 'p1', name: 'EV Sales' } });
+    await renderSettled();
+
+    const chips = await screen.findAllByTestId('agent-starter-prompt');
+    expect(chips.map(chip => chip.textContent)).toEqual(starters);
+    expect(chips).toHaveLength(3);
+  });
+
+  it('fills the box with a picked prompt and does not send it', async () => {
+    useStore.setState({ project: { id: 'p1', name: 'EV Sales' } });
+    await renderSettled();
+
+    await userEvent.click((await screen.findAllByTestId('agent-starter-prompt'))[1]);
+
+    expect(screen.getByLabelText('What should the agent do?')).toHaveValue(starters[1]);
+    expect(startAgentSession).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('agent-starter-prompts')).not.toBeInTheDocument();
+  });
+
+  it('offers nothing on a project that is not a scored example', async () => {
+    useStore.setState({ project: { id: 'p2', name: 'constructor' } });
+    await renderSettled();
+
+    await screen.findByTestId('agent-send');
+    expect(screen.queryByTestId('agent-starter-prompts')).not.toBeInTheDocument();
+  });
+
+  it('hides them once a conversation exists', async () => {
+    useStore.setState({ project: { id: 'p1', name: 'EV Sales' } });
+    listAgentSessions.mockResolvedValue([session('succeeded')]);
+    fetchAgentSession.mockResolvedValue(
+      session('succeeded', { transcript: [said('user', 'hi'), said('agent', 'hello')] })
+    );
+    await renderSettled();
+
+    await screen.findByTestId('agent-transcript');
+    expect(screen.queryByTestId('agent-starter-prompts')).not.toBeInTheDocument();
+  });
+});
+
+describe('AgentPrompt keyboard', () => {
+  it('sends a picked starter prompt with Enter', async () => {
+    useStore.setState({ project: { id: 'p1', name: 'EV Sales' } });
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(session('running'));
+    render(<AgentPrompt />);
+
+    await userEvent.click((await screen.findAllByTestId('agent-starter-prompt'))[0]);
+    await userEvent.type(screen.getByLabelText('What should the agent do?'), '{Enter}');
+
+    expect(startAgentSession).toHaveBeenCalledWith({
+      projectId: 'p1',
+      prompt: starterPrompts['EV Sales'][0],
+      sessionId: undefined,
+    });
+    expect(await screen.findByTestId('agent-working')).toBeInTheDocument();
+    cleanup();
+    useStore.setState({ project: null });
   });
 });
