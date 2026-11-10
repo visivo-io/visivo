@@ -5,6 +5,7 @@ from pathlib import Path
 from visivo.logger.logger import Logger
 from visivo.models.source import SourceTypeEnum
 from visivo.models.sources.bigquery_source import BigQuerySource, BigQueryType
+from visivo.models.sources.database_file import is_uri_database
 from visivo.models.sources.duckdb_source import DuckdbSource, DuckdbType
 from visivo.models.sources.mysql_source import MysqlSource, MysqlType
 from visivo.models.sources.postgresql_source import PostgresqlSource, PostgresqlType
@@ -130,6 +131,8 @@ def ensure_file_database(source, output_dir: str):
     """
     from sqlalchemy import create_engine
 
+    if is_uri_database(source.database):
+        return
     database_path = Path(source.database)
     if database_path.exists():
         return
@@ -202,7 +205,12 @@ def create_source(
     # writes the path verbatim, and this now matches it.
     default_db_name = database if database else "local.db"
 
-    local_db_path = Path(project_dir) / default_db_name if project_dir else default_db_name
+    if is_uri_database(default_db_name):
+        local_db_path = default_db_name
+    elif project_dir:
+        local_db_path = Path(project_dir) / default_db_name
+    else:
+        local_db_path = default_db_name
 
     # Credentials are NOT written to .env here — the server does that once the
     # source is built, via externalize_source_credentials (VIS-1216). That keeps

@@ -162,6 +162,26 @@ def test_create_sqlite_project_source_only(client):
         assert b"Source created" in res.data
 
 
+def test_create_duckdb_source_keeps_a_uri_database_verbatim(client):
+    """POST /api/source/create/ must not join a md: path to the project dir or
+    create local files for it."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        res = client.post(
+            "/api/source/create/",
+            data={
+                "project_name": "Remote Project",
+                "source_type": "duckdb",
+                "source_name": "remote",
+                "database": "md:my_db",
+                "project_dir": tmpdir,
+            },
+        )
+        assert res.status_code == 200
+        assert json.loads(res.data)["source"]["database"] == "md:my_db"
+        assert not (Path(tmpdir) / "md:my_db").exists()
+        assert [p.name for p in Path(tmpdir).iterdir() if p.name != ".env"] == []
+
+
 def test_create_postgres_source_externalizes_credentials(client):
     """POST /api/source/create with a postgres source must move the entered
     credentials into .env, reference them via ${env.*} in the returned source,
