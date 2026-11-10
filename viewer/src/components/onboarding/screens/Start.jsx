@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PERSONA_CONTENT, SAMPLES } from '../concepts';
 
 function SampleArt({ kind }) {
@@ -48,6 +48,40 @@ function SampleArt({ kind }) {
 
 const DEFAULT_SAMPLE = 'ev-sales';
 
+function PathCard({ id, title, description, openPath, onOpen, disabled, panelTitle, children }) {
+  const isOpen = openPath === id;
+  const headingRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) headingRef.current?.focus();
+  }, [isOpen]);
+
+  return (
+    <section className={`onb-door__card ${isOpen ? 'is-open' : ''}`}>
+      <button
+        type="button"
+        className="onb-door__choice"
+        aria-expanded={isOpen}
+        aria-controls={`onb-door-${id}`}
+        disabled={disabled}
+        onClick={() => onOpen(id)}
+        data-testid={`onb-path-${id}`}
+      >
+        <span className="onb-door__title">{title}</span>
+        <span className="onb-door__desc">{description}</span>
+      </button>
+      {isOpen && (
+        <div id={`onb-door-${id}`} className="onb-door__panel">
+          <h2 className="onb-door__panel-h" tabIndex={-1} ref={headingRef}>
+            {panelTitle}
+          </h2>
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function Start({
   role,
   onConnectClick,
@@ -58,6 +92,8 @@ export default function Start({
   isLoadingSample,
   loadingText,
 }) {
+  const [openPath, setOpenPath] = useState(null);
+
   useEffect(() => {
     fire('onboarding_data_seen');
   }, [fire]);
@@ -66,34 +102,72 @@ export default function Start({
   return (
     <div className="onb-screen-inner onb-screen-enter">
       <h1 className="onb-role-h">Welcome to Visivo.</h1>
-      <p className="onb-role-sub">
-        Pick a sample to open a live dashboard now. Visivo writes the project into this folder and
-        builds it, so you can edit everything after.
-      </p>
-      <div className="onb-sample-grid">
-        {Object.values(SAMPLES).map(s => {
-          const isDefault = s.name === defaultSample;
-          return (
-            <button
-              key={s.name}
-              className={`onb-sample-tile ${isDefault ? 'onb-sample-tile--default' : ''}`}
-              disabled={isLoadingSample}
-              onClick={() => {
-                fire('onboarding_sample_picked', { sample_name: s.name });
-                onSamplePick(s);
-              }}
-              data-testid={`onb-sample-${s.name}`}
-            >
-              {isDefault && <div className="onb-sample-tile__badge">Suggested</div>}
-              <div className="onb-sample-tile__art">
-                <SampleArt kind={s.art} />
-              </div>
-              <div className="onb-sample-tile__title">{s.title}</div>
-              <div className="onb-sample-tile__desc">{s.desc}</div>
-              <div className="onb-sample-tile__schema">{s.schema}</div>
-            </button>
-          );
-        })}
+      <p className="onb-role-sub">Start from an example, or build on your own data.</p>
+      <div className={`onb-door ${openPath ? `onb-door--${openPath}` : ''}`}>
+        <PathCard
+          id="example"
+          title="Example"
+          description="Open a working dashboard built on sample data."
+          panelTitle="Pick an example"
+          openPath={openPath}
+          onOpen={setOpenPath}
+          disabled={isLoadingSample}
+        >
+          <p className="onb-door__note">
+            Visivo writes the example into this folder and builds it, so you can edit everything
+            after.
+          </p>
+          <div className="onb-sample-grid">
+            {Object.values(SAMPLES).map(s => {
+              const isDefault = s.name === defaultSample;
+              return (
+                <button
+                  key={s.name}
+                  className={`onb-sample-tile ${isDefault ? 'onb-sample-tile--default' : ''}`}
+                  disabled={isLoadingSample}
+                  onClick={() => {
+                    fire('onboarding_sample_picked', { sample_name: s.name });
+                    onSamplePick(s);
+                  }}
+                  data-testid={`onb-sample-${s.name}`}
+                >
+                  {isDefault && <div className="onb-sample-tile__badge">Suggested</div>}
+                  <div className="onb-sample-tile__art">
+                    <SampleArt kind={s.art} />
+                  </div>
+                  <div className="onb-sample-tile__title">{s.title}</div>
+                  <div className="onb-sample-tile__desc">{s.desc}</div>
+                  <div className="onb-sample-tile__schema">{s.schema}</div>
+                </button>
+              );
+            })}
+          </div>
+        </PathCard>
+        <PathCard
+          id="data"
+          title="Your data"
+          description="Connect the database you already use."
+          panelTitle="How is your data stored?"
+          openPath={openPath}
+          onOpen={setOpenPath}
+          disabled={isLoadingSample}
+        >
+          <button
+            type="button"
+            className="onb-door__option"
+            disabled={isLoadingSample}
+            onClick={() => {
+              fire('onboarding_data_connect_clicked');
+              onConnectClick();
+            }}
+            data-testid="onb-data-connect"
+          >
+            <span className="onb-door__option-title">Connect a database</span>
+            <span className="onb-door__option-desc">
+              Choose its type, enter its details, and Visivo tests the connection before adding it.
+            </span>
+          </button>
+        </PathCard>
       </div>
       {isLoadingSample && (
         <div className="onb-start-loading" role="status" data-testid="onb-sample-loading">
@@ -102,17 +176,6 @@ export default function Start({
         </div>
       )}
       <div className="onb-start-alt">
-        <button
-          className="onb-btn onb-btn--secondary"
-          disabled={isLoadingSample}
-          onClick={() => {
-            fire('onboarding_data_connect_clicked');
-            onConnectClick();
-          }}
-          data-testid="onb-data-connect"
-        >
-          Connect your own data
-        </button>
         <button
           className="onb-text-link"
           disabled={isLoadingSample}

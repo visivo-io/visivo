@@ -83,17 +83,57 @@ const startTour = (role = 'analytics_engineer') => {
   fireEvent.click(screen.getByTestId('onb-role-continue'));
 };
 
+const openExample = () => fireEvent.click(screen.getByTestId('onb-path-example'));
+
+const pickSample = name => {
+  openExample();
+  fireEvent.click(screen.getByTestId(`onb-sample-${name}`));
+};
+
+const connectDatabase = () => {
+  fireEvent.click(screen.getByTestId('onb-path-data'));
+  fireEvent.click(screen.getByTestId('onb-data-connect'));
+};
+
 describe('OnboardingFlow', () => {
-  test('opens on the start screen with every sample and no progress bar', () => {
+  test('opens on Example and Your data, with neither chosen and no progress bar', () => {
     renderFlow();
     expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
     expect(screen.getByText(/Welcome to Visivo/)).toBeInTheDocument();
+    expect(screen.getByTestId('onb-path-example')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByTestId('onb-path-data')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('onb-sample-ev-sales')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('onb-data-connect')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('onboarding-progress')).not.toBeInTheDocument();
+    expect(getEventBuffer().map(e => e.event)).toContain('onboarding_data_seen');
+  });
+
+  test('Example opens every sample and moves focus to its heading', () => {
+    renderFlow();
+    openExample();
+    expect(screen.getByTestId('onb-path-example')).toHaveAttribute('aria-expanded', 'true');
     for (const name of ['ev-sales', 'github-releases', 'college-football']) {
       expect(screen.getByTestId(`onb-sample-${name}`)).toBeInTheDocument();
     }
-    expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();
-    expect(screen.queryByTestId('onboarding-progress')).not.toBeInTheDocument();
-    expect(getEventBuffer().map(e => e.event)).toContain('onboarding_data_seen');
+    expect(screen.getByRole('heading', { name: 'Pick an example' })).toHaveFocus();
+  });
+
+  test('Your data offers a database connection, and Example stays one click away', () => {
+    renderFlow();
+    fireEvent.click(screen.getByTestId('onb-path-data'));
+    expect(screen.getByTestId('onb-data-connect')).toHaveTextContent('Connect a database');
+    expect(screen.getByRole('heading', { name: 'How is your data stored?' })).toHaveFocus();
+    expect(screen.queryByTestId('onb-sample-ev-sales')).not.toBeInTheDocument();
+
+    openExample();
+    expect(screen.getByTestId('onb-path-data')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByTestId('onb-sample-ev-sales')).toBeInTheDocument();
+  });
+
+  test('does not offer a file upload before the server can import one', () => {
+    renderFlow();
+    fireEvent.click(screen.getByTestId('onb-path-data'));
+    expect(screen.queryByText(/upload/i)).not.toBeInTheDocument();
   });
 
   test('never claims more source types than the source picker offers', () => {
@@ -114,6 +154,7 @@ describe('OnboardingFlow', () => {
 
   test('ev-sales is the suggested sample when no role is chosen', () => {
     renderFlow();
+    openExample();
     expect(within(screen.getByTestId('onb-sample-ev-sales')).getByText('Suggested')).toBeInTheDocument();
   });
 
@@ -157,6 +198,7 @@ describe('OnboardingFlow', () => {
       renderFlow();
       startTour('software_engineer');
       for (let i = 0; i < 7; i++) fireEvent.click(screen.getByTestId('onb-concept-continue'));
+      openExample();
       const tile = screen.getByTestId('onb-sample-github-releases');
       expect(within(tile).getByText('Suggested')).toBeInTheDocument();
     });
@@ -201,7 +243,7 @@ describe('OnboardingFlow', () => {
   describe('sample import', () => {
     test('one click loads the sample and opens its dashboard', async () => {
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-sample-ev-sales'));
+      pickSample('ev-sales');
       await waitFor(() =>
         expect(mockNavigate).toHaveBeenCalledWith('/project/EV%20Sales%20Overview', {
           replace: true,
@@ -227,12 +269,12 @@ describe('OnboardingFlow', () => {
     test('shows a building status and disables every choice while the sample loads', async () => {
       global.fetch = jest.fn(() => new Promise(() => {}));
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-sample-college-football'));
+      pickSample('college-football');
       expect(await screen.findByTestId('onb-sample-loading')).toHaveTextContent(
         'Building College Football'
       );
       expect(screen.getByTestId('onb-sample-ev-sales')).toBeDisabled();
-      expect(screen.getByTestId('onb-data-connect')).toBeDisabled();
+      expect(screen.getByTestId('onb-path-data')).toBeDisabled();
       expect(screen.getByTestId('onb-start-empty')).toBeDisabled();
     });
 
@@ -241,7 +283,7 @@ describe('OnboardingFlow', () => {
         Promise.resolve({ ok: false, json: () => Promise.resolve({ message: 'Import exploded' }) })
       );
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-sample-github-releases'));
+      pickSample('github-releases');
 
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent('Import exploded');
@@ -270,12 +312,12 @@ describe('OnboardingFlow', () => {
   describe('source connect flow', () => {
     test('closes the source modal via the ✕ button and the backdrop', () => {
       const { container } = renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
       fireEvent.click(screen.getByLabelText('Close'));
       expect(screen.queryByTestId('onb-source-modal')).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
       fireEvent.click(container.querySelector('.onb-modal-backdrop'));
       expect(screen.queryByTestId('onb-source-modal')).not.toBeInTheDocument();
@@ -283,13 +325,13 @@ describe('OnboardingFlow', () => {
 
     test('Escape closes the source modal, but not while a save is in flight', async () => {
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       fireEvent.keyDown(document, { key: 'Escape' });
       expect(screen.queryByTestId('onb-source-modal')).not.toBeInTheDocument();
       expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
 
       global.fetch = jest.fn(() => new Promise(() => {}));
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
       await waitFor(() => expect(global.fetch).toHaveBeenCalled());
       fireEvent.keyDown(document, { key: 'Escape' });
@@ -298,7 +340,7 @@ describe('OnboardingFlow', () => {
 
     test('a connected source goes straight to the explorer and persists completion', async () => {
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
       await waitFor(() =>
         expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
@@ -326,7 +368,7 @@ describe('OnboardingFlow', () => {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
       });
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       fireEvent.click(screen.getByText('mock-connect-file'));
 
       await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
@@ -341,7 +383,7 @@ describe('OnboardingFlow', () => {
         Promise.resolve({ ok: false, json: () => Promise.resolve({ message: 'bad creds' }) })
       );
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
 
       expect(await screen.findByRole('alert')).toHaveTextContent('bad creds');
@@ -362,7 +404,7 @@ describe('OnboardingFlow', () => {
         });
       });
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
 
       expect(await screen.findByRole('alert')).toHaveTextContent('finalize failed');
