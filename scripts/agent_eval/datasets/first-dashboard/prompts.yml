@@ -8,8 +8,9 @@ project: test-projects/agent-eval/first-dashboard
 description: >-
   A new project with no objects yet. The person just imported one messy file
   or connected one database, and the onboarding added it as the only source.
-  Imported files keep their original under data/uploads/<version>/ and their
-  table in data/imports/<version>.duckdb.
+  The fixtures keep each original under data/uploads/<version>/ and its table
+  in data/imports/<version>.duckdb. This assumes a versioned project-file
+  import; the current upload saves the file in the project directory instead.
 pass_bar:
   file: 8
   database: 3

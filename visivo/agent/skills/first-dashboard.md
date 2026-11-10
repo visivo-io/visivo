@@ -28,8 +28,8 @@ The project already has sources, models and a dashboard.
 
 ## Route 2: Imported file
 
-The import made one source. That source points at an immutable version of
-the file. A later upload makes a new version and does not replace this one.
+The import made one source and one table from the file. Use that source
+as it is.
 
 **The imported file keeps its stable reference:**
 

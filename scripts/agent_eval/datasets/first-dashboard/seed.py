@@ -1,8 +1,11 @@
 """Build the fixtures for test-projects/agent-eval/first-dashboard.
 
-Ten messy files, laid out the way the onboarding import keeps them: the
-original under ``data/uploads/<version>/`` and the imported table in its own
-DuckDB file under ``data/imports/``. Three databases under ``data/databases/``
+Ten messy files. Each file has its original under ``data/uploads/<version>/``
+and its imported table in its own DuckDB file under ``data/imports/``. This
+layout assumes a versioned project-file import. The current upload
+(``/api/source/upload/``) is different: it saves the file in the project
+directory, overwrites it on a second upload, and does not reload a table that
+exists. Three databases under ``data/databases/``
 for the "connect a database" route: a small star schema, a warehouse with 60
 tables of which most are noise, and a 3,000,000-row telemetry table.
 
