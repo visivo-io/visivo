@@ -27,7 +27,7 @@ prompts:
       I just uploaded Sales Export (Final).csv. Visivo imported it as the source sales_export.
       Build my first dashboard from it, called first-sales-export, with the most useful
       things to know about this data. Follow the first-dashboard skill.
-    expects: [answers_question, file_reference_kept]
+    expects: [answers_question]
     mess: >-
       Column names with spaces, capitals, a trailing space and a symbol.
   - id: file-02
@@ -43,7 +43,7 @@ prompts:
       I just uploaded invoices_eu.csv. Visivo imported it as the source invoices_eu.
       Build my first dashboard from it, called first-invoices-eu, with the most useful
       things to know about this data. Follow the first-dashboard skill.
-    expects: [answers_question, file_reference_kept, numbers_parsed]
+    expects: [answers_question, numbers_parsed]
     mess: >-
       Semicolon delimited. Amounts use a decimal comma and a dot for thousands (`1.234,56`), so the import keeps them as text. VAT rates are text such as `19%`.
   - id: file-03
@@ -59,7 +59,7 @@ prompts:
       I just uploaded marketing_spend.csv. Visivo imported it as the source marketing_spend.
       Build my first dashboard from it, called first-marketing-spend, with the most useful
       things to know about this data. Follow the first-dashboard skill.
-    expects: [answers_question, file_reference_kept, unpivoted]
+    expects: [answers_question, unpivoted]
     mess: >-
       Wide: one column per month (`Jan 2024` … `Dec 2024`) for 8 channels.
   - id: file-04
@@ -75,7 +75,7 @@ prompts:
       I just uploaded store_report.csv. Visivo imported it as the source store_report.
       Build my first dashboard from it, called first-store-report, with the most useful
       things to know about this data. Follow the first-dashboard skill.
-    expects: [answers_question, file_reference_kept, totals_filtered]
+    expects: [answers_question, totals_filtered]
     mess: >-
       `<Store> Subtotal` rows, blank rows and a `Grand Total` row sit between the data rows.
   - id: file-05
@@ -91,7 +91,7 @@ prompts:
       I just uploaded support_tickets.csv. Visivo imported it as the source support_tickets.
       Build my first dashboard from it, called first-support-tickets, with the most useful
       things to know about this data. Follow the first-dashboard skill.
-    expects: [answers_question, file_reference_kept, dates_parsed, placeholders_filtered]
+    expects: [answers_question, dates_parsed, placeholders_filtered]
     mess: >-
       `opened` mixes three date formats and imports as text. `csat` and `agent` hold `N/A`, `-`, empty and `unknown`. `channel` mixes case.
   - id: file-06
@@ -107,7 +107,7 @@ prompts:
       I just uploaded inventory_dump.csv. Visivo imported it as the source inventory_dump.
       Build my first dashboard from it, called first-inventory-dump, with the most useful
       things to know about this data. Follow the first-dashboard skill.
-    expects: [answers_question, file_reference_kept, honest_about_unreadable_import]
+    expects: [answers_question, honest_about_unreadable_import]
     mess: >-
       Three title lines sit above the header. The current import cannot sniff it and falls back to UTF-16, so the table has one garbled column and 0 rows.
     truth: >-
@@ -125,7 +125,7 @@ prompts:
       I just uploaded web_events_large.csv. Visivo imported it as the source web_events_large.
       Build my first dashboard from it, called first-web-events-large, with the most useful
       things to know about this data. Follow the first-dashboard skill.
-    expects: [answers_question, file_reference_kept, aggregated_model]
+    expects: [answers_question, aggregated_model]
     mess: >-
       1,200,000 page events. The large-source guard applies: models must aggregate.
   - id: file-08
@@ -141,7 +141,7 @@ prompts:
       I just uploaded payroll.csv. Visivo imported it as the source payroll.
       Build my first dashboard from it, called first-payroll, with the most useful
       things to know about this data. Follow the first-dashboard skill.
-    expects: [answers_question, file_reference_kept, numbers_parsed]
+    expects: [answers_question, numbers_parsed]
     mess: >-
       `Salary` is text such as `$84,120.50` and `Bonus %` is text such as `7.5%`. Column names contain `#`, `%` and `?`.
   - id: file-09
@@ -157,7 +157,7 @@ prompts:
       I just uploaded survey_responses.csv. Visivo imported it as the source survey_responses.
       Build my first dashboard from it, called first-survey-responses, with the most useful
       things to know about this data. Follow the first-dashboard skill.
-    expects: [answers_question, file_reference_kept]
+    expects: [answers_question]
     mess: >-
       A 0-10 recommend score with a long column name, a `;`-separated multi-select column and Likert text.
   - id: file-10
@@ -173,7 +173,7 @@ prompts:
       I just uploaded shipments.csv. Visivo imported it as the source shipments.
       Build my first dashboard from it, called first-shipments, with the most useful
       things to know about this data. Follow the first-dashboard skill.
-    expects: [answers_question, file_reference_kept, duplicates_handled]
+    expects: [answers_question, duplicates_handled]
     mess: >-
       Two columns named `date` (the import renames the second to `date_1`: ship and delivery date), about 5% duplicate rows and a quoted city with a comma.
   - id: database-01

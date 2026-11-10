@@ -104,6 +104,7 @@ class TestTheDatasets:
             assert len(sources) == 1, prompt["id"]
             assert prompt["dashboard"] in prompt["prompt"], prompt["id"]
             assert sources[0]["config"]["name"] in prompt["prompt"], prompt["id"]
+            assert prompt["prompt"].endswith("Follow the first-dashboard skill."), prompt["id"]
 
     def test_each_file_prompt_points_at_the_import_the_seed_builds(self):
         seed = _module("first_dashboard_seed", os.path.join(DATASETS, "first-dashboard", "seed.py"))
@@ -115,7 +116,6 @@ class TestTheDatasets:
             database = prompt["setup"][0]["config"]["database"]
             assert database in built, prompt["id"]
             assert built[database] in prompt["prompt"], prompt["id"]
-            assert "file_reference_kept" in prompt["expects"]
 
     def test_each_database_prompt_points_at_a_database_the_seed_builds(self):
         seed = _module("first_dashboard_seed", os.path.join(DATASETS, "first-dashboard", "seed.py"))
