@@ -297,6 +297,7 @@ class TestQuerySourceGuard:
             "SELECT pg_read_file('/etc/passwd')",
             "SELECT load_extension('x')",
             "SELECT * FROM glob('*')",
+            "SELECT * FROM read_xlsx('/home/user/secrets.xlsx')",
         ],
     )
     def test_file_reading_functions_are_refused(self, sql):

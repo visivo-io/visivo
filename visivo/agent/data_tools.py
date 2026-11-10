@@ -70,6 +70,7 @@ FORBIDDEN_FUNCTIONS = frozenset(
         "read_ndjson_auto",
         "read_text",
         "read_blob",
+        "read_xlsx",
         "glob",
         "pg_read_file",
         "pg_read_binary_file",

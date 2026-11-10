@@ -82,6 +82,59 @@ def test_check_database_files_exist_accepts_memory_and_an_absolute_path(tmp_path
     )
 
 
+@pytest.mark.parametrize(
+    "database",
+    ["md:my_db", "s3://bucket/path/data.duckdb", "https://example.com/data.duckdb"],
+)
+def test_check_database_files_exist_skips_a_uri_database(tmp_path, database):
+    source = DuckdbSource(name="u", type="duckdb", database=database)
+    source.check_database_files_exist(str(tmp_path))
+
+
+def test_check_database_files_exist_skips_a_uri_attachment(tmp_path):
+    main = tmp_path / "main.duckdb"
+    main.write_bytes(b"")
+    source = DuckdbSource(
+        name="d",
+        type="duckdb",
+        database=str(main),
+        attach=[
+            {
+                "schema_name": "remote",
+                "source": {"name": "r", "type": "duckdb", "database": "md:shared_db"},
+            }
+        ],
+    )
+    source.check_database_files_exist(str(tmp_path))
+
+
+@pytest.mark.parametrize(
+    "database",
+    ["md:my_db", "s3://bucket/path/data.duckdb", "https://example.com/data.duckdb"],
+)
+def test_get_connection_passes_a_uri_database_through_unchanged(tmp_path, monkeypatch, database):
+    import duckdb
+
+    seen = []
+    monkeypatch.setattr(duckdb, "connect", lambda path, **kwargs: seen.append(path) or "conn")
+    source = DuckdbSource(name="u", type="duckdb", database=database)
+
+    assert source.get_connection(read_only=False, working_dir=tmp_path) == "conn"
+    assert seen == [database]
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_get_connection_still_joins_a_relative_path_to_the_working_dir(tmp_path, monkeypatch):
+    import duckdb
+
+    seen = []
+    monkeypatch.setattr(duckdb, "connect", lambda path, **kwargs: seen.append(path) or "conn")
+    source = DuckdbSource(name="l", type="duckdb", database="data/local.duckdb")
+
+    source.get_connection(read_only=True, working_dir=tmp_path)
+    assert seen == [str(tmp_path / "data" / "local.duckdb")]
+
+
 def test_a_duckdb_attachment_is_queryable_and_listed(tmp_path):
     import duckdb
 

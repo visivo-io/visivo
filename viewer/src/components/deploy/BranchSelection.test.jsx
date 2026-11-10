@@ -80,23 +80,46 @@ it('handles branch selection and enables deploy button', async () => {
   expect(button).not.toBeDisabled();
 });
 
-it('disables deploy button if no branch selected', async () => {
+it('preselects the account default branch the server names', async () => {
   fetch.mockResolvedValueOnce({
-    json: async () => mockBranches,
+    json: async () => ({ ...mockBranches, default_branch: 'production' }),
   });
 
   render(<BranchSelection status="branch" />);
-  const button = await screen.findByRole('button', { name: /deploy to branch/i });
-  expect(button).toBeDisabled();
+  const button = await screen.findByRole('button', { name: /deploy to production/i });
+  expect(button).not.toBeDisabled();
 });
 
-it('shows "no branches" message if branches are empty', async () => {
+it('preselects the first branch when the server names no listed default', async () => {
   fetch.mockResolvedValueOnce({
-    json: async () => ({ branches: [] }),
+    json: async () => ({ ...mockBranches, default_branch: 'gone' }),
+  });
+
+  render(<BranchSelection status="branch" />);
+  expect(await screen.findByRole('button', { name: /deploy to staging/i })).not.toBeDisabled();
+});
+
+it('defaults to a new main branch instead of "No branches available"', async () => {
+  fetch.mockResolvedValueOnce({
+    json: async () => ({ branches: [], default_branch: null }),
+  });
+
+  render(<BranchSelection status="branch" />);
+  const button = await screen.findByRole('button', { name: /deploy to main/i });
+  expect(button).not.toBeDisabled();
+  expect(screen.queryByText(/no branches available/i)).not.toBeInTheDocument();
+  expect(screen.getByText(/first deploy creates the main branch/i)).toBeInTheDocument();
+  expect(screen.getByText('main (new)')).toBeInTheDocument();
+});
+
+it('keeps the warning and no selection when the branch list did not load', async () => {
+  fetch.mockResolvedValueOnce({
+    json: async () => ({ message: 'UnAuthorized access' }),
   });
 
   render(<BranchSelection status="branch" />);
   expect(await screen.findByText(/no branches available/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /deploy to branch/i })).toBeDisabled();
 });
 
 it('triggers deployment when clicking Deploy', async () => {
