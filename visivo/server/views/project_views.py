@@ -37,6 +37,7 @@ def register_project_views(app, flask_app, output_dir):
     def load_example_project():
         """Load example project from GitHub"""
         from visivo.commands.init_phase import load_example_project as load_example
+        from visivo.commands.cloud_next_steps import log_cloud_next_steps
 
         data = request.get_json()
         project_name = data.get("project_name", "").strip()
@@ -50,6 +51,7 @@ def register_project_views(app, flask_app, output_dir):
         if flask_app.hot_reload_server:
             flask_app.hot_reload_server.pause_file_watcher()
 
+        loaded = False
         try:
             project_file_path = load_example(project_name, example_type, project_dir)
 
@@ -67,7 +69,9 @@ def register_project_views(app, flask_app, output_dir):
                 except Exception as e:
                     Logger.instance().error(f"Error parsing project: {str(e)}")
 
-            return jsonify({"message": "Project created successfully"}), 200
+            response = jsonify({"message": "Project created successfully"})
+            loaded = True
+            return response, 200
 
         except Exception as e:
             Logger.instance().error(f"Error loading example project: {str(e)}")
@@ -80,6 +84,8 @@ def register_project_views(app, flask_app, output_dir):
                 flask_app.hot_reload_server.on_project_change()
                 Logger.instance().debug("Resumed file watcher after example load")
                 flask_app.hot_reload_server.socketio.emit("reload")
+            if loaded:
+                log_cloud_next_steps(example_type)
 
     @app.route("/api/source/create/", methods=["POST"])
     def create_source_api():
