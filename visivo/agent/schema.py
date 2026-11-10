@@ -114,21 +114,45 @@ class SchemaSlicer:
             "notes": self._notes(type_key, roots),
         }
 
-    def _prune(self, node, stop_at):
+    def _prune(self, node, stop_at, refable=False):
         """A def with refs to other authorable types and to Plotly replaced by a
-        note. Recursive, because the refs are nested in field definitions."""
+        note. Recursive, because the refs are nested in field definitions.
+
+        An authorable type becomes a pointer only where the field also accepts a
+        ``${ref()}`` string. A field typed as the object alone, like a model's
+        ``metrics``, stays inline: pointing at it tells the agent to write a ref
+        the field rejects."""
         if isinstance(node, dict):
             ref = node.get("$ref")
             if isinstance(ref, str) and ref.startswith("#/$defs/"):
                 target = ref.rsplit("/", 1)[-1]
-                if target in stop_at:
+                if refable and target in stop_at:
                     return self._pointer(target)
                 if self._is_plotly(target):
                     return self._plotly_pointer(target)
-            return {key: self._prune(value, stop_at) for key, value in node.items()}
+            union_refable = self._accepts_ref_string(node)
+            return {
+                key: self._prune(
+                    value,
+                    stop_at,
+                    refable=(refable or union_refable) if key in ("anyOf", "oneOf") else False,
+                )
+                for key, value in node.items()
+            }
         if isinstance(node, list):
-            return [self._prune(item, stop_at) for item in node]
+            return [self._prune(item, stop_at, refable) for item in node]
         return node
+
+    def _accepts_ref_string(self, node):
+        if not isinstance(node, dict):
+            return False
+        if node.get("type") == "string" and "pattern" in node:
+            return True
+        return any(
+            self._accepts_ref_string(option)
+            for key in ("anyOf", "oneOf")
+            for option in node.get(key, [])
+        )
 
     def _is_plotly(self, name):
         if name == "Layout":

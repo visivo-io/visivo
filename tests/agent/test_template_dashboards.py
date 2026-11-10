@@ -70,11 +70,8 @@ class TestTheTrapsTheSkillTeaches:
         assert "line 2: <script>" in result["error"]
 
     def test_an_unknown_slot_validates_and_fails_later(self, integration_app):
-        # Deliberate, and the same as every other `${ref()}`: refs resolve when
-        # the project compiles, not when one object is validated. A dangling
-        # ref in a ROWS dashboard behaves identically, so templates are not a
-        # special case — which is why the skill tells the agent to build items
-        # first rather than relying on validate to catch it.
+        # Refs resolve when the project compiles, so a dangling one never makes
+        # a dashboard invalid. A rows dashboard gets write_dashboard's warning.
         template = _validate(
             integration_app,
             {"name": "t", "template": '<div data-visivo-item="nope"></div>'},
@@ -85,7 +82,10 @@ class TestTheTrapsTheSkillTeaches:
         )
 
         assert template == {"valid": True}
-        assert template == rows
+        assert rows == {
+            "valid": True,
+            "warnings": ["The dashboard places chart `nope`, which does not exist."],
+        }
 
 
 class TestTheAgentCanSeeTheVocabulary:
