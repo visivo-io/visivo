@@ -45,6 +45,55 @@ entries:
     serves:
     - studio
     - cloud
+  sourceCredentials:
+    path: /api/source-credentials/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  projectFiles:
+    path: /api/project-files/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
+  projectFileUploads:
+    path: /api/project-files/uploads/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  projectFileUploadContent:
+    path: /api/project-files/uploads/{uploadId}/content/
+    verbs:
+    - PUT
+    serves:
+    - studio
+    reason: The cloud's upload response gives a signed storage URL for the bytes instead.
+  projectFileUploadComplete:
+    path: /api/project-files/uploads/{uploadId}/complete/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  projectFileImports:
+    path: /api/project-file-imports/
+    verbs:
+    - POST
+    serves:
+    - studio
+    - cloud
+  projectFileImportJob:
+    path: /api/project-file-imports/{jobId}/
+    verbs:
+    - GET
+    serves:
+    - studio
+    - cloud
   modelsList:
     path: /api/models/
     verbs: []

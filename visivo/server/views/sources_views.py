@@ -3,6 +3,7 @@ from pydantic import ValidationError
 from visivo.logger.logger import Logger
 from visivo.server.managers.object_manager import ObjectStatus, SaveRefusedError
 from visivo.server.managers.source_op_job_manager import SourceOpJobManager
+from visivo.server.views.project_files_views import not_implemented
 from visivo.server.source_metadata import (
     validate_source_from_config,
 )
@@ -35,6 +36,10 @@ def register_source_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error starting source connection test: {str(e)}")
             return jsonify({"status": "connection_failed", "error": str(e)}), 500
+
+    @app.route("/api/source-credentials/", methods=["POST"])
+    def prepare_source_credentials():
+        return not_implemented("VIS-1764")
 
     @app.route("/api/source-connections/<job_id>/", methods=["GET"])
     def test_source_connection_job(job_id):
