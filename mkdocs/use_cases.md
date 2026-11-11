@@ -29,6 +29,6 @@ If your job is answering questions with data, Visivo gives you durable, trustwor
 
 ## Where to go next
 
-- [Get Started](index.md) — run your first dashboard.
+- [Get Started](./index.md) — run your first dashboard.
 - [Concepts](concepts/index.md) — the six core objects.
 - [Tutorials](how_tos.md) — step-by-step guides.

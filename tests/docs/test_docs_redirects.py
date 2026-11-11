@@ -1,24 +1,13 @@
-import importlib.util
 import re
 from pathlib import Path
 
 import yaml
+from mkdocs.structure.files import File, Files
+from mkdocs_redirects.plugin import RedirectPlugin
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MKDOCS_DIR = REPO_ROOT / "mkdocs"
 DOCS_URL = re.compile(r"https?://docs\.visivo\.io(/[^\s)\"'`<>\]]*)?")
-
-
-def _load_hook():
-    spec = importlib.util.spec_from_file_location(
-        "docs_redirects", MKDOCS_DIR / "hooks" / "redirects.py"
-    )
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-HOOK = _load_hook()
 
 
 def _config():
@@ -42,17 +31,28 @@ def _nav_pages(node):
             yield from _nav_pages(item)
 
 
+def _url(page):
+    stem = page[: -len(".md")]
+    if stem == "index":
+        return ""
+    if stem.endswith("/index"):
+        return stem[: -len("index")]
+    return stem + "/"
+
+
 def _page_urls():
-    urls = set()
-    for page in _nav_pages(_config()["nav"]):
-        stem = page[: -len(".md")]
-        if stem.endswith("/index"):
-            urls.add(stem[: -len("index")])
-        elif stem == "index":
-            urls.add("")
-        else:
-            urls.add(stem + "/")
-    return urls
+    return {_url(page) for page in _nav_pages(_config()["nav"])}
+
+
+def _redirect_maps():
+    for plugin in _config()["plugins"]:
+        if isinstance(plugin, dict) and "redirects" in plugin:
+            return plugin["redirects"]["redirect_maps"]
+    raise AssertionError("mkdocs.yml does not configure the redirects plugin")
+
+
+def _redirect_urls():
+    return {_url(source): _url(target) for source, target in _redirect_maps().items()}
 
 
 def _normalize(path):
@@ -64,7 +64,7 @@ def _normalize(path):
 
 def _resolves(path):
     key = _normalize(path)
-    return key in _page_urls() or key.rstrip("/") in HOOK.REDIRECTS
+    return key in _page_urls() or key in _redirect_urls()
 
 
 def _guarded_text_sources():
@@ -77,11 +77,18 @@ def _guarded_text_sources():
 
 
 def test_guessed_paths_redirect_to_real_pages():
-    assert set(HOOK.REDIRECTS) >= {"quickstart", "cli", "deployments", "topics/dbt"}
+    redirects = _redirect_urls()
+    assert set(redirects) >= {
+        "quickstart/",
+        "get-started/installation/",
+        "cli/",
+        "deployments/",
+        "topics/dbt/",
+    }
     pages = _page_urls()
-    for source, target in HOOK.REDIRECTS.items():
-        assert _normalize(target) in pages, f"/{source}/ redirects to missing page {target}"
-        assert _normalize(source) not in pages, f"/{source}/ is a real page; drop the redirect"
+    for source, target in redirects.items():
+        assert target in pages, f"/{source} redirects to {target}, which is not in the nav"
+        assert source not in pages, f"/{source} is a real page; drop the redirect"
 
 
 def test_guard_scans_every_cli_command_module():
@@ -105,20 +112,26 @@ def test_resolver_rejects_unknown_paths():
     assert not _resolves("/no/such/page/")
 
 
-def test_hook_writes_redirect_pages(tmp_path):
-    config = {"site_dir": str(tmp_path), "site_url": "https://docs.visivo.io"}
-    (tmp_path / "cli").mkdir()
-    (tmp_path / "cli" / "index.html").write_text("real")
-    HOOK.on_post_build(config)
-    quickstart = (tmp_path / "quickstart" / "index.html").read_text()
-    assert 'url=/"' in quickstart
-    assert (tmp_path / "cli" / "index.html").read_text() == "real"
-    assert "/topics/deployments/" in (tmp_path / "deployments" / "index.html").read_text()
-    assert (
-        "/reference/configuration/Dbt/" in (tmp_path / "topics" / "dbt" / "index.html").read_text()
-    )
+def _build_redirects(site_dir):
+    plugin = RedirectPlugin()
+    plugin.load_config({"redirect_maps": _redirect_maps()})
+    docs = [
+        File(page, str(MKDOCS_DIR), str(site_dir), True) for page in _nav_pages(_config()["nav"])
+    ]
+    plugin.on_files(Files(docs), config={})
+    plugin.on_post_build({"site_dir": str(site_dir), "use_directory_urls": True})
 
 
-def test_hook_respects_site_url_prefix(tmp_path):
-    HOOK.on_post_build({"site_dir": str(tmp_path), "site_url": "https://example.test/docs/"})
-    assert "/docs/reference/cli/" in (tmp_path / "cli" / "index.html").read_text()
+def _redirect_target(site_dir, url):
+    page = (site_dir / url / "index.html").read_text()
+    return re.search(r'http-equiv="refresh" content="0; url=([^"]+)"', page).group(1)
+
+
+def test_plugin_writes_a_page_for_each_redirect(tmp_path):
+    _build_redirects(tmp_path)
+    assert _redirect_target(tmp_path, "quickstart") == "../"
+    assert _redirect_target(tmp_path, "get-started/installation") == "../../installation/"
+    assert _redirect_target(tmp_path, "topics/targets") == "../sources/"
+    assert _redirect_target(tmp_path, "topics/dbt") == "../../reference/configuration/Dbt/"
+    for source in _redirect_urls():
+        assert (tmp_path / source / "index.html").exists(), f"no redirect page for /{source}"

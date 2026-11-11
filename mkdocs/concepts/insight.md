@@ -12,7 +12,7 @@ and writes the result; in the browser, interactions like filtering and splitting
 applied to that data client-side — no round-trip to your database on every click.
 
 Insights are the foundation of Interactivity 2.0 and the
-[semantic layer](semantic-layer.md).
+[semantic layer](./semantic-layer.md).
 
 ## Minimal example
 

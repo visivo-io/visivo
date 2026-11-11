@@ -35,4 +35,4 @@ Visivo marketing site:
 
 - [Viewpoint](viewpoint.md) — the opinions behind Visivo.
 - [Use Cases](use_cases.md) — Visivo for engineers and for analysts.
-- [Get Started](index.md) — try it in 90 seconds.
+- [Get Started](./index.md) — try it in 90 seconds.

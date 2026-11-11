@@ -107,6 +107,7 @@ dev = [
     "pytest-cov>=7.0.0,<8.0.0",
     "coverage>=7.13.0,<8.0.0",
     "pytest-xdist>=3.8.0,<4.0.0",
+    "mkdocs-redirects>=1.2.2,<1.2.3",
 ]
 
 [build-system]

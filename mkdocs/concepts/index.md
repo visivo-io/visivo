@@ -40,7 +40,7 @@ is one of **six core objects**. Learn these and the rest of the documentation fa
     Reusable **Metrics**, **Dimensions**, and **Relations** defined once and
     shared across every Insight.
 
-    [:octicons-arrow-right-24: Semantic layer](semantic-layer.md)
+    [:octicons-arrow-right-24: Semantic layer](./semantic-layer.md)
 
 -   :visivo-insight:{ .lg .middle .vz-insight } **Insight**
     { .vz-accent-insight }
