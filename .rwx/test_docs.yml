@@ -83,7 +83,8 @@ tasks:
       uv run mkdocs serve > mkdocs.log 2>&1 &
       sh mkdocs/check-connection.sh
       wget --recursive --no-verbose --spider http://127.0.0.1:8000/ 2>&1 | grep -v -E 'OK$|^unlink|\.tmp\.tmp'
-      PYTHONPATH=$PWD uv run mkdocs build 2>&1 | tee build_stdout.txt
+      set -o pipefail
+      PYTHONPATH=$PWD uv run mkdocs build --strict 2>&1 | tee build_stdout.txt
 
   - key: check-for-spelling-errors
     use: mkdocs

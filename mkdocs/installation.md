@@ -188,4 +188,4 @@ pip uninstall visivo
 
 After installation, you're ready to create your first dashboard:
 
-- [Quick Start Guide](index.md#quick-start) - Get your first dashboard running
+- [Quick Start Guide](./index.md#quick-start) - Get your first dashboard running

@@ -1,7 +1,7 @@
 # Tutorials
 
 Step-by-step guides for getting things done with Visivo. If you are brand new, start with
-[Get Started](index.md) to run your first dashboard, then come back here.
+[Get Started](./index.md) to run your first dashboard, then come back here.
 
 <div class="grid cards" markdown>
 

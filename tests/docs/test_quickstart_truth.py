@@ -386,3 +386,13 @@ def test_quickstart_does_not_claim_serve_prompts_for_an_example():
         if phrase in text:
             failures.append(f"Quick Start re-states the refuted claim: {phrase!r}")
     assert failures == [], "\n".join(failures)
+
+
+def test_customize_card_links_the_dashboards_guide():
+    """The "Customize Your Dashboard" card is the Quick Start's way into the
+    Build a Dashboard guide. Without it the guide is unreachable from this page."""
+    text = QUICKSTART.read_text()
+    card = text[text.index("**Customize Your Dashboard**") :]
+    card = card[: card.index("\n-   ")]
+    assert "(topics/dashboards.md)" in card
+    assert (QUICKSTART.parent / "topics" / "dashboards.md").is_file()
