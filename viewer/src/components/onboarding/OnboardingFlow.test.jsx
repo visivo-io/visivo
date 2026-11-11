@@ -4,19 +4,13 @@ import { MemoryRouter } from 'react-router-dom';
 
 import OnboardingFlow, { sampleDestination } from './OnboardingFlow';
 import useStore from '../../stores/store';
-import {
-  clearOnboardingState,
-  readOnboardingState,
-  writeOnboardingState,
-} from './onboardingState';
+import { clearOnboardingState, readOnboardingState, writeOnboardingState } from './onboardingState';
 import { clearEventBuffer, getEventBuffer } from './telemetry';
 
 jest.mock('../../stores/store');
 jest.mock('../views/common/SourceEditForm', () => ({ onSave }) => (
   <div data-testid="source-edit-form">
-    <button
-      onClick={() => onSave('postgres', 'demo', { type: 'postgres', name: 'demo' })}
-    >
+    <button onClick={() => onSave('postgres', 'demo', { type: 'postgres', name: 'demo' })}>
       mock-connect
     </button>
     <button
@@ -76,7 +70,6 @@ const renderFlow = () =>
     </MemoryRouter>
   );
 
-
 const startTour = (role = 'analytics_engineer') => {
   fireEvent.click(screen.getByTestId('onb-start-tour'));
   fireEvent.click(screen.getByTestId(`onb-role-${role}`));
@@ -99,7 +92,9 @@ describe('OnboardingFlow', () => {
   test('opens on Example and Your data, with neither chosen and no progress bar', () => {
     renderFlow();
     expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
-    expect(screen.getByText(/Welcome to Visivo/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Start with something to explore.' })
+    ).toBeInTheDocument();
     expect(screen.getByTestId('onb-path-example')).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByTestId('onb-path-data')).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByTestId('onb-sample-ev-sales')).not.toBeInTheDocument();
@@ -116,13 +111,15 @@ describe('OnboardingFlow', () => {
       expect(screen.getByTestId(`onb-sample-${name}`)).toBeInTheDocument();
     }
     expect(screen.getByRole('heading', { name: 'Pick an example' })).toHaveFocus();
+    expect(screen.getByTestId('onb-sample-ev-sales')).toHaveTextContent('Suggested');
+    expect(screen.getByTestId('onb-sample-github-releases')).not.toHaveTextContent('Suggested');
   });
 
   test('Your data offers a database connection, and Example stays one click away', () => {
     renderFlow();
     fireEvent.click(screen.getByTestId('onb-path-data'));
-    expect(screen.getByTestId('onb-data-connect')).toHaveTextContent('Connect a database');
-    expect(screen.getByRole('heading', { name: 'How is your data stored?' })).toHaveFocus();
+    expect(screen.getByTestId('onb-data-connect')).toHaveTextContent('Connect a data source');
+    expect(screen.getByRole('heading', { name: 'How would you like to add data?' })).toHaveFocus();
     expect(screen.queryByTestId('onb-sample-ev-sales')).not.toBeInTheDocument();
 
     openExample();
@@ -155,7 +152,9 @@ describe('OnboardingFlow', () => {
   test('ev-sales is the suggested sample when no role is chosen', () => {
     renderFlow();
     openExample();
-    expect(within(screen.getByTestId('onb-sample-ev-sales')).getByText('Suggested')).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('onb-sample-ev-sales')).getByText('Suggested')
+    ).toBeInTheDocument();
   });
 
   test('a stale step index from an older flow still opens on the start screen', () => {
@@ -249,7 +248,9 @@ describe('OnboardingFlow', () => {
           replace: true,
         })
       );
-      const loadCall = global.fetch.mock.calls.find(([url]) => url === '/api/project/load_example/');
+      const loadCall = global.fetch.mock.calls.find(
+        ([url]) => url === '/api/project/load_example/'
+      );
       expect(JSON.parse(loadCall[1].body)).toMatchObject({
         project_dir: '/tmp/demo',
         project_name: 'Quickstart Visivo',
@@ -263,7 +264,9 @@ describe('OnboardingFlow', () => {
       });
       expect(persisted.completed_at).toBeTruthy();
       const events = getEventBuffer().map(e => e.event);
-      expect(events).toEqual(expect.arrayContaining(['onboarding_sample_picked', 'onboarding_completed']));
+      expect(events).toEqual(
+        expect.arrayContaining(['onboarding_sample_picked', 'onboarding_completed'])
+      );
     });
 
     test('shows a building status and disables every choice while the sample loads', async () => {
@@ -372,7 +375,9 @@ describe('OnboardingFlow', () => {
       fireEvent.click(screen.getByText('mock-connect-file'));
 
       await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
-      const finalizeCall = global.fetch.mock.calls.find(([url]) => url === '/api/project/finalize/');
+      const finalizeCall = global.fetch.mock.calls.find(
+        ([url]) => url === '/api/project/finalize/'
+      );
       expect(JSON.parse(finalizeCall[1].body).dashboards).toEqual([
         { name: 'generated-dashboard' },
       ]);
