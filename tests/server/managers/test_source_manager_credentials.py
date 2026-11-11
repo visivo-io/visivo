@@ -12,7 +12,7 @@ import os
 
 import pytest
 from dotenv import dotenv_values
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from tests.factories.model_factories import (
     BigQuerySourceFactory,
@@ -691,3 +691,133 @@ class TestEveryDraftWriteIsProtected:
         dumped = commit_serialization(manager.cached_objects["warehouse"])
         assert dumped["password"] == "${env.WAREHOUSE_PASSWORD}"
         assert read_env(tmp_path)["WAREHOUSE_PASSWORD"] == "hunter2"
+
+
+class TestPrepareCredentials:
+    """POST /api/source-credentials/: store typed secrets before Test connection and Save (VIS-1764)."""
+
+    def test_typed_password_is_stored_and_replaced_by_its_reference(self, tmp_path):
+        manager = SourceManager(project_dir=str(tmp_path))
+
+        result = manager.prepare_credentials(redshift_config())
+
+        assert result["source"] == redshift_config(password="${env.WAREHOUSE_PASSWORD}")
+        assert result["credentials"] == [
+            {
+                "field": "password",
+                "reference": "${env.WAREHOUSE_PASSWORD}",
+                "storage": "project_env",
+                "created": True,
+            }
+        ]
+        assert read_env(tmp_path) == {"WAREHOUSE_PASSWORD": "hunter2"}
+        assert os.environ["WAREHOUSE_PASSWORD"] == "hunter2"
+        assert (tmp_path / ".gitignore").read_text() == ".env\n"
+        assert "hunter2" not in str(result)
+        assert "warehouse" not in manager.cached_objects
+
+    def test_retry_with_the_same_value_reuses_the_reference(self, tmp_path):
+        manager = SourceManager(project_dir=str(tmp_path))
+        manager.prepare_credentials(redshift_config())
+
+        result = manager.prepare_credentials(redshift_config())
+
+        assert result["credentials"][0]["reference"] == "${env.WAREHOUSE_PASSWORD}"
+        assert result["credentials"][0]["created"] is False
+        assert read_env(tmp_path) == {"WAREHOUSE_PASSWORD": "hunter2"}
+
+    @pytest.mark.parametrize("password", ["", "${env.MY_OWN_PASSWORD}", SECRET_MASK])
+    def test_empty_referenced_and_masked_values_pass_through(self, tmp_path, password):
+        manager = SourceManager(project_dir=str(tmp_path))
+
+        result = manager.prepare_credentials(redshift_config(password=password))
+
+        assert result == {"source": redshift_config(password=password), "credentials": []}
+        assert not (tmp_path / ".env").exists()
+
+    def test_another_sources_variable_is_never_overwritten(self, tmp_path):
+        manager = SourceManager(project_dir=str(tmp_path))
+        manager.save_from_config(redshift_config(name="analytics-db", password="passA"))
+
+        result = manager.prepare_credentials(
+            redshift_config(name="analytics_db", password="passB")
+        )
+
+        assert result["source"]["password"] == "${env.ANALYTICS_DB_PASSWORD_2}"
+        assert read_env(tmp_path) == {
+            "ANALYTICS_DB_PASSWORD": "passA",
+            "ANALYTICS_DB_PASSWORD_2": "passB",
+        }
+
+    def test_a_saved_source_rotates_its_own_variable(self, tmp_path):
+        manager = SourceManager(project_dir=str(tmp_path))
+        manager.save_from_config(redshift_config(password="first"))
+
+        result = manager.prepare_credentials(redshift_config(password="second"))
+
+        assert result["source"]["password"] == "${env.WAREHOUSE_PASSWORD}"
+        assert read_env(tmp_path) == {"WAREHOUSE_PASSWORD": "second"}
+
+    def test_the_prepared_config_tests_and_saves_without_storing_again(self, tmp_path):
+        manager = SourceManager(project_dir=str(tmp_path))
+        prepared = manager.prepare_credentials(redshift_config())["source"]
+
+        assert manager.validate_object(prepared).password.resolve() == "hunter2"
+        saved = manager.save_from_config(prepared)
+
+        assert str(saved.password) == "${env.WAREHOUSE_PASSWORD}"
+        assert read_env(tmp_path) == {"WAREHOUSE_PASSWORD": "hunter2"}
+        assert "hunter2" not in str(commit_serialization(saved))
+
+    def test_every_secret_field_is_stored(self, tmp_path):
+        manager = SourceManager(project_dir=str(tmp_path))
+
+        snow = manager.prepare_credentials(
+            {
+                "name": "snow",
+                "type": "snowflake",
+                "account": "my-account",
+                "database": "analytics",
+                "username": "svc",
+                "password": "snowpass",
+                "private_key_passphrase": "passphrase-secret",
+            }
+        )
+        bq = manager.prepare_credentials(
+            {
+                "name": "bq",
+                "type": "bigquery",
+                "project": "test-project",
+                "database": "test_dataset",
+                "credentials_base64": "a2V5",
+            }
+        )
+
+        assert snow["source"]["username"] == "svc"
+        assert {c["field"] for c in snow["credentials"]} == {"password", "private_key_passphrase"}
+        assert bq["source"]["credentials_base64"] == "${env.BQ_CREDENTIALS_BASE64}"
+        assert read_env(tmp_path) == {
+            "SNOW_PASSWORD": "snowpass",
+            "SNOW_PRIVATE_KEY_PASSPHRASE": "passphrase-secret",
+            "BQ_CREDENTIALS_BASE64": "a2V5",
+        }
+
+    def test_writes_to_the_project_not_the_process_directory(
+        self, tmp_path, tmp_path_factory, monkeypatch
+    ):
+        elsewhere = tmp_path_factory.mktemp("elsewhere")
+        monkeypatch.chdir(elsewhere)
+        manager = SourceManager(project_dir=str(tmp_path))
+
+        manager.prepare_credentials(redshift_config())
+
+        assert read_env(tmp_path) == {"WAREHOUSE_PASSWORD": "hunter2"}
+        assert not (elsewhere / ".env").exists()
+
+    def test_an_invalid_config_stores_nothing(self, tmp_path):
+        manager = SourceManager(project_dir=str(tmp_path))
+
+        with pytest.raises(ValidationError):
+            manager.prepare_credentials(redshift_config(type="not-a-source"))
+
+        assert not (tmp_path / ".env").exists()

@@ -3,7 +3,6 @@ from pydantic import ValidationError
 from visivo.logger.logger import Logger
 from visivo.server.managers.object_manager import ObjectStatus, SaveRefusedError
 from visivo.server.managers.source_op_job_manager import SourceOpJobManager
-from visivo.server.views.project_files_views import not_implemented
 from visivo.server.source_metadata import (
     validate_source_from_config,
 )
@@ -39,7 +38,39 @@ def register_source_views(app, flask_app, output_dir):
 
     @app.route("/api/source-credentials/", methods=["POST"])
     def prepare_source_credentials():
-        return not_implemented("VIS-1764")
+        """Store typed credentials in the project's .env; answer with the referencing config."""
+        body = request.get_json(silent=True)
+        config = body.get("source") if isinstance(body, dict) else None
+        if not isinstance(config, dict) or not config.get("name"):
+            return (
+                jsonify({"error": "Send the source, with its name.", "code": "invalid_request"}),
+                400,
+            )
+        try:
+            return jsonify(flask_app.source_manager.prepare_credentials(config))
+        except ValidationError as e:
+            first = e.errors()[0]
+            where = ".".join(str(part) for part in first["loc"])
+            return (
+                jsonify(
+                    {
+                        "error": f"Invalid source configuration: {where}: {first['msg']}",
+                        "code": "invalid_request",
+                    }
+                ),
+                400,
+            )
+        except OSError as e:
+            Logger.instance().error(f"Could not write the project's .env file: {e.strerror}")
+            return (
+                jsonify(
+                    {
+                        "error": "Could not save the credentials to the project's .env file.",
+                        "code": "storage_failed",
+                    }
+                ),
+                500,
+            )
 
     @app.route("/api/source-connections/<job_id>/", methods=["GET"])
     def test_source_connection_job(job_id):
