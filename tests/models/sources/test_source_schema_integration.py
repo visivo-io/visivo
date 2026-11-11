@@ -492,16 +492,20 @@ class TestSourceSchemaIntegration:
             f.write(csv_content)
 
     def create_test_excel_file(self, excel_path: str):
-        """Create an Excel file (saved as CSV for DuckDB compatibility) with known data for testing."""
-        # For simplicity in testing, we'll create a CSV file with .xlsx extension
-        # since the Excel source currently uses read_csv_auto anyway
-        excel_content = """product_id,product_name,price,category,in_stock
-101,Laptop,999.99,Electronics,true
-102,Mouse,29.99,Electronics,true
-103,Keyboard,79.99,Electronics,false"""
-
-        with open(excel_path, "w", encoding="utf-8") as f:
-            f.write(excel_content)
+        """Write a real .xlsx workbook with known data."""
+        os.remove(excel_path)
+        connection = duckdb.connect()
+        connection.execute("INSTALL excel")
+        connection.execute("LOAD excel")
+        connection.execute(
+            "COPY (SELECT * FROM (VALUES "
+            "(101, 'Laptop', 999.99, 'Electronics', true), "
+            "(102, 'Mouse', 29.99, 'Electronics', true), "
+            "(103, 'Keyboard', 79.99, 'Electronics', false)"
+            ") t(product_id, product_name, price, category, in_stock)) "
+            f"TO '{excel_path}' (FORMAT xlsx, HEADER true)"
+        )
+        connection.close()
 
     def test_csv_source_get_schema_full_file(self):
         """Test CSV source get_schema() method with full file introspection."""

@@ -429,8 +429,54 @@ describe('SourceEditForm — seeds', () => {
 
     expect(onSave).not.toHaveBeenCalled();
     expect(
-      screen.getByText('Every seed needs a table name and at least one command argument')
+      screen.getByText(
+        'Every file seed needs a file path, and every command seed a table name and a command'
+      )
     ).toBeInTheDocument();
+  });
+
+  test('saves a file seed without args, and lets the server name a blank table', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    renderForm({
+      source: {
+        ...seededSqlite,
+        config: {
+          ...seededSqlite.config,
+          seeds: [
+            { table_name: '', file: ' data/gl_*.csv ' },
+            { table_name: 'budget', file: 'data/budget.xlsx', sheet: 'FY26' },
+          ],
+        },
+      },
+      isCreate: false,
+      onSave,
+    });
+
+    makeDirty();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][2].seeds).toEqual([
+      { file: 'data/gl_*.csv' },
+      { table_name: 'budget', file: 'data/budget.xlsx', sheet: 'FY26' },
+    ]);
+  });
+
+  test('refuses to save a file seed with no path', () => {
+    const onSave = jest.fn();
+    renderForm({
+      source: {
+        ...seededSqlite,
+        config: { ...seededSqlite.config, seeds: [{ table_name: 'raw', file: '  ' }] },
+      },
+      isCreate: false,
+      onSave,
+    });
+
+    makeDirty();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   test('refuses to save a seed with no command', () => {

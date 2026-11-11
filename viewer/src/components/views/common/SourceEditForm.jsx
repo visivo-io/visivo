@@ -18,7 +18,7 @@ import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
-import SeedsEditor, { sourceTypeSupportsSeeds } from './SeedsEditor';
+import SeedsEditor, { isFileSeed, sourceTypeSupportsSeeds } from './SeedsEditor';
 import useRenameFlow from '../../../hooks/useRenameFlow';
 import RenameImpactDialog from '../workspace/RenameImpactDialog';
 
@@ -144,24 +144,33 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
       }
     });
 
-    // A seed needs somewhere to land and something to run
-    const incomplete = (formValues.seeds || []).some(
-      seed => !seed.table_name?.trim() || !(seed.args || []).some(arg => arg.trim())
+    const incomplete = (formValues.seeds || []).some(seed =>
+      isFileSeed(seed)
+        ? !seed.file.trim()
+        : !seed.table_name?.trim() || !(seed.args || []).some(arg => arg.trim())
     );
     if (incomplete) {
-      newErrors.seeds = 'Every seed needs a table name and at least one command argument';
+      newErrors.seeds =
+        'Every file seed needs a file path, and every command seed a table name and a command';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  /** Drop the blank arg rows the editor leaves behind. */
+  /** Drop the blank arg rows, and a file seed's blank table name so the server derives one. */
   const cleanedSeeds = () =>
-    (formValues.seeds || []).map(seed => ({
-      ...seed,
-      args: (seed.args || []).filter(arg => arg.trim()),
-    }));
+    (formValues.seeds || []).map(seed => {
+      if (!isFileSeed(seed)) {
+        return { ...seed, args: (seed.args || []).filter(arg => arg.trim()) };
+      }
+      const { table_name, ...fileSeed } = seed;
+      return {
+        ...fileSeed,
+        file: seed.file.trim(),
+        ...(table_name?.trim() ? { table_name } : {}),
+      };
+    });
 
   const handleTestConnection = async () => {
     if (!validateForm()) return;

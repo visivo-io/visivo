@@ -84,9 +84,7 @@ describe('SeedsEditor', () => {
 
   test('args can be added and removed within a seed', () => {
     const onChangeSpy = jest.fn();
-    render(
-      <Harness initial={[{ table_name: 't', args: ['cat'] }]} onChangeSpy={onChangeSpy} />
-    );
+    render(<Harness initial={[{ table_name: 't', args: ['cat'] }]} onChangeSpy={onChangeSpy} />);
 
     fireEvent.click(screen.getByText('Add'));
     expect(onChangeSpy).toHaveBeenLastCalledWith([{ table_name: 't', args: ['cat', ''] }]);
@@ -102,9 +100,7 @@ describe('SeedsEditor', () => {
 
   test('allow_empty toggles', () => {
     const onChangeSpy = jest.fn();
-    render(
-      <Harness initial={[{ table_name: 't', args: ['cat'] }]} onChangeSpy={onChangeSpy} />
-    );
+    render(<Harness initial={[{ table_name: 't', args: ['cat'] }]} onChangeSpy={onChangeSpy} />);
 
     fireEvent.click(screen.getByLabelText('Allow empty output'));
 
@@ -115,9 +111,7 @@ describe('SeedsEditor', () => {
 
   test('existing_table defaults to skip and updates on select', () => {
     const onChangeSpy = jest.fn();
-    render(
-      <Harness initial={[{ table_name: 't', args: ['cat'] }]} onChangeSpy={onChangeSpy} />
-    );
+    render(<Harness initial={[{ table_name: 't', args: ['cat'] }]} onChangeSpy={onChangeSpy} />);
 
     // Defaults to "skip" (matching the model default) when unset.
     expect(screen.getByLabelText('When table exists')).toHaveValue('skip');
@@ -168,5 +162,47 @@ describe('SeedsEditor', () => {
     fireEvent.click(screen.getByLabelText('Remove seed 1'));
 
     expect(onChangeSpy).toHaveBeenLastCalledWith([{ table_name: 'second', args: ['cat'] }]);
+  });
+
+  test('a file seed shows its path instead of command arguments', () => {
+    render(<Harness initial={[{ table_name: '', file: 'data/gl_*.csv' }]} />);
+
+    expect(screen.getByLabelText('Seed 1 file')).toHaveValue('data/gl_*.csv');
+    expect(screen.queryByText('Command Arguments')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'File' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Table name (optional)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Allow no matching file')).not.toBeChecked();
+  });
+
+  test('switching a command seed to a file drops its args', () => {
+    const onChangeSpy = jest.fn();
+    render(
+      <Harness
+        initial={[{ table_name: 'raw', args: ['cat', 'a.csv'], existing_table: 'append' }]}
+        onChangeSpy={onChangeSpy}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'File' }));
+    fireEvent.change(screen.getByLabelText('Seed 1 file'), { target: { value: 'data/a.csv' } });
+
+    expect(onChangeSpy).toHaveBeenLastCalledWith([
+      { table_name: 'raw', existing_table: 'append', file: 'data/a.csv' },
+    ]);
+  });
+
+  test('switching a file seed to a command drops the file and its format hints', () => {
+    const onChangeSpy = jest.fn();
+    render(
+      <Harness
+        initial={[{ table_name: 'budget', file: 'data/budget.xlsx', sheet: 'FY26' }]}
+        onChangeSpy={onChangeSpy}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Command' }));
+
+    expect(onChangeSpy).toHaveBeenLastCalledWith([{ table_name: 'budget', args: [''] }]);
+    expect(screen.getByLabelText('Seed 1 argument 1')).toBeInTheDocument();
   });
 });

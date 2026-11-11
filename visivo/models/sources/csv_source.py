@@ -12,8 +12,8 @@ class CSVFileSource(BaseDuckdbSource):
 
     The file is loaded into an in-memory DuckDB connection and exposed as a view named
     after the source, so models can `SELECT` from it like any other table. Use this for
-    small, version-controlled datasets; for CSVs produced by a command, use a
-    `seeds` entry on a database source instead.
+    small, version-controlled datasets. To join several files, or a file and command
+    output, in one database, use `seeds` on a database source instead.
 
     !!! example
 
