@@ -739,9 +739,7 @@ class TestPrepareCredentials:
         manager = SourceManager(project_dir=str(tmp_path))
         manager.save_from_config(redshift_config(name="analytics-db", password="passA"))
 
-        result = manager.prepare_credentials(
-            redshift_config(name="analytics_db", password="passB")
-        )
+        result = manager.prepare_credentials(redshift_config(name="analytics_db", password="passB"))
 
         assert result["source"]["password"] == "${env.ANALYTICS_DB_PASSWORD_2}"
         assert read_env(tmp_path) == {

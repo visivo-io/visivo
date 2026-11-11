@@ -167,7 +167,10 @@ class SourceManager(ObjectManager[Source]):
 
         stored = self._store_secrets(
             source.name,
-            {field_name: getattr(source, field_name).get_secret_value() for field_name in remaining},
+            {
+                field_name: getattr(source, field_name).get_secret_value()
+                for field_name in remaining
+            },
             existing,
             published,
         )
