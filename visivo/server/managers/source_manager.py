@@ -165,27 +165,78 @@ class SourceManager(ObjectManager[Source]):
         if published is not None and self.objects_equal(source, published):
             return source
 
+        stored = self._store_secrets(
+            source.name,
+            {
+                field_name: getattr(source, field_name).get_secret_value()
+                for field_name in remaining
+            },
+            existing,
+            published,
+        )
+        return source.model_copy(
+            update={
+                field_name: _ENV_VAR_STRING_ADAPTER.validate_python(f"${{env.{var_name}}}")
+                for field_name, (var_name, _) in stored.items()
+            }
+        )
+
+    def prepare_credentials(self, config: dict) -> Dict[str, Any]:
+        """Store a source form's typed secrets in .env before it is tested or saved.
+
+        Returns ``{"source", "credentials"}``: the config with each typed secret
+        replaced by its ``${env.NAME}`` reference, and what was stored where.
+        Empty, masked and already-referenced values pass through unchanged.
+        """
+        source = self.validate_object(config)
+        typed = {
+            field_name: getattr(source, field_name).get_secret_value()
+            for field_name in self._secret_field_names(source)
+        }
+        typed = {field: value for field, value in typed.items() if value and value != SECRET_MASK}
+        if not typed:
+            return {"source": dict(config), "credentials": []}
+
+        existing = self.get(source.name) or self._published_objects.get(source.name)
+        stored = self._store_secrets(
+            source.name, typed, existing, self._published_objects.get(source.name)
+        )
+        prepared = dict(config)
+        credentials = []
+        for field_name, (var_name, created) in stored.items():
+            reference = f"${{env.{var_name}}}"
+            prepared[field_name] = reference
+            credentials.append(
+                {
+                    "field": field_name,
+                    "reference": reference,
+                    "storage": "project_env",
+                    "created": created,
+                }
+            )
+        return {"source": prepared, "credentials": credentials}
+
+    def _store_secrets(self, name: str, secrets: Dict[str, str], *owners) -> Dict[str, tuple]:
+        """Write each field's secret to .env; returns field -> (env var name, newly written)."""
         stored_env = read_env_file(self.project_dir)
-        owned = self._env_var_names_referenced_by(source.name, existing, published)
+        owned = self._env_var_names_referenced_by(name, *owners)
 
+        result: Dict[str, tuple] = {}
         env_values: Dict[str, str] = {}
-        ref_updates: Dict[str, Any] = {}
-        for field_name in remaining:
-            secret = getattr(source, field_name).get_secret_value()
-            var_name = self._allocate_env_var_name(
-                source.name, field_name, secret, stored_env, owned
-            )
+        for field_name, secret in secrets.items():
+            var_name = self._allocate_env_var_name(name, field_name, secret, stored_env, owned)
+            created = stored_env.get(var_name) != secret
             stored_env[var_name] = secret
-            env_values[var_name] = secret
-            ref_updates[field_name] = _ENV_VAR_STRING_ADAPTER.validate_python(
-                f"${{env.{var_name}}}"
-            )
+            if created:
+                env_values[var_name] = secret
+            result[field_name] = (var_name, created)
 
-        ensure_env_gitignored(self.project_dir)
-        merge_env_file(self.project_dir, env_values)
-        # So the new refs resolve in this running server.
-        os.environ.update(env_values)
-        return source.model_copy(update=ref_updates)
+        if env_values:
+            ensure_env_gitignored(self.project_dir)
+            merge_env_file(self.project_dir, env_values)
+        # So the refs resolve in this running server, even for a value .env already held.
+        os.environ.update({var_name: secrets[field] for field, (var_name, _) in result.items()})
+        return result
 
     @staticmethod
     def _env_var_names_referenced_by(name: str, *sources) -> set:

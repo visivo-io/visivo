@@ -1,5 +1,6 @@
 from typing import Literal, Optional, Dict, List, Any
 from visivo.models.sources.base_duckdb_source import BaseDuckdbSource
+from visivo.models.sources.project_root import resolve_project_path
 from pydantic import Field
 import click
 import os
@@ -43,8 +44,7 @@ class CSVFileSource(BaseDuckdbSource):
 
         """Create an in-memory DuckDB connection with the CSV loaded as a view."""
         try:
-            # Check if file exists
-            if not os.path.exists(self.file):
+            if not os.path.exists(resolve_project_path(self.file)):
                 raise click.ClickException(f"CSV file not found: {self.file}")
 
             connection = duckdb.connect(":memory:")
@@ -56,10 +56,11 @@ class CSVFileSource(BaseDuckdbSource):
 
     def _setup_connection(self, connection, **kwargs):
         """Setup the DuckDB connection by creating a view from the CSV file."""
+        path = resolve_project_path(self.file).replace("'", "''")
         try:
             connection.execute(f"""
                 CREATE VIEW "{self.name}" AS
-                SELECT * FROM read_csv_auto('{self.file}', delim='{self.delimiter}', header={str(self.has_header).upper()})
+                SELECT * FROM read_csv_auto('{path}', delim='{self.delimiter}', header={str(self.has_header).upper()})
                 """)
         except Exception as e:
             raise click.ClickException(f"Error setting up CSV view: {e}")

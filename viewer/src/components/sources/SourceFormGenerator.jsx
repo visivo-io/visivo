@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import SecretPicker, { toSecretRef, secretRefName } from './SecretPicker';
+import FilePicker from '../common/FilePicker';
 
 // Eye icon for showing password
 const EyeIcon = () => (
@@ -92,7 +93,8 @@ const SOURCE_SCHEMAS = {
       {
         name: 'database',
         label: 'Database Path',
-        type: 'text',
+        type: 'file',
+        extensions: ['duckdb', 'db'],
         required: true,
         placeholder: ':memory: or path/to/db.duckdb',
       },
@@ -103,7 +105,8 @@ const SOURCE_SCHEMAS = {
       {
         name: 'database',
         label: 'Database Path',
-        type: 'text',
+        type: 'file',
+        extensions: ['sqlite', 'sqlite3', 'db'],
         required: true,
         placeholder: 'path/to/database.db',
       },
@@ -114,7 +117,8 @@ const SOURCE_SCHEMAS = {
       {
         name: 'file',
         label: 'CSV File',
-        type: 'text',
+        type: 'file',
+        extensions: ['csv', 'tsv'],
         required: true,
         placeholder: 'path/to/data.csv',
       },
@@ -146,7 +150,8 @@ const SOURCE_SCHEMAS = {
       {
         name: 'file',
         label: 'Excel File',
-        type: 'text',
+        type: 'file',
+        extensions: ['xlsx', 'xls'],
         required: true,
         placeholder: 'path/to/data.xlsx',
       },
@@ -169,6 +174,34 @@ const ENV_VAR_DOCS_URL = 'https://docs.visivo.io/topics/environment-variables/';
 const toEnvName = name => name.toUpperCase().replace(/^CREDENTIALS_BASE64$/, 'SERVICE_ACCOUNT_KEY');
 const envRefExample = name => `\${env.${toEnvName(name)}}`;
 
+/** What happens to a local secret field's value, in the words of what the server really does. */
+const SecretHint = ({ field, value, stored }) => {
+  const reference = secretRefName(typeof value === 'string' ? value : '');
+  if (reference && stored && secretRefName(stored.reference) === reference) {
+    return (
+      <>
+        Saved in this project&apos;s .env file as{' '}
+        <code className="font-mono">{reference}</code>. The project file keeps only the
+        reference.
+      </>
+    );
+  }
+  if (reference) {
+    return (
+      <>
+        Read from the <code className="font-mono">{reference}</code> environment variable.
+      </>
+    );
+  }
+  return (
+    <>
+      Saved to this project&apos;s .env file when you test or save. Only a reference goes in the
+      project file. To use a variable you already have, enter{' '}
+      <code className="font-mono">{envRefExample(field.name)}</code>.
+    </>
+  );
+};
+
 const SourceFormGenerator = ({
   sourceType,
   values,
@@ -187,6 +220,8 @@ const SourceFormGenerator = ({
   // idea which account it is serving.
   secretsUrl,
   onRefreshSecrets,
+  // The server's answer from the last credential preparation: [{field, reference, storage}].
+  storedCredentials = [],
 }) => {
   const schema = getSourceSchema(sourceType);
   // Track visibility state for masked fields
@@ -277,6 +312,7 @@ const SourceFormGenerator = ({
               focus:outline-none focus:ring-2 focus:border-primary-500
               peer placeholder-transparent
               ${isMasked(field) ? 'pr-10' : ''}
+              ${field.type === 'file' ? 'pr-20' : ''}
               ${
                 errors[field.name]
                   ? 'border-red-500 focus:ring-red-500'
@@ -284,6 +320,16 @@ const SourceFormGenerator = ({
               }
             `}
           />
+          {field.type === 'file' && (
+            <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+              <FilePicker
+                extensions={field.extensions}
+                label={field.label}
+                onSelect={path => handleFieldChange(field.name, path)}
+                testId={`${field.name}-file-picker`}
+              />
+            </div>
+          )}
           {isMasked(field) && (
             <button
               type="button"
@@ -317,9 +363,11 @@ const SourceFormGenerator = ({
           {errors[field.name] && <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>}
           {field.type === 'secret' && (
             <p className="mt-1 text-xs text-gray-500" data-testid={`${field.name}-env-hint`}>
-              Keep this out of the project file: enter{' '}
-              <code className="font-mono">{envRefExample(field.name)}</code> and set the
-              variable in your environment or .env file.{' '}
+              <SecretHint
+                field={field}
+                value={values[field.name]}
+                stored={storedCredentials.find(c => c.field === field.name)}
+              />{' '}
               <a
                 href={ENV_VAR_DOCS_URL}
                 target="_blank"

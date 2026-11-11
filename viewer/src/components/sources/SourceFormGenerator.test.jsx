@@ -6,6 +6,9 @@ import SourceFormGenerator, {
   secretRefName,
   toSecretRef,
 } from './SourceFormGenerator';
+import { listProjectFiles } from '../../api/projectFiles';
+
+jest.mock('../../api/projectFiles', () => ({ listProjectFiles: jest.fn() }));
 
 // The raw ${env.NAME} reference text, built from a variable. Writing it as a
 // plain '${env.NAME}' string trips no-template-curly-in-string, and splitting
@@ -16,12 +19,7 @@ const rawRef = name => DOLLAR + '{env.' + name + '}';
 
 const renderForm = (props = {}) =>
   render(
-    <SourceFormGenerator
-      sourceType="postgresql"
-      values={{}}
-      onChange={() => {}}
-      {...props}
-    />
+    <SourceFormGenerator sourceType="postgresql" values={{}} onChange={() => {}} {...props} />
   );
 
 describe('secret reference helpers', () => {
@@ -242,13 +240,35 @@ describe('port field', () => {
 });
 
 describe('environment variable hint', () => {
-  test('a local password field shows the env reference syntax and a docs link', () => {
-    renderForm();
+  test('a typed password is saved to .env for you; a reference stays the advanced path', () => {
+    renderForm({ values: { password: 'hunter2' } });
     const hint = screen.getByTestId('password-env-hint');
+    expect(hint).toHaveTextContent(
+      "Saved to this project's .env file when you test or save. Only a reference goes in the project file."
+    );
     expect(hint).toHaveTextContent(rawRef('PASSWORD'));
     expect(screen.getByRole('link', { name: 'Learn more' })).toHaveAttribute(
       'href',
       'https://docs.visivo.io/topics/environment-variables/'
+    );
+  });
+
+  test('after the server stores it, the hint names the variable', () => {
+    renderForm({
+      values: { password: rawRef('WH_PASSWORD') },
+      storedCredentials: [
+        { field: 'password', reference: rawRef('WH_PASSWORD'), storage: 'project_env' },
+      ],
+    });
+    expect(screen.getByTestId('password-env-hint')).toHaveTextContent(
+      "Saved in this project's .env file as WH_PASSWORD. The project file keeps only the reference."
+    );
+  });
+
+  test('a reference the user typed is read from the environment', () => {
+    renderForm({ values: { password: rawRef('MY_OWN') } });
+    expect(screen.getByTestId('password-env-hint')).toHaveTextContent(
+      'Read from the MY_OWN environment variable.'
     );
   });
 
@@ -295,5 +315,45 @@ describe('plain field behavior', () => {
     expect(screen.getByText(/Select a source type/)).toBeInTheDocument();
     renderForm({ sourceType: 'nope' });
     expect(screen.getByText(/schema not available/)).toBeInTheDocument();
+  });
+});
+
+describe('file fields', () => {
+  test.each([
+    ['csv', 'file', ['csv', 'tsv']],
+    ['excel', 'file', ['xlsx', 'xls']],
+    ['duckdb', 'database', ['duckdb', 'db']],
+    ['sqlite', 'database', ['sqlite', 'sqlite3', 'db']],
+  ])('%s offers a project file picker for %s', (sourceType, name, extensions) => {
+    const field = getSourceSchema(sourceType).fields.find(f => f.name === name);
+    expect(field).toMatchObject({ type: 'file', extensions });
+  });
+
+  test('picking a file writes its project-relative path into the field', async () => {
+    listProjectFiles.mockResolvedValue({
+      files: [{ path: 'files/sales.csv', size: 10 }],
+      formats: [],
+      max_bytes: 1,
+    });
+    const onChange = jest.fn();
+    renderForm({ sourceType: 'csv', values: { file: '' }, onChange });
+
+    await userEvent.click(screen.getByTestId('file-file-picker-browse'));
+    await userEvent.click(await screen.findByTestId('file-file-picker-option'));
+
+    expect(listProjectFiles).toHaveBeenCalledWith({
+      extensions: ['csv', 'tsv'],
+      projectId: undefined,
+    });
+    expect(onChange).toHaveBeenCalledWith({ file: 'files/sales.csv' });
+  });
+
+  test('the path can still be typed, e.g. :memory:', async () => {
+    const onChange = jest.fn();
+    renderForm({ sourceType: 'duckdb', values: {}, onChange });
+
+    fireEvent.change(screen.getByLabelText(/Database Path/), { target: { value: ':memory:' } });
+
+    expect(onChange).toHaveBeenCalledWith({ database: ':memory:' });
   });
 });

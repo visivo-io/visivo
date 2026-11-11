@@ -2,8 +2,8 @@
 
 The API behind shared onboarding's **Upload a file** and **Connect a database** steps (VIS-1802).
 `visivo serve` (Flask) and Visivo Cloud (Django) implement the same requests and responses, so the
-viewer has one code path. Until VIS-1762, VIS-1764, VIS-1755 and VIS-1758 land, both servers answer
-every route below with `501`.
+viewer has one code path. Studio serves every route (VIS-1283, VIS-1762, VIS-1764). Until
+VIS-1755 and VIS-1758 land, the cloud answers `501`.
 
 | urls.js key | Method and path | Served by |
 | -- | -- | -- |
@@ -44,6 +44,7 @@ every route below with `501`.
 | 413 | `too_large` | Declared or received size exceeds `max_bytes` (100 MB) |
 | 422 | `size_mismatch` | Received bytes differ from the declared `size` |
 | 422 | `checksum_mismatch` | Received bytes differ from the declared `sha256` |
+| 500 | `storage_failed` | The server could not store a credential (`.env` or the secret store) |
 | 501 | `not_implemented` | The server does not implement this route yet |
 
 A failed import or inspection job is not an HTTP error. The job ends with `status: "failed"` and
@@ -71,8 +72,10 @@ an `error` sentence, as every job does.
 - A completed file is never overwritten. If `files/sales.csv` exists, the next upload of
   `sales.csv` becomes `files/sales-2.csv`. A path therefore names one version for its whole life.
   Cloud stores private objects keyed by `version_id` behind the same logical path.
-- `version_id` is opaque. It is `null` in a listing for a file that did not arrive through upload,
-  such as one copied into the project folder by hand.
+- `version_id` is opaque. It and `sha256` are `null` in a listing for a file that did not arrive
+  through upload, such as one copied into the project folder by hand. For such a file
+  `original_filename` equals `filename`, and `created_at` is its last-modified time. Studio keeps
+  upload versions in memory, so after a restart its listing shows every file this way.
 
 **Format**: one entry in the capability list a server advertises.
 
@@ -81,15 +84,17 @@ an `error` sentence, as every job does.
   "format": "csv",
   "label": "CSV",
   "extensions": [".csv", ".tsv"],
-  "source_type": "duckdb",
+  "source_type": "csv",
   "options": ["header", "delimiter", "encoding"]
 }
 ```
 
-`source_type` is the source an import creates: `duckdb` for tabular files, and the file's own type
-for a `.duckdb` or `.sqlite` database. A server lists a format only when it can read it, and the
-viewer accepts exactly the extensions listed. The target set is CSV, Parquet, Lance, XLSX, DuckDB
-and SQLite; each joins the list when a real fixture test passes.
+`source_type` is the source an import creates: `csv` for CSV and TSV files, and the file's own
+type for a `.duckdb` or `.sqlite` database. A server lists a format only when it can read it, and
+the viewer accepts exactly the extensions listed. The target set is CSV, Parquet, Lance, XLSX,
+DuckDB and SQLite; each joins the list when a real fixture test passes. Studio lists CSV now.
+XLSX and Parquet join after file seeds (VIS-1282) land; an import of them then creates a `duckdb`
+source with a file seed.
 
 **TablePreview**: what inspection and import return per table or sheet.
 
@@ -123,8 +128,9 @@ and SQLite; each joins the list when a real fixture test passes.
 ### `GET /api/project-files/?ext=csv,xlsx`
 
 Lists the project's data files and what the server can import. `ext` is an optional
-comma-separated list of extensions without dots. Locally the listing walks the project root,
-skipping ignored and hidden paths and anything that resolves outside the root.
+comma-separated list of extensions without dots; anything else is `400 invalid_request`. Locally
+the listing walks the project root, skipping git-ignored and hidden paths, `target/`, and anything
+that resolves outside the root. `formats` is empty until the server can import a file.
 
 `200`:
 
@@ -244,7 +250,7 @@ Request:
 ```json
 {
   "source": {"name": "warehouse", "type": "postgresql", "host": "db.example.com",
-             "username": "${env.WAREHOUSE_USERNAME}", "password": "${env.WAREHOUSE_PASSWORD}"},
+             "username": "analyst", "password": "${env.WAREHOUSE_PASSWORD}"},
   "credentials": [
     {"field": "password", "reference": "${env.WAREHOUSE_PASSWORD}",
      "storage": "project_env", "created": true}
@@ -252,7 +258,8 @@ Request:
 }
 ```
 
-- Credential fields are `username`, `password` and `credentials_base64`.
+- Credential fields are the source type's secret fields: `password`, `credentials_base64` and
+  Snowflake's `private_key_passphrase`. Other fields, `username` included, are returned as sent.
 - A field whose value is already a reference, or is empty, is returned unchanged and not stored.
   A masked value (`**********`) means "keep the current credential" and is also returned unchanged.
 - `storage` is `project_env` (studio: the project's `.env`, which is kept out of Git) or
@@ -263,7 +270,8 @@ Request:
 - The viewer then sends the returned `source`, never the typed one, to `POST /api/source-connections/`
   and `POST /api/sources/{name}/`.
 
-Errors: `400 invalid_request`, `403 forbidden`.
+Errors: `400 invalid_request` (also for a config that fails source validation), `403 forbidden`,
+`500 storage_failed`.
 
 ## Django route names
 

@@ -5,6 +5,7 @@ import re
 from dotenv import load_dotenv
 
 from visivo.models.base.named_model import NAME_REGEX
+from visivo.models.sources.project_root import set_project_root
 
 
 def load_working_dir_env(resolved_working_dir):
@@ -24,6 +25,7 @@ def working_dir(function):
         ctx.obj["is_default_working_dir"] = value is None
         resolved = value if value is not None else os.getcwd()
         load_working_dir_env(resolved)
+        set_project_root(resolved)
         return resolved
 
     function = click.option(
