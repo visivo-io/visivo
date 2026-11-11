@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import SecretPicker, { toSecretRef, secretRefName } from './SecretPicker';
+import FilePicker from '../common/FilePicker';
 
 // Eye icon for showing password
 const EyeIcon = () => (
@@ -92,7 +93,8 @@ const SOURCE_SCHEMAS = {
       {
         name: 'database',
         label: 'Database Path',
-        type: 'text',
+        type: 'file',
+        extensions: ['duckdb', 'db'],
         required: true,
         placeholder: ':memory: or path/to/db.duckdb',
       },
@@ -103,7 +105,8 @@ const SOURCE_SCHEMAS = {
       {
         name: 'database',
         label: 'Database Path',
-        type: 'text',
+        type: 'file',
+        extensions: ['sqlite', 'sqlite3', 'db'],
         required: true,
         placeholder: 'path/to/database.db',
       },
@@ -114,7 +117,8 @@ const SOURCE_SCHEMAS = {
       {
         name: 'file',
         label: 'CSV File',
-        type: 'text',
+        type: 'file',
+        extensions: ['csv', 'tsv'],
         required: true,
         placeholder: 'path/to/data.csv',
       },
@@ -146,7 +150,8 @@ const SOURCE_SCHEMAS = {
       {
         name: 'file',
         label: 'Excel File',
-        type: 'text',
+        type: 'file',
+        extensions: ['xlsx', 'xls'],
         required: true,
         placeholder: 'path/to/data.xlsx',
       },
@@ -307,6 +312,7 @@ const SourceFormGenerator = ({
               focus:outline-none focus:ring-2 focus:border-primary-500
               peer placeholder-transparent
               ${isMasked(field) ? 'pr-10' : ''}
+              ${field.type === 'file' ? 'pr-20' : ''}
               ${
                 errors[field.name]
                   ? 'border-red-500 focus:ring-red-500'
@@ -314,6 +320,16 @@ const SourceFormGenerator = ({
               }
             `}
           />
+          {field.type === 'file' && (
+            <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+              <FilePicker
+                extensions={field.extensions}
+                label={field.label}
+                onSelect={path => handleFieldChange(field.name, path)}
+                testId={`${field.name}-file-picker`}
+              />
+            </div>
+          )}
           {isMasked(field) && (
             <button
               type="button"
