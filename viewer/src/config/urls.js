@@ -24,6 +24,18 @@ const URL_PATTERNS = {
     // under. POST starts a job, and the job is polled at its own key.
     sourceConnections: '/api/source-connections/',
     sourceConnectionJob: '/api/source-connections/{jobId}/',
+    // Typed credentials go here first; the source config it returns carries
+    // references, and that is what connection tests and saves receive.
+    sourceCredentials: '/api/source-credentials/',
+
+    // ---- Project files --------------------------------------------------
+    // docs/contracts/project-files-and-credentials.md. Upload content is sent
+    // to the `transfer.url` the upload returns: this key locally, a signed
+    // storage URL in cloud.
+    projectFiles: '/api/project-files/',
+    projectFileUploads: '/api/project-files/uploads/',
+    projectFileUploadContent: '/api/project-files/uploads/{uploadId}/content/',
+    projectFileUploadComplete: '/api/project-files/uploads/{uploadId}/complete/',
 
     modelsList: '/api/models/',
     modelDetail: '/api/models/{name}/',
