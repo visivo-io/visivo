@@ -59,6 +59,20 @@ def run_seeds(source: Source, working_dir: str = None) -> int:
             )
             continue
         replace = mode != "append"
+        if seed.file:
+            if not seed.matching_files(working_dir):
+                if seed.allow_empty:
+                    Logger.instance().debug(
+                        f"Source {source.name}: no files match seed {seed.table_name}, skipping"
+                    )
+                    continue
+                raise click.ClickException(
+                    f"Seed {seed.table_name} on source {source.name}: no file matches "
+                    f"'{seed.file}'."
+                )
+            Logger.instance().debug(f"Source {source.name}: loading file seed {seed.table_name}")
+            source.write_file(seed, seed.resolve_file(working_dir), replace=replace)
+            continue
         Logger.instance().debug(f"Source {source.name}: running seed {seed.table_name}")
         process = subprocess.Popen(
             seed.args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=working_dir
