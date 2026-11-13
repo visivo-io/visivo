@@ -1,15 +1,13 @@
-"""Upload and import routes (VIS-1762). Contract: docs/contracts/project-files-and-credentials.md"""
+"""Upload routes (VIS-1762). Contract: docs/contracts/project-files-and-credentials.md"""
 
 import hashlib
 import os
-import time
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 
 from visivo.server.managers.source_manager import SourceManager
-from visivo.server.managers.source_op_job_manager import SourceOpJobManager
 from visivo.server.views.project_files_views import register_project_files_views
 
 CSV = b"region,units\nWest,12\nEast,7\nNorth,3\n"
@@ -47,21 +45,6 @@ def start_upload(client, filename="sales.csv", size=len(CSV), **extra):
     return client.post(
         "/api/project-files/uploads/", json={"filename": filename, "size": size, **extra}
     )
-
-
-def wait(client, job_id):
-    for _ in range(200):
-        job = client.get(f"/api/project-file-imports/{job_id}/").get_json()
-        if job["status"] in ("completed", "failed", "cancelled"):
-            return job
-        time.sleep(0.01)
-    raise AssertionError("job did not finish")
-
-
-def run_import(client, **body):
-    response = client.post("/api/project-file-imports/", json={"action": "import", **body})
-    assert response.status_code == 202, response.get_json()
-    return wait(client, response.get_json()["job_id"])
 
 
 def test_an_upload_lands_byte_for_byte_in_files_and_is_listed_with_its_version(client, tmp_path):
@@ -238,7 +221,6 @@ def test_an_expired_upload_is_closed_and_frees_its_path(client, mocker):
     [
         ("put", "/api/project-files/uploads/up_unknown/content/"),
         ("post", "/api/project-files/uploads/up_unknown/complete/"),
-        ("get", "/api/project-file-imports/unknown/"),
     ],
 )
 def test_unknown_ids_are_not_found(client, method, path):
@@ -258,160 +240,15 @@ def test_a_files_folder_that_points_outside_the_project_is_refused(client, tmp_p
     assert response.get_json()["code"] == "invalid_request"
 
 
-def test_import_adds_a_draft_csv_source_and_answers_a_preview(client, flask_app):
+def test_an_uploaded_file_becomes_a_draft_source_through_the_ordinary_source_save(
+    client, flask_app
+):
     file = upload(client, "sales.csv")
 
-    job = run_import(client, path=file["path"], version_id=file["version_id"], source_name="sales")
-
-    assert job["status"] == "completed", job
-    assert job["kind"] == "file_import"
-    result = job["result"]
-    assert result["file"] == file
-    assert result["source"]["name"] == "sales"
-    assert result["source"]["status"] == "new"
-    assert result["source"]["config"]["type"] == "csv"
-    assert result["source"]["config"]["file"] == "files/sales.csv"
-    assert result["tables"] == [
-        {
-            "name": "sales",
-            "columns": [
-                {"name": "region", "type": "VARCHAR"},
-                {"name": "units", "type": "BIGINT"},
-            ],
-            "rows": [["West", 12], ["East", 7], ["North", 3]],
-            "row_count": 3,
-        }
-    ]
-    assert flask_app.source_manager.get("sales").file == "files/sales.csv"
-
-
-def test_repeating_an_import_reuses_the_source(client, flask_app, mocker):
-    file = upload(client, "sales.csv")
-    run_import(client, path=file["path"], source_name="sales")
-    save = mocker.spy(flask_app.source_manager, "save_from_config")
-
-    job = run_import(client, path=file["path"], source_name="sales")
-
-    assert job["status"] == "completed"
-    assert job["result"]["source"]["name"] == "sales"
-    save.assert_not_called()
-
-
-def test_an_import_onto_another_sources_name_is_source_exists(client):
-    first = upload(client, "sales.csv")
-    second = upload(client, "sales.csv", b"region\nSouth\n")
-    run_import(client, path=first["path"], source_name="sales")
-
-    response = client.post(
-        "/api/project-file-imports/",
-        json={"action": "import", "path": second["path"], "source_name": "sales"},
+    flask_app.source_manager.save_from_config(
+        {"name": "sales", "type": "csv", "file": file["path"]}
     )
 
-    assert (response.status_code, response.get_json()["code"]) == (409, "source_exists")
-
-
-def test_inspect_previews_without_creating_anything(client, flask_app, tmp_path):
-    (tmp_path / "data").mkdir()
-    (tmp_path / "data" / "rates.tsv").write_bytes(b"code\trate\nA\t1.5\n")
-
-    response = client.post(
-        "/api/project-file-imports/", json={"action": "inspect", "path": "data/rates.tsv"}
-    )
-    job = wait(client, response.get_json()["job_id"])
-
-    assert job["kind"] == "file_inspect"
-    assert job["result"]["file"]["version_id"] is None
-    assert job["result"]["tables"][0]["columns"] == [
-        {"name": "code", "type": "VARCHAR"},
-        {"name": "rate", "type": "DOUBLE"},
-    ]
-    assert flask_app.source_manager.get_sources_list() == []
-
-
-def test_reader_options_apply(client, tmp_path):
-    (tmp_path / "raw.csv").write_bytes(b"West;12\nEast;7\n")
-
-    response = client.post(
-        "/api/project-file-imports/",
-        json={
-            "action": "inspect",
-            "path": "raw.csv",
-            "options": {"header": False, "delimiter": ";", "table": "ignored"},
-        },
-    )
-    table = wait(client, response.get_json()["job_id"])["result"]["tables"][0]
-
-    assert table["rows"] == [["West", 12], ["East", 7]]
-
-
-def test_a_failed_import_adds_no_source_and_keeps_the_file(client, flask_app, tmp_path, mocker):
-    file = upload(client, "sales.csv")
-    mocker.patch(
-        "visivo.server.views.project_files_views.preview_csv",
-        side_effect=ValueError("bad row 3"),
-    )
-
-    job = run_import(client, path=file["path"], source_name="sales")
-
-    assert job["status"] == "failed"
-    assert job["error"] == "Could not read files/sales.csv: bad row 3"
-    assert flask_app.source_manager.get("sales") is None
-    assert (tmp_path / "files" / "sales.csv").read_bytes() == CSV
-
-
-@pytest.mark.parametrize(
-    "body,status,code",
-    [
-        ({"path": "files/a.csv"}, 400, "invalid_request"),
-        ({"action": "delete", "path": "files/a.csv"}, 400, "invalid_request"),
-        ({"action": "inspect", "path": "/etc/passwd"}, 400, "invalid_request"),
-        ({"action": "inspect", "path": "files/../../x.csv"}, 400, "invalid_request"),
-        ({"action": "inspect", "path": "files/missing.csv"}, 404, "not_found"),
-        ({"action": "inspect", "path": "files/a.csv", "version_id": "fv_x"}, 404, "not_found"),
-        ({"action": "inspect", "path": "files/a.txt"}, 400, "unsupported_format"),
-        (
-            {"action": "inspect", "path": "files/a.csv", "options": {"header": "yes"}},
-            400,
-            "invalid_request",
-        ),
-        (
-            {"action": "inspect", "path": "files/a.csv", "options": {"delimiter": ";;"}},
-            400,
-            "invalid_request",
-        ),
-        (
-            {"action": "inspect", "path": "files/a.csv", "options": {"encoding": "ebcdic"}},
-            400,
-            "invalid_request",
-        ),
-        ({"action": "import", "path": "files/a.csv"}, 400, "invalid_request"),
-    ],
-)
-def test_bad_import_requests(client, tmp_path, body, status, code):
-    (tmp_path / "files").mkdir()
-    (tmp_path / "files" / "a.csv").write_bytes(CSV)
-    (tmp_path / "files" / "a.txt").write_bytes(CSV)
-
-    response = client.post("/api/project-file-imports/", json=body)
-
-    assert (response.status_code, response.get_json()["code"]) == (status, code)
-
-
-def test_an_import_through_a_symlink_out_of_the_project_is_not_found(client, tmp_path):
-    outside = tmp_path.parent / f"{tmp_path.name}-secret.csv"
-    outside.write_bytes(CSV)
-    (tmp_path / "link.csv").symlink_to(outside)
-
-    response = client.post(
-        "/api/project-file-imports/", json={"action": "inspect", "path": "link.csv"}
-    )
-
-    assert (response.status_code, response.get_json()["code"]) == (404, "not_found")
-
-
-def test_another_kind_of_job_is_not_an_import(client):
-    job_id = SourceOpJobManager.instance().start("test_connection", lambda: {})
-
-    response = client.get(f"/api/project-file-imports/{job_id}/")
-
-    assert response.status_code == 404
+    source = flask_app.source_manager.get_source_with_status("sales")
+    assert source["status"] == "new"
+    assert source["config"]["file"] == "files/sales.csv"
