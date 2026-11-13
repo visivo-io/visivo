@@ -36,8 +36,6 @@ const URL_PATTERNS = {
     projectFileUploads: '/api/project-files/uploads/',
     projectFileUploadContent: '/api/project-files/uploads/{uploadId}/content/',
     projectFileUploadComplete: '/api/project-files/uploads/{uploadId}/complete/',
-    projectFileImports: '/api/project-file-imports/',
-    projectFileImportJob: '/api/project-file-imports/{jobId}/',
 
     modelsList: '/api/models/',
     modelDetail: '/api/models/{name}/',

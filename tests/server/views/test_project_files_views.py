@@ -23,8 +23,6 @@ def client():
         ("post", "/api/project-files/uploads/", "VIS-1762"),
         ("put", "/api/project-files/uploads/up_1/content/", "VIS-1762"),
         ("post", "/api/project-files/uploads/up_1/complete/", "VIS-1762"),
-        ("post", "/api/project-file-imports/", "VIS-1762"),
-        ("get", "/api/project-file-imports/j1/", "VIS-1762"),
         ("post", "/api/source-credentials/", "VIS-1764"),
     ],
 )
