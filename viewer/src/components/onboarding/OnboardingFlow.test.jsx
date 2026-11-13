@@ -6,7 +6,8 @@ import OnboardingFlow, { sampleDestination } from './OnboardingFlow';
 import useStore from '../../stores/store';
 import { clearOnboardingState, readOnboardingState, writeOnboardingState } from './onboardingState';
 import { clearEventBuffer, getEventBuffer } from './telemetry';
-import { importProjectFile, listProjectFiles, uploadProjectFile } from '../../api/projectFiles';
+import { listProjectFiles, uploadProjectFile } from '../../api/projectFiles';
+import { testSourceConnection } from '../../api/sources';
 
 const CSV_FORMAT = {
   format: 'csv',
@@ -15,11 +16,17 @@ const CSV_FORMAT = {
   source_type: 'csv',
   options: ['header', 'delimiter', 'encoding'],
 };
-const VERSION = { path: 'files/Sales_Q3.csv', filename: 'Sales_Q3.csv', version_id: 'fv_1' };
+const VERSION = {
+  path: 'files/Sales_Q3.csv',
+  filename: 'Sales_Q3.csv',
+  version_id: 'fv_1',
+  format: 'csv',
+};
 let storeState;
 
 jest.mock('../../stores/store');
 jest.mock('../../api/projectFiles');
+jest.mock('../../api/sources');
 jest.mock('../views/common/SourceEditForm', () => ({ onSave }) => {
   const [error, setError] = require('react').useState(null);
   return (
@@ -71,10 +78,7 @@ beforeEach(() => {
 
   listProjectFiles.mockResolvedValue({ files: [], formats: [CSV_FORMAT], max_bytes: 104857600 });
   uploadProjectFile.mockResolvedValue(VERSION);
-  importProjectFile.mockResolvedValue({
-    ok: true,
-    result: { file: VERSION, source: { name: 'sales_q3_2', config: { type: 'csv' } }, tables: [] },
-  });
+  testSourceConnection.mockResolvedValue({ source: 'sales_q3_2', status: 'connected' });
 });
 
 afterEach(() => {
@@ -170,7 +174,7 @@ describe('OnboardingFlow', () => {
       expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();
     });
 
-    test('a dropped file imports at once and opens the explorer on the new source', async () => {
+    test('a dropped file becomes a draft source and opens the explorer on it', async () => {
       renderFlow();
       openUpload();
       await screen.findByText('CSV files up to 100 MB');
@@ -183,20 +187,16 @@ describe('OnboardingFlow', () => {
         expect.objectContaining({ name: 'Sales Q3.csv' }),
         expect.objectContaining({ projectId: null })
       );
-      expect(importProjectFile).toHaveBeenCalledWith({
-        path: 'files/Sales_Q3.csv',
-        versionId: 'fv_1',
-        sourceName: 'sales_q3_2',
-        projectId: null,
-      });
-      expect(storeState.fetchSources).toHaveBeenCalled();
+      const config = { name: 'sales_q3_2', type: 'csv', file: 'files/Sales_Q3.csv' };
+      expect(testSourceConnection).toHaveBeenCalledWith(config);
+      expect(storeState.saveSource).toHaveBeenCalledWith('sales_q3_2', config);
       expect(readOnboardingState()).toMatchObject({ path: 'data', source_connected: true });
       const succeeded = getEventBuffer().find(e => e.event === 'onboarding_data_connect_succeeded');
       expect(succeeded.props).toMatchObject({ source_type: 'csv' });
     });
 
-    test('shows where the file is going while it imports', async () => {
-      importProjectFile.mockReturnValue(new Promise(() => {}));
+    test('shows where the file is going while it creates the source', async () => {
+      testSourceConnection.mockReturnValue(new Promise(() => {}));
       renderFlow();
       openUpload();
       await screen.findByText('CSV files up to 100 MB');
@@ -218,17 +218,18 @@ describe('OnboardingFlow', () => {
       expect(uploadProjectFile).not.toHaveBeenCalled();
     });
 
-    test('a failed import shows the reason and stays on the upload step', async () => {
-      importProjectFile.mockResolvedValue({ ok: false, error: 'Could not read files/x.csv' });
+    test('a file that does not read shows the reason and saves no source', async () => {
+      testSourceConnection.mockResolvedValue({ status: 'connection_failed', error: 'bad row 3' });
       renderFlow();
       openUpload();
       await screen.findByText('CSV files up to 100 MB');
       dropFile(salesFile());
 
       expect(await screen.findByTestId('onb-upload-error')).toHaveTextContent(
-        'Could not read files/x.csv'
+        'Could not read files/Sales_Q3.csv: bad row 3'
       );
       expect(screen.getByTestId('onb-upload-drop')).toBeInTheDocument();
+      expect(storeState.saveSource).not.toHaveBeenCalled();
       expect(mockNavigate).not.toHaveBeenCalled();
     });
 
@@ -241,7 +242,7 @@ describe('OnboardingFlow', () => {
 
       fireEvent.click(await screen.findByText('Cancel'));
       expect(screen.getByTestId('onb-upload-drop')).toBeInTheDocument();
-      expect(importProjectFile).not.toHaveBeenCalled();
+      expect(testSourceConnection).not.toHaveBeenCalled();
     });
   });
 

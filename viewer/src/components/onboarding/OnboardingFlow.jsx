@@ -245,7 +245,7 @@ export default function OnboardingFlow() {
   );
 
   const handleFileImported = useCallback(
-    result => handleConnected(result?.source?.config?.type || 'file'),
+    config => handleConnected(config?.type || 'file'),
     [handleConnected]
   );
 

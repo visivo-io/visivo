@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { importProjectFile, listProjectFiles, uploadProjectFile } from '../../../api/projectFiles';
+import { listProjectFiles, uploadProjectFile } from '../../../api/projectFiles';
+import { testSourceConnection } from '../../../api/sources';
 import useStore from '../../../stores/store';
 
 export const UPLOAD_ICON = <path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5" />;
@@ -17,6 +18,16 @@ export function sourceNameFor(filename, taken = []) {
   return name;
 }
 
+export function sourceConfigFor(file, formats, name) {
+  const format = formats.find(f => f.format === file.format);
+  return {
+    name,
+    type: format?.source_type || file.format,
+    file: file.path,
+    ...(file.path.toLowerCase().endsWith('.tsv') && { delimiter: '\t' }),
+  };
+}
+
 const megabytes = bytes => Math.round(bytes / 1024 / 1024);
 
 const extensionOf = name => {
@@ -27,7 +38,7 @@ const extensionOf = name => {
 function Steps({ phase }) {
   const steps = [
     ['uploading', 'Copying the file into the project'],
-    ['importing', 'Creating a source you can query'],
+    ['creating', 'Creating a source you can query'],
   ];
   const at = steps.findIndex(([key]) => key === phase);
   return (
@@ -45,6 +56,7 @@ function Steps({ phase }) {
 export default function UploadFile({ onBack, onImported }) {
   const projectId = useStore(s => s.project?.id ?? null);
   const fetchSources = useStore(s => s.fetchSources);
+  const saveSource = useStore(s => s.saveSource);
   const [formats, setFormats] = useState(null);
   const [maxBytes, setMaxBytes] = useState(null);
   const [phase, setPhase] = useState('choose');
@@ -74,7 +86,7 @@ export default function UploadFile({ onBack, onImported }) {
 
   const extensions = (formats || []).flatMap(f => f.extensions);
   const labels = (formats || []).map(f => f.label).join(', ');
-  const busy = phase === 'uploading' || phase === 'importing';
+  const busy = phase === 'uploading' || phase === 'creating';
 
   const fail = message => {
     setError(message);
@@ -104,20 +116,19 @@ export default function UploadFile({ onBack, onImported }) {
       });
       if (id !== run.current) return;
       setStoredPath(version.path);
-      setPhase('importing');
+      setPhase('creating');
       await fetchSources?.();
       const taken = (useStore.getState().sources || []).map(s => s.name);
-      const imported = await importProjectFile({
-        path: version.path,
-        versionId: version.version_id,
-        sourceName: sourceNameFor(version.filename, taken),
-        projectId,
-      });
+      const config = sourceConfigFor(version, formats, sourceNameFor(version.filename, taken));
+      const tested = await testSourceConnection(config);
       if (id !== run.current) return;
-      if (!imported.ok) throw new Error(imported.error);
-      await fetchSources?.();
+      if (tested?.status !== 'connected') {
+        throw new Error(`Could not read ${version.path}: ${tested?.error || 'unknown error'}`);
+      }
+      const saved = await saveSource(config.name, config);
       if (id !== run.current) return;
-      onImported(imported.result);
+      if (!saved.success) throw new Error(saved.error);
+      onImported(config);
     } catch (err) {
       if (id !== run.current) return;
       fail(err.message || 'Could not add the file.');
