@@ -1,4 +1,4 @@
-# Project files, file imports and source credentials
+# Project files and source credentials
 
 The API behind shared onboarding's **Upload a file** and **Connect a database** steps (VIS-1802).
 `visivo serve` (Flask) and Visivo Cloud (Django) implement the same requests and responses, so the
@@ -11,8 +11,6 @@ VIS-1755 and VIS-1758 land, the cloud answers `501`.
 | `projectFileUploads` | `POST /api/project-files/uploads/` | studio, cloud |
 | `projectFileUploadContent` | `PUT /api/project-files/uploads/{uploadId}/content/` | studio (cloud returns a signed storage URL instead) |
 | `projectFileUploadComplete` | `POST /api/project-files/uploads/{uploadId}/complete/` | studio, cloud |
-| `projectFileImports` | `POST /api/project-file-imports/` | studio, cloud |
-| `projectFileImportJob` | `GET /api/project-file-imports/{jobId}/` | studio, cloud |
 | `sourceCredentials` | `POST /api/source-credentials/` | studio, cloud |
 
 ## Common rules
@@ -40,15 +38,11 @@ VIS-1755 and VIS-1758 land, the cloud answers `501`.
 | 404 | `not_found` | Unknown upload, file, version or job, or one from another project |
 | 409 | `upload_closed` | Content sent to an upload that is already complete or expired |
 | 409 | `content_missing` | `complete` called before all bytes arrived |
-| 409 | `source_exists` | An import names a source that already exists and was not created from this file version |
 | 413 | `too_large` | Declared or received size exceeds `max_bytes` (100 MB) |
 | 422 | `size_mismatch` | Received bytes differ from the declared `size` |
 | 422 | `checksum_mismatch` | Received bytes differ from the declared `sha256` |
 | 500 | `storage_failed` | The server could not store a credential (`.env` or the secret store) |
 | 501 | `not_implemented` | The server does not implement this route yet |
-
-A failed import or inspection job is not an HTTP error. The job ends with `status: "failed"` and
-an `error` sentence, as every job does.
 
 ## Shared shapes
 
@@ -89,48 +83,21 @@ an `error` sentence, as every job does.
 }
 ```
 
-`source_type` is the source an import creates: `csv` for CSV and TSV files, and the file's own
-type for a `.duckdb` or `.sqlite` database. A server lists a format only when it can read it, and
-the viewer accepts exactly the extensions listed. The target set is CSV, Parquet, Lance, XLSX,
-DuckDB and SQLite; each joins the list when a real fixture test passes. Studio lists CSV now.
-XLSX and Parquet join after file seeds (VIS-1282) land; an import of them then creates a `duckdb`
-source with a file seed.
-
-**TablePreview**: what inspection and import return per table or sheet.
-
-```json
-{
-  "name": "Sheet1",
-  "columns": [{"name": "region", "type": "VARCHAR"}, {"name": "units", "type": "BIGINT"}],
-  "rows": [["West", 12], ["East", 7]],
-  "row_count": 1840
-}
-```
-
-`rows` holds at most 20 rows. `row_count` is `null` when counting would mean reading the whole file.
-
-**Job**: the envelope every job route already uses.
-
-```json
-{
-  "job_id": "…",
-  "kind": "file_inspect",
-  "status": "queued | running | completed | failed | cancelled",
-  "progress": 0.4,
-  "progress_message": "Reading sales.csv",
-  "result": null,
-  "error": null
-}
-```
+`source_type` is the source the viewer creates for the file: `csv` for CSV and TSV files, and the
+file's own type for a `.duckdb` or `.sqlite` database. `options` are the reader settings that
+source type takes. A server lists a format only when it can read it, and the viewer accepts
+exactly the extensions listed. The target set is CSV, Parquet, Lance, XLSX, DuckDB and SQLite;
+each joins the list when a real fixture test passes. Studio lists CSV now. XLSX and Parquet join
+after file seeds (VIS-1282) land, as a `duckdb` source with a file seed.
 
 ## Routes
 
 ### `GET /api/project-files/?ext=csv,xlsx`
 
-Lists the project's data files and what the server can import. `ext` is an optional
+Lists the project's data files and the formats the server can read. `ext` is an optional
 comma-separated list of extensions without dots; anything else is `400 invalid_request`. Locally
 the listing walks the project root, skipping git-ignored and hidden paths, `target/`, and anything
-that resolves outside the root. `formats` is empty until the server can import a file.
+that resolves outside the root. `formats` is empty until the server can read a file.
 
 `200`:
 
@@ -189,48 +156,16 @@ Repeating it for a completed upload returns the same response.
 Errors: `404 not_found`, `409 content_missing`, `422 size_mismatch`, `422 checksum_mismatch`.
 An upload that is never completed is discarded after `expires_at`, and its path is freed.
 
-### `POST /api/project-file-imports/`
+### Creating a source from a file
 
-Starts reading a completed file. `action` is `inspect` (preview only, nothing is created) or
-`import` (create the source).
+There is no import route. After `complete`, the viewer creates the source with the routes every
+source uses:
 
-Request:
-
-```json
-{
-  "action": "import",
-  "path": "files/sales_q3.csv",
-  "version_id": "fv_01J…",
-  "source_name": "sales_q3",
-  "options": {"table": "Sheet1", "header": true, "delimiter": ",", "encoding": "utf-8"}
-}
-```
-
-- `path` is required. `version_id`, when sent, must be the version at that path.
-- `source_name` is required for `import`.
-- `options` are optional, and only those listed for the file's format apply.
-
-`202`: `{"job_id": "…", "status": "queued"}`
-
-Errors: `400 invalid_request`, `400 unsupported_format`, `403 forbidden`, `404 not_found`,
-`409 source_exists`.
-
-An import is idempotent. Repeating it with the same `version_id` and `source_name` returns a job
-for the existing source rather than adding a second one.
-
-### `GET /api/project-file-imports/{jobId}/`
-
-`200`: the Job envelope. `kind` is `file_inspect` or `file_import`. When the job completes:
-
-- `file_inspect`: `{"file": FileVersion, "tables": [TablePreview]}`, with one table for a
-  CSV-like file and one per sheet or table for a workbook or database.
-- `file_import`: `{"file": FileVersion, "source": <source>, "tables": [TablePreview]}`, where
-  `source` is exactly what `GET /api/sources/{name}/` returns, so the viewer adds it to its
-  stores without waiting for a file watcher.
-
-The import saves the source as a draft. Nothing is committed.
-
-Errors: `404 not_found`.
+1. It picks a free source name and builds the config from the file's `path` and its format's
+   `source_type`, for example `{"name": "sales_q3", "type": "csv", "file": "files/sales_q3.csv"}`.
+   A `.tsv` file also sets `"delimiter": "\t"`.
+2. It saves the config as a draft with `POST /api/sources/{name}/`. Nothing is committed.
+3. It may check that the file reads with `POST /api/source-connections/`.
 
 ### `POST /api/source-credentials/`
 
@@ -282,6 +217,4 @@ For `core/api/apps/deploys/urls.py`:
 | `api/project-files/` | `project_file_list` |
 | `api/project-files/uploads/` | `project_file_upload_list` |
 | `api/project-files/uploads/<str:upload_id>/complete/` | `project_file_upload_complete` |
-| `api/project-file-imports/` | `project_file_import_list` |
-| `api/project-file-imports/<uuid:job_id>/` | `project_file_import_detail` |
 | `api/source-credentials/` | `source_credentials` |
