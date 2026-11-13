@@ -1,4 +1,4 @@
-"""Project files and file imports (docs/contracts/project-files-and-credentials.md).
+"""Project files (docs/contracts/project-files-and-credentials.md).
 
 The listing works now; VIS-1762 implements uploads and imports.
 """
@@ -49,12 +49,4 @@ def register_project_files_views(app, flask_app, output_dir):
 
     @app.route("/api/project-files/uploads/<upload_id>/complete/", methods=["POST"])
     def complete_project_file_upload(upload_id):
-        return not_implemented("VIS-1762")
-
-    @app.route("/api/project-file-imports/", methods=["POST"])
-    def start_project_file_import():
-        return not_implemented("VIS-1762")
-
-    @app.route("/api/project-file-imports/<job_id>/", methods=["GET"])
-    def get_project_file_import(job_id):
         return not_implemented("VIS-1762")
