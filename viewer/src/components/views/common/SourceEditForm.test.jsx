@@ -2,6 +2,12 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SourceEditForm from './SourceEditForm';
 import { fetchRenameImpact, renameResource } from '../../../api/rename';
+import { prepareSourceCredentials } from '../../../api/sourceCredentials';
+
+jest.mock('../../../api/sourceCredentials', () => ({
+  ...jest.requireActual('../../../api/sourceCredentials'),
+  prepareSourceCredentials: jest.fn(),
+}));
 
 jest.mock('../../../api/rename', () => ({
   ...jest.requireActual('../../../api/rename'),
@@ -45,7 +51,7 @@ jest.mock('../../sources/SourceTypeSelector', () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   Object.values(mockActions).forEach(fn => fn.mockResolvedValue({ success: true }));
-  mockState = { ...mockActions, connectionStatus: {} };
+  mockState = { ...mockActions, connectionStatus: {}, project: { id: 'p1' } };
 });
 
 const renderForm = (props = {}) =>
@@ -305,6 +311,90 @@ describe('SourceEditForm — test connection', () => {
     renderForm({ source: publishedSqlite, isCreate: false });
     expect(screen.getByRole('button', { name: 'Test Connection' })).toBeDisabled();
   });
+});
+
+describe('SourceEditForm — typed credentials (VIS-1764)', () => {
+  const DOLLAR = '$';
+  const rawRef = name => DOLLAR + '{env.' + name + '}';
+  const REF = rawRef('WH_PASSWORD');
+  const prepared = typed => ({
+    source: { ...typed, password: REF },
+    credentials: [{ field: 'password', reference: REF, storage: 'project_env', created: true }],
+  });
+
+  const fillPostgres = (password = 'hunter2') => {
+    fireEvent.change(screen.getByLabelText(/Source Name/), { target: { value: 'wh' } });
+    fireEvent.click(screen.getByText('pick-postgresql'));
+    fireEvent.change(screen.getByLabelText(/^Host/), { target: { value: 'db.example.com' } });
+    fireEvent.change(screen.getByLabelText(/^Database/), { target: { value: 'analytics' } });
+    fireEvent.change(screen.getByLabelText(/^Username/), { target: { value: 'analyst' } });
+    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: password } });
+  };
+
+  beforeEach(() => {
+    prepareSourceCredentials.mockImplementation(async typed => prepared(typed));
+  });
+
+  test('stores the password before the test, which gets only the reference', async () => {
+    renderForm();
+    fillPostgres();
+    fireEvent.click(screen.getByRole('button', { name: 'Test Connection' }));
+
+    await waitFor(() => expect(mockActions.testConnection).toHaveBeenCalled());
+    expect(prepareSourceCredentials).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'wh', password: 'hunter2' }),
+      { projectId: 'p1' }
+    );
+    const tested = mockActions.testConnection.mock.calls[0][0];
+    expect(tested.password).toBe(REF);
+    expect(JSON.stringify(tested)).not.toContain('hunter2');
+    expect(screen.getByTestId('password-env-hint')).toHaveTextContent(
+      "Saved in this project's .env file as WH_PASSWORD"
+    );
+  });
+
+  test('saves the referencing config, never the typed password', async () => {
+    const onSave = jest.fn(async () => ({ success: true }));
+    renderForm({ onSave });
+    fillPostgres();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][2]).toEqual(
+      expect.objectContaining({ name: 'wh', type: 'postgresql', password: REF })
+    );
+  });
+
+  test('a failed store shows its error and neither tests nor saves', async () => {
+    prepareSourceCredentials.mockRejectedValue(
+      new Error("Could not save the credentials to the project's .env file.")
+    );
+    const onSave = jest.fn();
+    renderForm({ onSave });
+    fillPostgres();
+    fireEvent.click(screen.getByRole('button', { name: 'Test Connection' }));
+    expect(
+      await screen.findByText("Could not save the credentials to the project's .env file.")
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(prepareSourceCredentials).toHaveBeenCalledTimes(2));
+    expect(mockActions.testConnection).not.toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  test.each([[rawRef('MY_OWN')], ['**********']])(
+    'sends a reference or the mask (%s) straight on',
+    async password => {
+      renderForm();
+      fillPostgres(password);
+      fireEvent.click(screen.getByRole('button', { name: 'Test Connection' }));
+
+      await waitFor(() => expect(mockActions.testConnection).toHaveBeenCalled());
+      expect(prepareSourceCredentials).not.toHaveBeenCalled();
+      expect(mockActions.testConnection.mock.calls[0][0].password).toBe(password);
+    }
+  );
 });
 
 // VIS-1133: Save is disabled on an untouched edit-mode form, so save-path

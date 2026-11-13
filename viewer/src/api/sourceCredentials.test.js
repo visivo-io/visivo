@@ -1,5 +1,5 @@
 /* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${env.X}` references */
-import { prepareSourceCredentials } from './sourceCredentials';
+import { hasTypedSecret, prepareSourceCredentials } from './sourceCredentials';
 import { apiFetch } from './utils';
 
 jest.mock('./utils', () => ({ apiFetch: jest.fn() }));
@@ -47,4 +47,19 @@ it("throws the server's sentence and code", async () => {
 
   expect(error.message).toBe('Only editors can add sources.');
   expect(error.code).toBe('forbidden');
+});
+
+describe('hasTypedSecret', () => {
+  it.each([
+    [{ password: 'typed value' }, true],
+    [{ credentials_base64: 'a2V5' }, true],
+    [{ private_key_passphrase: 'p' }, true],
+    [{ password: '${env.WAREHOUSE_PASSWORD}' }, false],
+    [{ password: '**********' }, false],
+    [{ password: '' }, false],
+    [{ username: 'analyst', host: 'db' }, false],
+    [null, false],
+  ])('%o -> %s', (config, expected) => {
+    expect(hasTypedSecret(config)).toBe(expected);
+  });
 });
