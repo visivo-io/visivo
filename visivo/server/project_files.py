@@ -60,7 +60,7 @@ def _within(root, path):
     return os.path.commonpath([root, path]) == root
 
 
-def file_entry(relative_path, absolute_path):
+def _file_entry(relative_path, absolute_path):
     stat = os.stat(absolute_path)
     filename = os.path.basename(relative_path)
     return {
@@ -99,7 +99,7 @@ def list_project_files(project_root, extensions=frozenset()):
         absolute_path = os.path.join(root, *parts)
         if not _within(root, os.path.realpath(absolute_path)) or not os.path.isfile(absolute_path):
             continue
-        entries.append(file_entry(os.path.join(*parts), absolute_path))
+        entries.append(_file_entry(os.path.join(*parts), absolute_path))
         if len(entries) >= MAX_FILES:
             break
 
