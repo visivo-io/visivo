@@ -34,24 +34,6 @@ def paths(response):
     return [entry["path"] for entry in response.get_json()["files"]]
 
 
-@pytest.mark.parametrize(
-    "method,path,issue",
-    [
-        ("post", "/api/project-files/uploads/", "VIS-1762"),
-        ("put", "/api/project-files/uploads/up_1/content/", "VIS-1762"),
-        ("post", "/api/project-files/uploads/up_1/complete/", "VIS-1762"),
-    ],
-)
-def test_unbuilt_routes_answer_501_in_the_contract_error_shape(client, method, path, issue):
-    response = getattr(client, method)(path, json={})
-
-    assert response.status_code == 501
-    assert response.get_json() == {
-        "error": f"Not available yet ({issue}).",
-        "code": "not_implemented",
-    }
-
-
 def test_lists_project_relative_files_with_the_file_version_shape(tmp_path, client):
     write(tmp_path, "files/sales.csv", b"region,units\nWest,12\n")
     write(tmp_path, "data/budget.xlsx")
@@ -60,7 +42,7 @@ def test_lists_project_relative_files_with_the_file_version_shape(tmp_path, clie
 
     assert response.status_code == 200
     body = response.get_json()
-    assert body["formats"] == []
+    assert [f["format"] for f in body["formats"]] == ["csv"]
     assert body["max_bytes"] == 100 * 1024 * 1024
     assert paths(response) == ["data/budget.xlsx", "files/sales.csv"]
     sales = body["files"][1]

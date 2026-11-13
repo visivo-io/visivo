@@ -2,8 +2,8 @@
 
 The API behind shared onboarding's **Upload a file** and **Connect a database** steps (VIS-1802).
 `visivo serve` (Flask) and Visivo Cloud (Django) implement the same requests and responses, so the
-viewer has one code path. Studio serves the file listing (VIS-1283). Until VIS-1762, VIS-1764,
-VIS-1755 and VIS-1758 land, the other routes, and every route in the cloud, answer `501`.
+viewer has one code path. Studio serves every route (VIS-1283, VIS-1762, VIS-1764). Until
+VIS-1755 and VIS-1758 land, the cloud answers `501`.
 
 | urls.js key | Method and path | Served by |
 | -- | -- | -- |
@@ -68,7 +68,8 @@ VIS-1755 and VIS-1758 land, the other routes, and every route in the cloud, answ
   Cloud stores private objects keyed by `version_id` behind the same logical path.
 - `version_id` is opaque. It and `sha256` are `null` in a listing for a file that did not arrive
   through upload, such as one copied into the project folder by hand. For such a file
-  `original_filename` equals `filename`, and `created_at` is its last-modified time.
+  `original_filename` equals `filename`, and `created_at` is its last-modified time. Studio keeps
+  upload versions in memory, so after a restart its listing shows every file this way.
 
 **Format**: one entry in the capability list a server advertises.
 
@@ -77,16 +78,17 @@ VIS-1755 and VIS-1758 land, the other routes, and every route in the cloud, answ
   "format": "csv",
   "label": "CSV",
   "extensions": [".csv", ".tsv"],
-  "source_type": "duckdb",
+  "source_type": "csv",
   "options": ["header", "delimiter", "encoding"]
 }
 ```
 
-`source_type` is the source the viewer creates for the file: `duckdb` for tabular files, and the
-file's own type for a `.duckdb` or `.sqlite` database. `options` are the reader settings that source
-type takes. A server lists a format only when it can read it, and the
-viewer accepts exactly the extensions listed. The target set is CSV, Parquet, Lance, XLSX, DuckDB
-and SQLite; each joins the list when a real fixture test passes.
+`source_type` is the source the viewer creates for the file: `csv` for CSV and TSV files, and the
+file's own type for a `.duckdb` or `.sqlite` database. `options` are the reader settings that
+source type takes. A server lists a format only when it can read it, and the viewer accepts
+exactly the extensions listed. The target set is CSV, Parquet, Lance, XLSX, DuckDB and SQLite;
+each joins the list when a real fixture test passes. Studio lists CSV now. XLSX and Parquet join
+after file seeds (VIS-1282) land, as a `duckdb` source with a file seed.
 
 ## Routes
 
@@ -160,7 +162,8 @@ There is no import route. After `complete`, the viewer creates the source with t
 source uses:
 
 1. It picks a free source name and builds the config from the file's `path` and its format's
-   `source_type`.
+   `source_type`, for example `{"name": "sales_q3", "type": "csv", "file": "files/sales_q3.csv"}`.
+   A `.tsv` file also sets `"delimiter": "\t"`.
 2. It saves the config as a draft with `POST /api/sources/{name}/`. Nothing is committed.
 3. It may check that the file reads with `POST /api/source-connections/`.
 
