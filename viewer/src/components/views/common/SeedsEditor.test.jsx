@@ -165,13 +165,20 @@ describe('SeedsEditor', () => {
   });
 
   test('a file seed shows its path instead of command arguments', () => {
-    render(<Harness initial={[{ table_name: '', file: 'data/gl_*.csv' }]} />);
+    render(<Harness initial={[{ table_name: '', file: 'data/budget.xlsx' }]} />);
 
-    expect(screen.getByLabelText('Seed 1 file')).toHaveValue('data/gl_*.csv');
+    expect(screen.getByLabelText('Seed 1 file')).toHaveValue('data/budget.xlsx');
     expect(screen.queryByText('Command Arguments')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'File' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Table name (optional)')).toBeInTheDocument();
     expect(screen.getByLabelText('Allow no matching file')).not.toBeChecked();
+  });
+
+  test('a glob file seed requires a table name', () => {
+    render(<Harness initial={[{ table_name: '', file: 'data/*.csv' }]} />);
+
+    expect(screen.getByText('Table name')).toBeInTheDocument();
+    expect(screen.queryByText('Table name (optional)')).not.toBeInTheDocument();
   });
 
   test('switching a command seed to a file drops its args', () => {

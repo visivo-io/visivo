@@ -67,7 +67,6 @@ class TestFileSeedModel:
         "file,table_name",
         [
             ("data/budget.xlsx", "budget"),
-            ("data/gl_*.csv", "gl"),
             ("files/Sales Report.v2.csv", "sales_report"),
             ("2026-orders.parquet", "t_2026_orders"),
         ],
@@ -78,9 +77,14 @@ class TestFileSeedModel:
     def test_an_explicit_table_name_wins(self):
         assert Seed(file="data/budget.xlsx", table_name="plan").table_name == "plan"
 
+    @pytest.mark.parametrize("file", ["data/*.csv", "data/gl_*.csv", "data/*/sales.parquet"])
+    def test_a_glob_needs_a_table_name(self, file):
+        with pytest.raises(ValidationError, match="with a `\\*` in `file` needs a `table_name`"):
+            Seed(file=file)
+
     def test_a_stem_with_no_letters_needs_a_table_name(self):
         with pytest.raises(ValidationError, match="Set `table_name`"):
-            Seed(file="data/*.csv")
+            Seed(file="data/__.csv")
 
     @pytest.mark.parametrize("fields", [{}, {"args": ["echo"], "file": "a.csv"}])
     def test_needs_exactly_one_of_args_or_file(self, fields):
@@ -148,7 +152,7 @@ class TestFileSeedLoading:
         source = duckdb_source(
             project,
             [
-                {"file": "data/gl_*.csv"},
+                {"table_name": "gl", "file": "data/gl_*.csv"},
                 {"table_name": "budget", "file": "data/budget.xlsx"},
                 {"table_name": "ev", "file": "data/*.parquet"},
             ],

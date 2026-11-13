@@ -113,7 +113,11 @@ const SeedsEditor = ({ seeds, onChange }) => {
           <div className="flex items-center gap-2">
             <FormInput
               id={`seed-${seedIndex}-table-name`}
-              label={isFileSeed(seed) ? 'Table name (optional)' : 'Table name'}
+              label={
+                isFileSeed(seed) && !seed.file?.includes('*')
+                  ? 'Table name (optional)'
+                  : 'Table name'
+              }
               aria-label={`Seed ${seedIndex + 1} table name`}
               value={seed.table_name || ''}
               onChange={e => updateSeed(seedIndex, { table_name: e.target.value })}
@@ -174,7 +178,8 @@ const SeedsEditor = ({ seeds, onChange }) => {
                 onChange={e => updateSeed(seedIndex, { file: e.target.value })}
               />
               <p className="text-xs text-gray-500">
-                CSV, TSV, Parquet, JSON or .xlsx. A glob such as data/*.csv loads every match.
+                CSV, TSV, Parquet, JSON or .xlsx. A glob such as data/*.csv loads every match into
+                one table.
               </p>
             </div>
           )}

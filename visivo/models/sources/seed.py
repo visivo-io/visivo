@@ -46,8 +46,8 @@ class Seed(BaseModel):
 
     A `file` seed reads a CSV, TSV, Parquet, JSON or Excel (`.xlsx`) file from the project
     with DuckDB's native readers, so column types come from the file. The path may be a glob
-    such as `data/sales_*.csv`; matching files load into one table. `table_name` defaults to
-    the file name without its extension.
+    such as `data/sales_*.csv`; matching files load into one table, so a glob needs a
+    `table_name`. Otherwise `table_name` defaults to the file name without its extension.
 
     A command seed runs with a given set of args and needs to return a well formatted
     :fontawesome-solid-file-csv: with a header row to stdout. Visivo writes that CSV into
@@ -69,7 +69,8 @@ class Seed(BaseModel):
                 type: duckdb
                 database: target/local.duckdb
                 seeds:
-                  - file: data/gl_*.csv
+                  - table_name: gl
+                    file: data/gl_*.csv
                   - table_name: budget
                     file: data/budget.xlsx
                     sheet: FY26
@@ -188,7 +189,8 @@ class Seed(BaseModel):
         None,
         description=(
             "The name of the table to load into on the source. Required for `args` seeds. "
-            "For `file` seeds it defaults to the file name without its extension."
+            "For `file` seeds it defaults to the file name without its extension, except "
+            "when the path has a `*`."
         ),
     )
 
@@ -237,7 +239,12 @@ class Seed(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def default_table_name_from_file(cls, data):
-        if isinstance(data, dict) and data.get("file") and not data.get("table_name"):
+        if (
+            isinstance(data, dict)
+            and data.get("file")
+            and "*" not in data["file"]
+            and not data.get("table_name")
+        ):
             name = table_name_for_file(data["file"])
             if name:
                 data = {**data, "table_name": name}
@@ -247,6 +254,8 @@ class Seed(BaseModel):
     def check_command_or_file(self):
         if bool(self.args) == bool(self.file):
             raise ValueError("A seed needs exactly one of `args` or `file`.")
+        if not self.table_name and self.file and "*" in self.file:
+            raise ValueError("A seed with a `*` in `file` needs a `table_name`.")
         if not self.table_name:
             raise ValueError(
                 "A seed needs a `table_name`."
