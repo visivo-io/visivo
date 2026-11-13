@@ -40,7 +40,6 @@ def paths(response):
         ("post", "/api/project-files/uploads/", "VIS-1762"),
         ("put", "/api/project-files/uploads/up_1/content/", "VIS-1762"),
         ("post", "/api/project-files/uploads/up_1/complete/", "VIS-1762"),
-        ("post", "/api/source-credentials/", "VIS-1764"),
     ],
 )
 def test_unbuilt_routes_answer_501_in_the_contract_error_shape(client, method, path, issue):

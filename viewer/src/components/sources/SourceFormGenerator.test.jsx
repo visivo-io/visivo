@@ -240,13 +240,35 @@ describe('port field', () => {
 });
 
 describe('environment variable hint', () => {
-  test('a local password field shows the env reference syntax and a docs link', () => {
-    renderForm();
+  test('a typed password is saved to .env for you; a reference stays the advanced path', () => {
+    renderForm({ values: { password: 'hunter2' } });
     const hint = screen.getByTestId('password-env-hint');
+    expect(hint).toHaveTextContent(
+      "Saved to this project's .env file when you test or save. Only a reference goes in the project file."
+    );
     expect(hint).toHaveTextContent(rawRef('PASSWORD'));
     expect(screen.getByRole('link', { name: 'Learn more' })).toHaveAttribute(
       'href',
       'https://docs.visivo.io/topics/environment-variables/'
+    );
+  });
+
+  test('after the server stores it, the hint names the variable', () => {
+    renderForm({
+      values: { password: rawRef('WH_PASSWORD') },
+      storedCredentials: [
+        { field: 'password', reference: rawRef('WH_PASSWORD'), storage: 'project_env' },
+      ],
+    });
+    expect(screen.getByTestId('password-env-hint')).toHaveTextContent(
+      "Saved in this project's .env file as WH_PASSWORD. The project file keeps only the reference."
+    );
+  });
+
+  test('a reference the user typed is read from the environment', () => {
+    renderForm({ values: { password: rawRef('MY_OWN') } });
+    expect(screen.getByTestId('password-env-hint')).toHaveTextContent(
+      'Read from the MY_OWN environment variable.'
     );
   });
 

@@ -21,6 +21,7 @@ import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import SeedsEditor, { sourceTypeSupportsSeeds } from './SeedsEditor';
 import useRenameFlow from '../../../hooks/useRenameFlow';
 import RenameImpactDialog from '../workspace/RenameImpactDialog';
+import { hasTypedSecret, prepareSourceCredentials } from '../../../api/sourceCredentials';
 
 /**
  * SourceEditForm - Form component for editing/creating sources
@@ -41,6 +42,9 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
   // Re-reads the account's secret names so the picker can pick up one added
   // on the secrets page in another tab.
   const refreshCapabilities = useStore(state => state.fetchCapabilities);
+  const projectId = useStore(state => state.project?.id ?? null);
+  // What the server stored on the last Test or Save, for the field hints.
+  const [storedCredentials, setStoredCredentials] = useState([]);
 
   // Form state
   const [name, setName] = useState('');
@@ -163,15 +167,32 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
       args: (seed.args || []).filter(arg => arg.trim()),
     }));
 
+  /**
+   * Store typed secrets first, so neither the test job nor the draft ever holds
+   * one. The form then shows the references the server returned.
+   */
+  const prepareCredentials = async config => {
+    if (!config.name || !hasTypedSecret(config)) return config;
+    const { source: prepared, credentials } = await prepareSourceCredentials(config, {
+      projectId,
+    });
+    const references = Object.fromEntries(credentials.map(c => [c.field, c.reference]));
+    setFormValues(values => ({ ...values, ...references }));
+    setStoredCredentials(credentials);
+    return prepared;
+  };
+
   const handleTestConnection = async () => {
     if (!validateForm()) return;
 
-    const config = {
-      name,
-      type: sourceType,
-      ...formValues,
-    };
-
+    setSaveError(null);
+    let config;
+    try {
+      config = await prepareCredentials({ name, type: sourceType, ...formValues });
+    } catch (error) {
+      setSaveError(error.message);
+      return;
+    }
     await testConnection(config);
   };
 
@@ -196,9 +217,16 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
     } else {
       delete values.seeds;
     }
-    const config = isEmbedded
+    let config = isEmbedded
       ? { type: sourceType, ...values }
       : { name: nameToSave, type: sourceType, ...values };
+    try {
+      config = await prepareCredentials(config);
+    } catch (error) {
+      setSaving(false);
+      setSaveError(error.message);
+      return false;
+    }
 
     // Call unified save - parent handles embedded vs standalone routing
     const result = await onSave('source', nameToSave, config);
@@ -291,6 +319,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
             secretKeys={capabilities?.secret_keys ?? []}
             secretsUrl={capabilities?.secrets_url}
             onRefreshSecrets={refreshCapabilities}
+            storedCredentials={storedCredentials}
           />
 
           {/* Test Connection sits directly under the connection properties it

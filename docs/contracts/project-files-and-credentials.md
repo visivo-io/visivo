@@ -41,6 +41,7 @@ VIS-1755 and VIS-1758 land, the other routes, and every route in the cloud, answ
 | 413 | `too_large` | Declared or received size exceeds `max_bytes` (100 MB) |
 | 422 | `size_mismatch` | Received bytes differ from the declared `size` |
 | 422 | `checksum_mismatch` | Received bytes differ from the declared `sha256` |
+| 500 | `storage_failed` | The server could not store a credential (`.env` or the secret store) |
 | 501 | `not_implemented` | The server does not implement this route yet |
 
 ## Shared shapes
@@ -181,7 +182,7 @@ Request:
 ```json
 {
   "source": {"name": "warehouse", "type": "postgresql", "host": "db.example.com",
-             "username": "${env.WAREHOUSE_USERNAME}", "password": "${env.WAREHOUSE_PASSWORD}"},
+             "username": "analyst", "password": "${env.WAREHOUSE_PASSWORD}"},
   "credentials": [
     {"field": "password", "reference": "${env.WAREHOUSE_PASSWORD}",
      "storage": "project_env", "created": true}
@@ -189,7 +190,8 @@ Request:
 }
 ```
 
-- Credential fields are `username`, `password` and `credentials_base64`.
+- Credential fields are the source type's secret fields: `password`, `credentials_base64` and
+  Snowflake's `private_key_passphrase`. Other fields, `username` included, are returned as sent.
 - A field whose value is already a reference, or is empty, is returned unchanged and not stored.
   A masked value (`**********`) means "keep the current credential" and is also returned unchanged.
 - `storage` is `project_env` (studio: the project's `.env`, which is kept out of Git) or
@@ -200,7 +202,8 @@ Request:
 - The viewer then sends the returned `source`, never the typed one, to `POST /api/source-connections/`
   and `POST /api/sources/{name}/`.
 
-Errors: `400 invalid_request`, `403 forbidden`.
+Errors: `400 invalid_request` (also for a config that fails source validation), `403 forbidden`,
+`500 storage_failed`.
 
 ## Django route names
 
