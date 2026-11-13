@@ -6,26 +6,43 @@ import OnboardingFlow, { sampleDestination } from './OnboardingFlow';
 import useStore from '../../stores/store';
 import { clearOnboardingState, readOnboardingState, writeOnboardingState } from './onboardingState';
 import { clearEventBuffer, getEventBuffer } from './telemetry';
+import { listProjectFiles, uploadProjectFile } from '../../api/projectFiles';
+import { testSourceConnection } from '../../api/sources';
+
+const CSV_FORMAT = {
+  format: 'csv',
+  label: 'CSV',
+  extensions: ['.csv', '.tsv'],
+  source_type: 'csv',
+  options: ['header', 'delimiter', 'encoding'],
+};
+const VERSION = {
+  path: 'files/Sales_Q3.csv',
+  filename: 'Sales_Q3.csv',
+  version_id: 'fv_1',
+  format: 'csv',
+};
+let storeState;
 
 jest.mock('../../stores/store');
-jest.mock('../views/common/SourceEditForm', () => ({ onSave }) => (
-  <div data-testid="source-edit-form">
-    <button onClick={() => onSave('postgres', 'demo', { type: 'postgres', name: 'demo' })}>
-      mock-connect
-    </button>
-    <button
-      onClick={() =>
-        onSave('csv', 'demo-csv', {
-          type: 'csv',
-          name: 'demo-csv',
-          file: new File(['a,b\n1,2'], 'demo.csv', { type: 'text/csv' }),
-        })
-      }
-    >
-      mock-connect-file
-    </button>
-  </div>
-));
+jest.mock('../../api/projectFiles');
+jest.mock('../../api/sources');
+jest.mock('../views/common/SourceEditForm', () => ({ onSave }) => {
+  const [error, setError] = require('react').useState(null);
+  return (
+    <div data-testid="source-edit-form">
+      <button
+        onClick={async () => {
+          const result = await onSave('source', 'demo', { type: 'postgresql', name: 'demo' });
+          setError(result?.success ? null : result?.error);
+        }}
+      >
+        mock-connect
+      </button>
+      {error && <p data-testid="form-error">{error}</p>}
+    </div>
+  );
+});
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -34,6 +51,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 beforeEach(() => {
+  jest.clearAllMocks();
   clearOnboardingState();
   clearEventBuffer();
   mockNavigate.mockReset();
@@ -48,12 +66,19 @@ beforeEach(() => {
     })
   );
 
-  useStore.mockImplementation(selector =>
-    selector({
-      project: { project_dir: '/tmp/demo', name: 'Quickstart Visivo' },
-      fetchProject: jest.fn().mockResolvedValue(undefined),
-    })
-  );
+  storeState = {
+    project: { project_dir: '/tmp/demo', name: 'Quickstart Visivo' },
+    fetchProject: jest.fn().mockResolvedValue(undefined),
+    saveSource: jest.fn().mockResolvedValue({ success: true }),
+    fetchSources: jest.fn().mockResolvedValue(undefined),
+    sources: [{ name: 'sales_q3' }],
+  };
+  useStore.mockImplementation(selector => selector(storeState));
+  useStore.getState = () => storeState;
+
+  listProjectFiles.mockResolvedValue({ files: [], formats: [CSV_FORMAT], max_bytes: 104857600 });
+  uploadProjectFile.mockResolvedValue(VERSION);
+  testSourceConnection.mockResolvedValue({ source: 'sales_q3_2', status: 'connected' });
 });
 
 afterEach(() => {
@@ -82,6 +107,16 @@ const pickSample = name => {
   openExample();
   fireEvent.click(screen.getByTestId(`onb-sample-${name}`));
 };
+
+const openUpload = () => {
+  fireEvent.click(screen.getByTestId('onb-path-data'));
+  fireEvent.click(screen.getByTestId('onb-data-upload'));
+};
+
+const dropFile = file =>
+  fireEvent.change(screen.getByTestId('onb-upload-input'), { target: { files: [file] } });
+
+const salesFile = () => new File(['region,units\nWest,12\n'], 'Sales Q3.csv', { type: 'text/csv' });
 
 const connectDatabase = () => {
   fireEvent.click(screen.getByTestId('onb-path-data'));
@@ -127,10 +162,88 @@ describe('OnboardingFlow', () => {
     expect(screen.getByTestId('onb-sample-ev-sales')).toBeInTheDocument();
   });
 
-  test('does not offer a file upload before the server can import one', () => {
-    renderFlow();
-    fireEvent.click(screen.getByTestId('onb-path-data'));
-    expect(screen.queryByText(/upload/i)).not.toBeInTheDocument();
+  describe('upload a data file', () => {
+    test('Your data offers an upload, and Back returns to the two choices', async () => {
+      renderFlow();
+      openUpload();
+      expect(screen.getByRole('heading', { name: 'Upload a data file' })).toBeInTheDocument();
+      expect(await screen.findByText('CSV files up to 100 MB')).toBeInTheDocument();
+      expect(screen.getByTestId('onb-upload-input')).toHaveAttribute('accept', '.csv,.tsv');
+
+      fireEvent.click(screen.getByTestId('onb-upload-back'));
+      expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();
+    });
+
+    test('a dropped file becomes a draft source and opens the explorer on it', async () => {
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(salesFile());
+
+      await waitFor(() =>
+        expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
+      );
+      expect(uploadProjectFile).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Sales Q3.csv' }),
+        expect.objectContaining({ projectId: null })
+      );
+      const config = { name: 'sales_q3_2', type: 'csv', file: 'files/Sales_Q3.csv' };
+      expect(testSourceConnection).toHaveBeenCalledWith(config);
+      expect(storeState.saveSource).toHaveBeenCalledWith('sales_q3_2', config);
+      expect(readOnboardingState()).toMatchObject({ path: 'data', source_connected: true });
+      const succeeded = getEventBuffer().find(e => e.event === 'onboarding_data_connect_succeeded');
+      expect(succeeded.props).toMatchObject({ source_type: 'csv' });
+    });
+
+    test('shows where the file is going while it creates the source', async () => {
+      testSourceConnection.mockReturnValue(new Promise(() => {}));
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(salesFile());
+
+      expect(await screen.findByText('Saved as files/Sales_Q3.csv')).toBeInTheDocument();
+      expect(screen.getByText('Creating a source you can query')).toBeInTheDocument();
+    });
+
+    test('a file of an unlisted type is refused before upload', async () => {
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(new File(['x'], 'budget.xlsx'));
+
+      expect(await screen.findByTestId('onb-upload-error')).toHaveTextContent(
+        "Visivo can't import budget.xlsx yet. Use a CSV file."
+      );
+      expect(uploadProjectFile).not.toHaveBeenCalled();
+    });
+
+    test('a file that does not read shows the reason and saves no source', async () => {
+      testSourceConnection.mockResolvedValue({ status: 'connection_failed', error: 'bad row 3' });
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(salesFile());
+
+      expect(await screen.findByTestId('onb-upload-error')).toHaveTextContent(
+        'Could not read files/Sales_Q3.csv: bad row 3'
+      );
+      expect(screen.getByTestId('onb-upload-drop')).toBeInTheDocument();
+      expect(storeState.saveSource).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    test('Cancel stops waiting and adds nothing to the flow', async () => {
+      uploadProjectFile.mockReturnValue(new Promise(() => {}));
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(salesFile());
+
+      fireEvent.click(await screen.findByText('Cancel'));
+      expect(screen.getByTestId('onb-upload-drop')).toBeInTheDocument();
+      expect(testSourceConnection).not.toHaveBeenCalled();
+    });
   });
 
   test('never claims more source types than the source picker offers', () => {
@@ -333,86 +446,40 @@ describe('OnboardingFlow', () => {
       expect(screen.queryByTestId('onb-source-modal')).not.toBeInTheDocument();
       expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
 
-      global.fetch = jest.fn(() => new Promise(() => {}));
+      storeState.saveSource.mockReturnValue(new Promise(() => {}));
       connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
-      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+      await waitFor(() => expect(storeState.saveSource).toHaveBeenCalled());
       fireEvent.keyDown(document, { key: 'Escape' });
       expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
     });
 
-    test('a connected source goes straight to the explorer and persists completion', async () => {
+    test('a connected source is saved as a draft and goes straight to the explorer', async () => {
       renderFlow();
       connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
       await waitFor(() =>
         expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
       );
+      expect(storeState.saveSource).toHaveBeenCalledWith('demo', {
+        type: 'postgresql',
+        name: 'demo',
+      });
+      expect(global.fetch).not.toHaveBeenCalled();
       expect(readOnboardingState()).toMatchObject({ path: 'data', source_connected: true });
       expect(getEventBuffer().map(e => e.event)).toEqual(
         expect.arrayContaining(['onboarding_data_connect_succeeded', 'onboarding_completed'])
       );
     });
 
-    test('a file-based source uploads the file and finalizes with its dashboard', async () => {
-      global.fetch = jest.fn(url => {
-        if (url === '/api/source/create/') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ source: { name: 'demo-csv', type: 'csv' } }),
-          });
-        }
-        if (url === '/api/source/upload/') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ dashboard: { name: 'generated-dashboard' } }),
-          });
-        }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-      });
-      renderFlow();
-      connectDatabase();
-      fireEvent.click(screen.getByText('mock-connect-file'));
-
-      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
-      const finalizeCall = global.fetch.mock.calls.find(
-        ([url]) => url === '/api/project/finalize/'
-      );
-      expect(JSON.parse(finalizeCall[1].body).dashboards).toEqual([
-        { name: 'generated-dashboard' },
-      ]);
-    });
-
-    test('a failed source create keeps the modal open and shows the backend message', async () => {
-      global.fetch = jest.fn(() =>
-        Promise.resolve({ ok: false, json: () => Promise.resolve({ message: 'bad creds' }) })
-      );
+    test('a failed save keeps the modal open and shows the reason in the form', async () => {
+      storeState.saveSource.mockResolvedValue({ success: false, error: 'bad creds' });
       renderFlow();
       connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
 
-      expect(await screen.findByRole('alert')).toHaveTextContent('bad creds');
+      expect(await screen.findByTestId('form-error')).toHaveTextContent('bad creds');
       expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
-    });
-
-    test('a failed finalize surfaces its error', async () => {
-      global.fetch = jest.fn(url => {
-        if (url === '/api/project/finalize/') {
-          return Promise.resolve({
-            ok: false,
-            json: () => Promise.resolve({ message: 'finalize failed' }),
-          });
-        }
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ source: { name: 'demo', type: 'postgres' } }),
-        });
-      });
-      renderFlow();
-      connectDatabase();
-      fireEvent.click(screen.getByText('mock-connect'));
-
-      expect(await screen.findByRole('alert')).toHaveTextContent('finalize failed');
       expect(mockNavigate).not.toHaveBeenCalled();
     });
   });

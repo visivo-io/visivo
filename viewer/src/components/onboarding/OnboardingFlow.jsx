@@ -29,6 +29,7 @@ export default function OnboardingFlow() {
   const navigate = useViewerNavigate();
   const project = useStore(s => s.project);
   const fetchProject = useStore(s => s.fetchProject);
+  const saveSource = useStore(s => s.saveSource);
 
   const projectDir = project?.project_dir ?? '';
   const projectName = project?.name || 'Quickstart Visivo';
@@ -74,9 +75,12 @@ export default function OnboardingFlow() {
     };
   }, []);
 
-  const fire = useCallback((event, props = {}) => {
-    fireEvent(event, { role: role || null, ...props });
-  }, [role]);
+  const fire = useCallback(
+    (event, props = {}) => {
+      fireEvent(event, { role: role || null, ...props });
+    },
+    [role]
+  );
 
   const persistProgress = useCallback(
     extra => {
@@ -126,7 +130,8 @@ export default function OnboardingFlow() {
       if (showSourceModal) return;
       const el = e.target;
       const tag = el?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable)
+        return;
       if (e.key === 'ArrowLeft' && stepIdx > 0) handleBack();
     };
     window.addEventListener('keydown', onKey);
@@ -221,78 +226,27 @@ export default function OnboardingFlow() {
   );
 
   const handleSourceFormSave = useCallback(
-    async (_type, _name, config) => {
+    async (_type, name, config) => {
       setSourceSaving(true);
       setErrorMessage(null);
       try {
-        const sourceForm = new FormData();
-        const appendField = (k, v) => sourceForm.append(k, v ?? '');
-        appendField('project_name', projectName);
-        appendField('source_name', config?.name);
-        appendField('source_type', config?.type);
-        appendField('port', config?.port);
-        appendField('database', config?.database);
-        appendField('host', config?.host);
-        appendField('username', config?.username);
-        appendField('password', config?.password);
-        appendField('account', config?.account);
-        appendField('warehouse', config?.warehouse);
-        appendField('credentials_base64', config?.credentials_base64);
-        appendField('project', config?.project);
-        appendField('dataset', config?.dataset);
-        appendField('project_dir', projectDir);
-        const sourceRes = await fetch('/api/source/create/', {
-          method: 'POST',
-          body: sourceForm,
-        });
-        const sourceData = await sourceRes.json().catch(() => ({}));
-        if (!sourceRes.ok) {
-          throw new Error(sourceData.message || 'Failed to connect to the data source.');
-        }
-        const source = sourceData.source;
-
-        let dashboard = null;
-        if (config?.file) {
-          const uploadForm = new FormData();
-          uploadForm.append('file', config.file);
-          uploadForm.append('project_dir', projectDir);
-          uploadForm.append('source_type', config?.type);
-          const uploadRes = await fetch('/api/source/upload/', {
-            method: 'POST',
-            body: uploadForm,
-          });
-          const uploadData = await uploadRes.json().catch(() => ({}));
-          if (!uploadRes.ok) {
-            throw new Error(uploadData.message || 'Failed to upload the file.');
-          }
-          dashboard = uploadData.dashboard;
-        }
-
-        const finalizeRes = await fetch('/api/project/finalize/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            project_name: projectName,
-            project_dir: projectDir,
-            sources: [source],
-            dashboards: dashboard ? [dashboard] : [],
-          }),
-        });
-        if (!finalizeRes.ok) {
-          const data = await finalizeRes.json().catch(() => ({}));
-          throw new Error(data.message || 'Failed to finalize the project.');
-        }
-
+        const saved = await saveSource(name, config);
+        if (!saved.success) throw new Error(saved.error || 'Failed to save the source.');
         handleConnected(config?.type || 'unknown');
         return { success: true };
       } catch (err) {
         setErrorMessage(err.message || 'Failed to connect the source.');
-        return { success: false, message: err.message };
+        return { success: false, error: err.message };
       } finally {
         setSourceSaving(false);
       }
     },
-    [projectDir, projectName, handleConnected]
+    [saveSource, handleConnected]
+  );
+
+  const handleFileImported = useCallback(
+    config => handleConnected(config?.type || 'file'),
+    [handleConnected]
   );
 
   // Render current step
@@ -302,6 +256,7 @@ export default function OnboardingFlow() {
       <Start
         role={role}
         onConnectClick={() => setShowSourceModal(true)}
+        onFileImported={handleFileImported}
         onSamplePick={handleSamplePick}
         onStartEmpty={handleSkip}
         onTakeTour={goNext}
@@ -378,8 +333,7 @@ export default function OnboardingFlow() {
               data-testid="onb-concept-continue"
               style={{ boxShadow: '0 10px 30px -12px rgba(0,0,0,0.25)' }}
             >
-              {isLastStep ? 'Pick a sample' : 'Continue'}{' '}
-              <span style={{ opacity: 0.7 }}>→</span>
+              {isLastStep ? 'Pick a sample' : 'Continue'} <span style={{ opacity: 0.7 }}>→</span>
             </button>
           </div>
         )}
@@ -453,7 +407,6 @@ export default function OnboardingFlow() {
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
