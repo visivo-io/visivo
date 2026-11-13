@@ -1,9 +1,8 @@
 /**
- * Project files: list, upload, inspect and import.
+ * Project files: list and upload.
  * Contract: docs/contracts/project-files-and-credentials.md
  */
 import { getUrl } from '../contexts/URLContext';
-import { runOnDemandJob } from './jobs';
 import { withProjectId } from './projectScope';
 import { apiFetch } from './utils';
 
@@ -76,37 +75,3 @@ export const uploadProjectFile = async (file, { sha256 = null, projectId = null,
   await sendUploadContent(upload.transfer, file, { signal });
   return completeUpload(upload.upload_id, { projectId });
 };
-
-const runImportJob = async (body, projectId) => {
-  const response = await postJson(withProjectId(getUrl('projectFileImports'), projectId), body);
-  return runOnDemandJob(
-    jobId => withProjectId(getUrl('projectFileImportJob', { jobId }), projectId),
-    response
-  );
-};
-
-/** Preview a file without creating anything. Resolves `{ok, result: {file, tables}, error}`. */
-export const inspectProjectFile = ({ path, versionId = null, options = {}, projectId = null }) =>
-  runImportJob(
-    { action: 'inspect', path, ...(versionId && { version_id: versionId }), options },
-    projectId
-  );
-
-/** Create a draft source from a file. Resolves `{ok, result: {file, source, tables}, error}`. */
-export const importProjectFile = ({
-  path,
-  versionId = null,
-  sourceName,
-  options = {},
-  projectId = null,
-}) =>
-  runImportJob(
-    {
-      action: 'import',
-      path,
-      ...(versionId && { version_id: versionId }),
-      source_name: sourceName,
-      options,
-    },
-    projectId
-  );

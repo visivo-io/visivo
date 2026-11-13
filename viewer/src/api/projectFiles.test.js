@@ -1,10 +1,4 @@
-import {
-  importProjectFile,
-  inspectProjectFile,
-  listProjectFiles,
-  ProjectFileError,
-  uploadProjectFile,
-} from './projectFiles';
+import { listProjectFiles, ProjectFileError, uploadProjectFile } from './projectFiles';
 import { apiFetch } from './utils';
 
 jest.mock('./utils', () => ({ apiFetch: jest.fn() }));
@@ -15,8 +9,6 @@ jest.mock('../contexts/URLContext', () => ({
       projectFiles: '/api/project-files/',
       projectFileUploads: '/api/project-files/uploads/',
       projectFileUploadComplete: `/api/project-files/uploads/${params.uploadId}/complete/`,
-      projectFileImports: '/api/project-file-imports/',
-      projectFileImportJob: `/api/project-file-imports/${params.jobId}/`,
     })[key],
 }));
 
@@ -112,69 +104,5 @@ describe('uploadProjectFile', () => {
 
     expect(error.code).toBe('too_large');
     expect(apiFetch).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('file import jobs', () => {
-  it('inspects a file and polls the job', async () => {
-    const tables = [{ name: 'sales_q3', columns: [], rows: [], row_count: 0 }];
-    apiFetch
-      .mockResolvedValueOnce(respond(202, { job_id: 'j1', status: 'queued' }))
-      .mockResolvedValueOnce(
-        respond(200, { job_id: 'j1', status: 'completed', result: { file: fileVersion, tables } })
-      );
-
-    const result = await inspectProjectFile({
-      path: 'files/sales_q3.csv',
-      versionId: 'fv_1',
-      projectId: 'p1',
-    });
-
-    expect(result).toMatchObject({ ok: true, result: { tables } });
-    expect(JSON.parse(apiFetch.mock.calls[0][1].body)).toEqual({
-      action: 'inspect',
-      path: 'files/sales_q3.csv',
-      version_id: 'fv_1',
-      options: {},
-    });
-    expect(apiFetch.mock.calls[1][0]).toBe('/api/project-file-imports/j1/?project_id=p1');
-  });
-
-  it('imports a file as a named source', async () => {
-    apiFetch
-      .mockResolvedValueOnce(respond(202, { job_id: 'j2', status: 'queued' }))
-      .mockResolvedValueOnce(
-        respond(200, {
-          job_id: 'j2',
-          status: 'completed',
-          result: { file: fileVersion, source: { name: 'sales_q3' }, tables: [] },
-        })
-      );
-
-    const result = await importProjectFile({
-      path: 'files/sales_q3.csv',
-      sourceName: 'sales_q3',
-      options: { header: true },
-    });
-
-    expect(result.result.source.name).toBe('sales_q3');
-    expect(JSON.parse(apiFetch.mock.calls[0][1].body)).toEqual({
-      action: 'import',
-      path: 'files/sales_q3.csv',
-      source_name: 'sales_q3',
-      options: { header: true },
-    });
-  });
-
-  it('reports a failed import as an outcome, not an exception', async () => {
-    apiFetch
-      .mockResolvedValueOnce(respond(202, { job_id: 'j3', status: 'queued' }))
-      .mockResolvedValueOnce(
-        respond(200, { job_id: 'j3', status: 'failed', error: 'Row 4 has 3 columns, expected 2.' })
-      );
-
-    const result = await importProjectFile({ path: 'files/bad.csv', sourceName: 'bad' });
-
-    expect(result).toMatchObject({ ok: false, error: 'Row 4 has 3 columns, expected 2.' });
   });
 });
