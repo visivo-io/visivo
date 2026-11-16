@@ -701,24 +701,6 @@ literals:
   serves:
   - studio
   reason: 'Local onboarding only: writes an example project to disk. The cloud creates projects through /api/projects/draft/.'
-- path: /api/source/create/
-  verbs:
-  - POST
-  serves:
-  - studio
-  cloud_equivalent: /api/sources/
-- path: /api/source/upload/
-  verbs:
-  - POST
-  serves:
-  - studio
-  cloud_equivalent: /api/files/
-- path: /api/project/finalize/
-  verbs:
-  - POST
-  serves:
-  - studio
-  cloud_equivalent: /api/projects/draft/
 
 # Flask /api/ routes the viewer never calls but that still need tracking, each
 # with who calls it.
@@ -752,3 +734,12 @@ server_only:
   reason: Data by content hash. The CLI reads these during `visivo deploy`.
 - path: /api/files/{}/{}/
   reason: Run-scoped form of the path above.
+- path: /api/source/create/
+  reason: Legacy onboarding route. Onboarding now saves sources as drafts through
+    sourceDetail. VIS-1266 removes it.
+- path: /api/source/upload/
+  reason: Legacy onboarding upload. Onboarding now uploads through
+    projectFileUploads. VIS-1266 removes it.
+- path: /api/project/finalize/
+  reason: Legacy onboarding route that rewrote project.visivo.yml. Nothing calls
+    it since onboarding saves drafts. VIS-1266 removes it.

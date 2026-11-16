@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PERSONA_CONTENT, SAMPLES } from '../concepts';
+import { DataArt, ExampleArt } from './StartArt';
+import UploadFile, { UPLOAD_ICON } from './UploadFile';
 
 const ICONS = {
   example: (
@@ -14,6 +16,7 @@ const ICONS = {
       <path d="M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0" />
     </>
   ),
+  upload: UPLOAD_ICON,
 };
 
 function Icon({ name }) {
@@ -31,7 +34,7 @@ function SampleArt({ kind }) {
     return (
       <svg viewBox="0 0 100 60" aria-hidden="true">
         {[16, 25, 22, 34, 30, 44, 40, 51].map((h, i) => (
-          <rect key={i} x={6 + i * 11} y={56 - h} width="7" height={h} rx="1.5" fill="#713b57" />
+          <rect key={i} x={6 + i * 11} y={56 - h} width="7" height={h} rx="1.5" fill="var(--color-primary-500)" />
         ))}
       </svg>
     );
@@ -42,7 +45,7 @@ function SampleArt({ kind }) {
         <polyline
           points="6,50 20,40 32,44 46,30 58,36 72,19 84,25 96,9"
           fill="none"
-          stroke="#d25946"
+          stroke="var(--color-highlight-500)"
           strokeWidth="2"
         />
       </svg>
@@ -51,7 +54,7 @@ function SampleArt({ kind }) {
   return (
     <svg viewBox="0 0 100 60" aria-hidden="true">
       {[18, 40, 26, 15, 35, 21, 41, 30, 12].map((y, i) => (
-        <circle key={i} cx={8 + i * 10} cy={y} r="2.8" fill="#713b57" opacity={0.6} />
+        <circle key={i} cx={8 + i * 10} cy={y} r="2.8" fill="var(--color-primary-500)" opacity={0.6} />
       ))}
     </svg>
   );
@@ -63,6 +66,8 @@ function PathCard({
   id,
   title,
   lines,
+  art,
+  cta,
   openPath,
   onOpen,
   disabled,
@@ -88,6 +93,7 @@ function PathCard({
         onClick={() => onOpen(id)}
         data-testid={`onb-path-${id}`}
       >
+        <span className="onb-door__hero">{art}</span>
         <Icon name={id} />
         <span className="onb-door__text">
           <span className="onb-door__title">{title}</span>
@@ -96,9 +102,9 @@ function PathCard({
               {line}
             </span>
           ))}
-        </span>
-        <span className="onb-door__arrow" aria-hidden="true">
-          ↗
+          <span className="onb-door__cta" aria-hidden="true">
+            {cta} <span className="onb-door__cta-arrow">→</span>
+          </span>
         </span>
       </button>
       {isOpen && (
@@ -117,6 +123,7 @@ function PathCard({
 export default function Start({
   role,
   onConnectClick,
+  onFileImported,
   onSamplePick,
   onStartEmpty,
   onTakeTour,
@@ -125,6 +132,7 @@ export default function Start({
   loadingText,
 }) {
   const [openPath, setOpenPath] = useState(null);
+  const [dataStep, setDataStep] = useState('choose');
 
   useEffect(() => {
     fire('onboarding_data_seen');
@@ -143,6 +151,8 @@ export default function Start({
           id="example"
           title="Example"
           lines={['A ready-to-explore project.', 'See what you can build.']}
+          art={<ExampleArt />}
+          cta="Browse examples"
           panelTitle="Pick an example"
           footnote="A complete project you can edit and make your own."
           openPath={openPath}
@@ -182,31 +192,56 @@ export default function Start({
           id="data"
           title="Your data"
           lines={['Your files. Your databases.', 'Your next answer.']}
-          panelTitle="How would you like to add data?"
+          art={<DataArt />}
+          cta="Add your data"
+          panelTitle={
+            dataStep === 'upload' ? 'Upload a data file' : 'How would you like to add data?'
+          }
           footnote="Start with one source. You can always add more."
           openPath={openPath}
           onOpen={setOpenPath}
           disabled={isLoadingSample}
         >
-          <div className="onb-door__options">
-            <button
-              type="button"
-              className="onb-door__option"
-              disabled={isLoadingSample}
-              onClick={() => {
-                fire('onboarding_data_connect_clicked');
-                onConnectClick();
-              }}
-              data-testid="onb-data-connect"
-            >
-              <Icon name="data" />
-              <span className="onb-door__option-title">Connect a data source</span>
-              <span className="onb-door__option-desc">
-                Connect directly to a database or warehouse.
-              </span>
-              <span className="onb-door__option-foot">Choose a source →</span>
-            </button>
-          </div>
+          {dataStep === 'upload' ? (
+            <UploadFile onBack={() => setDataStep('choose')} onImported={onFileImported} />
+          ) : (
+            <div className="onb-door__options">
+              <button
+                type="button"
+                className="onb-door__option"
+                disabled={isLoadingSample}
+                onClick={() => {
+                  fire('onboarding_data_upload_clicked');
+                  setDataStep('upload');
+                }}
+                data-testid="onb-data-upload"
+              >
+                <Icon name="upload" />
+                <span className="onb-door__option-title">Upload a data file</span>
+                <span className="onb-door__option-desc">
+                  Drop a file. We&rsquo;ll make it ready to query.
+                </span>
+                <span className="onb-door__option-foot">Choose a file →</span>
+              </button>
+              <button
+                type="button"
+                className="onb-door__option"
+                disabled={isLoadingSample}
+                onClick={() => {
+                  fire('onboarding_data_connect_clicked');
+                  onConnectClick();
+                }}
+                data-testid="onb-data-connect"
+              >
+                <Icon name="data" />
+                <span className="onb-door__option-title">Connect a data source</span>
+                <span className="onb-door__option-desc">
+                  Connect directly to a database or warehouse.
+                </span>
+                <span className="onb-door__option-foot">Choose a source →</span>
+              </button>
+            </div>
+          )}
         </PathCard>
       </div>
       {isLoadingSample && (
