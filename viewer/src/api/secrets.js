@@ -5,7 +5,7 @@
 import { getUrl } from '../contexts/URLContext';
 import { withProjectId } from './projectScope';
 import { apiFetch } from './utils';
-import { ENV_VAR_CONTEXT_REGEX } from '../utils/contextString';
+import { ENV_VAR_CONTEXT_REGEX, toEnvRef } from '../utils/contextString';
 
 /** Resolves to the created secret's metadata. A failure carries `status` (409: the key exists). */
 export const createSecret = async (key, value, { projectId = null } = {}) => {
@@ -73,7 +73,7 @@ export const storeTypedSecrets = async (config, { taken = [], projectId = null }
         }
         throw error;
       }
-      source[field] = '${env.' + key + '}';
+      source[field] = toEnvRef(key);
       credentials.push({ field, reference: source[field] });
       break;
     }
