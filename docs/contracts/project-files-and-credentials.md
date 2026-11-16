@@ -39,9 +39,11 @@ VIS-1755 land, the routes they build answer `501`.
 | 404 | `not_found` | Unknown upload, file, version or job, or one from another project |
 | 409 | `upload_closed` | Content sent to an upload that is already complete or expired |
 | 409 | `content_missing` | `complete` called before all bytes arrived |
+| 409 | `already_exists` | Studio: a secret key already in `.env` or the environment |
 | 413 | `too_large` | Declared or received size exceeds `max_bytes` (100 MB) |
 | 422 | `size_mismatch` | Received bytes differ from the declared `size` |
 | 422 | `checksum_mismatch` | Received bytes differ from the declared `sha256` |
+| 500 | `storage_failed` | Studio could not write the project's `.env` |
 | 501 | `not_implemented` | The server does not implement this route yet |
 
 ## Shared shapes
@@ -187,7 +189,8 @@ Request:
 - Cloud errors keep the account API's shape, `{"errors": …}`. For this route the viewer branches
   on the status, not on `code`.
 
-Errors: `400` (bad key or empty value), `404` (cloud: not an account admin), `409` (key exists).
+Errors: `400` (bad key or empty value), `404` (cloud: not an account admin), `409` (key exists),
+`500` (studio: `.env` not writable).
 
 ## Storing a typed credential
 
