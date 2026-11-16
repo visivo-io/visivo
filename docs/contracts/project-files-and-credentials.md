@@ -1,9 +1,9 @@
-# Project files and source credentials
+# Project files and secrets
 
 The API behind shared onboarding's **Upload a file** and **Connect a database** steps (VIS-1802).
 `visivo serve` (Flask) and Visivo Cloud (Django) implement the same requests and responses, so the
 viewer has one code path. Studio serves every route (VIS-1283, VIS-1762, VIS-1764). Until
-VIS-1755 and VIS-1758 land, the cloud answers `501`.
+VIS-1755 lands, the cloud's project-file routes answer `501`.
 
 | urls.js key | Method and path | Served by |
 | -- | -- | -- |
@@ -11,21 +11,22 @@ VIS-1755 and VIS-1758 land, the cloud answers `501`.
 | `projectFileUploads` | `POST /api/project-files/uploads/` | studio, cloud |
 | `projectFileUploadContent` | `PUT /api/project-files/uploads/{uploadId}/content/` | studio (cloud returns a signed storage URL instead) |
 | `projectFileUploadComplete` | `POST /api/project-files/uploads/{uploadId}/complete/` | studio, cloud |
-| `sourceCredentials` | `POST /api/source-credentials/` | studio, cloud |
+| `secrets` | `POST /api/secrets/` | studio, cloud |
 
 ## Common rules
 
 - **Project scope.** Every request carries `?project_id=` when the viewer knows it (`withProjectId`).
   Cloud requires it and answers `400` without it. Studio serves one project and ignores it. The
-  server decides where files and credentials go. No request names a directory, a destination or a
+  server decides where files and secrets go. No request names a directory, a destination or a
   storage key.
 - **Paths.** File paths are project-relative with forward slashes, for example `files/sales.csv`.
   Locally they resolve against the served project root, never the process working directory.
-- **Errors.** Every non-2xx response is `{"error": "<sentence for the user>", "code": "<code>"}`.
+- **Errors.** Every non-2xx response from a project-file route is `{"error": "<sentence for the user>", "code": "<code>"}`.
   The viewer shows `error` as written and branches only on `code`.
-- **Permissions.** Writing needs the Editor role or higher. A Viewer gets `403 forbidden` on every
-  route except `GET /api/project-files/`. Studio has no roles.
-- **Secrets.** Credential values appear only in the `POST /api/source-credentials/` request body.
+- **Permissions.** Writing a file needs the Editor role or higher. A Viewer gets `403 forbidden` on
+  every project-file route except `GET /api/project-files/`. Adding a secret needs an account admin.
+  Studio has no roles.
+- **Secrets.** A secret value appears only in the `POST /api/secrets/` request body.
   No response, job input, job result, log line or telemetry event contains one.
 
 ### Error codes
@@ -38,10 +39,11 @@ VIS-1755 and VIS-1758 land, the cloud answers `501`.
 | 404 | `not_found` | Unknown upload, file, version or job, or one from another project |
 | 409 | `upload_closed` | Content sent to an upload that is already complete or expired |
 | 409 | `content_missing` | `complete` called before all bytes arrived |
+| 409 | `already_exists` | Studio: a secret key already in `.env` or the environment |
 | 413 | `too_large` | Declared or received size exceeds `max_bytes` (100 MB) |
 | 422 | `size_mismatch` | Received bytes differ from the declared `size` |
 | 422 | `checksum_mismatch` | Received bytes differ from the declared `sha256` |
-| 500 | `storage_failed` | The server could not store a credential (`.env` or the secret store) |
+| 500 | `storage_failed` | Studio could not write the project's `.env` |
 | 501 | `not_implemented` | The server does not implement this route yet |
 
 ## Shared shapes
@@ -167,46 +169,49 @@ source uses:
 2. It saves the config as a draft with `POST /api/sources/{name}/`. Nothing is committed.
 3. It may check that the file reads with `POST /api/source-connections/`.
 
-### `POST /api/source-credentials/`
+### `POST /api/secrets/`
 
-Stores a source form's typed credentials and returns the config to test and save instead.
+Stores one secret value under a name. This is the account secret API Visivo Cloud already serves
+(VIS-941, `apps/accounts`); studio serves the same request from the project's `.env`.
 
 Request:
 
 ```json
-{
-  "source": {"name": "warehouse", "type": "postgresql", "host": "db.example.com",
-             "username": "analyst", "password": "typed value"}
-}
+{"key": "WAREHOUSE_PASSWORD", "value": "typed value"}
 ```
 
-`200`:
+`201`: `{"key": "WAREHOUSE_PASSWORD"}`. Cloud also returns the secret's `id` and audit fields.
 
-```json
-{
-  "source": {"name": "warehouse", "type": "postgresql", "host": "db.example.com",
-             "username": "analyst", "password": "${env.WAREHOUSE_PASSWORD}"},
-  "credentials": [
-    {"field": "password", "reference": "${env.WAREHOUSE_PASSWORD}",
-     "storage": "project_env", "created": true}
-  ]
-}
-```
+- `key` is an environment variable name: `^[A-Za-z_][A-Za-z0-9_]*$`.
+- An existing key is never overwritten. It answers `409`.
+- Studio writes the value to the project's `.env`, adds `.env` to `.gitignore`, and makes the value
+  available to the running server at once. Cloud writes it to the account's secret store, and runs
+  receive it as an environment variable.
+- Cloud allows account admins only. The person who creates an account is its admin. Anyone else
+  gets `404`, as on every account admin route. Cloud finds the account from `?project_id=`.
+- Cloud errors keep the account API's shape, `{"errors": …}`. For this route the viewer branches
+  on the status, not on `code`.
 
-- Credential fields are the source type's secret fields: `password`, `credentials_base64` and
-  Snowflake's `private_key_passphrase`. Other fields, `username` included, are returned as sent.
-- A field whose value is already a reference, or is empty, is returned unchanged and not stored.
-  A masked value (`**********`) means "keep the current credential" and is also returned unchanged.
-- `storage` is `project_env` (studio: the project's `.env`, which is kept out of Git) or
-  `account_secret` (cloud: the account's secret store). `created` is false when an identical
-  value was already stored under that reference.
-- A name used by another source's credential is never overwritten. The server picks a new name,
-  such as `WAREHOUSE_PASSWORD_2`, and returns it in `reference`.
-- The viewer then sends the returned `source`, never the typed one, to `POST /api/source-connections/`
-  and `POST /api/sources/{name}/`.
+Errors: `400` (bad key or empty value), `404` (cloud: not an account admin), `409` (key exists),
+`500` (studio: `.env` not writable).
 
-Errors: `400 invalid_request` (also for a config that fails source validation), `403 forbidden`,
-`500 storage_failed`.
+## Storing a typed credential
+
+The source form never sends a typed secret to a connection test or a draft. Before **Test
+connection** and **Save**, the viewer does this for each secret field (`password`,
+`credentials_base64`, `private_key_passphrase`) that holds a typed value:
+
+1. Skip a value that is empty, masked (`**********`, "keep the current one") or already a
+   `${env.NAME}` reference.
+2. Name it `<SOURCE>_<FIELD>` in upper case, with every other character replaced by `_`, for
+   example `WAREHOUSE_PASSWORD`. If the name is in the capabilities' `secret_keys`, or the server
+   answers `409`, try `WAREHOUSE_PASSWORD_2`, then `_3`.
+3. `POST /api/secrets/` with that key and the typed value.
+4. Replace the field's value with `${env.WAREHOUSE_PASSWORD}`.
+
+The viewer then sends that config to `POST /api/source-connections/` and `POST /api/sources/{name}/`.
+If the server answers `404` or `403`, the form says that only an account admin can add a secret,
+and offers the existing secrets instead.
 
 ## Django route names
 
@@ -217,4 +222,5 @@ For `core/api/apps/deploys/urls.py`:
 | `api/project-files/` | `project_file_list` |
 | `api/project-files/uploads/` | `project_file_upload_list` |
 | `api/project-files/uploads/<str:upload_id>/complete/` | `project_file_upload_complete` |
-| `api/source-credentials/` | `source_credentials` |
+
+`api/secrets/` already exists as `secret_list` in `core/api/apps/accounts/urls.py`.

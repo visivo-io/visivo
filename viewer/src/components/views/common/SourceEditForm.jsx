@@ -8,12 +8,7 @@ import { canTestConnection, CONNECTION_TEST_UNAVAILABLE } from './sourceCapabili
 import CircularProgress from '@mui/material/CircularProgress';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import {
-  FormInput,
-  FormFooter,
-  FormAlert,
-  FormLayout,
-} from '../../styled/FormComponents';
+import { FormInput, FormFooter, FormAlert, FormLayout } from '../../styled/FormComponents';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
@@ -21,7 +16,7 @@ import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import SeedsEditor, { sourceTypeSupportsSeeds } from './SeedsEditor';
 import useRenameFlow from '../../../hooks/useRenameFlow';
 import RenameImpactDialog from '../workspace/RenameImpactDialog';
-import { hasTypedSecret, prepareSourceCredentials } from '../../../api/sourceCredentials';
+import { storeTypedSecrets } from '../../../api/secrets';
 
 /**
  * SourceEditForm - Form component for editing/creating sources
@@ -34,8 +29,13 @@ import { hasTypedSecret, prepareSourceCredentials } from '../../../api/sourceCre
  * - onGoBack: Callback to navigate back to parent (for embedded sources)
  */
 const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyChange }) => {
-  const { deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkCommitStatus } =
-    useStore();
+  const {
+    deleteSource,
+    testConnection,
+    connectionStatus,
+    clearConnectionStatus,
+    checkCommitStatus,
+  } = useStore();
   // Tells us whether the serving process shares a filesystem with the project,
   // which is what decides if a file-backed source can be reached at all.
   const capabilities = useStore(state => state.capabilities);
@@ -43,7 +43,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
   // on the secrets page in another tab.
   const refreshCapabilities = useStore(state => state.fetchCapabilities);
   const projectId = useStore(state => state.project?.id ?? null);
-  // What the server stored on the last Test or Save, for the field hints.
+  // What was stored on the last Test or Save, for the field hints.
   const [storedCredentials, setStoredCredentials] = useState([]);
 
   // Form state
@@ -73,8 +73,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
   }, []);
   // Per-object drafts: unsaved edits survive navigating away and reloads.
   // Embedded sources (inline on a model) have no standalone identity.
-  const draftKey =
-    isEditMode && !isEmbedded && source?.name ? `source:${source.name}` : undefined;
+  const draftKey = isEditMode && !isEmbedded && source?.name ? `source:${source.name}` : undefined;
   const { seed, discard, isDirtyAgainst } = useFormBaseline(applyValues, draftKey);
 
   // Initialize form when source changes
@@ -92,7 +91,14 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
         // Fallback for flat source objects — restore the type from the flat
         // object too, otherwise a config-less source renders the "select a
         // source type" placeholder instead of its connection fields.
-        const { name: _, type: __, status: ___, config: ____, _embedded: _____, ...formProps } = source;
+        const {
+          name: _,
+          type: __,
+          status: ___,
+          config: ____,
+          _embedded: _____,
+          ...formProps
+        } = source;
         seed({
           name: source.name || '',
           sourceType: source.type || '',
@@ -169,16 +175,19 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
 
   /**
    * Store typed secrets first, so neither the test job nor the draft ever holds
-   * one. The form then shows the references the server returned.
+   * one. The form then shows the references.
    */
   const prepareCredentials = async config => {
-    if (!config.name || !hasTypedSecret(config)) return config;
-    const { source: prepared, credentials } = await prepareSourceCredentials(config, {
+    if (!config.name) return config;
+    const { source: prepared, credentials } = await storeTypedSecrets(config, {
+      taken: capabilities?.secret_keys ?? [],
       projectId,
     });
+    if (!credentials.length) return config;
     const references = Object.fromEntries(credentials.map(c => [c.field, c.reference]));
     setFormValues(values => ({ ...values, ...references }));
     setStoredCredentials(credentials);
+    refreshCapabilities?.();
     return prepared;
   };
 
@@ -199,10 +208,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
   // A file-backed source only resolves where its file lives. In cloud there is
   // no such file, so the test can only fail in a way that says nothing about
   // the config — don't offer it.
-  const connectionTestable = canTestConnection(
-    { type: sourceType, ...formValues },
-    capabilities
-  );
+  const connectionTestable = canTestConnection({ type: sourceType, ...formValues }, capabilities);
 
   const persist = async nameToSave => {
     setSaving(true);
@@ -293,62 +299,60 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
           />
         )}
 
-          {/* Source Type Selector — switchable even when editing an existing
+        {/* Source Type Selector — switchable even when editing an existing
               source (VIS-1208). The name stays locked (it's the record key), but
               the type isn't: changing it swaps to the new type's connection
               fields below. Only the type-specific values are reset; the name is
               kept. */}
-          <div>
-            <SourceTypeSelector
-              value={sourceType}
-              onChange={type => {
-                setSourceType(type);
-                setFormValues({}); // the old type's fields don't apply to the new one
-              }}
-            />
-            {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
-          </div>
-
-          {/* Dynamic Form Fields */}
-          <SourceFormGenerator
-            sourceType={sourceType}
-            values={formValues}
-            onChange={setFormValues}
-            errors={errors}
-            secretsRequired={capabilities?.secrets_required ?? false}
-            secretKeys={capabilities?.secret_keys ?? []}
-            secretsUrl={capabilities?.secrets_url}
-            onRefreshSecrets={refreshCapabilities}
-            storedCredentials={storedCredentials}
+        <div>
+          <SourceTypeSelector
+            value={sourceType}
+            onChange={type => {
+              setSourceType(type);
+              setFormValues({}); // the old type's fields don't apply to the new one
+            }}
           />
+          {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
+        </div>
 
-          {/* Test Connection sits directly under the connection properties it
+        {/* Dynamic Form Fields */}
+        <SourceFormGenerator
+          sourceType={sourceType}
+          values={formValues}
+          onChange={setFormValues}
+          errors={errors}
+          secretsRequired={capabilities?.secrets_required ?? false}
+          secretKeys={capabilities?.secret_keys ?? []}
+          secretsUrl={capabilities?.secrets_url}
+          onRefreshSecrets={refreshCapabilities}
+          storedCredentials={storedCredentials}
+        />
+
+        {/* Test Connection sits directly under the connection properties it
               tests and above the status it produces — properties, test, result
               — with seeds after, since a seed is not a connection property.
               Not in the footer: that is shared by every object type and no
               other one can test a connection, so a source-only action there
               both widened the footer past a narrow rail and put the button a
               long way from the fields it acts on. */}
-          <div>
-            <ButtonOutline
-              type="button"
-              onClick={handleTestConnection}
-              disabled={
-                !sourceType ||
-                currentConnectionStatus?.status === 'testing' ||
-                !connectionTestable
-              }
-              title={connectionTestable ? undefined : CONNECTION_TEST_UNAVAILABLE}
-              className="text-sm whitespace-nowrap"
-            >
-              Test Connection
-            </ButtonOutline>
-          </div>
+        <div>
+          <ButtonOutline
+            type="button"
+            onClick={handleTestConnection}
+            disabled={
+              !sourceType || currentConnectionStatus?.status === 'testing' || !connectionTestable
+            }
+            title={connectionTestable ? undefined : CONNECTION_TEST_UNAVAILABLE}
+            className="text-sm whitespace-nowrap"
+          >
+            Test Connection
+          </ButtonOutline>
+        </div>
 
-          {/* Connection Status */}
-          {currentConnectionStatus && (
-            <div
-              className={`
+        {/* Connection Status */}
+        {currentConnectionStatus && (
+          <div
+            className={`
             flex items-center gap-2 p-3 rounded-md text-sm
             ${
               currentConnectionStatus.status === 'connected'
@@ -358,46 +362,45 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
                   : 'bg-red-50 text-red-700'
             }
           `}
-            >
-              {currentConnectionStatus.status === 'testing' && (
-                <>
-                  <CircularProgress size={16} />
-                  <span>Testing connection...</span>
-                </>
-              )}
-              {currentConnectionStatus.status === 'connected' && (
-                <>
-                  <CheckCircleIcon fontSize="small" />
-                  <span>Connection successful</span>
-                </>
-              )}
-              {currentConnectionStatus.status === 'failed' && (
-                <>
-                  <ErrorOutlineIcon fontSize="small" />
-                  <span className="min-w-0 break-words [overflow-wrap:anywhere]">
-                    Connection failed: {currentConnectionStatus.error}
-                  </span>
-                </>
-              )}
-            </div>
-          )}
+          >
+            {currentConnectionStatus.status === 'testing' && (
+              <>
+                <CircularProgress size={16} />
+                <span>Testing connection...</span>
+              </>
+            )}
+            {currentConnectionStatus.status === 'connected' && (
+              <>
+                <CheckCircleIcon fontSize="small" />
+                <span>Connection successful</span>
+              </>
+            )}
+            {currentConnectionStatus.status === 'failed' && (
+              <>
+                <ErrorOutlineIcon fontSize="small" />
+                <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                  Connection failed: {currentConnectionStatus.error}
+                </span>
+              </>
+            )}
+          </div>
+        )}
 
-          {/* Seeds — only on source types the backend accepts them on */}
-          {sourceTypeSupportsSeeds(sourceType) && (
-            <div>
-              <SeedsEditor
-                seeds={formValues.seeds}
-                onChange={seeds => setFormValues({ ...formValues, seeds })}
-              />
-              {errors.seeds && <p className="mt-1 text-xs text-red-500">{errors.seeds}</p>}
-            </div>
-          )}
+        {/* Seeds — only on source types the backend accepts them on */}
+        {sourceTypeSupportsSeeds(sourceType) && (
+          <div>
+            <SeedsEditor
+              seeds={formValues.seeds}
+              onChange={seeds => setFormValues({ ...formValues, seeds })}
+            />
+            {errors.seeds && <p className="mt-1 text-xs text-red-500">{errors.seeds}</p>}
+          </div>
+        )}
 
         {saveError && <FormAlert variant="error">{saveError}</FormAlert>}
       </FormLayout>
 
       {rename.dialogProps && <RenameImpactDialog {...rename.dialogProps} />}
-
 
       <FormFooter
         onCancel={isEditMode ? discard : onClose}

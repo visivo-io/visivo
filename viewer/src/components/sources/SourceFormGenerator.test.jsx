@@ -256,9 +256,7 @@ describe('environment variable hint', () => {
   test('after the server stores it, the hint names the variable', () => {
     renderForm({
       values: { password: rawRef('WH_PASSWORD') },
-      storedCredentials: [
-        { field: 'password', reference: rawRef('WH_PASSWORD'), storage: 'project_env' },
-      ],
+      storedCredentials: [{ field: 'password', reference: rawRef('WH_PASSWORD') }],
     });
     expect(screen.getByTestId('password-env-hint')).toHaveTextContent(
       "Saved in this project's .env file as WH_PASSWORD. The project file keeps only the reference."

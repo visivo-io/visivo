@@ -45,8 +45,8 @@ entries:
     serves:
     - studio
     - cloud
-  sourceCredentials:
-    path: /api/source-credentials/
+  secrets:
+    path: /api/secrets/
     verbs:
     - POST
     serves:

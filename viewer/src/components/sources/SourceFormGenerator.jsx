@@ -180,9 +180,8 @@ const SecretHint = ({ field, value, stored }) => {
   if (reference && stored && secretRefName(stored.reference) === reference) {
     return (
       <>
-        Saved in this project&apos;s .env file as{' '}
-        <code className="font-mono">{reference}</code>. The project file keeps only the
-        reference.
+        Saved in this project&apos;s .env file as <code className="font-mono">{reference}</code>.
+        The project file keeps only the reference.
       </>
     );
   }
@@ -220,7 +219,7 @@ const SourceFormGenerator = ({
   // idea which account it is serving.
   secretsUrl,
   onRefreshSecrets,
-  // The server's answer from the last credential preparation: [{field, reference, storage}].
+  // The secrets stored on the last Test or Save: [{field, reference}].
   storedCredentials = [],
 }) => {
   const schema = getSourceSchema(sourceType);
@@ -287,26 +286,26 @@ const SourceFormGenerator = ({
             onRefreshSecrets={onRefreshSecrets}
           />
         ) : (
-        <div key={field.name}>
-          <div className="relative">
-          <input
-            type={getInputType(field)}
-            id={field.name}
-            name={field.name}
-            value={values[field.name] ?? field.default ?? ''}
-            onChange={e => {
-              const val =
-                field.type === 'number'
-                  ? e.target.value
-                    ? Number(e.target.value)
-                    : ''
-                  : field.type === 'port'
-                    ? parsePortInput(e.target.value)
-                    : e.target.value;
-              handleFieldChange(field.name, val);
-            }}
-            placeholder={field.placeholder || ''}
-            className={`
+          <div key={field.name}>
+            <div className="relative">
+              <input
+                type={getInputType(field)}
+                id={field.name}
+                name={field.name}
+                value={values[field.name] ?? field.default ?? ''}
+                onChange={e => {
+                  const val =
+                    field.type === 'number'
+                      ? e.target.value
+                        ? Number(e.target.value)
+                        : ''
+                      : field.type === 'port'
+                        ? parsePortInput(e.target.value)
+                        : e.target.value;
+                  handleFieldChange(field.name, val);
+                }}
+                placeholder={field.placeholder || ''}
+                className={`
               block w-full px-3 py-2.5 text-sm text-gray-900
               bg-white rounded-md border appearance-none
               focus:outline-none focus:ring-2 focus:border-primary-500
@@ -319,30 +318,30 @@ const SourceFormGenerator = ({
                   : 'border-gray-300 focus:ring-primary-500'
               }
             `}
-          />
-          {field.type === 'file' && (
-            <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
-              <FilePicker
-                extensions={field.extensions}
-                label={field.label}
-                onSelect={path => handleFieldChange(field.name, path)}
-                testId={`${field.name}-file-picker`}
               />
-            </div>
-          )}
-          {isMasked(field) && (
-            <button
-              type="button"
-              onClick={() => toggleFieldVisibility(field.name)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-              title={visibleFields[field.name] ? 'Hide' : 'Show'}
-            >
-              {visibleFields[field.name] ? <EyeSlashIcon /> : <EyeIcon />}
-            </button>
-          )}
-          <label
-            htmlFor={field.name}
-            className={`
+              {field.type === 'file' && (
+                <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                  <FilePicker
+                    extensions={field.extensions}
+                    label={field.label}
+                    onSelect={path => handleFieldChange(field.name, path)}
+                    testId={`${field.name}-file-picker`}
+                  />
+                </div>
+              )}
+              {isMasked(field) && (
+                <button
+                  type="button"
+                  onClick={() => toggleFieldVisibility(field.name)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                  title={visibleFields[field.name] ? 'Hide' : 'Show'}
+                >
+                  {visibleFields[field.name] ? <EyeSlashIcon /> : <EyeIcon />}
+                </button>
+              )}
+              <label
+                htmlFor={field.name}
+                className={`
               absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
               bg-white px-1 left-2
               peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
@@ -350,35 +349,37 @@ const SourceFormGenerator = ({
               peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
               ${errors[field.name] ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
             `}
-          >
-            {field.label}
-            {field.required && <span className="text-red-500 ml-0.5">*</span>}
-          </label>
-          </div>
-          {field.type === 'port' && !errors[field.name] && (
-            <p className="mt-1 text-xs text-gray-500">
-              A number or an {toSecretRef('NAME')} reference.
-            </p>
-          )}
-          {errors[field.name] && <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>}
-          {field.type === 'secret' && (
-            <p className="mt-1 text-xs text-gray-500" data-testid={`${field.name}-env-hint`}>
-              <SecretHint
-                field={field}
-                value={values[field.name]}
-                stored={storedCredentials.find(c => c.field === field.name)}
-              />{' '}
-              <a
-                href={ENV_VAR_DOCS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-500 hover:underline"
               >
-                Learn more
-              </a>
-            </p>
-          )}
-        </div>
+                {field.label}
+                {field.required && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
+            </div>
+            {field.type === 'port' && !errors[field.name] && (
+              <p className="mt-1 text-xs text-gray-500">
+                A number or an {toSecretRef('NAME')} reference.
+              </p>
+            )}
+            {errors[field.name] && (
+              <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>
+            )}
+            {field.type === 'secret' && (
+              <p className="mt-1 text-xs text-gray-500" data-testid={`${field.name}-env-hint`}>
+                <SecretHint
+                  field={field}
+                  value={values[field.name]}
+                  stored={storedCredentials.find(c => c.field === field.name)}
+                />{' '}
+                <a
+                  href={ENV_VAR_DOCS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-500 hover:underline"
+                >
+                  Learn more
+                </a>
+              </p>
+            )}
+          </div>
         )
       )}
     </div>
