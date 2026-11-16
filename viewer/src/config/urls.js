@@ -24,9 +24,9 @@ const URL_PATTERNS = {
     // under. POST starts a job, and the job is polled at its own key.
     sourceConnections: '/api/source-connections/',
     sourceConnectionJob: '/api/source-connections/{jobId}/',
-    // Typed credentials go here first; the source config it returns carries
-    // references, and that is what connection tests and saves receive.
-    sourceCredentials: '/api/source-credentials/',
+    // A source form stores each typed credential here, then saves only its
+    // ${env.NAME} reference. Cloud: the account secret store, admins only.
+    secrets: '/api/secrets/',
 
     // ---- Project files --------------------------------------------------
     // docs/contracts/project-files-and-credentials.md. Upload content is sent
