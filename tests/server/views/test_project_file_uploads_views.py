@@ -149,7 +149,7 @@ def test_a_malformed_create_is_an_invalid_request(client, body):
 
 
 def test_an_unlisted_extension_is_unsupported(client):
-    response = start_upload(client, "budget.xlsx")
+    response = start_upload(client, "events.parquet")
 
     assert response.status_code == 400
     assert response.get_json()["code"] == "unsupported_format"
@@ -252,3 +252,91 @@ def test_an_uploaded_file_becomes_a_draft_source_through_the_ordinary_source_sav
     source = flask_app.source_manager.get_source_with_status("sales")
     assert source["status"] == "new"
     assert source["config"]["file"] == "files/sales.csv"
+
+
+def _xlsx_bytes(tmp_path):
+    import duckdb
+
+    path = tmp_path / "fixture.xlsx"
+    connection = duckdb.connect()
+    connection.execute("INSTALL excel")
+    connection.execute("LOAD excel")
+    connection.execute(
+        "COPY (SELECT * FROM (VALUES ('West', 12), ('East', 7), ('North', 3)) t(region, units)) "
+        f"TO '{path}' (FORMAT xlsx, HEADER true)"
+    )
+    connection.close()
+    return path.read_bytes()
+
+
+def _duckdb_bytes(tmp_path):
+    import duckdb
+
+    path = tmp_path / "fixture.duckdb"
+    connection = duckdb.connect(str(path))
+    connection.execute(
+        "CREATE TABLE sales AS SELECT * FROM (VALUES ('West', 12), ('East', 7), ('North', 3)) "
+        "t(region, units)"
+    )
+    connection.close()
+    return path.read_bytes()
+
+
+def _sqlite_bytes(tmp_path):
+    import sqlite3
+
+    path = tmp_path / "fixture.sqlite"
+    connection = sqlite3.connect(path)
+    connection.execute("CREATE TABLE sales (region TEXT, units INTEGER)")
+    connection.executemany(
+        "INSERT INTO sales VALUES (?, ?)", [("West", 12), ("East", 7), ("North", 3)]
+    )
+    connection.commit()
+    connection.close()
+    return path.read_bytes()
+
+
+@pytest.mark.parametrize(
+    "filename, make, config, query",
+    [
+        ("sales.csv", lambda _: CSV, {"type": "csv", "file": None}, 'SELECT * FROM "sales"'),
+        ("sales.xlsx", _xlsx_bytes, {"type": "xls", "file": None}, 'SELECT * FROM "sales"'),
+        (
+            "sales.duckdb",
+            _duckdb_bytes,
+            {"type": "duckdb", "database": None},
+            "SELECT * FROM sales",
+        ),
+        (
+            "sales.sqlite",
+            _sqlite_bytes,
+            {"type": "sqlite", "database": None},
+            "SELECT * FROM sales",
+        ),
+    ],
+)
+def test_each_listed_format_uploads_and_reads_as_its_source_type(
+    client, tmp_path, monkeypatch, filename, make, config, query
+):
+    from visivo.server.source_metadata import validate_source_from_config
+    from pydantic import TypeAdapter
+    from visivo.models.sources.fields import SourceField
+
+    fixtures = tmp_path / "fixtures"
+    fixtures.mkdir()
+    file = upload(client, filename, make(fixtures))
+    listed = {f["format"]: f for f in client.get("/api/project-files/").get_json()["formats"]}
+    assert listed[file["format"]]["source_type"] == config["type"]
+
+    path_key = next(key for key, value in config.items() if value is None)
+    source_config = {**config, "name": "sales", path_key: file["path"]}
+    monkeypatch.chdir(tmp_path)
+
+    assert validate_source_from_config(source_config, str(tmp_path))["status"] == "connected"
+    source = TypeAdapter(SourceField).validate_python(source_config)
+    rows = source.read_sql(query)
+    assert sorted((row["region"], row["units"]) for row in rows) == [
+        ("East", 7),
+        ("North", 3),
+        ("West", 12),
+    ]

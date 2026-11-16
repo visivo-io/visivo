@@ -85,12 +85,14 @@ VIS-1755 lands, the cloud's project-file routes answer `501`.
 }
 ```
 
-`source_type` is the source the viewer creates for the file: `csv` for CSV and TSV files, and the
-file's own type for a `.duckdb` or `.sqlite` database. `options` are the reader settings that
-source type takes. A server lists a format only when it can read it, and the viewer accepts
-exactly the extensions listed. The target set is CSV, Parquet, Lance, XLSX, DuckDB and SQLite;
-each joins the list when a real fixture test passes. Studio lists CSV now. XLSX and Parquet join
-after file seeds (VIS-1282) land, as a `duckdb` source with a file seed.
+`source_type` is the source the viewer creates for the file: `csv` for CSV and TSV files, `xls`
+for an `.xlsx` workbook, and the file's own type for a `.duckdb` or `.sqlite` database. The
+viewer puts the path in `file` for a file source and in `database` for a database file. `options`
+are the reader settings that source type takes. A server lists a format only when it can read it,
+and the viewer accepts exactly the extensions listed. The target set is CSV, Parquet, Lance, XLSX,
+DuckDB and SQLite; each joins the list when a real fixture test passes. Studio lists CSV, XLSX,
+DuckDB (`.duckdb`) and SQLite (`.sqlite`, `.sqlite3`). `.db` is not listed, because DuckDB and
+SQLite both use it.
 
 ## Routes
 

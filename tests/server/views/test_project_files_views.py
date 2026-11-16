@@ -40,7 +40,7 @@ def test_lists_project_relative_files_with_the_file_version_shape(tmp_path, clie
 
     assert response.status_code == 200
     body = response.get_json()
-    assert [f["format"] for f in body["formats"]] == ["csv"]
+    assert [f["format"] for f in body["formats"]] == ["csv", "xlsx", "duckdb", "sqlite"]
     assert body["max_bytes"] == 100 * 1024 * 1024
     assert paths(response) == ["data/budget.xlsx", "files/sales.csv"]
     sales = body["files"][1]

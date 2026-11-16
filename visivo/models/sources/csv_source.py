@@ -1,8 +1,10 @@
 from typing import Literal, Optional, Dict, List, Any
 from visivo.models.sources.base_duckdb_source import BaseDuckdbSource
 from visivo.models.sources.project_root import resolve_project_path
+from visivo.models.sources.seed import sql_string_literal
 from pydantic import Field
 import click
+import glob
 import os
 from visivo.logger.logger import Logger
 
@@ -56,11 +58,11 @@ class CSVFileSource(BaseDuckdbSource):
 
     def _setup_connection(self, connection, **kwargs):
         """Setup the DuckDB connection by creating a view from the CSV file."""
-        path = resolve_project_path(self.file).replace("'", "''")
+        path = sql_string_literal(glob.escape(resolve_project_path(self.file)))
         try:
             connection.execute(f"""
-                CREATE VIEW "{self.name}" AS
-                SELECT * FROM read_csv_auto('{path}', delim='{self.delimiter}', header={str(self.has_header).upper()})
+                CREATE VIEW {self._quote_table(self.name)} AS
+                SELECT * FROM read_csv_auto({path}, delim={sql_string_literal(self.delimiter)}, header={str(self.has_header).upper()})
                 """)
         except Exception as e:
             raise click.ClickException(f"Error setting up CSV view: {e}")
