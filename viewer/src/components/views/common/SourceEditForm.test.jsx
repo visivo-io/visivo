@@ -2,11 +2,11 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SourceEditForm from './SourceEditForm';
 import { fetchRenameImpact, renameResource } from '../../../api/rename';
-import { prepareSourceCredentials } from '../../../api/sourceCredentials';
+import { storeTypedSecrets } from '../../../api/secrets';
 
-jest.mock('../../../api/sourceCredentials', () => ({
-  ...jest.requireActual('../../../api/sourceCredentials'),
-  prepareSourceCredentials: jest.fn(),
+jest.mock('../../../api/secrets', () => ({
+  ...jest.requireActual('../../../api/secrets'),
+  storeTypedSecrets: jest.fn(),
 }));
 
 jest.mock('../../../api/rename', () => ({
@@ -22,6 +22,7 @@ const mockActions = {
   testConnection: jest.fn(),
   clearConnectionStatus: jest.fn(),
   checkCommitStatus: jest.fn(),
+  fetchCapabilities: jest.fn(),
 };
 let mockState;
 jest.mock('../../../stores/store', () => ({
@@ -52,6 +53,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   Object.values(mockActions).forEach(fn => fn.mockResolvedValue({ success: true }));
   mockState = { ...mockActions, connectionStatus: {}, project: { id: 'p1' } };
+  storeTypedSecrets.mockImplementation(async config => ({ source: config, credentials: [] }));
 });
 
 const renderForm = (props = {}) =>
@@ -317,10 +319,6 @@ describe('SourceEditForm — typed credentials (VIS-1764)', () => {
   const DOLLAR = '$';
   const rawRef = name => DOLLAR + '{env.' + name + '}';
   const REF = rawRef('WH_PASSWORD');
-  const prepared = typed => ({
-    source: { ...typed, password: REF },
-    credentials: [{ field: 'password', reference: REF, storage: 'project_env', created: true }],
-  });
 
   const fillPostgres = (password = 'hunter2') => {
     fireEvent.change(screen.getByLabelText(/Source Name/), { target: { value: 'wh' } });
@@ -332,7 +330,14 @@ describe('SourceEditForm — typed credentials (VIS-1764)', () => {
   };
 
   beforeEach(() => {
-    prepareSourceCredentials.mockImplementation(async typed => prepared(typed));
+    storeTypedSecrets.mockImplementation(async config =>
+      config.password !== 'hunter2'
+        ? { source: config, credentials: [] }
+        : {
+            source: { ...config, password: REF },
+            credentials: [{ field: 'password', reference: REF }],
+          }
+    );
   });
 
   test('stores the password before the test, which gets only the reference', async () => {
@@ -341,10 +346,11 @@ describe('SourceEditForm — typed credentials (VIS-1764)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Test Connection' }));
 
     await waitFor(() => expect(mockActions.testConnection).toHaveBeenCalled());
-    expect(prepareSourceCredentials).toHaveBeenCalledWith(
+    expect(storeTypedSecrets).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'wh', password: 'hunter2' }),
-      { projectId: 'p1' }
+      { taken: [], projectId: 'p1' }
     );
+    expect(mockActions.fetchCapabilities).toHaveBeenCalled();
     const tested = mockActions.testConnection.mock.calls[0][0];
     expect(tested.password).toBe(REF);
     expect(JSON.stringify(tested)).not.toContain('hunter2');
@@ -366,19 +372,19 @@ describe('SourceEditForm — typed credentials (VIS-1764)', () => {
   });
 
   test('a failed store shows its error and neither tests nor saves', async () => {
-    prepareSourceCredentials.mockRejectedValue(
-      new Error("Could not save the credentials to the project's .env file.")
+    storeTypedSecrets.mockRejectedValue(
+      new Error("Could not save the secret to the project's .env file.")
     );
     const onSave = jest.fn();
     renderForm({ onSave });
     fillPostgres();
     fireEvent.click(screen.getByRole('button', { name: 'Test Connection' }));
     expect(
-      await screen.findByText("Could not save the credentials to the project's .env file.")
+      await screen.findByText("Could not save the secret to the project's .env file.")
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    await waitFor(() => expect(prepareSourceCredentials).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(storeTypedSecrets).toHaveBeenCalledTimes(2));
     expect(mockActions.testConnection).not.toHaveBeenCalled();
     expect(onSave).not.toHaveBeenCalled();
   });
@@ -391,7 +397,6 @@ describe('SourceEditForm — typed credentials (VIS-1764)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Test Connection' }));
 
       await waitFor(() => expect(mockActions.testConnection).toHaveBeenCalled());
-      expect(prepareSourceCredentials).not.toHaveBeenCalled();
       expect(mockActions.testConnection.mock.calls[0][0].password).toBe(password);
     }
   );

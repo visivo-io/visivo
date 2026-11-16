@@ -6,14 +6,12 @@ import pytest
 from flask import Flask
 
 from visivo.server.views.project_files_views import register_project_files_views
-from visivo.server.views.sources_views import register_source_views
 
 
 def make_client(working_dir):
     app = Flask(__name__)
     flask_app = Mock()
     flask_app._working_dir = working_dir
-    register_source_views(app, flask_app, "/tmp/output")
     register_project_files_views(app, flask_app, "/tmp/output")
     return app.test_client()
 

@@ -22,6 +22,7 @@ from visivo.server.views.model_query_jobs_views import register_model_query_jobs
 from visivo.server.views.profiling_views import register_profiling_views
 from visivo.server.views.project_files_views import register_project_files_views
 from visivo.server.views.project_views import register_project_views
+from visivo.server.views.secrets_views import register_secrets_views
 from visivo.server.views.projects_views import register_projects_views
 from visivo.server.views.commit_views import register_commit_views
 from visivo.server.views.relations_views import register_relations_views
@@ -58,6 +59,7 @@ def register_views(app, flask_app, output_dir):
     register_input_jobs_views(app, flask_app, output_dir)
     register_source_views(app, flask_app, output_dir)
     register_project_files_views(app, flask_app, output_dir)
+    register_secrets_views(app, flask_app, output_dir)
     register_models_views(app, flask_app, output_dir)
     register_model_query_jobs_views(app, flask_app, output_dir)
     register_dimension_views(app, flask_app, output_dir)
