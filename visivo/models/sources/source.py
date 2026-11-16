@@ -134,6 +134,19 @@ class Source(ABC, NamedModel):
         """
         raise NotImplementedError(f"No write_dataframe method implemented for {self.type}")
 
+    def write_file(self, seed: Seed, path: str, replace: bool = True):
+        """Load a ``file`` seed's data at ``path`` (a file or glob) into ``seed.table_name``.
+
+        Reads the file with DuckDB in memory, then writes the rows with
+        ``write_dataframe``. DuckDB-based sources override this to load in place.
+        """
+        import duckdb
+
+        with duckdb.connect(":memory:") as connection:
+            seed.prepare_connection(connection)
+            data_frame = connection.sql(f"SELECT * FROM {seed.reader_sql(path)}").pl()
+        self.write_dataframe(seed.table_name, data_frame, replace=replace)
+
     def table_exists(self, table_name: str) -> bool:
         """Whether ``table_name`` already exists on this source.
 
@@ -170,7 +183,7 @@ class ServerSource(Source):
     )
     seeds: List[Seed] = Field(
         [],
-        description="Commands whose csv output is loaded into tables on this source before any model queries it.",
+        description="Data files, or commands whose csv output, are loaded into tables on this source before any model queries it.",
     )
 
     def _resolve_field(self, field_value) -> Optional[str]:
