@@ -6,14 +6,14 @@ import pytest
 from flask import Flask
 
 from visivo.server.views.project_files_views import register_project_files_views
-from visivo.server.views.sources_views import register_source_views
+from visivo.server.views.secrets_views import register_secrets_views
 
 
 def make_client(working_dir):
     app = Flask(__name__)
     flask_app = Mock()
     flask_app._working_dir = working_dir
-    register_source_views(app, flask_app, "/tmp/output")
+    register_secrets_views(app, flask_app, "/tmp/output")
     register_project_files_views(app, flask_app, "/tmp/output")
     return app.test_client()
 
@@ -40,6 +40,7 @@ def paths(response):
         ("post", "/api/project-files/uploads/", "VIS-1762"),
         ("put", "/api/project-files/uploads/up_1/content/", "VIS-1762"),
         ("post", "/api/project-files/uploads/up_1/complete/", "VIS-1762"),
+        ("post", "/api/secrets/", "VIS-1764"),
     ],
 )
 def test_unbuilt_routes_answer_501_in_the_contract_error_shape(client, method, path, issue):
