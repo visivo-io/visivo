@@ -2,8 +2,8 @@
 
 The API behind shared onboarding's **Upload a file** and **Connect a database** steps (VIS-1802).
 `visivo serve` (Flask) and Visivo Cloud (Django) implement the same requests and responses, so the
-viewer has one code path. Studio serves the file listing (VIS-1283). Until VIS-1762, VIS-1764 and
-VIS-1755 land, the routes they build answer `501`.
+viewer has one code path. Studio serves every route (VIS-1283, VIS-1762, VIS-1764). Until
+VIS-1755 lands, the cloud's project-file routes answer `501`.
 
 | urls.js key | Method and path | Served by |
 | -- | -- | -- |
@@ -39,9 +39,11 @@ VIS-1755 land, the routes they build answer `501`.
 | 404 | `not_found` | Unknown upload, file, version or job, or one from another project |
 | 409 | `upload_closed` | Content sent to an upload that is already complete or expired |
 | 409 | `content_missing` | `complete` called before all bytes arrived |
+| 409 | `already_exists` | Studio: a secret key already in `.env` or the environment |
 | 413 | `too_large` | Declared or received size exceeds `max_bytes` (100 MB) |
 | 422 | `size_mismatch` | Received bytes differ from the declared `size` |
 | 422 | `checksum_mismatch` | Received bytes differ from the declared `sha256` |
+| 500 | `storage_failed` | Studio could not write the project's `.env` |
 | 501 | `not_implemented` | The server does not implement this route yet |
 
 ## Shared shapes
@@ -68,7 +70,8 @@ VIS-1755 land, the routes they build answer `501`.
   Cloud stores private objects keyed by `version_id` behind the same logical path.
 - `version_id` is opaque. It and `sha256` are `null` in a listing for a file that did not arrive
   through upload, such as one copied into the project folder by hand. For such a file
-  `original_filename` equals `filename`, and `created_at` is its last-modified time.
+  `original_filename` equals `filename`, and `created_at` is its last-modified time. Studio keeps
+  upload versions in memory, so after a restart its listing shows every file this way.
 
 **Format**: one entry in the capability list a server advertises.
 
@@ -77,16 +80,17 @@ VIS-1755 land, the routes they build answer `501`.
   "format": "csv",
   "label": "CSV",
   "extensions": [".csv", ".tsv"],
-  "source_type": "duckdb",
+  "source_type": "csv",
   "options": ["header", "delimiter", "encoding"]
 }
 ```
 
-`source_type` is the source the viewer creates for the file: `duckdb` for tabular files, and the
-file's own type for a `.duckdb` or `.sqlite` database. `options` are the reader settings that source
-type takes. A server lists a format only when it can read it, and the
-viewer accepts exactly the extensions listed. The target set is CSV, Parquet, Lance, XLSX, DuckDB
-and SQLite; each joins the list when a real fixture test passes.
+`source_type` is the source the viewer creates for the file: `csv` for CSV and TSV files, and the
+file's own type for a `.duckdb` or `.sqlite` database. `options` are the reader settings that
+source type takes. A server lists a format only when it can read it, and the viewer accepts
+exactly the extensions listed. The target set is CSV, Parquet, Lance, XLSX, DuckDB and SQLite;
+each joins the list when a real fixture test passes. Studio lists CSV now. XLSX and Parquet join
+after file seeds (VIS-1282) land, as a `duckdb` source with a file seed.
 
 ## Routes
 
@@ -160,7 +164,8 @@ There is no import route. After `complete`, the viewer creates the source with t
 source uses:
 
 1. It picks a free source name and builds the config from the file's `path` and its format's
-   `source_type`.
+   `source_type`, for example `{"name": "sales_q3", "type": "csv", "file": "files/sales_q3.csv"}`.
+   A `.tsv` file also sets `"delimiter": "\t"`.
 2. It saves the config as a draft with `POST /api/sources/{name}/`. Nothing is committed.
 3. It may check that the file reads with `POST /api/source-connections/`.
 
@@ -187,7 +192,8 @@ Request:
 - Cloud errors keep the account API's shape, `{"errors": …}`. For this route the viewer branches
   on the status, not on `code`.
 
-Errors: `400` (bad key or empty value), `404` (cloud: not an account admin), `409` (key exists).
+Errors: `400` (bad key or empty value), `404` (cloud: not an account admin), `409` (key exists),
+`500` (studio: `.env` not writable).
 
 ## Storing a typed credential
 
