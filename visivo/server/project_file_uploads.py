@@ -25,6 +25,27 @@ FORMATS = [
         "source_type": "csv",
         "options": ["header", "delimiter", "encoding"],
     },
+    {
+        "format": "xlsx",
+        "label": "Excel",
+        "extensions": [".xlsx"],
+        "source_type": "xls",
+        "options": ["sheet", "header"],
+    },
+    {
+        "format": "duckdb",
+        "label": "DuckDB",
+        "extensions": [".duckdb"],
+        "source_type": "duckdb",
+        "options": [],
+    },
+    {
+        "format": "sqlite",
+        "label": "SQLite",
+        "extensions": [".sqlite", ".sqlite3"],
+        "source_type": "sqlite",
+        "options": [],
+    },
 ]
 
 

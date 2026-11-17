@@ -18,12 +18,16 @@ export function sourceNameFor(filename, taken = []) {
   return name;
 }
 
+const DATABASE_FILE_TYPES = ['duckdb', 'sqlite'];
+
 export function sourceConfigFor(file, formats, name) {
   const format = formats.find(f => f.format === file.format);
+  const type = format?.source_type || file.format;
+  const pathKey = DATABASE_FILE_TYPES.includes(type) ? 'database' : 'file';
   return {
     name,
-    type: format?.source_type || file.format,
-    file: file.path,
+    type,
+    [pathKey]: file.path,
     ...(file.path.toLowerCase().endsWith('.tsv') && { delimiter: '\t' }),
   };
 }

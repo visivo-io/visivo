@@ -17,7 +17,12 @@ describe('sourceNameFor', () => {
 });
 
 describe('sourceConfigFor', () => {
-  const formats = [{ format: 'csv', extensions: ['.csv', '.tsv'], source_type: 'csv' }];
+  const formats = [
+    { format: 'csv', extensions: ['.csv', '.tsv'], source_type: 'csv' },
+    { format: 'xlsx', extensions: ['.xlsx'], source_type: 'xls' },
+    { format: 'duckdb', extensions: ['.duckdb'], source_type: 'duckdb' },
+    { format: 'sqlite', extensions: ['.sqlite', '.sqlite3'], source_type: 'sqlite' },
+  ];
 
   test('a CSV file becomes a csv source on its path', () => {
     expect(sourceConfigFor({ path: 'files/sales.csv', format: 'csv' }, formats, 'sales')).toEqual({
@@ -33,6 +38,25 @@ describe('sourceConfigFor', () => {
       type: 'csv',
       file: 'files/rates.tsv',
       delimiter: '\t',
+    });
+  });
+
+  test('an Excel file becomes an xls source on its path', () => {
+    expect(sourceConfigFor({ path: 'files/plan.xlsx', format: 'xlsx' }, formats, 'plan')).toEqual({
+      name: 'plan',
+      type: 'xls',
+      file: 'files/plan.xlsx',
+    });
+  });
+
+  test.each([
+    ['files/shop.duckdb', 'duckdb'],
+    ['files/shop.sqlite', 'sqlite'],
+  ])('a database file %s becomes a %s source on its database path', (path, format) => {
+    expect(sourceConfigFor({ path, format }, formats, 'shop')).toEqual({
+      name: 'shop',
+      type: format,
+      database: path,
     });
   });
 });

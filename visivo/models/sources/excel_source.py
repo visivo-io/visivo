@@ -2,8 +2,10 @@ from typing import Literal, Optional, Dict, List, Any
 from visivo.models.sources.base_duckdb_source import BaseDuckdbSource
 from pydantic import Field
 import click
+import glob
 import os
 from visivo.logger.logger import Logger
+from visivo.models.sources.project_root import resolve_project_path
 from visivo.models.sources.seed import sql_string_literal
 
 
@@ -51,7 +53,7 @@ class ExcelFileSource(BaseDuckdbSource):
         """Create an in-memory DuckDB connection with the Excel file loaded as a view."""
         try:
             # Check if file exists
-            if not os.path.exists(self.file):
+            if not os.path.exists(resolve_project_path(self.file)):
                 raise click.ClickException(f"Excel file not found: {self.file}")
 
             connection = duckdb.connect(":memory:")
@@ -63,7 +65,8 @@ class ExcelFileSource(BaseDuckdbSource):
 
     def _setup_connection(self, connection, **kwargs):
         """Create a view named after the source over the Excel file."""
-        options = [sql_string_literal(self.file), f"header = {str(bool(self.has_header)).lower()}"]
+        path = glob.escape(resolve_project_path(self.file))
+        options = [sql_string_literal(path), f"header = {str(bool(self.has_header)).lower()}"]
         if self.sheet:
             options.append(f"sheet = {sql_string_literal(self.sheet)}")
         try:
