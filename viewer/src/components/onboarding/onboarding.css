@@ -12,7 +12,8 @@
   --onb-border-default: #e5e7eb;
   --onb-border-strong: #d1d5db;
   --onb-success: #16a34a;
-  --onb-mono: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  --onb-mono:
+    source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
   --onb-ease-out: cubic-bezier(0, 0, 0.2, 1);
   --onb-radius-lg: 0.5rem;
   --onb-radius-2xl: 1rem;
@@ -25,8 +26,8 @@
   inset: 0;
   background: var(--onb-bg-app);
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans',
-    'Droid Sans', 'Helvetica Neue', sans-serif;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   color: var(--onb-fg-primary);
   z-index: 100;
   overflow: hidden;
@@ -333,7 +334,7 @@
   border-radius: 20px;
   border: 1px solid var(--onb-border-default);
   overflow: hidden;
-  box-shadow: 0 24px 50px -28px rgba(113, 59, 87, 0.2);
+  box-shadow: 0 24px 50px -28px rgba(113, 59, 87, 0.20);
 }
 .onb-concept-eyebrow {
   display: inline-flex;
@@ -427,7 +428,7 @@
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 9999px;
   padding: 5px 8px;
-  box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.10);
   z-index: 4;
 }
 .onb-dag--inline {
@@ -468,7 +469,7 @@
   background: rgba(255, 255, 255, 0.95);
 }
 .onb-dag__node--current {
-  transform: scale(1.1);
+  transform: scale(1.10);
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 .onb-dag__node--clickable {
@@ -508,7 +509,7 @@
 .onb-modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(107, 114, 128, 0.3);
+  background: rgba(107, 114, 128, 0.30);
   backdrop-filter: blur(4px);
   z-index: 50;
   display: flex;
@@ -622,13 +623,13 @@
   max-width: calc(100vw - 32px);
   z-index: 60;
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans',
-    'Droid Sans', 'Helvetica Neue', sans-serif;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
 }
 .onb-checklist__card {
   background: #fff;
   border-radius: 14px;
-  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.20);
   border: 1px solid var(--onb-border-default);
   overflow: hidden;
   animation: onbScreenEnter 350ms var(--onb-ease-out) both;
@@ -722,9 +723,7 @@
    themselves. */
 .onb-checklist__check--manual {
   cursor: pointer;
-  transition:
-    border-color 120ms ease,
-    background 120ms ease;
+  transition: border-color 120ms ease, background 120ms ease;
 }
 .onb-checklist__check--manual:hover {
   border-color: var(--onb-success);
@@ -798,23 +797,22 @@
   pointer-events: none;
   border-radius: 12px;
   box-shadow:
-    0 0 0 3px rgba(113, 59, 87, 0.3),
+    0 0 0 3px rgba(113, 59, 87, 0.30),
     0 0 0 6px rgba(113, 59, 87, 0.15),
     0 0 0 9999px rgba(15, 23, 42, 0.04);
   animation: onbCoachPulse 1.6s ease-in-out infinite;
 }
 @keyframes onbCoachPulse {
-  0%,
-  100% {
+  0%, 100% {
     box-shadow:
-      0 0 0 3px rgba(113, 59, 87, 0.3),
+      0 0 0 3px rgba(113, 59, 87, 0.30),
       0 0 0 6px rgba(113, 59, 87, 0.15),
       0 0 0 9999px rgba(15, 23, 42, 0.04);
   }
   50% {
     box-shadow:
       0 0 0 5px rgba(113, 59, 87, 0.45),
-      0 0 0 10px rgba(113, 59, 87, 0.2),
+      0 0 0 10px rgba(113, 59, 87, 0.20),
       0 0 0 9999px rgba(15, 23, 42, 0.04);
   }
 }
@@ -823,11 +821,11 @@
   background: #fff;
   border-radius: 12px;
   border: 1px solid var(--onb-coach-border);
-  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.20);
   padding: 14px 16px 12px;
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans',
-    'Droid Sans', 'Helvetica Neue', sans-serif;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   /* Tooltip body stays pointer-transparent so clicks fall through to
      whatever's underneath (e.g. the FAB menu items when the Coach is
      anchored on the create button). Only the explicit Dismiss link
@@ -943,9 +941,7 @@
   font-family: inherit;
   animation: onbCoachAppear 220ms ease-out both;
   z-index: 70;
-  transition:
-    transform 160ms ease-out,
-    box-shadow 160ms ease-out;
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
 }
 .onb-coach__chip:hover {
   transform: translateY(-1px);
@@ -989,9 +985,7 @@
   animation: onbCoachAppear 220ms ease-out both;
   z-index: 70;
   max-width: 280px;
-  transition:
-    transform 160ms ease-out,
-    box-shadow 160ms ease-out;
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
 }
 /* Up-chip lives at top-LEFT because the post-flow checklist widget
    occupies the top-right corner. Down-chip stays bottom-right — it
