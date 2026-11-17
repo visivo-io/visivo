@@ -219,14 +219,16 @@ describe('OnboardingFlow', () => {
       expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();
     });
 
-    test('a dropped file becomes a draft source and opens the explorer on it', async () => {
+    test('a dropped file becomes a draft source and opens the first session on it', async () => {
       renderFlow();
       openUpload();
       await screen.findByText('CSV files up to 100 MB');
       dropFile(salesFile());
 
       await waitFor(() =>
-        expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
+        expect(mockNavigate).toHaveBeenCalledWith('/agent?first_session=sales_q3_2', {
+          replace: true,
+        })
       );
       expect(uploadProjectFile).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Sales Q3.csv' }),
@@ -499,13 +501,15 @@ describe('OnboardingFlow', () => {
       expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
     });
 
-    test('a connected source is saved as a draft and goes straight to the explorer', async () => {
+    test('a connected source is saved as a draft and goes straight to the first session', async () => {
       renderFlow();
       connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
       await waitFor(() =>
-        expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
+        expect(mockNavigate).toHaveBeenCalledWith('/agent?first_session=demo', { replace: true })
       );
+      expect(readOnboardingState().first_session).toMatchObject({ source: 'demo' });
+      expect(readOnboardingState().first_session.started_at).toBeUndefined();
       expect(storeState.saveSource).toHaveBeenCalledWith('demo', {
         type: 'postgresql',
         name: 'demo',

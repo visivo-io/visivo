@@ -7,6 +7,7 @@ import Concept from './screens/Concept';
 import Start, { ALL_PATHS } from './screens/Start';
 import { fireEvent } from './telemetry';
 import { readOnboardingState, writeOnboardingState } from './onboardingState';
+import { firstSessionPath, recordFirstSessionRequest } from './firstSession';
 import SourceEditForm from '../views/common/SourceEditForm';
 import useStore from '../../stores/store';
 import logo from '../../images/logo.png';
@@ -152,7 +153,7 @@ export default function OnboardingFlow({
   }, [stepIdx, current, showSourceModal]);
 
   const completeAndNavigate = useCallback(
-    ({ destination, path, sample = null, sourceConnected = false }) => {
+    ({ destination, path, sample = null, sourceConnected = false, source = null }) => {
       const totalDurationMs = Date.now() - startTs.current;
       fire('onboarding_completed', {
         path,
@@ -160,8 +161,11 @@ export default function OnboardingFlow({
         source_connected: sourceConnected,
         cloud_connected: false,
       });
+      const base = source
+        ? recordFirstSessionRequest(persisted.current, source)
+        : persisted.current;
       writeOnboardingState({
-        ...persisted.current,
+        ...base,
         completed_at: new Date().toISOString(),
         path,
         sample,
@@ -225,14 +229,16 @@ export default function OnboardingFlow({
     [projectDir, projectName, completeAndNavigate]
   );
 
+  // A ready source goes straight into the AI-led first session (VIS-1759).
   const handleConnected = useCallback(
-    sourceType => {
+    (sourceType, sourceName) => {
       fire('onboarding_data_connect_succeeded', { source_type: sourceType });
       setShowSourceModal(false);
       completeAndNavigate({
-        destination: '/workspace/exploration',
+        destination: sourceName ? firstSessionPath(sourceName) : '/workspace/exploration',
         path: 'data',
         sourceConnected: true,
+        source: sourceName || null,
       });
     },
     [fire, completeAndNavigate]
@@ -245,7 +251,7 @@ export default function OnboardingFlow({
       try {
         const saved = await saveSource(name, config);
         if (!saved.success) throw new Error(saved.error || 'Failed to save the source.');
-        handleConnected(config?.type || 'unknown');
+        handleConnected(config?.type || 'unknown', name);
         return { success: true };
       } catch (err) {
         setErrorMessage(err.message || 'Failed to connect the source.');
@@ -258,7 +264,7 @@ export default function OnboardingFlow({
   );
 
   const handleFileImported = useCallback(
-    config => handleConnected(config?.type || 'file'),
+    config => handleConnected(config?.type || 'file', config?.name),
     [handleConnected]
   );
 
