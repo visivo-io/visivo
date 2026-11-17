@@ -169,6 +169,7 @@ describe('OnboardingFlow', () => {
     test('shows only the paths it can back', () => {
       renderFlow({ paths: CONNECT_ONLY, tour: false, startEmpty: false });
       expect(screen.queryByTestId('onb-path-example')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Try an example/)).not.toBeInTheDocument();
       fireEvent.click(screen.getByTestId('onb-path-data'));
       expect(screen.queryByTestId('onb-data-upload')).not.toBeInTheDocument();
       expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();

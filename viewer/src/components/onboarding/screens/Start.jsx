@@ -167,7 +167,11 @@ export default function Start({
       <div className="onb-start__intro">
         <div className="onb-start__eyebrow">Your first project</div>
         <h1 className="onb-start__h">Start with something to explore.</h1>
-        <p className="onb-start__sub">Try an example, or bring data you already know.</p>
+        <p className="onb-start__sub">
+          {paths.example
+            ? 'Try an example, or bring data you already know.'
+            : 'Bring data you already know.'}
+        </p>
       </div>
       <div
         className={`onb-door ${openPath ? `onb-door--${openPath}` : ''} ${
