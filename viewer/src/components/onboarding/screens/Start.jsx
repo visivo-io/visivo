@@ -34,7 +34,15 @@ function SampleArt({ kind }) {
     return (
       <svg viewBox="0 0 100 60" aria-hidden="true">
         {[16, 25, 22, 34, 30, 44, 40, 51].map((h, i) => (
-          <rect key={i} x={6 + i * 11} y={56 - h} width="7" height={h} rx="1.5" fill="var(--color-primary-500)" />
+          <rect
+            key={i}
+            x={6 + i * 11}
+            y={56 - h}
+            width="7"
+            height={h}
+            rx="1.5"
+            fill="var(--color-primary-500)"
+          />
         ))}
       </svg>
     );
@@ -54,13 +62,24 @@ function SampleArt({ kind }) {
   return (
     <svg viewBox="0 0 100 60" aria-hidden="true">
       {[18, 40, 26, 15, 35, 21, 41, 30, 12].map((y, i) => (
-        <circle key={i} cx={8 + i * 10} cy={y} r="2.8" fill="var(--color-primary-500)" opacity={0.6} />
+        <circle
+          key={i}
+          cx={8 + i * 10}
+          cy={y}
+          r="2.8"
+          fill="var(--color-primary-500)"
+          opacity={0.6}
+        />
       ))}
     </svg>
   );
 }
 
 const DEFAULT_SAMPLE = 'ev-sales';
+
+// Every path a host can offer. The cloud app turns off the ones it cannot back
+// yet, rather than showing a door that fails once opened.
+export const ALL_PATHS = { example: true, upload: true, connect: true };
 
 function PathCard({
   id,
@@ -130,9 +149,11 @@ export default function Start({
   fire,
   isLoadingSample,
   loadingText,
+  paths = ALL_PATHS,
 }) {
   const [openPath, setOpenPath] = useState(null);
   const [dataStep, setDataStep] = useState('choose');
+  const hasAlt = Boolean(onStartEmpty || onTakeTour);
 
   useEffect(() => {
     fire('onboarding_data_seen');
@@ -147,47 +168,49 @@ export default function Start({
         <p className="onb-start__sub">Try an example, or bring data you already know.</p>
       </div>
       <div className={`onb-door ${openPath ? `onb-door--${openPath}` : ''}`}>
-        <PathCard
-          id="example"
-          title="Example"
-          lines={['A ready-to-explore project.', 'See what you can build.']}
-          art={<ExampleArt />}
-          cta="Browse examples"
-          panelTitle="Pick an example"
-          footnote="A complete project you can edit and make your own."
-          openPath={openPath}
-          onOpen={setOpenPath}
-          disabled={isLoadingSample}
-        >
-          {Object.values(SAMPLES).map(s => (
-            <button
-              key={s.name}
-              type="button"
-              className="onb-door__sample"
-              disabled={isLoadingSample}
-              onClick={() => {
-                fire('onboarding_sample_picked', { sample_name: s.name });
-                onSamplePick(s);
-              }}
-              data-testid={`onb-sample-${s.name}`}
-            >
-              <span className="onb-door__art">
-                <SampleArt kind={s.art} />
-              </span>
-              <span className="onb-door__sample-text">
-                <span className="onb-door__sample-title">
-                  {s.title}
-                  {s.name === defaultSample && <span className="onb-door__badge">Suggested</span>}
+        {paths.example && (
+          <PathCard
+            id="example"
+            title="Example"
+            lines={['A ready-to-explore project.', 'See what you can build.']}
+            art={<ExampleArt />}
+            cta="Browse examples"
+            panelTitle="Pick an example"
+            footnote="A complete project you can edit and make your own."
+            openPath={openPath}
+            onOpen={setOpenPath}
+            disabled={isLoadingSample}
+          >
+            {Object.values(SAMPLES).map(s => (
+              <button
+                key={s.name}
+                type="button"
+                className="onb-door__sample"
+                disabled={isLoadingSample}
+                onClick={() => {
+                  fire('onboarding_sample_picked', { sample_name: s.name });
+                  onSamplePick(s);
+                }}
+                data-testid={`onb-sample-${s.name}`}
+              >
+                <span className="onb-door__art">
+                  <SampleArt kind={s.art} />
                 </span>
-                <span className="onb-door__sample-desc">{s.desc}</span>
-                <span className="onb-door__meta">{s.schema}</span>
-              </span>
-              <span className="onb-door__go" aria-hidden="true">
-                →
-              </span>
-            </button>
-          ))}
-        </PathCard>
+                <span className="onb-door__sample-text">
+                  <span className="onb-door__sample-title">
+                    {s.title}
+                    {s.name === defaultSample && <span className="onb-door__badge">Suggested</span>}
+                  </span>
+                  <span className="onb-door__sample-desc">{s.desc}</span>
+                  <span className="onb-door__meta">{s.schema}</span>
+                </span>
+                <span className="onb-door__go" aria-hidden="true">
+                  →
+                </span>
+              </button>
+            ))}
+          </PathCard>
+        )}
         <PathCard
           id="data"
           title="Your data"
@@ -206,40 +229,44 @@ export default function Start({
             <UploadFile onBack={() => setDataStep('choose')} onImported={onFileImported} />
           ) : (
             <div className="onb-door__options">
-              <button
-                type="button"
-                className="onb-door__option"
-                disabled={isLoadingSample}
-                onClick={() => {
-                  fire('onboarding_data_upload_clicked');
-                  setDataStep('upload');
-                }}
-                data-testid="onb-data-upload"
-              >
-                <Icon name="upload" />
-                <span className="onb-door__option-title">Upload a data file</span>
-                <span className="onb-door__option-desc">
-                  Drop a file. We&rsquo;ll make it ready to query.
-                </span>
-                <span className="onb-door__option-foot">Choose a file →</span>
-              </button>
-              <button
-                type="button"
-                className="onb-door__option"
-                disabled={isLoadingSample}
-                onClick={() => {
-                  fire('onboarding_data_connect_clicked');
-                  onConnectClick();
-                }}
-                data-testid="onb-data-connect"
-              >
-                <Icon name="data" />
-                <span className="onb-door__option-title">Connect a data source</span>
-                <span className="onb-door__option-desc">
-                  Connect directly to a database or warehouse.
-                </span>
-                <span className="onb-door__option-foot">Choose a source →</span>
-              </button>
+              {paths.upload && (
+                <button
+                  type="button"
+                  className="onb-door__option"
+                  disabled={isLoadingSample}
+                  onClick={() => {
+                    fire('onboarding_data_upload_clicked');
+                    setDataStep('upload');
+                  }}
+                  data-testid="onb-data-upload"
+                >
+                  <Icon name="upload" />
+                  <span className="onb-door__option-title">Upload a data file</span>
+                  <span className="onb-door__option-desc">
+                    Drop a file. We&rsquo;ll make it ready to query.
+                  </span>
+                  <span className="onb-door__option-foot">Choose a file →</span>
+                </button>
+              )}
+              {paths.connect && (
+                <button
+                  type="button"
+                  className="onb-door__option"
+                  disabled={isLoadingSample}
+                  onClick={() => {
+                    fire('onboarding_data_connect_clicked');
+                    onConnectClick();
+                  }}
+                  data-testid="onb-data-connect"
+                >
+                  <Icon name="data" />
+                  <span className="onb-door__option-title">Connect a data source</span>
+                  <span className="onb-door__option-desc">
+                    Connect directly to a database or warehouse.
+                  </span>
+                  <span className="onb-door__option-foot">Choose a source →</span>
+                </button>
+              )}
             </div>
           )}
         </PathCard>
@@ -250,24 +277,30 @@ export default function Start({
           {loadingText || 'Building the sample…'}
         </div>
       )}
-      <div className="onb-start-alt">
-        <button
-          className="onb-text-link"
-          disabled={isLoadingSample}
-          onClick={onStartEmpty}
-          data-testid="onb-start-empty"
-        >
-          Start with an empty project
-        </button>
-        <button
-          className="onb-text-link"
-          disabled={isLoadingSample}
-          onClick={onTakeTour}
-          data-testid="onb-start-tour"
-        >
-          Take a quick tour
-        </button>
-      </div>
+      {hasAlt && (
+        <div className="onb-start-alt">
+          {onStartEmpty && (
+            <button
+              className="onb-text-link"
+              disabled={isLoadingSample}
+              onClick={onStartEmpty}
+              data-testid="onb-start-empty"
+            >
+              Start with an empty project
+            </button>
+          )}
+          {onTakeTour && (
+            <button
+              className="onb-text-link"
+              disabled={isLoadingSample}
+              onClick={onTakeTour}
+              data-testid="onb-start-tour"
+            >
+              Take a quick tour
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

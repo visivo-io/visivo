@@ -88,10 +88,10 @@ afterEach(() => {
 
 const ROUTER_FUTURE = { v7_startTransition: true, v7_relativeSplatPath: true };
 
-const renderFlow = () =>
+const renderFlow = props =>
   render(
     <MemoryRouter future={ROUTER_FUTURE}>
-      <OnboardingFlow />
+      <OnboardingFlow {...props} />
     </MemoryRouter>
   );
 
@@ -160,6 +160,32 @@ describe('OnboardingFlow', () => {
     openExample();
     expect(screen.getByTestId('onb-path-data')).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByTestId('onb-sample-ev-sales')).toBeInTheDocument();
+  });
+
+  describe('a host that limits the paths', () => {
+    const CONNECT_ONLY = { example: false, upload: false, connect: true };
+
+    test('shows only the paths it can back', () => {
+      renderFlow({ paths: CONNECT_ONLY, tour: false, startEmpty: false });
+      expect(screen.queryByTestId('onb-path-example')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('onb-path-data'));
+      expect(screen.queryByTestId('onb-data-upload')).not.toBeInTheDocument();
+      expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();
+      expect(screen.queryByTestId('onb-start-tour')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('onb-start-empty')).not.toBeInTheDocument();
+    });
+
+    test('openConnect opens the source form straight away', () => {
+      renderFlow({ paths: CONNECT_ONLY, openConnect: true });
+      expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
+    });
+
+    test('in cloud the form says credentials become account secrets', () => {
+      storeState.capabilities = { secrets_required: true };
+      renderFlow({ openConnect: true });
+      expect(screen.getByTestId('onb-source-modal')).toHaveTextContent('account secrets');
+      expect(screen.getByTestId('onb-source-modal')).not.toHaveTextContent('.env');
+    });
   });
 
   describe('upload a data file', () => {
