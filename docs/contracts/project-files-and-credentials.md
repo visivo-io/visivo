@@ -218,6 +218,11 @@ The viewer then sends that config to `POST /api/source-connections/` and `POST /
 If the server answers `404` or `403`, the form says that only an account admin can add a secret,
 and offers the existing secrets instead.
 
+In cloud (`secrets_required: true`), a secret field takes a typed value only when the capabilities
+say `can_create_secrets: true`. Then the field is a masked box, and "Choose an existing secret"
+switches it to the picker over `secret_keys`. Without that key, or when it is `false`, the field is
+the picker only. Studio does not send the key, because there a secret field is always a masked box.
+
 ## Django route names
 
 For `core/api/apps/deploys/urls.py`:
