@@ -170,13 +170,14 @@ export default function OnboardingFlow({
         total_duration_ms: totalDurationMs,
         destination,
       });
-      // Refresh the project so isNewProject flips and Home renders the real app
-      const refreshed = fetchProject ? fetchProject() : Promise.resolve();
+      // Refresh the project so isNewProject flips and Home renders the real app.
+      // A cloud host loaded the draft itself and has no such route.
+      const refreshed = fetchProject && !inCloud ? fetchProject() : Promise.resolve();
       Promise.resolve(refreshed).finally(() => {
         navigate(destination, { replace: true });
       });
     },
-    [navigate, fetchProject, fire]
+    [navigate, fetchProject, fire, inCloud]
   );
 
   const handleSkip = useCallback(() => {

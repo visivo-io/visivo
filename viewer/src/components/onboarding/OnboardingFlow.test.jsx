@@ -197,6 +197,14 @@ describe('OnboardingFlow', () => {
       expect(screen.getByTestId('onb-source-modal')).toHaveTextContent('account secrets');
       expect(screen.getByTestId('onb-source-modal')).not.toHaveTextContent('.env');
     });
+
+    test('in cloud a saved source does not re-read the project from the local route', async () => {
+      storeState.capabilities = { secrets_required: true };
+      renderFlow({ openConnect: true });
+      fireEvent.click(screen.getByText('mock-connect'));
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+      expect(storeState.fetchProject).not.toHaveBeenCalled();
+    });
   });
 
   describe('upload a data file', () => {
