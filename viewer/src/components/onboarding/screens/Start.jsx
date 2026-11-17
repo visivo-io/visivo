@@ -150,10 +150,12 @@ export default function Start({
   isLoadingSample,
   loadingText,
   paths = ALL_PATHS,
+  footer = null,
 }) {
   const [openPath, setOpenPath] = useState(null);
   const [dataStep, setDataStep] = useState('choose');
-  const hasAlt = Boolean(onStartEmpty || onTakeTour);
+  const hasAlt = Boolean(onStartEmpty || onTakeTour || footer);
+  const single = !paths.example;
 
   useEffect(() => {
     fire('onboarding_data_seen');
@@ -167,7 +169,11 @@ export default function Start({
         <h1 className="onb-start__h">Start with something to explore.</h1>
         <p className="onb-start__sub">Try an example, or bring data you already know.</p>
       </div>
-      <div className={`onb-door ${openPath ? `onb-door--${openPath}` : ''}`}>
+      <div
+        className={`onb-door ${openPath ? `onb-door--${openPath}` : ''} ${
+          single ? 'onb-door--single' : ''
+        }`}
+      >
         {paths.example && (
           <PathCard
             id="example"
@@ -299,6 +305,7 @@ export default function Start({
               Take a quick tour
             </button>
           )}
+          {footer}
         </div>
       )}
     </div>

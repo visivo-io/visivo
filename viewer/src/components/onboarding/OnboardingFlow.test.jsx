@@ -3,6 +3,7 @@ import { render, screen, fireEvent, within, waitFor } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 
 import OnboardingFlow, { sampleDestination } from './OnboardingFlow';
+import Start from './screens/Start';
 import useStore from '../../stores/store';
 import { clearOnboardingState, readOnboardingState, writeOnboardingState } from './onboardingState';
 import { clearEventBuffer, getEventBuffer } from './telemetry';
@@ -173,6 +174,15 @@ describe('OnboardingFlow', () => {
       expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();
       expect(screen.queryByTestId('onb-start-tour')).not.toBeInTheDocument();
       expect(screen.queryByTestId('onb-start-empty')).not.toBeInTheDocument();
+    });
+
+    test('a host can add its own link under the paths', () => {
+      render(
+        <MemoryRouter future={ROUTER_FUTURE}>
+          <Start paths={CONNECT_ONLY} fire={() => {}} footer={<a href="/cli">Use the CLI</a>} />
+        </MemoryRouter>
+      );
+      expect(screen.getByRole('link', { name: 'Use the CLI' })).toBeInTheDocument();
     });
 
     test('openConnect opens the source form straight away', () => {
