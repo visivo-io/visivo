@@ -2,8 +2,8 @@
 
 The API behind shared onboarding's **Upload a file** and **Connect a database** steps (VIS-1802).
 `visivo serve` (Flask) and Visivo Cloud (Django) implement the same requests and responses, so the
-viewer has one code path. Studio serves every route (VIS-1283, VIS-1762, VIS-1764). Until
-VIS-1755 lands, the cloud's project-file routes answer `501`.
+viewer has one code path. Studio serves every route (VIS-1283, VIS-1762, VIS-1764). The cloud
+serves them too (VIS-1755).
 
 | urls.js key | Method and path | Served by |
 | -- | -- | -- |
@@ -67,7 +67,10 @@ VIS-1755 lands, the cloud's project-file routes answer `501`.
   with `_`, no leading dot, at most 120 characters, extension lowercased.
 - A completed file is never overwritten. If `files/sales.csv` exists, the next upload of
   `sales.csv` becomes `files/sales-2.csv`. A path therefore names one version for its whole life.
-  Cloud stores private objects keyed by `version_id` behind the same logical path.
+  Cloud stores private objects keyed by `version_id` behind the same logical path. A cloud file
+  belongs to the account, so every project and branch in it sees the same `files/` folder. Before
+  a cloud run, connection test, query or profile, the runner downloads the files its source
+  configs name to the same relative paths and checks each one's `sha256`.
 - `version_id` is opaque. It and `sha256` are `null` in a listing for a file that did not arrive
   through upload, such as one copied into the project folder by hand. For such a file
   `original_filename` equals `filename`, and `created_at` is its last-modified time. Studio keeps
