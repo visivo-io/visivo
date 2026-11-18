@@ -69,7 +69,7 @@ export const storeTypedSecrets = async (config, { taken = [], projectId = null }
       } catch (error) {
         if (error.status === 409 && n < MAX_ATTEMPTS) continue;
         if (error.status === 403 || error.status === 404) {
-          error.message = 'Only an account admin can add a secret. Choose an existing one instead.';
+          error.message = 'Your role cannot add a secret. Choose an existing one instead.';
         }
         throw error;
       }

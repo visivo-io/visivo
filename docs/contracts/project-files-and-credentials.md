@@ -24,7 +24,8 @@ serves them too (VIS-1755).
 - **Errors.** Every non-2xx response from a project-file route is `{"error": "<sentence for the user>", "code": "<code>"}`.
   The viewer shows `error` as written and branches only on `code`.
 - **Permissions.** Writing a file needs the Editor role or higher. A Viewer gets `403 forbidden` on
-  every project-file route except `GET /api/project-files/`. Adding a secret needs an account admin.
+  every project-file route except `GET /api/project-files/`. Adding a secret needs the Editor role
+  or higher.
   Studio has no roles.
 - **Secrets.** A secret value appears only in the `POST /api/secrets/` request body.
   No response, job input, job result, log line or telemetry event contains one.
@@ -192,12 +193,13 @@ Request:
 - Studio writes the value to the project's `.env`, adds `.env` to `.gitignore`, and makes the value
   available to the running server at once. Cloud writes it to the account's secret store, and runs
   receive it as an environment variable.
-- Cloud allows account admins only. The person who creates an account is its admin. Anyone else
-  gets `404`, as on every account admin route. Cloud finds the account from `?project_id=`.
+- Cloud allows editors, maintainers and admins to add a secret. A viewer gets `404`, as on every
+  account admin route. Listing, changing and deleting secrets stay with admins. Cloud finds the
+  account from `?project_id=`.
 - Cloud errors keep the account API's shape, `{"errors": …}`. For this route the viewer branches
   on the status, not on `code`.
 
-Errors: `400` (bad key or empty value), `404` (cloud: not an account admin), `409` (key exists),
+Errors: `400` (bad key or empty value), `404` (cloud: a viewer), `409` (key exists),
 `500` (studio: `.env` not writable).
 
 ## Storing a typed credential
@@ -215,7 +217,7 @@ connection** and **Save**, the viewer does this for each secret field (`password
 4. Replace the field's value with `${env.WAREHOUSE_PASSWORD}`.
 
 The viewer then sends that config to `POST /api/source-connections/` and `POST /api/sources/{name}/`.
-If the server answers `404` or `403`, the form says that only an account admin can add a secret,
+If the server answers `404` or `403`, the form says that the user cannot add a secret,
 and offers the existing secrets instead.
 
 In cloud (`secrets_required: true`), a secret field takes a typed value only when the capabilities
