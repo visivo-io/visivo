@@ -2,7 +2,11 @@ from pathlib import Path
 from typing import Literal, Optional, List, Any
 from visivo.models.base.base_model import BaseModel
 from visivo.models.sources.base_duckdb_source import BaseDuckdbSource
-from visivo.models.sources.database_file import DatabaseFileMixin
+from visivo.models.sources.database_file import (
+    DatabaseFileMixin,
+    is_remote_database,
+    remote_database_alias,
+)
 from visivo.models.sources.source import ServerSource
 from pydantic import Field, PrivateAttr
 import click
@@ -44,6 +48,18 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
                     connection_pool_size: 2
             ```
 
+        === "Read-only over https"
+
+            ``` yaml
+                sources:
+                  - name: ev_sales_db
+                    type: duckdb
+                    database: https://example.com/samples/ev_sales.duckdb
+            ```
+
+            The database is attached read-only under its file name (`ev_sales`), so seeds
+            cannot write to it.
+
     !!! note
 
         Recommended environment variable use is covered in the [sources overview.](/topics/sources/)
@@ -82,6 +98,8 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
             Logger.instance().debug(f"Getting connection for {self.name}, read_only={read_only}")
 
             database_path = self.database
+            if is_remote_database(database_path):
+                return self._connect_remote(duckdb, database_path)
             if working_dir:
                 database_path = str(working_dir / Path(self.database))
 
@@ -118,6 +136,23 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
             raise click.ClickException(
                 f"Error connecting to source '{self.name}'. Ensure the database exists and the connection properties are correct. Full Error: {str(err)}"
             )
+
+    def _connect_remote(self, duckdb, url):
+        """Attach a database served over http(s) read-only and make it the default catalog.
+
+        Cloud has no project files yet, so a sample reads its database this way. Writes,
+        seeds included, fail: the attached database is read-only.
+        """
+        alias = remote_database_alias(url)
+        connection = duckdb.connect(":memory:")
+        try:
+            quoted_url = url.replace("'", "''")
+            connection.execute(f"ATTACH '{quoted_url}' AS \"{alias}\" (READ_ONLY)")
+            connection.execute(f'USE "{alias}"')
+        except Exception:
+            connection.close()
+            raise
+        return connection
 
     def _setup_connection(self, connection, **kwargs):
         """Setup the DuckDB connection with after_connect commands and attachments."""
