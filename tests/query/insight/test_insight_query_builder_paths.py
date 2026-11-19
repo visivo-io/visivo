@@ -331,3 +331,20 @@ class TestQueryBasedInputValueType:
         os.remove(os.path.join(str(tmpdir), "schemas", "users.json"))
         query = "?{ SELECT name FROM ${ref(users)} }"
         assert builder._query_based_input_value_type(self._input(query)) == "unknown"
+
+
+class TestTheDefaultDatabaseOfTheSource:
+    def _default_database(self, tmpdir, database):
+        from visivo.models.sources.duckdb_source import DuckdbSource
+
+        source = DuckdbSource(name="lake", type="duckdb", database=database)
+        insight = Insight(name="i", props=InsightProps(type="bar", x="?{ ${ref(orders).id} }"))
+        return _builder(tmpdir, insight, [_orders(source)], source).default_database
+
+    def test_a_ducklake_database_gives_no_default_database(self, tmpdir):
+        database = {"catalog": "ducklake:sqlite:local/catalog.sqlite"}
+
+        assert self._default_database(tmpdir, database) is None
+
+    def test_a_string_database_passes_through(self, tmpdir):
+        assert self._default_database(tmpdir, "local/file.duckdb") == "local/file.duckdb"

@@ -9,6 +9,8 @@ in practice it guessed again and again.
 import re
 from functools import lru_cache
 
+from visivo.query.patterns import is_valid_name
+
 _PYDANTIC_LINK = re.compile(r"\s*For further information visit https://errors\.pydantic\.dev\S*")
 
 # Set by the parser on every object, never written by an author.
@@ -103,7 +105,9 @@ def generic_hints(type_key, problems):
             refused.setdefault(loc[:-1], []).append(loc[-1])
         elif problem.get("type") == "string_pattern_mismatch" and loc and loc[-1] == "Ref":
             given = problem.get("input")
-            name = given.strip() if isinstance(given, str) and given.strip() else "name"
+            name = (
+                given.strip() if isinstance(given, str) and is_valid_name(given.strip()) else "name"
+            )
             field = next((part for part in reversed(loc[:-1]) if isinstance(part, str)), None)
             target = f"`{field}`" if field else "This field"
             hints.append(

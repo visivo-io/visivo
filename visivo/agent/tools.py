@@ -189,6 +189,17 @@ def _agent_config(app, type_key, arguments):
     return _source_reference(app, type_key, config), model
 
 
+def _error_text(error):
+    """A validation error without the secrets that pydantic repeats from the config."""
+    from pydantic import ValidationError
+
+    if isinstance(error, ValidationError):
+        from visivo.models.sources.ducklake import validation_error_text
+
+        return validation_error_text(error)
+    return str(error)
+
+
 def _validate_handler(type_key):
     def handler(app, arguments):
         config, model = _agent_config(app, type_key, arguments)
@@ -318,7 +329,7 @@ _INTERACTION_FIELDS = ("filter", "split", "sort")
 
 def _invalid_text(type_key, error):
     hints = "".join(f"\nHint: {hint}" for hint in _write_hints(type_key, error))
-    return f"{clean_message(error)}{hints}"
+    return f"{clean_message(_error_text(error))}{hints}"
 
 
 def _write_hints(type_key, error):
