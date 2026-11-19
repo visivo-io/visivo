@@ -331,6 +331,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack, onDirtyCh
           onChange={setFormValues}
           errors={errors}
           secretsRequired={capabilities?.secrets_required ?? false}
+          canTypeSecrets={capabilities?.can_create_secrets ?? false}
           secretKeys={capabilities?.secret_keys ?? []}
           secretsUrl={capabilities?.secrets_url}
           onRefreshSecrets={refreshCapabilities}
