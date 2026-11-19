@@ -980,6 +980,33 @@ class TestSchemaFromSqlQuotedSourceColumns:
         with pytest.raises(click.ClickException, match="Unknown column: Nope"):
             schema_from_sql("duckdb", f'SELECT z."Nope" {self.JOIN}', self.SCHEMA, "m")
 
+    @pytest.mark.parametrize("dialect", ["duckdb", "postgres", "snowflake", "sqlite"])
+    def test_a_quoted_column_that_needs_quotes_keeps_its_case(self, dialect):
+        """A header like ``Date found`` or ``Company/Platform`` can only be named
+        quoted, and the schema keeps its case, so the reference must too."""
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        schema = {
+            "gigs": {
+                "Date found": "DATE",
+                "Company/Platform": "VARCHAR",
+                "Status (checked Nov 3)": "VARCHAR",
+                "Role": "VARCHAR",
+            }
+        }
+        sql = (
+            'SELECT "Date found" AS date_found, "Company/Platform" AS company, '
+            '"Status (checked Nov 3)" AS status, "Role" AS role FROM gigs'
+        )
+        result = schema_from_sql(dialect, sql, schema, "m")
+
+        assert result["m"] == {
+            "date_found": "DATE",
+            "company": "VARCHAR",
+            "status": "VARCHAR",
+            "role": "VARCHAR",
+        }
+
     def test_a_nested_schema_is_searched_for_source_columns(self):
         from visivo.query.sqlglot_utils import schema_from_sql
 

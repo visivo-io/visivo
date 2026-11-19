@@ -24,11 +24,12 @@ describe('sourceConfigFor', () => {
     { format: 'sqlite', extensions: ['.sqlite', '.sqlite3'], source_type: 'sqlite' },
   ];
 
-  test('a CSV file becomes a csv source on its path', () => {
+  test('a CSV file becomes a csv source on its path, with tidy column names', () => {
     expect(sourceConfigFor({ path: 'files/sales.csv', format: 'csv' }, formats, 'sales')).toEqual({
       name: 'sales',
       type: 'csv',
       file: 'files/sales.csv',
+      normalize_names: true,
     });
   });
 
@@ -38,14 +39,16 @@ describe('sourceConfigFor', () => {
       type: 'csv',
       file: 'files/rates.tsv',
       delimiter: '\t',
+      normalize_names: true,
     });
   });
 
-  test('an Excel file becomes an xls source on its path', () => {
+  test('an Excel file becomes an xls source on its path, with tidy column names', () => {
     expect(sourceConfigFor({ path: 'files/plan.xlsx', format: 'xlsx' }, formats, 'plan')).toEqual({
       name: 'plan',
       type: 'xls',
       file: 'files/plan.xlsx',
+      normalize_names: true,
     });
   });
 
