@@ -151,8 +151,7 @@ class CloudApi:
         return response.json() or []
 
     def run_logs(self, run_id):
-        """A run's captured output, which core keeps out of the runs list.
-        Empty on failure, like ``runs``."""
+        """A run's build output from core's logs endpoint, since the runs list leaves it out. "" if core does not answer."""
         url = f"{self.base_url}{RUN_LOGS.format(run_id=run_id)}"
         response = self.session.get(url, timeout=FETCH_TIMEOUT_SECONDS)
         if response.status_code != 200:

@@ -226,7 +226,7 @@ def _validate_handler(type_key):
 
 
 def _host_run_outcome(app):
-    """``"ran"`` when the host started a build for the save, as core does."""
+    """For a host that builds on save (cloud): "ran" if its newest run is queued or running, else None."""
     manager = getattr(app, "run_manager", None)
     if manager is None:
         return None
