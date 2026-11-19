@@ -96,18 +96,29 @@ describe('dismissing onboarding hides every prompt', () => {
     expectNoPrompts();
   });
 
-  test.each([{ checklist_dismissed: true }, { path: 'skipped' }])(
-    'a fresh project does not clear a saved opt-out %j', extra => {
+  const renderOnboarding = () => {
+    useStore.mockImplementation(selector => selector({ isNewProject: false }));
+    render(
+      <MemoryRouter future={ROUTER_FUTURE}>
+        <Onboarding />
+      </MemoryRouter>
+    );
+  };
+
+  test('starting an empty project closes /onboarding and keeps the opt-out', () => {
+    seedState({ path: 'skipped', checklist_dismissed: true });
+    const before = readOnboardingState();
+    renderOnboarding();
+    expect(screen.queryByTestId('onboarding-flow')).not.toBeInTheDocument();
+    expect(readOnboardingState()).toEqual(before);
+  });
+
+  test.each([{ path: 'sample' }, { path: 'data' }, { checklist_dismissed: true }])(
+    '/onboarding opens again after %j',
+    extra => {
       seedState(extra);
-      const before = readOnboardingState();
-      useStore.mockImplementation(selector => selector({ isNewProject: true }));
-      render(
-        <MemoryRouter future={ROUTER_FUTURE}>
-          <Onboarding />
-        </MemoryRouter>
-      );
-      expect(screen.queryByTestId('onboarding-flow')).not.toBeInTheDocument();
-      expect(readOnboardingState()).toEqual(before);
+      renderOnboarding();
+      expect(screen.getByTestId('onboarding-flow')).toBeInTheDocument();
     }
   );
 });

@@ -4,11 +4,28 @@
    localStorage under a stable key. The CLI/server can later sync from
    localStorage if needed. */
 
-const KEY = 'visivo.onboarding.v1';
+const BASE_KEY = 'visivo.onboarding.v1';
+
+// Every project served on one origin (localhost:3000) shares localStorage, so
+// state is kept per project once the store knows which project is open.
+let scope = null;
+
+// Local serve identifies a project by its file; the cloud by its id.
+export function onboardingScopeFor(project) {
+  return project?.project_file_path || project?.id || null;
+}
+
+export function setOnboardingScope(nextScope) {
+  scope = nextScope || null;
+}
+
+export function onboardingKey() {
+  return scope ? `${BASE_KEY}:${scope}` : BASE_KEY;
+}
 
 export function readOnboardingState() {
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.localStorage.getItem(onboardingKey());
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -18,7 +35,7 @@ export function readOnboardingState() {
 
 export function writeOnboardingState(state) {
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(state));
+    window.localStorage.setItem(onboardingKey(), JSON.stringify(state));
     // Same-tab localStorage updates don't fire `storage` events, so
     // notify any subscribed React hooks via a custom event. The Coach
     // + checklist progress hook listen for this so a new action flag
@@ -31,7 +48,7 @@ export function writeOnboardingState(state) {
 
 export function clearOnboardingState() {
   try {
-    window.localStorage.removeItem(KEY);
+    window.localStorage.removeItem(onboardingKey());
   } catch {
     /* ignore */
   }
@@ -43,9 +60,13 @@ export function hasCompletedOnboarding() {
 }
 
 export function isOnboardingDismissed(state = readOnboardingState()) {
-  // Older skips only recorded the path. Honor them without requiring users
-  // to dismiss a second time after updating the viewer.
+  // Older skips only recorded the path.
   return !!(state && (state.checklist_dismissed || state.path === 'skipped'));
+}
+
+/* Only "Start with an empty project" closes /onboarding for a project. */
+export function hasOptedOutOfOnboarding(state = readOnboardingState()) {
+  return !!(state && state.path === 'skipped');
 }
 
 /* Record a user-initiated onboarding action (model saved, insight saved,
