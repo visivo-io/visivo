@@ -234,7 +234,12 @@ describe('OnboardingFlow', () => {
         expect.objectContaining({ name: 'Sales Q3.csv' }),
         expect.objectContaining({ projectId: null })
       );
-      const config = { name: 'sales_q3_2', type: 'csv', file: 'files/Sales_Q3.csv' };
+      const config = {
+        name: 'sales_q3_2',
+        type: 'csv',
+        file: 'files/Sales_Q3.csv',
+        normalize_names: true,
+      };
       expect(testSourceConnection).toHaveBeenCalledWith(config);
       expect(storeState.saveSource).toHaveBeenCalledWith('sales_q3_2', config);
       expect(readOnboardingState()).toMatchObject({ path: 'data', source_connected: true });
