@@ -33,7 +33,7 @@ from typing import Dict, get_args
 from visivo.agent import images
 from visivo.agent.actions import caller, log as action_log
 from visivo.agent.charting.schema import Intent
-from visivo.agent.data_tools import DATA_TOOLS
+from visivo.agent.data_tools import CATALOG_TOOLS, DATA_TOOLS
 from visivo.agent.schema import SchemaSlicer
 from visivo.agent.screenshot import SCREENSHOT_TOOLS
 from visivo.agent.tool_types import Tool, ToolError, reads, writes  # noqa: F401 — re-exported
@@ -1056,7 +1056,7 @@ _HAND_WRITTEN = {
 # Hand-written, and named so the "generated from the type map" property can be
 # checked against the generated ones alone. Keep this list short: 133 routes is
 # a menu, not a toolset, and a wide surface makes agents worse.
-_SPECIAL_TOOLS = {**_HAND_WRITTEN, **DATA_TOOLS, **SCREENSHOT_TOOLS}
+_SPECIAL_TOOLS = {**_HAND_WRITTEN, **CATALOG_TOOLS, **DATA_TOOLS, **SCREENSHOT_TOOLS}
 SPECIAL_TOOL_NAMES = frozenset(_SPECIAL_TOOLS)
 
 

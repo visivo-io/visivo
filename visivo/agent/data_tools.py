@@ -7,6 +7,7 @@ bytes because they land in a model's context.
 """
 
 import json
+from time import monotonic
 
 import sqlglot
 from sqlglot import exp
@@ -17,9 +18,10 @@ from visivo.jobs.run_model_data_job import (
     QueryTimeout,
     execute_and_get_result,
 )
+from visivo.models.base.context_string import ContextString
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.validators.models_have_sources_validator import missing_source_message
-from visivo.query.patterns import extract_ref_names
+from visivo.query.patterns import extract_ref_names, ref_name
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.services.draft_insight import (
     DraftInsightError,
@@ -116,19 +118,25 @@ def _rows_payload(columns, rows, truncated=False):
 
 def _within_bytes(payload):
     """Drop rows from the end until the JSON fits ``MAX_RESULT_BYTES``."""
+    _trim_rows(payload, MAX_RESULT_BYTES - len(json.dumps({**payload, "rows": []}, default=str)))
+    return payload
+
+
+def _trim_rows(payload, budget):
+    """Drop rows from the end until they fit ``budget`` bytes; the bytes kept."""
     rows = payload["rows"]
-    budget = MAX_RESULT_BYTES - len(json.dumps({**payload, "rows": []}, default=str))
-    keep = 0
+    used = keep = 0
     for row in rows:
-        budget -= len(json.dumps(row, default=str)) + 2
-        if budget < 0:
+        size = len(json.dumps(row, default=str)) + 2
+        if used + size > budget:
             break
+        used += size
         keep += 1
     if keep < len(rows):
         payload["rows"] = rows[:keep]
         payload["row_count"] = keep
         payload["truncated"] = True
-    return payload
+    return used
 
 
 # --- query_source ------------------------------------------------------------
@@ -559,7 +567,11 @@ def _preview_insight_handler(app, arguments):
     if not isinstance(input_values, dict):
         raise ToolError("'input_values' must map input names to selections.")
     limit = _clamp(arguments, "limit", MAX_PREVIEW_INSIGHT_ROWS)
+    return _within_bytes(_insight_rows(app, config, input_values, limit))
 
+
+def _insight_rows(app, config, input_values, limit):
+    """The rows a chart draws for the insight ``config``, inputs filled in."""
     substituted = {}
     try:
         config = substitute_inputs(app, config, input_values, substituted)
@@ -600,7 +612,7 @@ def _preview_insight_handler(app, arguments):
         )
     if warnings:
         payload["warnings"] = warnings
-    return _within_bytes(payload)
+    return payload
 
 
 # --- describe_source ---------------------------------------------------------
@@ -698,6 +710,289 @@ def _preview_table_handler(app, arguments):
     payload = _rows_payload(result.get("columns") or [], rows, truncated=len(rows) >= limit)
     payload.update(source=source.name, table=table)
     return payload
+
+
+# --- list_charts_and_dashboards / get_chart_or_dashboard_data ------------------
+
+# One call can read every insight of a dashboard, so the whole answer has a
+# budget of bytes and of seconds on top of each query's own.
+MAX_SAVED_RESULT_BYTES = 96_000
+SAVED_DATA_BUDGET_S = 20
+
+
+def _saved(app, manager_name):
+    manager = getattr(app, manager_name, None)
+    if manager is None:
+        return []
+    objects = [obj for obj in manager.get_all_objects_list() if obj is not None]
+    return sorted(objects, key=lambda obj: obj.name or "")
+
+
+def _spec(obj):
+    return obj.model_dump(exclude_none=True, mode="json")
+
+
+def _reference(value):
+    """The text of a ``ref(name)`` or ``${ref(name)}`` value; ``None`` for an
+    object written in line."""
+    if isinstance(value, (str, ContextString)):
+        return str(value)
+    return None
+
+
+def _named(app, manager_name, value):
+    """``(name, object)`` for a reference or an object written in line."""
+    text = _reference(value)
+    if text is None:
+        return getattr(value, "name", None), value
+    name = ref_name(text) or text.strip()
+    return name, from_manager(app, manager_name, name)
+
+
+def _dashboard_items(app, dashboard):
+    """``(charts, tables)`` the dashboard shows, each ``{name: object}`` in
+    reading order. An object the dashboard names that does not exist is ``None``."""
+    charts, tables = {}, {}
+    if callable(getattr(dashboard, "item_names", None)):
+        for name in dashboard.item_names():
+            for manager_name, found in (("chart_manager", charts), ("table_manager", tables)):
+                obj = from_manager(app, manager_name, name)
+                if obj is not None:
+                    found.setdefault(name, obj)
+        return charts, tables
+
+    def walk(rows):
+        for row in rows or []:
+            for item in getattr(row, "items", None) or []:
+                for field, manager_name, found in (
+                    ("chart", "chart_manager", charts),
+                    ("table", "table_manager", tables),
+                ):
+                    value = getattr(item, field, None)
+                    if value is not None:
+                        name, obj = _named(app, manager_name, value)
+                        if name:
+                            found.setdefault(name, obj)
+                walk(getattr(item, "rows", None))
+
+    walk(getattr(dashboard, "rows", None))
+    return charts, tables
+
+
+def _chart_insights(app, chart):
+    """``[(name, insight)]`` for a chart, in the order it draws them."""
+    return [
+        _named(app, "insight_manager", value) for value in getattr(chart, "insights", None) or []
+    ]
+
+
+def _chart_title(chart):
+    title = (_spec(chart).get("layout") or {}).get("title")
+    if isinstance(title, dict):
+        title = title.get("text")
+    return title if isinstance(title, str) and title.strip() else None
+
+
+def _host_labels(app):
+    """The project's name, and its branch on a host that has branches."""
+    labels = {
+        "project": getattr(getattr(app, "project", None), "name", None)
+        or getattr(app, "project_name", None),
+        "branch": getattr(app, "branch_name", None),
+    }
+    return {key: value for key, value in labels.items() if value}
+
+
+def _without_empty(entry):
+    return {key: value for key, value in entry.items() if value not in (None, [], "")}
+
+
+def _list_charts_and_dashboards_handler(app, arguments):
+    shown_on = {}
+    dashboards = []
+    for dashboard in _saved(app, "dashboard_manager"):
+        charts, tables = _dashboard_items(app, dashboard)
+        for chart_name in charts:
+            shown_on.setdefault(chart_name, []).append(dashboard.name)
+        dashboards.append(
+            _without_empty(
+                {
+                    "name": dashboard.name,
+                    "description": getattr(dashboard, "description", None),
+                    "charts": list(charts),
+                    "tables": list(tables),
+                }
+            )
+        )
+    charts = [
+        _without_empty(
+            {
+                "name": chart.name,
+                "title": _chart_title(chart),
+                "insights": [name for name, _ in _chart_insights(app, chart)],
+                "dashboards": shown_on.get(chart.name),
+            }
+        )
+        for chart in _saved(app, "chart_manager")
+    ]
+    return {
+        **_host_labels(app),
+        "dashboards": dashboards,
+        "charts": charts,
+        "next": "Pass a 'type' and a 'name' from here to get_chart_or_dashboard_data.",
+    }
+
+
+def _table_data(app, table):
+    """``(kind, name, object)`` for what a table reads: an insight or a model."""
+    name = None
+    fields = [getattr(table, "data", None)]
+    for many in ("columns", "rows", "values"):
+        fields += getattr(table, many, None) or []
+    for value in fields:
+        if value is None:
+            continue
+        text = _reference(value)
+        if text is None:
+            kind = "insight" if hasattr(value, "props") else "model"
+            return kind, value.name, value
+        name = ref_name(text)
+        if not name:
+            continue
+        insight = from_manager(app, "insight_manager", name)
+        if insight is not None:
+            return "insight", name, insight
+        model = find_model(app, name)
+        if model is not None:
+            return "model", name, model
+    return None, name, None
+
+
+def _model_rows(app, name, model, limit):
+    sql = getattr(model, "sql", None)
+    source = source_for_model(app, model, app.output_dir) or _default_source(app)
+    if source is None or not isinstance(sql, str) or not sql.strip():
+        raise ToolError(f"Model '{name}' has no SQL on a source to read.")
+    # One row past the limit, so `truncated` says whether the model has more.
+    bounded = guard_read_only(sql, source.get_sqlglot_dialect(), limit + 1)
+    result = execute_and_get_result(
+        source, bounded, max_rows=limit, timeout_s=AGENT_QUERY_TIMEOUT_S
+    )
+    return _rows_payload(result["columns"], result["rows"], truncated=result["truncated"])
+
+
+class _SavedData:
+    """Reads each insight or model once, however many charts and tables use it."""
+
+    def __init__(self, app, input_values, limit):
+        self._app = app
+        self._input_values = input_values
+        self._limit = limit
+        self._deadline = monotonic() + SAVED_DATA_BUDGET_S
+        self.datasets = {}
+
+    def insight(self, name, insight):
+        def read():
+            config = {**_spec(insight), "name": name}
+            return _insight_rows(self._app, config, self._input_values, self._limit)
+
+        spec = None if insight is None else {**_spec(insight), "name": name}
+        missing = None if insight is not None else f"No insight named '{name}'."
+        self._read(("insight", name), read, spec=spec, missing=missing)
+
+    def table(self, table):
+        kind, name, obj = _table_data(self._app, table)
+        if kind == "insight":
+            self.insight(name, obj)
+            return name
+        if kind == "model":
+            self._read(("model", name), lambda: _model_rows(self._app, name, obj, self._limit))
+            return name
+        return None
+
+    def _read(self, key, read, spec=None, missing=None):
+        if key in self.datasets:
+            return
+        kind, name = key
+        entry = _without_empty({"name": name, "kind": kind, "spec": spec})
+        self.datasets[key] = entry
+        if missing:
+            entry["error"] = missing
+        elif monotonic() > self._deadline:
+            entry["skipped"] = (
+                f"Not read: the call's {SAVED_DATA_BUDGET_S} seconds were used. "
+                "Get this chart on its own."
+            )
+        else:
+            try:
+                rows = read()
+            except Exception as error:
+                entry["error"] = str(error).strip()[:400]
+            else:
+                entry.update({k: v for k, v in rows.items() if k not in ("note", "insight")})
+
+
+def _chart_entry(app, name, chart, reader):
+    if chart is None:
+        return {"name": name, "error": f"No chart named '{name}'."}
+    insights = _chart_insights(app, chart)
+    for insight_name, insight in insights:
+        reader.insight(insight_name, insight)
+    return {"name": name, "spec": _spec(chart), "insights": [n for n, _ in insights]}
+
+
+def _table_entry(name, table, reader):
+    if table is None:
+        return {"name": name, "error": f"No table named '{name}'."}
+    return _without_empty({"name": name, "spec": _spec(table), "data": reader.table(table)})
+
+
+def _fit_datasets(payload):
+    """Trim rows until the whole answer fits ``MAX_SAVED_RESULT_BYTES``. The
+    smallest datasets are served first, so one large table does not empty the rest."""
+    datasets = [entry for entry in payload["data"] if entry.get("rows")]
+    emptied = [{**entry, "rows": []} if "rows" in entry else entry for entry in payload["data"]]
+    budget = MAX_SAVED_RESULT_BYTES - len(json.dumps({**payload, "data": emptied}, default=str))
+    datasets.sort(key=lambda entry: len(json.dumps(entry["rows"], default=str)))
+    for position, entry in enumerate(datasets):
+        share = max(budget, 0) // (len(datasets) - position)
+        budget -= _trim_rows(entry, share)
+    payload["truncated"] = any(entry.get("truncated") for entry in payload["data"])
+    return payload
+
+
+_SAVED_KINDS = {"chart": "chart_manager", "dashboard": "dashboard_manager"}
+
+
+def _get_chart_or_dashboard_data_handler(app, arguments):
+    arguments = arguments or {}
+    kind, name = arguments.get("type"), arguments.get("name")
+    if kind not in _SAVED_KINDS:
+        raise ToolError("'type' is required: 'chart' or 'dashboard'.")
+    if not isinstance(name, str) or not name.strip():
+        raise ToolError("'name' is required. list_charts_and_dashboards names them.")
+    input_values = arguments.get("input_values") or {}
+    if not isinstance(input_values, dict):
+        raise ToolError("'input_values' must map input names to selections.")
+    limit = _clamp(arguments, "limit", MAX_PREVIEW_INSIGHT_ROWS)
+    saved = from_manager(app, _SAVED_KINDS[kind], name)
+    if saved is None:
+        raise ToolError(f"No {kind} named '{name}'. list_charts_and_dashboards names them.")
+
+    reader = _SavedData(app, input_values, limit)
+    payload = {"note": DATA_NOTICE, "type": kind, "name": name, **_host_labels(app)}
+    if kind == "chart":
+        entry = _chart_entry(app, name, saved, reader)
+        payload.update(spec=entry["spec"], insights=entry["insights"])
+    else:
+        charts, tables = _dashboard_items(app, saved)
+        payload.update(
+            spec=_spec(saved),
+            charts=[_chart_entry(app, n, chart, reader) for n, chart in charts.items()],
+            tables=[_table_entry(n, table, reader) for n, table in tables.items()],
+        )
+    payload["data"] = list(reader.datasets.values())
+    return _fit_datasets(payload)
 
 
 DATA_TOOLS = {
@@ -867,5 +1162,55 @@ DATA_TOOLS = {
         },
         handler=_preview_table_handler,
         annotations=reads("Preview table", open_world=True),
+    ),
+    "get_chart_or_dashboard_data": Tool(
+        name="get_chart_or_dashboard_data",
+        description=(
+            "Read one saved chart or dashboard together with the data it draws. "
+            "Returns its spec and, in `data`, each insight it uses: the insight's "
+            f"spec, its rows from the source (at most {MAX_PREVIEW_INSIGHT_ROWS} per "
+            "insight) and `props_mapping`, which says which column feeds which prop. "
+            "A dashboard also returns each chart and table it shows, and each names "
+            "its entries in `data`. Inputs take their defaults, or the "
+            "'input_values' you choose. A dataset that fails or is skipped says why, "
+            "and the others still return. list_charts_and_dashboards names what you "
+            "can read."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "type": {"type": "string", "enum": ["chart", "dashboard"]},
+                "name": {"type": "string", "description": "The chart's or dashboard's name."},
+                "limit": {
+                    "type": "integer",
+                    "description": f"Rows per insight, 1–{MAX_PREVIEW_INSIGHT_ROWS}.",
+                },
+                "input_values": {
+                    "type": "object",
+                    "description": 'Selections per input name, e.g. {"region": "West"} or a list for multi-select.',
+                },
+            },
+            "required": ["type", "name"],
+        },
+        handler=_get_chart_or_dashboard_data_handler,
+        annotations=reads("Get chart or dashboard data", open_world=True),
+    ),
+}
+
+# Reads configuration only, so a host runs it where it runs the per-type tools.
+CATALOG_TOOLS = {
+    "list_charts_and_dashboards": Tool(
+        name="list_charts_and_dashboards",
+        description=(
+            "List the saved charts and dashboards of this project that you can show: "
+            "each dashboard's name, description, charts and tables, and each chart's "
+            "name, title, insights and the dashboards that show it. The result names "
+            "the project, and the branch where the server has branches. Call this "
+            "when someone asks to see a chart or a dashboard, then call "
+            "get_chart_or_dashboard_data for its data."
+        ),
+        input_schema={"type": "object", "properties": {}},
+        handler=_list_charts_and_dashboards_handler,
+        annotations=reads("List charts and dashboards"),
     ),
 }
