@@ -49,7 +49,12 @@ const FIRST_PLACEHOLDER =
 const REPLY_PLACEHOLDER =
   'Reply, or ask for the next change, e.g. “make that a line chart” or “add it to the dashboard”';
 
-const AgentPrompt = () => {
+/**
+ * `autoSend` is sent once, as the first message, when the project has no
+ * conversation yet; `onAutoSent` is told when it goes. Onboarding uses it to
+ * start the first session without a click (VIS-1759).
+ */
+const AgentPrompt = ({ autoSend = null, onAutoSent } = {}) => {
   // Addressed per project, so the same component drives a local loop and a
   // cloud one without knowing which it has.
   const projectId = useStore(state => state.project?.id);
@@ -63,12 +68,21 @@ const AgentPrompt = () => {
   const tick = useRef(null);
   // One idea of "authorized", shared with Deploy (VIS-1377). Until this the
   // tab's answer to a first-time user was the resolver's BYO error.
-  const { authorized, host, working: authorizing, message: authMessage, authorize } =
-    useAuthorization();
+  const {
+    authorized,
+    host,
+    working: authorizing,
+    message: authMessage,
+    authorize,
+  } = useAuthorization();
   // Whether this person has started talking. The resume below must never
   // overwrite a conversation they began while it was still asking the server
   // what the last one was.
   const spokeFirst = useRef(false);
+  // Whether the resume below has finished looking, so an automatic first
+  // message never races a conversation the server already has.
+  const [looked, setLooked] = useState(false);
+  const autoSent = useRef(false);
 
   const stopPolling = useCallback(() => {
     if (timer.current) {
@@ -168,6 +182,8 @@ const AgentPrompt = () => {
         // A project with no agent history is the ordinary case, and a list
         // that cannot be read is not worth interrupting someone with: they
         // came here to ask for something, and Send still works.
+      } finally {
+        if (current) setLooked(true);
       }
     };
     resume();
@@ -176,8 +192,9 @@ const AgentPrompt = () => {
     };
   }, [projectId, poll]);
 
-  const onSend = async () => {
-    const asked = prompt.trim();
+  const onSend = () => send(prompt.trim());
+
+  const send = async asked => {
     if (!asked || starting) return;
     spokeFirst.current = true;
     setStarting(true);
@@ -227,6 +244,18 @@ const AgentPrompt = () => {
     }
   };
 
+  useEffect(() => {
+    if (!autoSend || autoSent.current || !looked || authorized !== true) return;
+    if (session || spokeFirst.current) return;
+    autoSent.current = true;
+    // In the box too, so a refusal (no credit, no key) leaves it there to send
+    // again once that is fixed.
+    setPrompt(autoSend);
+    send(autoSend);
+    onAutoSent?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSend, looked, authorized, session]);
+
   const onStop = async () => {
     if (!session) return;
     try {
@@ -258,10 +287,7 @@ const AgentPrompt = () => {
   }
 
   return (
-    <div
-      className="bg-white border border-gray-200 rounded-lg p-4 mb-4"
-      data-testid="agent-prompt"
-    >
+    <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4" data-testid="agent-prompt">
       {(turns > 0 || ended) && (
         <div className="mb-3">
           {turns > 0 && <Transcript entries={session.transcript} running={running} />}
@@ -338,7 +364,6 @@ const AgentPrompt = () => {
           {notice.text}
         </div>
       )}
-
 
       {modelSource && (
         <div className="mt-2 text-xs text-gray-400" data-testid="agent-model-source">

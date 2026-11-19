@@ -149,6 +149,48 @@ describe('secret fields follow what the server said', () => {
   });
 });
 
+describe('in cloud, a user who may add secrets types the value (VIS-1758)', () => {
+  const cloud = props => renderForm({ secretsRequired: true, canTypeSecrets: true, ...props });
+
+  test('the password is a masked box that says it becomes an account secret', () => {
+    cloud({ secretKeys: [] });
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
+    expect(screen.getByTestId('password-env-hint')).toHaveTextContent(
+      'Stored as an account secret when you test or save'
+    );
+    expect(screen.queryByTestId('password-pick-secret')).not.toBeInTheDocument();
+  });
+
+  test('typing passes the value up, for the form to store as a secret', async () => {
+    const onChange = jest.fn();
+    cloud({ secretKeys: [], onChange });
+    await userEvent.type(screen.getByLabelText('Password'), 'x');
+    expect(onChange).toHaveBeenLastCalledWith({ password: 'x' });
+  });
+
+  test('an existing secret is one click away, and back', async () => {
+    const onChange = jest.fn();
+    cloud({ secretKeys: ['PGPW'], onChange });
+
+    await userEvent.click(screen.getByTestId('password-pick-secret'));
+    expect(screen.getByLabelText('Password')).toBe(screen.getByRole('combobox'));
+
+    await userEvent.click(screen.getByTestId('password-type-secret'));
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
+  });
+
+  test('a reference to a listed secret opens on the picker', () => {
+    cloud({ secretKeys: ['PGPW'], values: { password: rawRef('PGPW') } });
+    expect(screen.getByLabelText('Password')).toBe(screen.getByRole('combobox'));
+  });
+
+  test('without the right to add one, it stays the picker', () => {
+    renderForm({ secretsRequired: true, canTypeSecrets: false, secretKeys: [] });
+    expect(screen.getByLabelText('Password')).toBe(screen.getByRole('combobox'));
+    expect(screen.queryByTestId('password-type-secret')).not.toBeInTheDocument();
+  });
+});
+
 describe('schemas match the visivo source models', () => {
   test('bigquery offers credentials_base64, not a path that does not exist', () => {
     const names = getSourceSchema('bigquery').fields.map(f => f.name);
