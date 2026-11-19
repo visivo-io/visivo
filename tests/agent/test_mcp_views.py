@@ -172,10 +172,10 @@ class TestAnImageResult:
     @pytest.fixture
     def image_tool(self, monkeypatch):
         from visivo.agent.images import image_result
-        from visivo.server.views import mcp_views
+        from visivo.agent import mcp_dispatch
 
         monkeypatch.setattr(
-            mcp_views,
+            mcp_dispatch,
             "call",
             lambda app, name, arguments: image_result(
                 self.PNG, "The dashboard as rendered.", dashboard="overview", width=1280

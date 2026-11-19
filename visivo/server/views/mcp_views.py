@@ -1,8 +1,9 @@
-"""MCP over the tool registry — the bring-your-own-agent half (VIS-1335).
+"""MCP over HTTP — the bring-your-own-agent half (VIS-1335).
 
-Transport, and nothing else. Every behaviour lives in ``visivo.agent.tools``;
-if something has to be implemented here rather than there, the registry is
-wrong. That is the whole point of putting it on ``visivo serve``: the endpoint
+Transport, and nothing else. ``visivo.agent.mcp_dispatch`` answers the
+messages, and the stdio command shares it. Every behaviour lives in
+``visivo.agent.tools``; if something has to be implemented here rather than
+there, the registry is wrong. That is the whole point of putting it on ``visivo serve``: the endpoint
 in front of the managers is the same shape locally and, later, in cloud —
 differing only in host and auth.
 
@@ -16,33 +17,12 @@ The wire surface an HTTP MCP server needs is three JSON-RPC methods, and the
 SDK brings a second web framework (starlette/uvicorn) into a Flask app to get
 them. The trade is a dependency and a server-inside-a-server against writing
 the envelope out. The envelope is written out.
-
-A consequence to accept: a tool that raises is reported as a tool RESULT with
-``isError``, not a JSON-RPC error. That is what the protocol asks for, and it
-is also what an agent needs — a JSON-RPC error ends the call, while an error
-result is something the model can read and correct.
 """
 
 from flask import jsonify, request
 
-from visivo.agent.actions import attributed_to, log as action_log
-from visivo.agent.images import is_image_result
-from visivo.agent.mcp_protocol import (
-    PROTOCOL_VERSION,
-    initialize,
-    json_content,
-    read_resource,
-    resource_list,
-    tool_error,
-    tool_list,
-)
-from visivo.agent.tools import ToolError, call
-
-# JSON-RPC 2.0
-_PARSE_ERROR = -32700
-_INVALID_REQUEST = -32600
-_METHOD_NOT_FOUND = -32601
-_INVALID_PARAMS = -32602
+from visivo.agent.actions import log as action_log
+from visivo.agent.mcp_dispatch import respond
 
 
 def register_mcp_views(app, flask_app):
@@ -66,103 +46,7 @@ def register_mcp_views(app, flask_app):
 
     @app.route("/api/mcp/", methods=["POST"])
     def mcp_api():
-        payload = request.get_json(silent=True)
-        if not isinstance(payload, dict):
-            return _error(None, _PARSE_ERROR, "Expected a JSON-RPC object.")
-
-        method = payload.get("method")
-        request_id = payload.get("id")
-        if not isinstance(method, str):
-            return _error(request_id, _INVALID_REQUEST, "Missing 'method'.")
-
-        # A notification has no id and takes no response body.
-        if request_id is None and method.startswith("notifications/"):
+        reply = respond(flask_app, request.get_json(silent=True))
+        if reply is None:
             return "", 202
-
-        if method == "initialize":
-            return _result(request_id, initialize())
-        # The same skills the built-in loop is given. An external client that
-        # cannot read them is a second, worse agent against the same tools.
-        if method == "resources/list":
-            return _result(request_id, {"resources": resource_list()})
-        if method == "resources/read":
-            # Asking for a resource that does not exist is the caller getting
-            # the protocol wrong, not a tool refusing — so it is a JSON-RPC
-            # error, not an error RESULT. Raising here would have 500'd the
-            # request instead of answering it.
-            try:
-                return _result(request_id, read_resource(payload.get("params") or {}))
-            except ToolError as refused:
-                return _error(request_id, _INVALID_PARAMS, str(refused))
-        if method == "tools/list":
-            return _result(request_id, {"tools": tool_list()})
-        if method == "tools/call":
-            return _result(request_id, _call(flask_app, payload.get("params") or {}))
-
-        return _error(request_id, _METHOD_NOT_FOUND, f"Unknown method '{method}'.")
-
-
-def _call(flask_app, params):
-    name = params.get("name")
-    arguments = params.get("arguments") or {}
-    try:
-        with attributed_to("mcp"):
-            value = call(flask_app, name, arguments)
-    except ToolError as refused:
-        return tool_error(str(refused))
-    except Exception as unexpected:  # noqa: BLE001 — reported, never raised on
-        # Anything the agent could not have anticipated still comes back as a
-        # result: a 500 tells it nothing, and the session is worth keeping.
-        return tool_error(f"{type(unexpected).__name__}: {unexpected}")
-    if is_image_result(value):
-        return {"content": _image_content(value), "isError": False}
-    return {"content": [json_content(value)], "isError": False}
-
-
-def _image_content(result):
-    """The facts as JSON, then the caption and the image as content blocks.
-
-    JSON-encoding the ``ToolReturn`` itself would hand the client the PNG bytes
-    as a several-hundred-kilobyte string it rejects as too large to read.
-    """
-    import base64
-
-    from pydantic_ai.messages import BinaryContent
-
-    blocks = [json_content(result.return_value)]
-    for item in result.content:
-        if isinstance(item, BinaryContent):
-            data = base64.b64encode(item.data).decode("ascii")
-            blocks.append({"type": "image", "data": data, "mimeType": item.media_type})
-        else:
-            blocks.append({"type": "text", "text": str(item)})
-    return blocks
-
-
-def json_content(value):
-    import json
-
-    return {"type": "text", "text": json.dumps(value, default=str)}
-
-
-def tool_error(message):
-    return {"content": [{"type": "text", "text": message}], "isError": True}
-
-
-def _version():
-    try:
-        from visivo.version import VISIVO_VERSION
-
-        return VISIVO_VERSION
-    except Exception:
-        return "unknown"
-
-
-def _result(request_id, result):
-    return jsonify({"jsonrpc": "2.0", "id": request_id, "result": result})
-
-
-def _error(request_id, code, message):
-    return jsonify(
-        {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
-    )
+        return jsonify(reply)
