@@ -20,6 +20,11 @@ from visivo.telemetry.machine_id import get_machine_id
 
 PROFILE_PATH = os.path.expanduser("~/.visivo/profile.yml")
 CALLBACK_RESPONSE_WAIT_TIME = 120
+NON_INTERACTIVE_WAIT_TIME = 600
+RESUME_HINT = (
+    "The authorize page in your browser still works. Run 'visivo authorize' again, "
+    "then click Authorize on that page."
+)
 
 
 def is_interactive() -> bool:
@@ -35,7 +40,14 @@ def is_interactive() -> bool:
     is_flag=True,
     help="Replace an existing token for this host without asking.",
 )
-def authorize(host, replace):
+@click.option(
+    "--timeout",
+    type=click.IntRange(min=1),
+    default=None,
+    help=f"Seconds to wait for the browser callback. Defaults to {CALLBACK_RESPONSE_WAIT_TIME} "
+    f"in a terminal and {NON_INTERACTIVE_WAIT_TIME} without one.",
+)
+def authorize(host, replace, timeout):
     """
     Handles the authorization process.
 
@@ -45,15 +57,19 @@ def authorize(host, replace):
     (at <host>/authorize-device) for testing. The external webapp should eventually
     send a callback to our Flask server.
 
-    The process will wait for up to CALLBACK_RESPONSE_WAIT_TIME seconds for the callback.
-    If the callback is not received, you will be prompted to cancel or continue waiting.
+    In a terminal the process waits up to CALLBACK_RESPONSE_WAIT_TIME seconds for the
+    callback, then asks whether to cancel or continue waiting.
 
     Without a terminal (piped output, CI=true, or an agent running the CLI) the
-    command never prompts: it prints the URL, waits once for the callback, and
-    exits non-zero on timeout. An existing token is kept unless --replace is given.
+    command never prompts: it prints the URL, waits up to NON_INTERACTIVE_WAIT_TIME
+    seconds, and exits non-zero on timeout. The callback address does not change
+    between runs, so a later 'visivo authorize' receives the token from a page
+    opened by an earlier run. An existing token is kept unless --replace is given.
     """
     Logger.instance().stop_spinner()
     interactive = is_interactive()
+    if timeout is None:
+        timeout = CALLBACK_RESPONSE_WAIT_TIME if interactive else NON_INTERACTIVE_WAIT_TIME
 
     existing_token = get_existing_token(host=host)
     if existing_token and not replace:
@@ -107,24 +123,18 @@ def authorize(host, replace):
         )
         Logger.instance().info(full_url)
 
-    Logger.instance().info(
-        f"Waiting for visivo token response (timeout: {CALLBACK_RESPONSE_WAIT_TIME}s)..."
-    )
+    Logger.instance().info(f"Waiting for visivo token response (timeout: {timeout}s)...")
     Logger.instance().info(
         "Please copy and paste the above URL into your logged in visivo browser window if this did not open automatically or if it opened a not authenticated browser."
     )
 
     try:
-        if not token_received_event.wait(CALLBACK_RESPONSE_WAIT_TIME):
+        if not token_received_event.wait(timeout):
             Logger.instance().error("Timeout reached while waiting for callback.")
             if not interactive:
-                raise click.ClickException(
-                    "No token received. Run 'visivo authorize' again to retry."
-                )
+                raise click.ClickException(f"No token received in {timeout}s. {RESUME_HINT}")
             if click.confirm("Do you want to cancel the authorization process?"):
-                Logger.instance().info(
-                    "Authorization cancelled. No token received. To add a token, try running the 'visivo authorize' command again"
-                )
+                Logger.instance().info(f"Authorization cancelled. No token received. {RESUME_HINT}")
                 return
             else:
                 Logger.instance().info("Continuing to wait for token. Press Ctrl+C to cancel.")
