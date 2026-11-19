@@ -4,7 +4,7 @@ import { Navigate } from 'react-router-dom';
 import OnboardingFlow from './OnboardingFlow';
 import useStore from '../../stores/store';
 import Loading from '../common/Loading';
-import { clearOnboardingState, hasCompletedOnboarding, isOnboardingDismissed } from './onboardingState';
+import { hasOptedOutOfOnboarding } from './onboardingState';
 
 const Onboarding = () => {
   const project = useStore(state => state.project);
@@ -16,25 +16,13 @@ const Onboarding = () => {
     if (!project) fetchProject?.();
   }, [project, fetchProject]);
 
-  // If the backend reports a fresh empty project (Home redirects users
-  // here when isNewProject is true), wipe any stale completed_at from a
-  // previous session, unless the user opted out of onboarding. Without this, Home → /onboarding → /
-  // → Home → /onboarding becomes an infinite redirect loop the moment
-  // a user reuses a browser profile across projects.
-  const clearedRef = useRef(false);
-  if (isNewProject === true && hasCompletedOnboarding() && !isOnboardingDismissed() && !clearedRef.current) {
-    clearOnboardingState();
-    clearedRef.current = true;
-  }
+  // Read once the project is known: "Start with an empty project" writes the
+  // opt-out and then navigates itself, and a re-render must not race it.
+  const optedOut = useRef(null);
+  const loading = isOnBoardingLoading || isNewProject === undefined;
+  if (!loading && optedOut.current === null) optedOut.current = hasOptedOutOfOnboarding();
 
-  // Capture once whether onboarding was already completed at mount time.
-  // The flow writes `completed_at` during skip/handoff and then calls
-  // navigate(destination). Re-evaluating hasCompletedOnboarding() on every
-  // render would short-circuit the second render with <Navigate to="/" />
-  // and race the navigate('/editor') call from the flow.
-  const wasCompletedAtMount = useRef(hasCompletedOnboarding());
-
-  if (isOnBoardingLoading || isNewProject === undefined) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen">
         <Loading />
@@ -42,13 +30,7 @@ const Onboarding = () => {
     );
   }
 
-  // Only short-circuit when we're sure the user landed on /onboarding
-  // for a non-fresh project (someone navigated here manually after
-  // already completing it once). Fresh projects restart completed flows,
-  // but preserve an explicit opt-out instead of showing onboarding again.
-  if (wasCompletedAtMount.current && (isNewProject === false || isOnboardingDismissed())) {
-    return <Navigate to="/" replace />;
-  }
+  if (optedOut.current) return <Navigate to="/" replace />;
 
   return <OnboardingFlow />;
 };
