@@ -28,12 +28,13 @@ export function sampleDestination(sample) {
 
 /**
  * `paths` limits the Start screen to the paths the host can back. `openConnect`
- * opens the source form on mount, for a host that asked "Connect a data source"
- * before this flow was mounted. `tour` and `startEmpty` show those links.
+ * opens the source form on mount, and `openUpload` the upload step, for a host
+ * that asked which one before this flow was mounted. `tour` and `startEmpty` show those links.
  */
 export default function OnboardingFlow({
   paths = ALL_PATHS,
   openConnect = false,
+  openUpload = false,
   tour = true,
   startEmpty = true,
 } = {}) {
@@ -283,6 +284,7 @@ export default function OnboardingFlow({
         fire={fire}
         isLoadingSample={sampleLoading}
         loadingText={sampleLoadingText}
+        openUpload={openUpload}
       />
     );
   } else if (current.kind === 'role') {

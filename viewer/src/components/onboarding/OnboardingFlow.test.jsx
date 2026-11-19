@@ -186,6 +186,26 @@ describe('OnboardingFlow', () => {
       expect(screen.getByRole('link', { name: 'Use the CLI' })).toBeInTheDocument();
     });
 
+    test('openUpload opens the upload step straight away', async () => {
+      renderFlow({ openUpload: true });
+      expect(screen.getByRole('heading', { name: 'Upload a data file' })).toBeInTheDocument();
+      expect(await screen.findByText('CSV files up to 100 MB')).toBeInTheDocument();
+    });
+
+    test('a host that handles the upload click is asked before any file call', () => {
+      const onUploadClick = jest.fn();
+      render(
+        <MemoryRouter future={ROUTER_FUTURE}>
+          <Start fire={() => {}} onUploadClick={onUploadClick} />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByText('Add your data'));
+      fireEvent.click(screen.getByTestId('onb-data-upload'));
+      expect(onUploadClick).toHaveBeenCalledTimes(1);
+      expect(listProjectFiles).not.toHaveBeenCalled();
+      expect(screen.queryByRole('heading', { name: 'Upload a data file' })).not.toBeInTheDocument();
+    });
+
     test('openConnect opens the source form straight away', () => {
       renderFlow({ paths: CONNECT_ONLY, openConnect: true });
       expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();

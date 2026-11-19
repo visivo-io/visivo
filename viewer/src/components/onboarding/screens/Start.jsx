@@ -142,6 +142,7 @@ function PathCard({
 export default function Start({
   role,
   onConnectClick,
+  onUploadClick,
   onFileImported,
   onSamplePick,
   onStartEmpty,
@@ -151,9 +152,10 @@ export default function Start({
   loadingText,
   paths = ALL_PATHS,
   footer = null,
+  openUpload = false,
 }) {
-  const [openPath, setOpenPath] = useState(null);
-  const [dataStep, setDataStep] = useState('choose');
+  const [openPath, setOpenPath] = useState(openUpload ? 'data' : null);
+  const [dataStep, setDataStep] = useState(openUpload ? 'upload' : 'choose');
   const hasAlt = Boolean(onStartEmpty || onTakeTour || footer);
   const single = !paths.example;
 
@@ -246,7 +248,8 @@ export default function Start({
                   disabled={isLoadingSample}
                   onClick={() => {
                     fire('onboarding_data_upload_clicked');
-                    setDataStep('upload');
+                    if (onUploadClick) onUploadClick();
+                    else setDataStep('upload');
                   }}
                   data-testid="onb-data-upload"
                 >
