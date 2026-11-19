@@ -33,7 +33,7 @@ class BaseDuckdbSource(Source):
     This includes:
     - DuckDB database files
     - CSV files (via DuckDB's read_csv_auto)
-    - Excel files (via DuckDB's read_csv_auto after conversion)
+    - Excel files (via DuckDB's read_xlsx)
     """
 
     def get_dialect(self):
@@ -94,6 +94,28 @@ class BaseDuckdbSource(Source):
         except Exception as err:
             raise click.ClickException(
                 f"Error writing table '{table_name}' to {self.type} source '{self.name}': {str(err)}"
+            )
+
+    def write_file(self, seed, path: str, replace: bool = True):
+        """Load a ``file`` seed with DuckDB's native reader, straight into this database."""
+        table = self._quote_table(seed.table_name)
+        reader = seed.reader_sql(path)
+        try:
+            with self.connect(read_only=False) as connection:
+                seed.prepare_connection(connection)
+                if replace:
+                    connection.execute(f"CREATE OR REPLACE TABLE {table} AS SELECT * FROM {reader}")
+                else:
+                    connection.execute(
+                        f"CREATE TABLE IF NOT EXISTS {table} AS SELECT * FROM {reader} WHERE FALSE"
+                    )
+                    connection.execute(f"INSERT INTO {table} BY NAME SELECT * FROM {reader}")
+        except click.ClickException:
+            raise
+        except Exception as err:
+            raise click.ClickException(
+                f"Error loading '{seed.file}' into table '{seed.table_name}' on "
+                f"{self.type} source '{self.name}': {err}"
             )
 
     def table_exists(self, table_name: str) -> bool:
