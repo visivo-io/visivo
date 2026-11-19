@@ -29,12 +29,14 @@ export function sampleDestination(sample) {
 /**
  * `paths` limits the Start screen to the paths the host can back. `openConnect`
  * opens the source form on mount, and `openUpload` the upload step, for a host
- * that asked which one before this flow was mounted. `tour` and `startEmpty` show those links.
+ * that asked which one before this flow was mounted. `loadSample` replaces the
+ * local example import for a host that seeds and opens examples itself. `tour` and `startEmpty` show those links.
  */
 export default function OnboardingFlow({
   paths = ALL_PATHS,
   openConnect = false,
   openUpload = false,
+  loadSample = null,
   tour = true,
   startEmpty = true,
 } = {}) {
@@ -202,6 +204,15 @@ export default function OnboardingFlow({
       setSampleLoading(true);
       setSampleLoadingText(`Building ${sample.title}…`);
       setErrorMessage(null);
+      if (loadSample) {
+        try {
+          await loadSample(sample);
+        } catch (err) {
+          setErrorMessage(err.message || 'Failed to import sample.');
+          setSampleLoading(false);
+        }
+        return;
+      }
       try {
         const res = await fetch('/api/project/load_example/', {
           method: 'POST',
@@ -227,7 +238,7 @@ export default function OnboardingFlow({
         setSampleLoading(false);
       }
     },
-    [projectDir, projectName, completeAndNavigate]
+    [projectDir, projectName, completeAndNavigate, loadSample]
   );
 
   // A ready source goes straight into the AI-led first session (VIS-1759).

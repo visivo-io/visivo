@@ -186,6 +186,24 @@ describe('OnboardingFlow', () => {
       expect(screen.getByRole('link', { name: 'Use the CLI' })).toBeInTheDocument();
     });
 
+    test('a host that loads examples itself gets the pick, not the local import', async () => {
+      const loadSample = jest.fn(() => new Promise(() => {}));
+      renderFlow({ loadSample });
+      pickSample('ev-sales');
+      await waitFor(() =>
+        expect(loadSample).toHaveBeenCalledWith(expect.objectContaining({ name: 'ev-sales' }))
+      );
+      expect(global.fetch).not.toHaveBeenCalledWith('/api/project/load_example/', expect.anything());
+    });
+
+    test("a host's example error shows, and the examples can be picked again", async () => {
+      const loadSample = jest.fn().mockRejectedValue(new Error('Sample data has no URL.'));
+      renderFlow({ loadSample });
+      pickSample('ev-sales');
+      expect(await screen.findByText('Sample data has no URL.')).toBeInTheDocument();
+      expect(screen.getByTestId('onb-sample-ev-sales')).not.toBeDisabled();
+    });
+
     test('openUpload opens the upload step straight away', async () => {
       renderFlow({ openUpload: true });
       expect(screen.getByRole('heading', { name: 'Upload a data file' })).toBeInTheDocument();
