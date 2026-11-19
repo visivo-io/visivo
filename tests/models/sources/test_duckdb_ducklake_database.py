@@ -127,6 +127,10 @@ def _source(database, **kwargs):
             DuckLakeAzureStorage,
         ),
         (AZURE_CHAIN, "az://container/lake/", DuckLakeAzureStorage),
+        (AZURE_CHAIN, "azure://container/lake/", DuckLakeAzureStorage),
+        (AZURE_CHAIN, "abfs://container/lake/", DuckLakeAzureStorage),
+        (S3, "s3a://bucket/lake/", DuckLakeS3Storage),
+        (S3, "s3n://bucket/lake/", DuckLakeS3Storage),
         (S3, None, DuckLakeS3Storage),
         (S3, "${env.LAKE_DATA_PATH}", DuckLakeS3Storage),
     ],
@@ -155,11 +159,16 @@ def test_a_ducklake_needs_no_storage_block(data_path):
             "storage type 'gcs' needs a data_path that starts with 'gs://' or 'gcs://'",
         ),
         (S3, "gs://bucket/lake/", "storage type 's3' needs a data_path that starts with 's3://'"),
-        (S3, "local/lake/", "storage type 's3' needs a data_path that starts with 's3://'"),
+        (
+            S3,
+            "local/lake/",
+            "storage type 's3' needs a data_path that starts with 's3://' or 's3a://' or 's3n://'",
+        ),
         (
             AZURE_CONNECTION,
             "s3://bucket/lake/",
-            "storage type 'azure' needs a data_path that starts with 'az://' or 'abfss://'",
+            "storage type 'azure' needs a data_path that starts with "
+            "'az://' or 'azure://' or 'abfss://' or 'abfs://'",
         ),
         (
             AZURE_CHAIN,
@@ -1136,3 +1145,198 @@ def test_a_ducklake_database_on_azure_storage_is_written_then_read(
         reader.read_sql("SELECT sum(amount) FROM orders")
     assert "AuthorizationFailure" in error.value.message
     assert wrong_key not in error.value.message
+
+
+# --- Review fixes: no input value in validation text -------------------------
+
+LONG_SECRET = "Zq7" + "".join(f"{n:02d}xK" for n in range(50))
+AWS_SECRET = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYzEXAMPLEKEY"
+
+LEAKING_STORAGE = [
+    ({"type": "azure", "account_name": "a", "account_key": AWS_SECRET}, AWS_SECRET),
+    ({"type": "s3", "key_id": "AK", "secret_access_key": AWS_SECRET}, AWS_SECRET),
+    ({**S3, "session_token": LONG_SECRET}, LONG_SECRET),
+    ({**S3, "secret": LONG_SECRET}, LONG_SECRET),
+    ({"type": "aws", "key_id": "AK", "secret": AWS_SECRET}, AWS_SECRET),
+    ({"key_id": "AK", "secret": AWS_SECRET}, AWS_SECRET),
+    ({"type": "s3", "secret": AWS_SECRET}, AWS_SECRET),
+]
+
+
+def slices(secret, size=8):
+    return [secret[i : i + size] for i in range(len(secret) - size + 1)]
+
+
+@pytest.mark.parametrize("storage, secret", LEAKING_STORAGE)
+def test_validation_text_holds_no_part_of_an_input_value(storage, secret):
+    config = {"name": "lake_source", "type": "duckdb", "database": _lake(storage)}
+
+    with pytest.raises(ValidationError) as error:
+        TypeAdapter(SourceField).validate_python(config)
+
+    assert any(part in str(error.value) for part in slices(secret))
+    text = validation_error_text(error.value)
+    assert not [part for part in slices(secret) if part in text]
+    assert "validation error" in text and "database" in text
+
+
+def test_validation_text_hides_a_secret_in_the_removed_gcs_block():
+    with pytest.raises(ValidationError) as error:
+        DuckLake(catalog=FILE_CATALOG, gcs={"key_id": "k", "secret": AWS_SECRET})
+
+    text = validation_error_text(error.value)
+    assert not [part for part in slices(AWS_SECRET) if part in text]
+    assert text == (
+        "1 validation error for DuckLake\ngcs\n"
+        "  Extra inputs are not permitted [type=extra_forbidden]"
+    )
+
+
+# --- Review fixes: a data path holds no credentials --------------------------
+
+
+@pytest.mark.parametrize(
+    "data_path",
+    [
+        f"s3://b/l/?s3_access_key_id=AKIAX&s3_secret_access_key={AWS_SECRET}",
+        "az://acct.blob.core.windows.net/c/l?sv=2022&sig=SASSIGNATURE123",
+        "s3://bucket/lake/?versionId=1",
+        f"s3://AKIAX:{AWS_SECRET}@bucket/lake/",
+        "s3://AKIAX@bucket/lake/",
+        "abfss://user:pw-91c@lakeaccount.dfs.core.windows.net/lake/",
+        f"local/lake;secret_access_key={AWS_SECRET}",
+    ],
+)
+def test_a_data_path_that_can_hold_credentials_is_refused(data_path, monkeypatch):
+    with pytest.raises(ValidationError) as error:
+        DuckLake(catalog=FILE_CATALOG, data_path=data_path)
+
+    text = validation_error_text(error.value)
+    assert "data_path must not hold credentials or a query string" in text
+    assert "storage block" in text
+    assert AWS_SECRET not in text and "SASSIGNATURE123" not in text
+
+    monkeypatch.setenv("LAKE_DATA_PATH", data_path)
+    lake = DuckLake(catalog=FILE_CATALOG, data_path="${env.LAKE_DATA_PATH}")
+    with pytest.raises(ValueError, match="data_path must not hold credentials") as late:
+        lake.setup_statements("lake")
+    assert AWS_SECRET not in str(late.value)
+
+
+@pytest.mark.parametrize(
+    "data_path",
+    [
+        "local/lake/",
+        "/abs/lake dir/",
+        "local/what?/",
+        "s3://bucket/lake/",
+        "abfss://files@lakeaccount.dfs.core.windows.net/lake/",
+        "az://lakeaccount.blob.core.windows.net/container/lake/",
+        "gs://bucket/team@home/lake/",
+    ],
+)
+def test_a_data_path_without_credentials_is_accepted(data_path):
+    lake = DuckLake(catalog=FILE_CATALOG, data_path=data_path)
+
+    assert f"DATA_PATH '{data_path}'" in lake.setup_statements("lake")[-1]
+
+
+def test_redact_and_the_description_hide_a_credential_assignment_of_any_name():
+    leaked = (
+        f"s3://b/l/?s3_access_key_id=AKIAX&s3_secret_access_key={AWS_SECRET}"
+        f"&session_token=tok-123&account_key=acct-456&AccountKey=acct-789"
+    )
+
+    text = redact(leaked)
+    lake = DuckLake.model_construct(catalog=FILE_CATALOG, data_path=leaked)
+    source = DuckdbSource.model_construct(name="s", type="duckdb", database=lake)
+
+    for output in (text, lake.describe(), source.description()):
+        for value in (AWS_SECRET, "AKIAX", "tok-123", "acct-456", "acct-789"):
+            assert value not in output
+    assert text == (
+        "s3://b/l/?s3_access_key_id=***&s3_secret_access_key=***"
+        "&session_token=***&account_key=***&AccountKey=***"
+    )
+    assert redact("AccountName=lakeaccount;EndpointSuffix=core.windows.net") == (
+        "AccountName=lakeaccount;EndpointSuffix=core.windows.net"
+    )
+
+
+# --- Review fixes: the in-memory host of a DuckLake database ------------------
+
+
+@needs_ducklake
+def test_an_attachment_named_memory_next_to_a_ducklake_database_fails_at_connect(tmp_path):
+    catalog_uri, _ = _create_lake(tmp_path)
+    source = _source(
+        {"catalog": catalog_uri},
+        attach=[
+            {
+                "schema_name": "memory",
+                "source": {"name": "o", "type": "duckdb", "database": _other_database(tmp_path)},
+            }
+        ],
+    )
+
+    with pytest.raises(click.ClickException) as error:
+        source.read_sql("SELECT * FROM memory.regions")
+
+    assert "Error attaching 'memory'" in error.value.message
+    assert "already used by the in-memory database of the connection" in error.value.message
+
+
+@needs_ducklake
+def test_an_in_memory_attachment_next_to_a_ducklake_database_attaches_once(tmp_path):
+    catalog_uri, _ = _create_lake(tmp_path)
+    source = _source(
+        {"catalog": catalog_uri},
+        attach=[
+            {
+                "schema_name": "scratch",
+                "source": {"name": "o", "type": "duckdb", "database": ":memory:"},
+            }
+        ],
+    )
+
+    with source.connect(read_only=True) as connection:
+        source._setup_connection(connection, read_only=True)
+        names = [row[0] for row in connection.execute("SHOW DATABASES").fetchall()]
+
+    assert names.count("scratch") == 1
+    assert source.read_sql("SELECT count(*) AS n FROM orders") == [{"n": 4}]
+
+
+# --- Review fixes: the connection test does not create a lake ----------------
+
+
+@needs_ducklake
+@pytest.mark.parametrize("data_path", [True, False])
+def test_a_writable_lake_with_a_missing_catalog_fails_the_connection_test(tmp_path, data_path):
+    from visivo.server.source_metadata import validate_source_from_config
+
+    database = {"catalog": "ducklake:sqlite:typo.sqlite", "read_only": False}
+    if data_path:
+        database["data_path"] = "typodata/"
+
+    result = validate_source_from_config(
+        {"name": "lake_source", "type": "duckdb", "database": database}, str(tmp_path)
+    )
+
+    assert result["status"] == "connection_failed"
+    assert result["error"] == f"File not found: {tmp_path / 'typo.sqlite'}"
+    assert list(tmp_path.iterdir()) == []
+
+
+@needs_ducklake
+def test_an_existing_ducklake_database_passes_the_connection_test(tmp_path):
+    from visivo.server.source_metadata import validate_source_from_config
+
+    catalog_uri, _ = _create_lake(tmp_path)
+
+    result = validate_source_from_config(
+        {"name": "lake_source", "type": "duckdb", "database": {"catalog": catalog_uri}},
+        str(tmp_path),
+    )
+
+    assert result == {"source": "lake_source", "status": "connected"}

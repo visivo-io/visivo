@@ -1004,3 +1004,48 @@ class TestADuckLakeDatabaseReachesEveryWriter:
         }
         assert listed.status_code == 200
         assert "${env.AWS_SECRET_ACCESS_KEY}" in listed.get_data(as_text=True)
+
+    AWS_SECRET = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYzEXAMPLEKEY"
+    LONG_SECRET = "Zq7" + "".join(f"{n:02d}xK" for n in range(50))
+
+    @pytest.mark.parametrize(
+        "storage, secret",
+        [
+            ({"type": "azure", "account_name": "a", "account_key": AWS_SECRET}, AWS_SECRET),
+            ({"type": "s3", "key_id": "AK", "secret_access_key": AWS_SECRET}, AWS_SECRET),
+            (
+                {
+                    "type": "s3",
+                    "key_id": "AK",
+                    "secret": "${env.AWS_SECRET_ACCESS_KEY}",
+                    "session_token": LONG_SECRET,
+                },
+                LONG_SECRET,
+            ),
+            ({"type": "aws", "key_id": "AK", "secret": AWS_SECRET}, AWS_SECRET),
+            ({"key_id": "AK", "secret": AWS_SECRET}, AWS_SECRET),
+        ],
+    )
+    def test_the_tool_and_the_route_repeat_no_part_of_a_secret(
+        self, integration_app, integration_client, monkeypatch, storage, secret
+    ):
+        from visivo.logger.logger import Logger
+
+        logged = []
+        for level in ("debug", "info", "error"):
+            monkeypatch.setattr(Logger.instance(), level, logged.append)
+        config = self._source()
+        config["database"]["storage"] = storage
+
+        with pytest.raises(ToolError) as error:
+            call(integration_app, "write_source", {"config": config})
+        validated = call(integration_app, "validate_source", {"config": config})
+        response = integration_client.post("/api/sources/lake/", json=config)
+
+        assert validated["valid"] is False and response.status_code == 400
+        text = "\n".join(
+            [str(error.value), str(validated), response.get_data(as_text=True)]
+            + [str(line) for line in logged]
+        )
+        assert not [secret[i : i + 8] for i in range(len(secret) - 7) if secret[i : i + 8] in text]
+        assert integration_app.source_manager.get("lake") is None

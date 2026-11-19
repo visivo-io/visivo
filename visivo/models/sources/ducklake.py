@@ -10,27 +10,22 @@ from visivo.models.base.base_model import (
     StringOrEnvVar,
 )
 from visivo.models.base.env_var_string import EnvVarString
-from visivo.models.sources.database_file import NON_FILE_SCHEME
-
-DUCKLAKE_PREFIX = "ducklake:"
-REDACTED = "***"
-
-FILE_CATALOG_PREFIXES = ("sqlite:", "duckdb:")
-SECRET_KEYS = (
-    "password",
-    "passwd",
-    "secret",
-    "token",
-    "motherduck_token",
-    "session_token",
-    "client_secret",
-    "connection_string",
+from visivo.models.sources.database_file import (
+    DUCKLAKE_PREFIX,
+    FILE_CATALOG_PREFIXES,
+    NON_FILE_SCHEME,
 )
+
+REDACTED = "***"
 
 _CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f]")
 _CREDENTIAL_ASSIGNMENT = re.compile(
-    r"(?i)(password|passwd|secret|key_id|token|accountkey|sharedaccesssignature|(?<![a-z])sig)(\s*=\s*)(\"[^\"]*\"|'[^']*'|[^\s;&]+)"
+    r"(?i)([a-z0-9_]*(?:password|passwd|secret|token|key|signature)[a-z0-9_]*|(?<![a-z])sig)"
+    r"(\s*=\s*)(\"[^\"]*\"|'[^']*'|[^\s;&]+)"
 )
+_URL_AUTHORITY = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://([^/]*)")
+# abfss://<container>@<account>.dfs.core.windows.net/ names a container, not a user.
+_CONTAINER_AT_ACCOUNT_SCHEMES = ("abfss://", "abfs://")
 # DuckDB prints a URL a second time as a path, with '://' collapsed to ':/'.
 _URL_CREDENTIALS = re.compile(r"(:/+[^/\s:@]+:)[^@\s/]+@")
 
@@ -91,23 +86,16 @@ def redact(message: str, secrets: Optional[List[Optional[str]]] = None) -> str:
     return _URL_CREDENTIALS.sub(rf"\1{REDACTED}@", message)
 
 
-def _input_secrets(value, key=None) -> List[str]:
-    if isinstance(value, dict):
-        return [s for k, v in value.items() for s in _input_secrets(v, k)]
-    if isinstance(value, (list, tuple)):
-        return [s for item in value for s in _input_secrets(item, key)]
-    if isinstance(value, str) and str(key).lower() in SECRET_KEYS:
-        return [] if EnvVarString.contains_pattern(value) else [value]
-    return []
-
-
 def validation_error_text(error: ValidationError) -> str:
-    """The text of a validation error, without the secrets that pydantic repeats from the input."""
-    secrets = []
-    for line in error.errors():
-        loc = line.get("loc") or (None,)
-        secrets.extend(_input_secrets(line.get("input"), loc[-1]))
-    return redact(str(error), secrets)
+    """The text of a validation error with no input value in it. Pydantic repeats the
+    input in `str(error)`, and the input can hold a secret under any key."""
+    lines = error.errors(include_input=False, include_url=False, include_context=False)
+    count = len(lines)
+    text = [f"{count} validation error{'' if count == 1 else 's'} for {error.title}"]
+    for line in lines:
+        text.append(".".join(str(part) for part in line.get("loc") or ()))
+        text.append(f"  {line.get('msg')} [type={line.get('type')}]")
+    return redact("\n".join(text))
 
 
 def is_ducklake_uri(value) -> bool:
@@ -142,6 +130,27 @@ def check_ducklake_uri(uri: str, field: str = "catalog") -> str:
             "hold credentials."
         )
     return uri
+
+
+def check_data_path(data_path: str) -> str:
+    """Refuse a data path that can hold credentials. They go in the `storage` block."""
+    url = _URL_AUTHORITY.match(data_path)
+    authority = url.group(1) if url else ""
+    user_info = authority.rpartition("@")[0]
+    container = data_path.lower().startswith(_CONTAINER_AT_ACCOUNT_SCHEMES) and ":" not in user_info
+    # A password can hold a '/', so the '@' can come after the first path segment.
+    password = ":" in authority and "@" in data_path[url.end() :] if url else False
+    if (
+        (url and "?" in data_path)
+        or (user_info and not container)
+        or password
+        or _CREDENTIAL_ASSIGNMENT.search(data_path)
+    ):
+        raise ValueError(
+            "data_path must not hold credentials or a query string. Put the credentials "
+            "in the storage block, as ${env.VAR} references."
+        )
+    return data_path
 
 
 def _env_var_reference(value, field: str, example: str):
@@ -264,10 +273,10 @@ class DuckLakeS3Storage(DuckLakeStorage):
     """
     An access key for Amazon S3 or for an S3-compatible object store. Set `endpoint`,
     and usually `url_style: path`, for a store that is not Amazon S3. The `data_path`
-    starts with `s3://`.
+    starts with `s3://` (`s3a://` and `s3n://` are also accepted).
     """
 
-    schemes: ClassVar[Tuple[str, ...]] = ("s3://",)
+    schemes: ClassVar[Tuple[str, ...]] = ("s3://", "s3a://", "s3n://")
 
     type: Literal["s3"] = Field(..., description="Amazon S3 or an S3-compatible store.")
     key_id: StringOrEnvVar = Field(..., description="The access key id.")
@@ -332,10 +341,10 @@ class DuckLakeAzureStorage(DuckLakeStorage):
     Credentials for Azure Blob Storage or ADLS. Set `connection_string`, or `account_name`
     with `tenant_id`, `client_id` and `client_secret` (a service principal), or
     `account_name` only (the Azure credential chain of the machine). The `data_path`
-    starts with `az://` or `abfss://`.
+    starts with `az://` or `abfss://` (`azure://` and `abfs://` are also accepted).
     """
 
-    schemes: ClassVar[Tuple[str, ...]] = ("az://", "abfss://")
+    schemes: ClassVar[Tuple[str, ...]] = ("az://", "azure://", "abfss://", "abfs://")
 
     type: Literal["azure"] = Field(..., description="Azure Blob Storage or ADLS.")
     connection_string: Optional[EnvVarString] = Field(
@@ -470,8 +479,10 @@ class DuckLake(BaseModel):
             check_ducklake_uri(self.catalog)
         if self.snapshot_version is not None and not self.read_only:
             raise ValueError("snapshot_version needs read_only: true. A snapshot cannot change.")
-        if self.storage is not None and isinstance(self.data_path, str):
-            self.storage.check_data_path(self.data_path)
+        if isinstance(self.data_path, str):
+            check_data_path(self.data_path)
+            if self.storage is not None:
+                self.storage.check_data_path(self.data_path)
         return self
 
     def secret_values(self) -> List[str]:
@@ -514,6 +525,8 @@ class DuckLake(BaseModel):
         statements = []
         options = []
         data_path = resolve_value(self.data_path)
+        if data_path:
+            check_data_path(data_path)
 
         if isinstance(self.catalog, DuckLakePostgresCatalog):
             catalog_secret = f"visivo_{alias}_catalog"

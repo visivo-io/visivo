@@ -88,8 +88,20 @@ class DuckdbAttachment(BaseModel):
     def setup_statements(self, read_only: bool = False) -> List[str]:
         if self.ducklake is not None:
             return self.ducklake.setup_statements(self.schema_name)
-        options = ["READ_ONLY"] if read_only else None
-        return [attach_database_sql(self.source.get_database(), self.schema_name, options)]
+        database = self.source.get_database()
+        options = None
+        if read_only and database == ":memory:":
+            # A read-only connection attaches read-only by default, and an in-memory
+            # database cannot be read-only.
+            options = ["READ_WRITE"]
+        elif read_only and (
+            is_file_database(database) or is_remote_database(database) or is_ducklake_uri(database)
+        ):
+            options = ["READ_ONLY"]
+        return [attach_database_sql(database, self.schema_name, options)]
+
+    def is_memory(self) -> bool:
+        return self.source is not None and self.source.get_database() == ":memory:"
 
     def is_ducklake(self) -> bool:
         return self.ducklake is not None or is_ducklake_uri(self.source.get_database())
@@ -194,7 +206,7 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
         """Attach once for each DuckDB instance. Connections to one file share their attachments."""
         with attach_function_lock:
             existing = connection.execute(
-                "SELECT type, internal, database_name = current_database() "
+                "SELECT type, internal, database_name = current_database(), path "
                 "FROM duckdb_databases() WHERE database_name = ?",
                 [attachment.schema_name],
             ).fetchone()
@@ -204,10 +216,15 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
                     connection.execute(statement)
                 return True
 
-            database_type, internal, is_primary = existing
+            database_type, internal, is_primary, path = existing
             if is_primary or internal:
                 owner = "the primary database" if is_primary else "a DuckDB system database"
                 raise ValueError(f"the name is already used by {owner}. Change schema_name.")
+            if path is None and not attachment.is_ducklake() and not attachment.is_memory():
+                raise ValueError(
+                    "the name is already used by the in-memory database of the connection. "
+                    "Change schema_name."
+                )
             if (database_type == "ducklake") != attachment.is_ducklake():
                 raise ValueError(
                     f"the name is already used by a {database_type} database that is not "

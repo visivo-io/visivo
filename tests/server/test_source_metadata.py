@@ -240,3 +240,43 @@ class TestConnectionTestFallbacks:
         assert result["status"] == "connection_failed"
         assert result["error"].startswith("Invalid source configuration: ")
         assert "database" in result["error"]
+
+
+class TestTheConnectionTestLogHoldsNoSecret:
+    SECRET = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYzEXAMPLEKEY"
+
+    @pytest.mark.parametrize(
+        "storage",
+        [
+            {"type": "s3", "key_id": "AK", "secret": SECRET},
+            {"type": "s3", "key_id": "AK", "secret_access_key": SECRET},
+            {"key_id": "AK", "secret": SECRET},
+        ],
+    )
+    def test_a_plaintext_storage_secret_is_not_logged(self, monkeypatch, storage):
+        from visivo.logger.logger import Logger
+        from visivo.server.source_metadata import validate_source_from_config
+
+        logged = []
+        for level in ("debug", "info", "error"):
+            monkeypatch.setattr(Logger.instance(), level, logged.append)
+        config = {
+            "name": "lake",
+            "type": "duckdb",
+            "database": {
+                "catalog": "ducklake:sqlite:local/catalog.sqlite",
+                "data_path": "s3://bucket/lake/",
+                "storage": storage,
+            },
+        }
+
+        result = validate_source_from_config(config)
+
+        text = "\n".join(str(line) for line in logged) + str(result)
+        assert result["status"] == "connection_failed"
+        assert any("Source configuration validation failed" in str(line) for line in logged)
+        assert not [
+            self.SECRET[i : i + 8]
+            for i in range(len(self.SECRET) - 7)
+            if self.SECRET[i : i + 8] in text
+        ]

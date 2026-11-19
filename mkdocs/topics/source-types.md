@@ -298,7 +298,8 @@ with the scheme of `data_path`. A local `data_path`, or a public bucket, needs n
 
     For a store that is S3-compatible, add `endpoint` (host and port, without `https://`),
     and usually `url_style: path`. Set `use_ssl: false` if the store uses http. Temporary
-    credentials also take a `session_token`.
+    credentials also take a `session_token`. The `data_path` starts with `s3://`. Visivo also
+    accepts `s3a://` and `s3n://`.
 
 === "Google Cloud Storage"
 
@@ -336,7 +337,8 @@ with the scheme of `data_path`. A local `data_path`, or a public bucket, needs n
     As an alternative to `connection_string`, set `account_name` with `tenant_id`,
     `client_id` and `client_secret` for a service principal. With `account_name` only,
     DuckDB uses the Azure credential chain of the machine (environment variables, a managed
-    identity, the Azure CLI). The `data_path` starts with `az://` or `abfss://`.
+    identity, the Azure CLI). The `data_path` starts with `az://` or `abfss://`. Visivo also
+    accepts `azure://` and `abfs://`.
 
 Visivo's tests write and read a DuckLake through `type: s3` (against an S3-compatible
 server) and through `type: azure` with a `connection_string` (against the Azurite
@@ -356,11 +358,18 @@ from a real bucket.
 - **Data path.** The catalog stores the data path when the DuckLake is created. An existing
   DuckLake does not need `data_path`. With `storage`, `data_path` also sets which paths the
   credentials read. If more than one DuckLake in a Source has `storage`, each one must have
-  a `data_path`.
+  a `data_path`. A `data_path` must not contain credentials: Visivo refuses a query string
+  (`?`), a user and password before the host, and an assignment such as `secret=`. Put the
+  credentials in `storage`.
 - **Names.** Visivo puts `schema_name` in double quotes. A name with other characters than
   letters, numbers and underscores also needs double quotes in a query, for example
   `"my-lake".main.orders`. A name cannot be the name of the primary database, or `temp` or
-  `system`. When `database` is a DuckLake, an attachment cannot have the name `lake`.
+  `system`. When `database` is a DuckLake, an attachment cannot have the name `lake`. When
+  `database` is a DuckLake or an `https://` URL, an attachment of a database file cannot have
+  the name `memory`.
+- **Connection test.** The connection test does not create a DuckLake. If the catalog is a
+  file (`ducklake:sqlite:<path>`) and the file does not exist, the test fails with
+  `File not found`.
 - **Snapshots.** Set `snapshot_version` to read the DuckLake as of one snapshot.
 - **Secrets.** The catalog `password` and the `storage` fields `secret`, `session_token`,
   `connection_string` and `client_secret` must be `${env.VAR}` references. Visivo refuses the

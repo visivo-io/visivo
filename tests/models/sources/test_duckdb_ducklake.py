@@ -815,6 +815,34 @@ def test_a_read_only_connection_attaches_a_file_read_only():
     assert attachment.setup_statements() == ["""ATTACH 'o.duckdb' AS "other\""""]
 
 
+@pytest.mark.parametrize(
+    "attached, read_only",
+    [
+        (":memory:", " (READ_WRITE)"),
+        ("md:my_db", ""),
+        ("https://example.com/a.duckdb", " (READ_ONLY)"),
+        ("ducklake:sqlite:c.sqlite", " (READ_ONLY)"),
+    ],
+)
+def test_a_read_only_connection_attaches_only_a_file_or_a_url_read_only(attached, read_only):
+    attachment = _with_file_attachment(":memory:", attached).attach[0]
+
+    assert attachment.setup_statements(read_only=True) == [
+        f"""ATTACH '{attached}' AS "other"{read_only}"""
+    ]
+    assert attachment.setup_statements() == [f"""ATTACH '{attached}' AS "other\""""]
+
+
+def test_an_in_memory_attachment_is_read_next_to_a_database_file(tmp_path):
+    source = _with_file_attachment(_file_database(tmp_path / "a.duckdb"), ":memory:")
+
+    assert source.read_sql("SELECT 42 AS answer") == [{"answer": 42}]
+    with source.connect(read_only=True) as connection:
+        connection.execute("SELECT 1")
+        names = [row[0] for row in connection.execute("SHOW DATABASES").fetchall()]
+    assert "other" in names
+
+
 def test_two_read_only_connections_read_the_same_attached_file(tmp_path):
     source = _with_file_attachment(":memory:", _file_database(tmp_path / "other.duckdb"))
 
@@ -891,22 +919,47 @@ def test_is_file_database():
     assert not is_file_database(None)
 
 
-def test_the_file_check_skips_ducklake_uris_and_ducklake_attachments(tmp_path):
-    DuckdbSource(
-        name="d", type="duckdb", database="ducklake:sqlite:/nowhere/catalog.sqlite"
-    ).check_database_files_exist(str(tmp_path))
+def test_the_file_check_skips_a_ducklake_with_a_postgres_catalog(tmp_path):
     DuckdbSource(
         name="d",
         type="duckdb",
         database=":memory:",
-        attach=[
-            {
-                "schema_name": "legacy",
-                "source": {"name": "o", "type": "duckdb", "database": "ducklake:/nowhere/c.db"},
-            },
-            {"schema_name": "lake", "ducklake": _postgres_lake()},
-        ],
+        attach=[{"schema_name": "lake", "ducklake": _postgres_lake()}],
     ).check_database_files_exist(str(tmp_path))
+
+
+@pytest.mark.parametrize(
+    "catalog, file",
+    [
+        ("ducklake:sqlite:sub/catalog.sqlite", "sub/catalog.sqlite"),
+        ("ducklake:duckdb:catalog.duckdb", "catalog.duckdb"),
+        ("ducklake:catalog.ducklake", "catalog.ducklake"),
+        ("DuckLake:SQLite:catalog.sqlite", "catalog.sqlite"),
+    ],
+)
+@pytest.mark.parametrize("shape", ["database", "source attachment", "ducklake attachment"])
+def test_the_file_check_reports_a_missing_ducklake_catalog_file(tmp_path, catalog, file, shape):
+    if shape == "database":
+        source = DuckdbSource(name="d", type="duckdb", database=catalog)
+    elif shape == "source attachment":
+        source = _with_file_attachment(":memory:", catalog)
+    else:
+        source = _source({"catalog": catalog})
+
+    with pytest.raises(FileNotFoundError) as error:
+        source.check_database_files_exist(str(tmp_path))
+
+    assert str(error.value) == f"File not found: {tmp_path / file}"
+    (tmp_path / "sub").mkdir(exist_ok=True)
+    (tmp_path / file).write_bytes(b"")
+    source.check_database_files_exist(str(tmp_path))
+
+
+def test_ducklake_catalog_file_is_none_for_a_value_that_is_not_a_file_catalog():
+    from visivo.models.sources.database_file import ducklake_catalog_file
+
+    for value in ("ducklake:postgres:", "ducklake:md:lake", "a.duckdb", ":memory:", None, ""):
+        assert ducklake_catalog_file(value) is None
 
 
 def test_the_file_check_still_reports_a_missing_file_next_to_a_ducklake(tmp_path):
