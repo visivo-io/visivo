@@ -23,6 +23,8 @@ const Home = () => {
   const error = useLoaderData();
   const location = useLocation();
   const isRoot = location.pathname === '/';
+  // The agent guides onboarding itself there, so the checklist would compete.
+  const isAgent = location.pathname === '/agent';
   const isProject = location.pathname.startsWith('/project');
   const [isDeployOpen, setIsDeployOpen] = useState(false);
   // One idea of "authorized", shared with the Agent tab and the deploy modal.
@@ -185,8 +187,8 @@ const Home = () => {
         {error && error.message && <Error>{error.message}</Error>}
         {isRoot ? renderNavigationCards() : <Outlet />}
       </div>
-      <OnboardingChecklist />
-      <OnboardingCoach />
+      {!isAgent && <OnboardingChecklist />}
+      {!isAgent && <OnboardingCoach />}
       <ProjectVisitTracker />
     </div>
   );
