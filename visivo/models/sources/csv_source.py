@@ -2,6 +2,7 @@ from typing import Literal, Optional, Dict, List, Any
 from visivo.models.sources.base_duckdb_source import BaseDuckdbSource
 from visivo.models.sources.project_root import resolve_project_path
 from visivo.models.sources.seed import sql_string_literal
+from visivo.models.sources.tidy_columns import select_list
 from pydantic import Field
 import click
 import glob
@@ -40,6 +41,14 @@ class CSVFileSource(BaseDuckdbSource):
     has_header: Optional[bool] = Field(
         True, description="Whether the first row of the file contains column names."
     )
+    normalize_names: Optional[bool] = Field(
+        False,
+        description=(
+            "Rename columns to lowercase words joined by underscores, so a header like "
+            "`Status (checked Nov 3)` becomes `status_checked_nov_3` and can be named in SQL "
+            "without quotes. Repeated names are numbered (`pay`, `pay_2`)."
+        ),
+    )
 
     def get_connection(self, read_only: bool = False):
         import duckdb
@@ -59,11 +68,15 @@ class CSVFileSource(BaseDuckdbSource):
     def _setup_connection(self, connection, **kwargs):
         """Setup the DuckDB connection by creating a view from the CSV file."""
         path = sql_string_literal(glob.escape(resolve_project_path(self.file)))
+        reader = (
+            f"read_csv_auto({path}, delim={sql_string_literal(self.delimiter)}, "
+            f"header={str(self.has_header).upper()})"
+        )
         try:
-            connection.execute(f"""
-                CREATE VIEW {self._quote_table(self.name)} AS
-                SELECT * FROM read_csv_auto({path}, delim={sql_string_literal(self.delimiter)}, header={str(self.has_header).upper()})
-                """)
+            columns = select_list(connection, reader, bool(self.normalize_names))
+            connection.execute(
+                f"CREATE VIEW {self._quote_table(self.name)} AS SELECT {columns} FROM {reader}"
+            )
         except Exception as e:
             raise click.ClickException(f"Error setting up CSV view: {e}")
 

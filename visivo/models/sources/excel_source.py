@@ -7,6 +7,7 @@ import os
 from visivo.logger.logger import Logger
 from visivo.models.sources.project_root import resolve_project_path
 from visivo.models.sources.seed import sql_string_literal
+from visivo.models.sources.tidy_columns import select_list
 
 
 class ExcelFileSource(BaseDuckdbSource):
@@ -46,6 +47,14 @@ class ExcelFileSource(BaseDuckdbSource):
     has_header: Optional[bool] = Field(
         True, description="Whether the first row of the sheet contains column names."
     )
+    normalize_names: Optional[bool] = Field(
+        False,
+        description=(
+            "Rename columns to lowercase words joined by underscores, so a header like "
+            "`Status (checked Nov 3)` becomes `status_checked_nov_3` and can be named in SQL "
+            "without quotes. Repeated names are numbered (`pay`, `pay_2`)."
+        ),
+    )
 
     def get_connection(self, read_only: bool = False):
         import duckdb
@@ -72,9 +81,10 @@ class ExcelFileSource(BaseDuckdbSource):
         try:
             connection.execute("INSTALL excel")
             connection.execute("LOAD excel")
+            reader = f"read_xlsx({', '.join(options)})"
+            columns = select_list(connection, reader, bool(self.normalize_names))
             connection.execute(
-                f"CREATE VIEW {self._quote_table(self.name)} AS "
-                f"SELECT * FROM read_xlsx({', '.join(options)})"
+                f"CREATE VIEW {self._quote_table(self.name)} AS SELECT {columns} FROM {reader}"
             )
         except Exception as e:
             raise click.ClickException(f"Error setting up Excel view: {e}")

@@ -291,7 +291,7 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded, onDirtyC
                 </span>
                 <ChevronRightIcon fontSize="small" className={`ml-auto ${sourceTypeConfig?.colors?.text || 'text-gray-600'}`} />
               </button>
-              {embeddedConfig.database && (
+              {typeof embeddedConfig.database === 'string' && embeddedConfig.database && (
                 <p className="text-xs text-gray-500 ml-1">
                   Database: {embeddedConfig.database}
                 </p>
