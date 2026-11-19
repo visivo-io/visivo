@@ -33,6 +33,10 @@ class RelationManager(ObjectManager[Relation]):
             return None
         return cardinality_error(relation, self.model_lookup)
 
+    def restore_error(self, name: str) -> Optional[str]:
+        published = self._published_objects.get(name)
+        return self.save_error(published) if published is not None else None
+
     def validate_object(self, obj_data: dict) -> Relation:
         """
         Validate relation configuration using Pydantic.

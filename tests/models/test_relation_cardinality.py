@@ -10,14 +10,24 @@ from visivo.models.project import Project
 from visivo.models.relation import Relation
 from visivo.models.relation_keys import (
     cardinality_error,
+    cardinality_models,
     condition_models,
     declared_many_side,
     declared_unique,
+    join_keys,
     joins_on_primary_key,
     primary_key_columns,
 )
 
 CONDITION = "${ref(orders).user_id} = ${ref(users).id}"
+OTHER_KEY = "${ref(orders).alt_id} = ${ref(users).alt_id}"
+NOT_AN_AND_OF_EQUALITIES = [
+    f"{CONDITION} OR {OTHER_KEY}",
+    f"NOT ({CONDITION})",
+    f"({CONDITION} AND {OTHER_KEY}) OR ${{ref(orders).vip}}",
+    f"NOT ({CONDITION} AND {OTHER_KEY})",
+    f"({CONDITION}) = false",
+]
 
 
 def _model(name, primary_key=None):
@@ -61,9 +71,20 @@ class TestFields:
         with pytest.raises(ValidationError, match="at least one column"):
             _model("orders", value)
 
-    def test_a_repeated_primary_key_column_is_refused(self):
+    @pytest.mark.parametrize("value", [["id", "ID"], ["id ", " id"]])
+    def test_a_repeated_primary_key_column_is_refused(self, value):
         with pytest.raises(ValidationError, match="more than once"):
-            _model("orders", ["id", "ID"])
+            _model("orders", value)
+
+    def test_a_primary_key_drops_the_space_around_a_name(self):
+        assert _model("users", " id ").primary_key == "id"
+        assert _model("users", [" id", "region "]).primary_key == ["id", "region"]
+        assert joins_on_primary_key(_model("users", " id "), ["id"])
+
+    @pytest.mark.parametrize("value", ['"id"', "'id'", "`id`", "users.id", ["region", "users.id"]])
+    def test_a_primary_key_is_the_name_of_the_column_only(self, value):
+        with pytest.raises(ValidationError, match="must be the name of the column only"):
+            _model("users", value)
 
     def test_the_fields_survive_a_dump(self):
         assert _relation("one_to_one").model_dump(exclude_none=True)["cardinality"] == "one_to_one"
@@ -77,6 +98,33 @@ class TestDeclaredSides:
     def test_models_come_in_the_order_the_condition_names_them(self):
         assert condition_models(CONDITION) == ["orders", "users"]
         assert condition_models("${ref(users).id} = ${ref(orders).user_id}") == ["users", "orders"]
+
+    def test_a_cardinality_reads_in_the_order_of_the_join_equality(self):
+        assert cardinality_models(CONDITION) == ["orders", "users"]
+        assert cardinality_models("${ref(users).id} = ${ref(orders).user_id}") == [
+            "users",
+            "orders",
+        ]
+
+    @pytest.mark.parametrize(
+        "condition",
+        [
+            f"${{ref(users).active}} = true AND {CONDITION}",
+            f"${{ref(users).active}} AND ({CONDITION})",
+            f"{CONDITION} AND ${{ref(users).active}} = true",
+        ],
+    )
+    def test_a_filter_does_not_change_the_order(self, condition):
+        assert cardinality_models(condition) == ["orders", "users"]
+        assert declared_many_side(_relation("many_to_one", condition)) == "orders"
+        lookup = _lookup(_model("users", "id"))
+        assert cardinality_error(_relation("many_to_one", condition), lookup) is None
+        assert "many 'users' rows" in cardinality_error(_relation("one_to_many", condition), lookup)
+
+    def test_a_condition_with_no_join_equality_reads_in_the_order_it_names_the_models(self):
+        condition = "${ref(orders).placed_at} > ${ref(users).created_at}"
+        assert cardinality_models(condition) == ["orders", "users"]
+        assert declared_many_side(_relation("one_to_many", condition)) == "users"
 
     def test_the_many_side_reads_left_to_right(self):
         assert declared_many_side(_relation("many_to_one")) == "orders"
@@ -97,6 +145,19 @@ class TestDeclaredSides:
     def test_a_join_on_a_primary_key_declares_that_side_unique(self):
         lookup = _lookup(_model("orders", "order_id"), _model("users", "id"))
         assert declared_unique(_relation(), lookup) == {"orders": None, "users": True}
+
+    @pytest.mark.parametrize("condition", NOT_AN_AND_OF_EQUALITIES)
+    def test_an_equality_below_an_or_or_a_not_is_not_a_join_key(self, condition):
+        lookup = _lookup(_model("orders", "user_id"), _model("users", "id"))
+        assert join_keys(condition) == {}
+        assert declared_unique(_relation(condition=condition), lookup) == {
+            "orders": None,
+            "users": None,
+        }
+
+    def test_the_terms_of_an_and_chain_are_join_keys(self):
+        condition = f"(({CONDITION}) AND ${{ref(users).active}}) AND ({OTHER_KEY})"
+        assert join_keys(condition) == {"orders": ["user_id", "alt_id"], "users": ["id", "alt_id"]}
 
     def test_nothing_declared_says_nothing(self):
         lookup = _lookup(_model("orders"), _model("users"))
@@ -127,6 +188,12 @@ class TestCardinalityError:
     def test_a_primary_key_the_join_does_not_use_passes(self):
         lookup = _lookup(_model("orders", "order_id"), _model("users", "email"))
         assert cardinality_error(_relation("one_to_many"), lookup) is None
+
+    @pytest.mark.parametrize("condition", NOT_AN_AND_OF_EQUALITIES)
+    def test_a_primary_key_below_an_or_or_a_not_passes(self, condition):
+        lookup = _lookup(_model("orders", "user_id"), _model("users", "id"))
+        for value in ("one_to_many", "many_to_one"):
+            assert cardinality_error(_relation(value, condition), lookup) is None
 
     def test_an_unknown_model_passes(self):
         assert cardinality_error(_relation("one_to_many"), _lookup()) is None

@@ -147,6 +147,12 @@ class ObjectManager(ABC, Generic[T]):
         for rules the project enforces at build or commit."""
         return None
 
+    def restore_error(self, name: str) -> Optional[str]:
+        """Why the published ``name`` cannot come back as the live object, or
+        ``None``. A restore puts the published object back without a save, so a
+        manager overrides this for a rule that a later draft can break."""
+        return None
+
     def check_save(self, name: Optional[str], obj: T) -> None:
         """Refuse ``obj`` as ``name`` when the project would reject it.
 

@@ -149,10 +149,18 @@ relations:
 ```
 
 - **`primary_key`** on a SQL Model names the column that has one value for each row. Use a
-  list for a key of more than one column: `primary_key: [order_id, line_number]`.
-- **`cardinality`** on a Relation reads in the order that the `condition` names the two
-  Models. In the example, the `condition` names `orders` first, so `many_to_one` means that
-  many `orders` rows match one `users` row.
+  list for a key of more than one column: `primary_key: [order_id, line_number]`. Write the
+  name of the column only, with no Model name, no dot and no quotes.
+- **`cardinality`** on a Relation reads in the order of the two Models in the join equality
+  of the `condition`. The join equality is the first equality that compares a column of one
+  Model with a column of the other Model. In the example, the join equality has `orders` on
+  the left, so `many_to_one` means that many `orders` rows match one `users` row.
+- A filter in the `condition` does not change the order. The `condition`
+  `${ref(users).active} = true AND ${ref(orders).user_id} = ${ref(users).id}` reads in the
+  same order as the example.
+- If you change the order of the two Models in the join equality, change the `cardinality`
+  also. If the `condition` has no join equality, the `cardinality` reads in the order that
+  the `condition` names the two Models.
 
 Both fields are optional. A project that does not use them stays valid.
 
@@ -161,12 +169,15 @@ Visivo uses the two fields as follows:
 - The fields do not change the SQL of the join.
 - Visivo refuses a Relation that declares a Model as the many side when the `condition`
   joins that Model on its `primary_key`. In the example, `one_to_many` is an error, because
-  the join uses `users.id` and `id` is the `primary_key` of `users`.
+  the join uses `users.id` and `id` is the `primary_key` of `users`. This rule applies only
+  when each matched row must satisfy the join equality. It does not apply to an equality
+  below an `OR` or a `NOT`.
 - The Visivo agent warns when an Insight takes a `SUM`, `COUNT` or `AVG` across a join that
   repeats rows. The agent measures the join keys in the data when it can. When it cannot
   measure the keys, it uses the declared `cardinality` and `primary_key`.
-- The agent also warns when the data does not agree with a declared `cardinality` or
-  `primary_key`.
+- The agent also warns when a `cardinality` or a `primary_key` declares a key unique and
+  the data repeats that key. The agent does not warn when a declared many side has one row
+  for each key in the data, because new data can look like that.
 
 To count the rows of the one side across a one-to-many join, use
 `COUNT(DISTINCT ...)` on its key.

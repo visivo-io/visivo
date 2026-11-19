@@ -34,6 +34,10 @@ class ModelManager(ObjectManager[SqlModel]):
         dialect = self.dialect_lookup({"source": model.source}) if self.dialect_lookup else None
         return validate_model_sql(model.sql, dialect, model.name) or self._primary_key_error(model)
 
+    def restore_error(self, name: str) -> Optional[str]:
+        published = self._published_objects.get(name)
+        return self._primary_key_error(published) if published is not None else None
+
     def _primary_key_error(self, model: SqlModel) -> Optional[str]:
         if self.relations_lookup is None or not primary_key_columns(model):
             return None

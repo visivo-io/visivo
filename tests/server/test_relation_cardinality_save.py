@@ -5,6 +5,7 @@ import pytest
 
 from visivo.agent.tool_types import ToolError
 from visivo.agent.tools import call
+from visivo.models.relation import Relation
 from visivo.server.services import join_cardinality
 
 ACCOUNTS = "select 1 as account_id, 'Retail' as industry union all select 2, 'Media'"
@@ -27,8 +28,8 @@ def _model_config(app, name, sql, primary_key=None):
     return config
 
 
-def _relation_config(cardinality=None):
-    config = {"name": "accounts_to_subscriptions", "condition": CONDITION}
+def _relation_config(cardinality=None, condition=CONDITION):
+    config = {"name": "accounts_to_subscriptions", "condition": condition}
     if cardinality:
         config["cardinality"] = cardinality
     return config
@@ -86,6 +87,84 @@ class TestRelationWriters:
         assert response.status_code in (200, 201)
         assert "error" not in result
         assert app.relation_manager.get("accounts_to_subscriptions").cardinality == cardinality
+
+    @pytest.mark.parametrize(
+        "condition",
+        [
+            f"{CONDITION} OR ${{ref(accounts).alt_id}} = ${{ref(subscriptions).alt_id}}",
+            f"NOT ({CONDITION})",
+        ],
+    )
+    def test_both_writers_save_a_key_that_is_below_an_or_or_a_not(self, app, client, condition):
+        config = _relation_config("many_to_one", condition)
+
+        response = client.post("/api/relations/accounts_to_subscriptions/", json=config)
+        result = call(app, "write_relation", {"config": config})
+
+        assert response.status_code in (200, 201)
+        assert "error" not in result
+        assert app.relation_manager.get("accounts_to_subscriptions").cardinality == "many_to_one"
+
+    def test_both_writers_read_the_cardinality_past_a_leading_filter(self, app, client):
+        filtered = f"${{ref(subscriptions).plan}} = 'Team' AND {CONDITION}"
+
+        response = client.post(
+            "/api/relations/accounts_to_subscriptions/",
+            json=_relation_config("many_to_one", filtered),
+        )
+        with pytest.raises(ToolError, match="Invalid relation: Relation"):
+            call(app, "write_relation", {"config": _relation_config("many_to_one", filtered)})
+        saved = client.post(
+            "/api/relations/accounts_to_subscriptions/",
+            json=_relation_config("one_to_many", filtered),
+        )
+
+        assert response.status_code == 400
+        assert response.get_json()["error"] == REFUSAL
+        assert saved.status_code in (200, 201)
+
+
+class TestRestore:
+    def _publish(self, manager, obj):
+        manager._published_objects[obj.name] = obj
+
+    def test_a_restored_relation_cannot_contradict_a_newer_primary_key(self, app, client):
+        app.model_manager.save_from_config(_model_config(app, "accounts", ACCOUNTS))
+        self._publish(app.relation_manager, Relation(**_relation_config("many_to_one")))
+        client.delete("/api/relations/accounts_to_subscriptions/")
+        saved = client.post(
+            "/api/models/accounts/", json=_model_config(app, "accounts", ACCOUNTS, "account_id")
+        )
+
+        response = client.post("/api/relations/accounts_to_subscriptions/restore/")
+
+        assert saved.status_code in (200, 201)
+        assert response.status_code == 400
+        assert response.get_json()["error"] == REFUSAL
+        assert app.relation_manager.get("accounts_to_subscriptions") is None
+
+    def test_a_restored_model_cannot_contradict_a_newer_relation(self, app, client):
+        self._publish(app.model_manager, app.model_manager.get("accounts"))
+        app.model_manager.save_from_config(_model_config(app, "accounts", ACCOUNTS))
+        saved = client.post(
+            "/api/relations/accounts_to_subscriptions/", json=_relation_config("many_to_one")
+        )
+
+        response = client.post("/api/models/accounts/restore/")
+
+        assert saved.status_code in (200, 201)
+        assert response.status_code == 400
+        assert response.get_json()["error"] == REFUSAL
+        assert app.model_manager.get("accounts").primary_key is None
+
+    def test_a_restore_that_agrees_goes_through(self, app, client):
+        self._publish(app.relation_manager, Relation(**_relation_config("one_to_many")))
+        client.delete("/api/relations/accounts_to_subscriptions/")
+
+        response = client.post("/api/relations/accounts_to_subscriptions/restore/")
+
+        assert response.status_code == 200
+        assert app.relation_manager.get("accounts_to_subscriptions").cardinality == "one_to_many"
 
 
 class TestModelWriters:
@@ -195,7 +274,7 @@ class TestFanOutGuardReadsDeclarations:
         [warning] = [w for w in result["warnings"] if "primary_key of `subscriptions`" in w]
         assert "up to 2 `subscriptions` rows" in warning
 
-    def test_the_measurement_names_a_many_side_that_is_unique(self, app):
+    def test_a_declared_many_side_that_is_unique_in_the_data_is_not_warned(self, app):
         app.model_manager.save_from_config(_model_config(app, "profiles", ACCOUNTS))
         config = {
             "name": "accounts_to_profiles",
@@ -206,9 +285,23 @@ class TestFanOutGuardReadsDeclarations:
         result = call(app, "write_relation", {"config": config})
 
         assert result["cardinality"]["kind"] == "one_to_one"
-        [warning] = result["warnings"]
-        assert "cardinality `one_to_many` says that `profiles` is the many side" in warning
-        assert "`profiles.account_id` is unique in the data" in warning
+        assert "warnings" not in result
+
+    def test_the_measured_kind_reads_in_the_order_of_the_cardinality_field(self, app):
+        many_first = "${ref(subscriptions).account_id} = ${ref(accounts).account_id}"
+
+        result = call(
+            app, "write_relation", {"config": _relation_config("many_to_one", many_first)}
+        )
+
+        assert result["cardinality"] == {
+            "kind": "many_to_one",
+            "subscriptions": "many",
+            "accounts": "one",
+        }
+        assert not [w for w in result["warnings"] if "says that" in w]
+        [warning] = [w for w in result["warnings"] if "one-to-many" in w]
+        assert "`accounts.account_id` is unique" in warning
 
     def test_an_agreeing_declaration_adds_no_warning(self, app):
         result = call(app, "write_relation", {"config": _relation_config("one_to_many")})

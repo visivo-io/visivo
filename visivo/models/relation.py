@@ -23,8 +23,9 @@ class Relation(NamedModel, ParentModel):
             is_default: true
         ```
 
-    A relation can declare its `cardinality`. Read it in the order the condition names
-    the models: `many_to_one` here means many `orders` rows match one `users` row.
+    A relation can declare its `cardinality`. Read it in the order of the two models in
+    the join equality of the condition: `many_to_one` here means many `orders` rows match
+    one `users` row.
 
     !!! example
         ```yaml
@@ -55,9 +56,11 @@ class Relation(NamedModel, ParentModel):
 
     cardinality: Optional[Literal["many_to_one", "one_to_many", "one_to_one"]] = Field(
         None,
-        description="How many rows of each model match across the join, read in the order the "
-        "condition names the two models. When the condition names orders and then users, "
-        "'many_to_one' means many orders rows match one users row. Visivo uses it to warn "
+        description="How many rows of each model match across the join, read in the order of "
+        "the two models in the first equality of the condition that joins a column of one model "
+        "to a column of the other. When that equality has an orders column on the left and a "
+        "users column on the right, 'many_to_one' means many orders rows match one users row. "
+        "A filter in the condition does not change the order. Visivo uses it to warn "
         "when an aggregate counts a row once per match (fan-out). It does not change the "
         "SQL of the join.",
     )

@@ -105,27 +105,24 @@ def relation_sides(app, relation) -> Optional[List[Side]]:
 
 
 def declaration_warning(app, relation, sides) -> Optional[str]:
-    """Why the measured key of a side disagrees with the ``cardinality`` or the
-    ``primary_key`` that the project declares for it, or ``None``."""
+    """Why a side that the project declares unique, by ``cardinality`` or by
+    ``primary_key``, repeats its key in the data, or ``None``. A declared many
+    side that is unique in the data gets no warning: new or sampled data can
+    hold one row per key."""
     declared = declared_unique(relation, lambda name: find_model(app, name))
     for side in sides:
         expected = declared.get(side.model)
-        if expected is None or not side.stats.measured or expected == side.stats.unique:
+        if not expected or not side.stats.measured or side.stats.unique:
             continue
         source = (
             f"cardinality `{relation.cardinality}`"
             if getattr(relation, "cardinality", None)
             else f"the primary_key of `{side.model}`"
         )
-        if expected:
-            return (
-                f"Relation `{relation.name}`: {source} says that `{_key(side)}` is unique, "
-                f"but one key matches up to {side.stats.most} `{side.model}` rows in the "
-                "data. Correct the declaration, or join on a key that is unique."
-            )
         return (
-            f"Relation `{relation.name}`: {source} says that `{side.model}` is the many "
-            f"side, but `{_key(side)}` is unique in the data. Correct the cardinality."
+            f"Relation `{relation.name}`: {source} says that `{_key(side)}` is unique, "
+            f"but one key matches up to {side.stats.most} `{side.model}` rows in the "
+            "data. Correct the declaration, or join on a key that is unique."
         )
     return None
 
@@ -135,13 +132,11 @@ def _most(stats) -> str:
 
 
 def cardinality(sides) -> str:
-    """``one_to_one``, ``one_to_many`` (first side unique) or ``many_to_many``."""
+    """``one_to_one``, ``one_to_many``, ``many_to_one`` or ``many_to_many``, read
+    in the order of ``sides``. That is the order a relation's ``cardinality``
+    field reads, so the measured value of a relation can go into the field."""
     a, b = sides
-    if a.stats.unique and b.stats.unique:
-        return "one_to_one"
-    if a.stats.unique or b.stats.unique:
-        return "one_to_many"
-    return "many_to_many"
+    return f"{'one' if a.stats.unique else 'many'}_to_{'one' if b.stats.unique else 'many'}"
 
 
 def _key(side):

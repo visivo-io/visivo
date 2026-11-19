@@ -52,6 +52,9 @@ def register_restore_views(app, flask_app):
             # A row with nothing cached has nothing to revert — no edits, no
             # tombstone — and 404s below rather than returning a silent 200 the
             # caller cannot distinguish from a real restore.
+            refusal = manager.restore_error(name) if name in manager.cached_objects else None
+            if refusal:
+                return jsonify({"error": refusal}), 400
             restored = manager.delete_from_cache(name)
             if not restored:
                 return (
