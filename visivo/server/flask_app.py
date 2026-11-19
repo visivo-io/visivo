@@ -23,6 +23,7 @@ from visivo.server.managers.dashboard_manager import DashboardManager
 from visivo.server.managers.project_manager import ProjectManager
 from visivo.server.managers.run_manager import RunManager
 from visivo.server.managers.staged_manager import StagedManager
+from visivo.server.source_resolution import find_model
 from visivo.server.model_sql_validation import dialect_for_insight, dialect_for_model
 from visivo.server.names import name_clash
 
@@ -118,6 +119,8 @@ class FlaskApp:
         for manager in self._all_object_managers():
             manager.name_clash = partial(name_clash, self, manager)
         self.model_manager.dialect_lookup = partial(dialect_for_model, self)
+        self.model_manager.relations_lookup = self.relation_manager.get_relations_list
+        self.relation_manager.model_lookup = partial(find_model, self)
         self.insight_manager.input_lookup = self.input_manager.get
         self.insight_manager.dialect_lookup = partial(dialect_for_insight, self)
 

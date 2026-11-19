@@ -5,6 +5,7 @@ from pydantic import TypeAdapter, ValidationError
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.sql_model import SqlModel
+from visivo.models.relation_keys import cardinality_error, primary_key_columns
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 from visivo.server.model_sql_validation import validate_model_sql
 
@@ -24,11 +25,28 @@ class ModelManager(ObjectManager[SqlModel]):
         # config -> SQLGlot dialect or None. FlaskApp installs ``dialect_for_model``;
         # without it the generic dialect parses.
         self.dialect_lookup = None
+        # () -> the project's relations. FlaskApp installs the relation manager's list.
+        self.relations_lookup = None
 
     def save_error(self, model: SqlModel) -> Optional[str]:
-        """SQL that does not parse, or a projection with no name, is refused."""
+        """SQL that does not parse, a projection with no name, or a primary key that
+        disagrees with the cardinality of a relation, is refused."""
         dialect = self.dialect_lookup({"source": model.source}) if self.dialect_lookup else None
-        return validate_model_sql(model.sql, dialect, model.name)
+        return validate_model_sql(model.sql, dialect, model.name) or self._primary_key_error(model)
+
+    def _primary_key_error(self, model: SqlModel) -> Optional[str]:
+        if self.relations_lookup is None or not primary_key_columns(model):
+            return None
+
+        def lookup(name):
+            return model if name == model.name else self.get(name)
+
+        for relation in self.relations_lookup():
+            if model.name in relation.get_referenced_models():
+                error = cardinality_error(relation, lookup)
+                if error:
+                    return error
+        return None
 
     def validate_object(self, obj_data: dict) -> SqlModel:
         """

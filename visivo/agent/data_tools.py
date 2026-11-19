@@ -298,6 +298,8 @@ def probe_relation(app, relation):
     warning = join_cardinality.relation_warning(relation, sides)
     if warning:
         warning += f" {FANOUT_SKILL_HINT}"
+    mismatch = join_cardinality.declaration_warning(app, relation, sides)
+    warning = " ".join(text for text in (warning, mismatch) if text) or None
     return {"kind": kind, **shape}, warning
 
 
