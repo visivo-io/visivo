@@ -11,6 +11,7 @@ const createInsightSlice = (set, get) => ({
   // State
   insights: [], // All insights with status (NEW, MODIFIED, PUBLISHED)
   insightsLoading: false,
+  insightsLoaded: false, // True once a fetch has settled, with or without an error
   insightsError: null,
   editingInsight: null, // Insight being edited (null = create mode)
   insightModalOpen: false,
@@ -21,9 +22,9 @@ const createInsightSlice = (set, get) => ({
     try {
       const projectId = get().project?.id;
       const data = await insightsApi.fetchAllInsights(projectId);
-      set({ insights: data.insights || [], insightsLoading: false });
+      set({ insights: data.insights || [], insightsLoading: false, insightsLoaded: true });
     } catch (error) {
-      set({ insightsError: error.message, insightsLoading: false });
+      set({ insightsError: error.message, insightsLoading: false, insightsLoaded: true });
     }
   },
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import useStore from '../../../stores/store';
 import Table from '../../items/Table';
 import { useInsightsData } from '../../../hooks/useInsightsData';
@@ -25,22 +25,24 @@ const TablePreview = ({ activeObject, projectId }) => {
   const fetchTables = useStore(s => s.fetchTables);
   const models = useStore(s => s.models);
   const fetchModels = useStore(s => s.fetchModels);
-  const modelsLoading = useStore(s => s.modelsLoading);
+  const modelsLoaded = useStore(s => s.modelsLoaded);
   const insights = useStore(s => s.insights);
   const fetchInsights = useStore(s => s.fetchInsights);
-  const insightsLoading = useStore(s => s.insightsLoading);
+  const insightsLoaded = useStore(s => s.insightsLoaded);
 
+  // One request per collection per mount. An empty list is a normal loaded
+  // state, so "empty" must never re-trigger the fetch.
+  const requested = useRef({ tables: false, models: false, insights: false });
   useEffect(() => {
-    if ((!tables || tables.length === 0) && typeof fetchTables === 'function') {
-      fetchTables();
-    }
-    if ((!models || models.length === 0) && typeof fetchModels === 'function') {
-      fetchModels();
-    }
-    if ((!insights || insights.length === 0) && typeof fetchInsights === 'function') {
-      fetchInsights();
-    }
-  }, [tables, fetchTables, models, fetchModels, insights, fetchInsights]);
+    const once = (key, needed, fetch) => {
+      if (requested.current[key] || !needed || typeof fetch !== 'function') return;
+      requested.current[key] = true;
+      fetch();
+    };
+    once('tables', !tables || tables.length === 0, fetchTables);
+    once('models', !modelsLoaded, fetchModels);
+    once('insights', !insightsLoaded, fetchInsights);
+  }, [tables, fetchTables, modelsLoaded, fetchModels, insightsLoaded, fetchInsights]);
 
   const record = useMemo(
     () => (Array.isArray(tables) ? tables.find(t => t.name === name) || null : null),
@@ -68,9 +70,9 @@ const TablePreview = ({ activeObject, projectId }) => {
       classifyTableDataNames(tableConfig, {
         isKnownModel: n => knownModelNames.has(n),
         isKnownInsight: n => knownInsightNames.has(n),
-        registriesLoading: !!(modelsLoading || insightsLoading),
+        registriesLoading: !(modelsLoaded && insightsLoaded),
       }),
-    [tableConfig, knownModelNames, knownInsightNames, modelsLoading, insightsLoading]
+    [tableConfig, knownModelNames, knownInsightNames, modelsLoaded, insightsLoaded]
   );
 
   useModelsData(projectId, modelNames);

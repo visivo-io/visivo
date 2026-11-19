@@ -33,7 +33,12 @@ export const pivotRefNames = table =>
  * A pivot ref names an insight or a model, and the ref string does not say
  * which. The registries decide. A name that neither registry lists goes to both
  * hooks, because a dist build has no registry; `selectTableSource` then picks
- * the job that has output. While a registry loads, an unlisted name waits.
+ * the job that has output. Until both registries have settled a fetch
+ * (`registriesLoading`), an unlisted name waits. A registry that was never
+ * fetched is not settled: the caller derives the flag from the stores'
+ * `modelsLoaded` / `insightsLoaded`, not from the in-flight flags.
+ *
+ * A table record can carry its fields under `config`; both shapes are read.
  *
  * @returns {{ insightNames: string[], modelNames: string[] }}
  */
@@ -44,10 +49,11 @@ export const classifyTableDataNames = (
   const insightNames = new Set();
   const modelNames = new Set();
 
-  const data = classifyTableData(table?.data, isKnownModel);
+  const cfg = table?.config || table;
+  const data = classifyTableData(cfg?.data, isKnownModel);
   if (data) (data.isModel ? modelNames : insightNames).add(data.name);
 
-  pivotRefNames(table).forEach(name => {
+  pivotRefNames(cfg).forEach(name => {
     if (isKnownInsight(name) || insightNames.has(name)) {
       insightNames.add(name);
     } else if (isKnownModel(name) || modelNames.has(name)) {

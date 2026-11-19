@@ -101,6 +101,15 @@ describe('classifyTableDataNames', () => {
     ).toEqual({ insightNames: [], modelNames: [] });
   });
 
+  it('reads a table record that carries its fields under config', () => {
+    expect(
+      classifyTableDataNames(
+        { name: 'inline', config: { data: '${ref(orders)}', ...pivot('revenue') } },
+        registry({ models: ['orders'], insights: ['revenue'] })
+      )
+    ).toEqual({ insightNames: ['revenue'], modelNames: ['orders'] });
+  });
+
   it('still sends listed names while a registry loads', () => {
     expect(
       classifyTableDataNames(

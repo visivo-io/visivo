@@ -40,15 +40,15 @@ jest.mock('../../items/Input', () => ({
 const seed = (
   tables = [],
   models = [],
-  { inputs = [], insightJobs = {}, insights = [], insightsLoading = false } = {}
+  { inputs = [], insightJobs = {}, insights = [], modelsLoaded = true, insightsLoaded = true } = {}
 ) => {
   act(() => {
     useStore.setState({
       tables,
       models,
-      modelsLoading: false,
+      modelsLoaded,
       insights,
-      insightsLoading,
+      insightsLoaded,
       fetchTables: jest.fn(),
       fetchModels: jest.fn(),
       fetchInsights: jest.fn(),
@@ -109,23 +109,77 @@ describe('TablePreview (VIS-791)', () => {
     expect(mockUseInsightsData).toHaveBeenLastCalledWith('p1', []);
   });
 
-  test('holds an unlisted pivot ref while the insight registry loads', () => {
-    seed([{ name: 'p', config: pivotConfig('unlisted') }], [{ name: 'orders_model' }], {
-      insightsLoading: true,
-    });
+  test.each([
+    ['insight', { insightsLoaded: false }],
+    ['model', { modelsLoaded: false }],
+  ])('holds an unlisted pivot ref until the %s registry has settled a fetch', (_label, flags) => {
+    seed([{ name: 'p', config: pivotConfig('unlisted') }], [{ name: 'orders_model' }], flags);
     render(<TablePreview activeObject={{ type: 'table', name: 'p' }} projectId="p1" />);
     expect(mockUseInsightsData).toHaveBeenLastCalledWith('p1', []);
     expect(mockUseModelsData).toHaveBeenLastCalledWith('p1', []);
   });
 
-  test('fetches the insight registry when it is empty', () => {
+  test('sends an unlisted pivot ref to both hooks when both registries have settled', () => {
+    seed([{ name: 'p', config: pivotConfig('unlisted') }], [{ name: 'orders_model' }]);
+    render(<TablePreview activeObject={{ type: 'table', name: 'p' }} projectId="p1" />);
+    expect(mockUseInsightsData).toHaveBeenLastCalledWith('p1', ['unlisted']);
+    expect(mockUseModelsData).toHaveBeenLastCalledWith('p1', ['unlisted']);
+  });
+
+  test('fetches a registry that was never fetched', () => {
     const fetchInsights = jest.fn();
-    seed([{ name: 'p', config: pivotConfig('revenue') }], [{ name: 'orders_model' }]);
+    const fetchModels = jest.fn();
+    seed([{ name: 'p', config: pivotConfig('revenue') }], [], {
+      modelsLoaded: false,
+      insightsLoaded: false,
+    });
     act(() => {
-      useStore.setState({ fetchInsights });
+      useStore.setState({ fetchInsights, fetchModels });
     });
     render(<TablePreview activeObject={{ type: 'table', name: 'p' }} projectId="p1" />);
-    expect(fetchInsights).toHaveBeenCalled();
+    expect(fetchInsights).toHaveBeenCalledTimes(1);
+    expect(fetchModels).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not fetch a registry that has settled with an empty list', () => {
+    const fetchInsights = jest.fn();
+    const fetchModels = jest.fn();
+    seed([{ name: 'p', config: pivotConfig('revenue') }], []);
+    act(() => {
+      useStore.setState({ fetchInsights, fetchModels });
+    });
+    render(<TablePreview activeObject={{ type: 'table', name: 'p' }} projectId="p1" />);
+    expect(fetchInsights).not.toHaveBeenCalled();
+    expect(fetchModels).not.toHaveBeenCalled();
+  });
+
+  // A project with no insight (or no model) answers with a new empty array on
+  // each response. The preview must ask once, not once per response.
+  test('asks each empty registry once, even when each response is a new empty array', async () => {
+    const calls = { insights: 0, models: 0, tables: 0 };
+    const CAP = 20;
+    const respond = (key, patch) => async () => {
+      calls[key] += 1;
+      if (calls[key] > CAP) return;
+      await Promise.resolve();
+      useStore.setState(patch());
+    };
+    seed([], [], { modelsLoaded: false, insightsLoaded: false });
+    act(() => {
+      useStore.setState({
+        fetchInsights: respond('insights', () => ({ insights: [] })),
+        fetchModels: respond('models', () => ({ models: [] })),
+        fetchTables: respond('tables', () => ({ tables: [] })),
+      });
+    });
+    render(<TablePreview activeObject={{ type: 'table', name: 'p' }} projectId="p1" />);
+    for (let i = 0; i < 10; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await act(async () => {
+        await Promise.resolve();
+      });
+    }
+    expect(calls).toEqual({ insights: 1, models: 1, tables: 1 });
   });
 
   test('renders an empty state when the table is not found', () => {

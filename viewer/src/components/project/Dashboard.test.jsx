@@ -1555,8 +1555,8 @@ describe('Dashboard', () => {
       inputs = {},
       models = [],
       insights = [],
-      modelsLoading = false,
-      insightsLoading = false,
+      modelsLoaded = true,
+      insightsLoaded = true,
       insightJobs = {},
       props = {},
     } = {}
@@ -1571,10 +1571,11 @@ describe('Dashboard', () => {
         fetchMarkdowns: jest.fn(),
         fetchInputs: jest.fn(),
         fetchModels: jest.fn(),
+        fetchInsights: jest.fn(),
         models,
         insights,
-        modelsLoading,
-        insightsLoading,
+        modelsLoaded,
+        insightsLoaded,
         insightJobs,
         getChartByName: jest.fn(name => charts[name] ?? null),
         getTableByName: jest.fn(name => tables[name] ?? null),
@@ -2232,9 +2233,9 @@ describe('Dashboard', () => {
     });
 
     it.each([
-      ['models', { modelsLoading: true }],
-      ['insights', { insightsLoading: true }],
-    ])('holds an unknown pivot ref while the %s registry loads', (_label, loading) => {
+      ['models', { modelsLoaded: false }],
+      ['insights', { insightsLoaded: false }],
+    ])('holds an unknown pivot ref until the %s registry has settled a fetch', (_label, loading) => {
       mountDashboard(pivotDashboard([{ table: 'pivot-table', width: 1 }]), {
         ...loading,
         tables: pivotOnly([

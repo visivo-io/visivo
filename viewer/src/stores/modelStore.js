@@ -11,6 +11,7 @@ const createModelSlice = (set, get) => ({
   // State
   models: [], // All models with status (NEW, MODIFIED, PUBLISHED)
   modelsLoading: false,
+  modelsLoaded: false, // True once a fetch has settled, with or without an error
   modelsError: null,
   editingModel: null, // Model being edited (null = create mode)
   modelModalOpen: false,
@@ -21,9 +22,9 @@ const createModelSlice = (set, get) => ({
     try {
       const projectId = get().project?.id;
       const data = await modelsApi.fetchAllModels(projectId);
-      set({ models: data.models || [], modelsLoading: false });
+      set({ models: data.models || [], modelsLoading: false, modelsLoaded: true });
     } catch (error) {
-      set({ modelsError: error.message, modelsLoading: false });
+      set({ modelsError: error.message, modelsLoading: false, modelsLoaded: true });
     }
   },
 

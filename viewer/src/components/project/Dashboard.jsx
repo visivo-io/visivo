@@ -285,7 +285,7 @@ const Dashboard = ({
   // model/insight signal, so we look the name up against the fetched model list.
   const fetchModels = useStore(state => state.fetchModels);
   const models = useStore(state => state.models);
-  const modelsLoading = useStore(state => state.modelsLoading);
+  const modelsLoaded = useStore(state => state.modelsLoaded);
 
   // Markdown store
   const fetchMarkdowns = useStore(state => state.fetchMarkdowns);
@@ -305,7 +305,7 @@ const Dashboard = ({
   // The insight registry also tells a pivot ref to an insight from a pivot ref
   // to a model when no chart on the dashboard uses the insight (VIS-1701).
   const insights = useStore(state => state.insights);
-  const insightsLoading = useStore(state => state.insightsLoading);
+  const insightsLoaded = useStore(state => state.insightsLoaded);
   // Bumped by the run poller when a draft run succeeds; threaded into the data
   // hooks as a cacheKey so they refetch + force-reload the rebuilt output.
   const runDataVersion = useStore(state => state.runDataVersion);
@@ -528,12 +528,12 @@ const Dashboard = ({
       {
         isKnownModel,
         isKnownInsight: name => knownInsightNames.has(name),
-        registriesLoading: !!(modelsLoading || insightsLoading),
+        registriesLoading: !(modelsLoaded && (insightsLoaded || !fetchInsights)),
       }
     );
     return { visibleInsightNames: insightNames, visibleModelNames: modelNames };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layoutRows, charts, tables, models, getChartByName, getTableByName, shouldShowItem, knownInsightNames, isKnownModel, modelsLoading, insightsLoading]);
+  }, [layoutRows, charts, tables, models, getChartByName, getTableByName, shouldShowItem, knownInsightNames, isKnownModel, modelsLoaded, insightsLoaded, fetchInsights]);
 
   // Inputs an insight DEPENDS ON (referenced via `${input.value}` inside its
   // query / static_props) must be prefetched too. Otherwise an input-driven
