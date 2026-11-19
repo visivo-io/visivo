@@ -102,7 +102,9 @@ describe('AgentPrompt', () => {
     await userEvent.click(screen.getByTestId('agent-send'));
     await userEvent.click(await screen.findByTestId('agent-stop'));
 
-    expect(await screen.findByTestId('agent-cancelled')).toHaveTextContent(/still there as a draft/);
+    expect(await screen.findByTestId('agent-cancelled')).toHaveTextContent(
+      /still there as a draft/
+    );
   });
 
   it('shows the setup instructions verbatim when no key is configured', async () => {
@@ -330,9 +332,9 @@ describe('AgentPrompt — when polling itself is broken', () => {
     await userEvent.type(screen.getByLabelText('What should the agent do?'), 'go');
     await userEvent.click(screen.getByTestId('agent-send'));
 
-    expect(await screen.findByTestId('agent-notice-error', {}, { timeout: 10000 })).toHaveTextContent(
-      /Lost contact with the agent/
-    );
+    expect(
+      await screen.findByTestId('agent-notice-error', {}, { timeout: 10000 })
+    ).toHaveTextContent(/Lost contact with the agent/);
   }, 15000);
 });
 
@@ -572,7 +574,9 @@ describe('before this serve has been authorized', () => {
 
     fetchAuthorization.mockResolvedValue({ authorized: true, host: 'https://app.visivo.io' });
 
-    expect(await screen.findByTestId('agent-send', undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('agent-send', undefined, { timeout: 5000 })
+    ).toBeInTheDocument();
   });
 
   it('keeps bring-your-own-key, below and collapsed', async () => {
@@ -648,5 +652,58 @@ describe('running out of credit mid-turn', () => {
 
     expect(await screen.findByTestId('agent-failed')).toHaveTextContent('something actually broke');
     expect(screen.queryByTestId('agent-limit-reached')).not.toBeInTheDocument();
+  });
+});
+
+describe('a first message sent without a click (VIS-1759)', () => {
+  const FIRST = 'Check the data in sales.';
+
+  it('sends it once the project is found to have no conversation', async () => {
+    startAgentSession.mockResolvedValue({ session: session('running') });
+    fetchAgentSession.mockResolvedValue(session('running'));
+    const onAutoSent = jest.fn();
+
+    render(<AgentPrompt autoSend={FIRST} onAutoSent={onAutoSent} />);
+
+    expect(await screen.findByTestId('agent-stop')).toBeInTheDocument();
+    expect(startAgentSession).toHaveBeenCalledTimes(1);
+    expect(startAgentSession).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: FIRST, sessionId: undefined })
+    );
+    expect(onAutoSent).toHaveBeenCalledTimes(1);
+  });
+
+  it('resumes the conversation already there instead of sending again', async () => {
+    listAgentSessions.mockResolvedValue([{ id: 's1', state: 'succeeded' }]);
+    fetchAgentSession.mockResolvedValue(
+      session('succeeded', { transcript: [said('user', FIRST), said('agent', 'Done.')] })
+    );
+
+    render(<AgentPrompt autoSend={FIRST} />);
+
+    expect(await screen.findByTestId('agent-transcript')).toHaveTextContent('Done.');
+    expect(startAgentSession).not.toHaveBeenCalled();
+  });
+
+  it('waits for an unauthorized serve to be connected', async () => {
+    fetchAuthorization.mockResolvedValue({ authorized: false, host: 'https://app.visivo.io' });
+
+    render(<AgentPrompt autoSend={FIRST} />);
+
+    expect(await screen.findByTestId('agent-authorize-button')).toBeInTheDocument();
+    expect(startAgentSession).not.toHaveBeenCalled();
+  });
+
+  it('with no credit, it stops and keeps the message to send again', async () => {
+    startAgentSession.mockResolvedValue({
+      limitReached: 'This account is out of credit. Buy more to keep going.',
+      limitReason: 'no_credit',
+    });
+
+    render(<AgentPrompt autoSend={FIRST} />);
+
+    expect(await screen.findByTestId('agent-notice-no-credit')).toBeInTheDocument();
+    expect(screen.getByLabelText('What should the agent do?')).toHaveValue(FIRST);
+    expect(screen.getByTestId('agent-send')).toBeEnabled();
   });
 });

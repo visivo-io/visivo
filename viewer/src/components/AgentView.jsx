@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import useStore from '../stores/store';
 import AgentPrompt from './AgentPrompt';
 import { fetchAgentActions } from '../api/agent';
@@ -6,6 +7,13 @@ import { subscribe, canDeliver } from '../events/eventSource';
 import { AGENT_ACTIONS } from '../events/topics';
 import AgentToolCalls from './AgentToolCalls';
 import AgentOwnClient from './AgentOwnClient';
+import { useViewerNavigate } from '../hooks/useViewerNavigate';
+import {
+  FIRST_SESSION_PARAM,
+  firstSessionPending,
+  firstSessionPrompt,
+  markFirstSessionStarted,
+} from './onboarding/firstSession';
 
 /**
  * The Agent tab: any calls an external MCP client made, then the conversation
@@ -39,7 +47,47 @@ function ExternalCalls({ actions }) {
   );
 }
 
+function FirstSession({ source }) {
+  const navigate = useViewerNavigate();
+  return (
+    <section
+      aria-labelledby="agent-first-session-heading"
+      className="bg-white border border-gray-200 rounded-lg p-4 mb-4"
+      data-testid="agent-first-session"
+    >
+      <h2 id="agent-first-session-heading" className="text-base font-semibold text-gray-900">
+        Your first session
+      </h2>
+      <p className="mt-1 text-sm text-gray-600">
+        The agent checks <strong>{source}</strong>, shares a few findings, and asks what you want to
+        know. Then it builds your first dashboard as a draft. Nothing is committed until you commit
+        it.
+      </p>
+      <p className="mt-2 text-xs text-gray-500">
+        This uses AI credits. Without credits or your own API key, the session waits until you add
+        them.
+      </p>
+      <button
+        type="button"
+        onClick={() => navigate('/workspace/exploration')}
+        className="mt-2 text-sm font-medium text-primary hover:underline"
+        data-testid="agent-first-session-stop"
+      >
+        Stop and do it myself
+      </button>
+    </section>
+  );
+}
+
 const AgentView = () => {
+  const [searchParams] = useSearchParams();
+  const firstSource = searchParams.get(FIRST_SESSION_PARAM);
+  // Read once: after the first message goes, a reload resumes the session
+  // instead of sending it again.
+  const [autoSend] = useState(() =>
+    firstSessionPending(firstSource) ? firstSessionPrompt(firstSource) : null
+  );
+
   const projectId = useStore(state => state.project?.id);
   const topic = useMemo(() => AGENT_ACTIONS(fetchAgentActions, projectId), [projectId]);
   const [actions, setActions] = useState(null);
@@ -85,8 +133,9 @@ const AgentView = () => {
           {error}
         </p>
       )}
+      {firstSource && <FirstSession source={firstSource} />}
       {external.length > 0 && <ExternalCalls actions={external} />}
-      <AgentPrompt />
+      <AgentPrompt autoSend={autoSend} onAutoSent={markFirstSessionStarted} />
       {canDeliver(topic) && <AgentOwnClient />}
     </div>
   );
