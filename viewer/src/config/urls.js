@@ -24,6 +24,18 @@ const URL_PATTERNS = {
     // under. POST starts a job, and the job is polled at its own key.
     sourceConnections: '/api/source-connections/',
     sourceConnectionJob: '/api/source-connections/{jobId}/',
+    // A source form stores each typed credential here, then saves only its
+    // ${env.NAME} reference. Cloud: the account secret store, admins only.
+    secrets: '/api/secrets/',
+
+    // ---- Project files --------------------------------------------------
+    // docs/contracts/project-files-and-credentials.md. Upload content is sent
+    // to the `transfer.url` the upload returns: this key locally, a signed
+    // storage URL in cloud.
+    projectFiles: '/api/project-files/',
+    projectFileUploads: '/api/project-files/uploads/',
+    projectFileUploadContent: '/api/project-files/uploads/{uploadId}/content/',
+    projectFileUploadComplete: '/api/project-files/uploads/{uploadId}/complete/',
 
     modelsList: '/api/models/',
     modelDetail: '/api/models/{name}/',

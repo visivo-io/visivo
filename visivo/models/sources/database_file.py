@@ -1,7 +1,23 @@
 import os
+import re
 from typing import Optional
+from urllib.parse import urlparse
 
-URI_DATABASE_PREFIXES = ("md:", "s3://", "https://")
+REMOTE_PREFIXES = ("https://", "http://")
+
+
+def is_remote_database(database) -> bool:
+    return isinstance(database, str) and database.lower().startswith(REMOTE_PREFIXES)
+
+
+def remote_database_alias(database: str) -> str:
+    """The name a remote database is attached under: its file stem, as DuckDB names a local one."""
+    stem = os.path.splitext(os.path.basename(urlparse(database).path))[0]
+    alias = re.sub(r"[^A-Za-z0-9_]", "_", stem) or "remote"
+    return alias if not alias[0].isdigit() else f"_{alias}"
+
+
+URI_DATABASE_PREFIXES = ("md:", "s3://") + REMOTE_PREFIXES
 
 
 def is_uri_database(database) -> bool:

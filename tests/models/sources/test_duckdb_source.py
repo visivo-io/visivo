@@ -108,10 +108,7 @@ def test_check_database_files_exist_skips_a_uri_attachment(tmp_path):
     source.check_database_files_exist(str(tmp_path))
 
 
-@pytest.mark.parametrize(
-    "database",
-    ["md:my_db", "s3://bucket/path/data.duckdb", "https://example.com/data.duckdb"],
-)
+@pytest.mark.parametrize("database", ["md:my_db", "s3://bucket/path/data.duckdb"])
 def test_get_connection_passes_a_uri_database_through_unchanged(tmp_path, monkeypatch, database):
     import duckdb
 
