@@ -3,10 +3,7 @@ import useStore from '../../../stores/store';
 import Table from '../../items/Table';
 import { useInsightsData } from '../../../hooks/useInsightsData';
 import { useModelsData } from '../../../hooks/useModelsData';
-import {
-  parseRefValue,
-  extractRefNamesFromStrings,
-} from '../../../utils/refString';
+import { classifyTableDataNames } from '../../../utils/tableDataNames';
 import { usePreviewInputDependencies } from './usePreviewInputDependencies';
 import PreviewInputControls from './PreviewInputControls';
 
@@ -18,10 +15,9 @@ import PreviewInputControls from './PreviewInputControls';
  * / pagination). No editing affordances — editing lives in the right rail.
  *
  * A table's `data` is a `${ref()}` to EITHER a model OR an insight (and its
- * pivot `columns`/`rows`/`values` carry further refs). We classify the data ref
- * against the model registry exactly as <Dashboard> does (the VIS-827 fix) and
- * load it via the same `useModelsData` / `useInsightsData` hooks, so a saved
- * table previews identically to how it renders on a dashboard.
+ * pivot `columns`/`rows`/`values` carry further refs). `classifyTableDataNames`
+ * sorts them exactly as <Dashboard> does, so a saved table previews identically
+ * to how it renders on a dashboard.
  */
 const TablePreview = ({ activeObject, projectId }) => {
   const name = activeObject?.name || null;
@@ -29,6 +25,10 @@ const TablePreview = ({ activeObject, projectId }) => {
   const fetchTables = useStore(s => s.fetchTables);
   const models = useStore(s => s.models);
   const fetchModels = useStore(s => s.fetchModels);
+  const modelsLoading = useStore(s => s.modelsLoading);
+  const insights = useStore(s => s.insights);
+  const fetchInsights = useStore(s => s.fetchInsights);
+  const insightsLoading = useStore(s => s.insightsLoading);
 
   useEffect(() => {
     if ((!tables || tables.length === 0) && typeof fetchTables === 'function') {
@@ -37,7 +37,10 @@ const TablePreview = ({ activeObject, projectId }) => {
     if ((!models || models.length === 0) && typeof fetchModels === 'function') {
       fetchModels();
     }
-  }, [tables, fetchTables, models, fetchModels]);
+    if ((!insights || insights.length === 0) && typeof fetchInsights === 'function') {
+      fetchInsights();
+    }
+  }, [tables, fetchTables, models, fetchModels, insights, fetchInsights]);
 
   const record = useMemo(
     () => (Array.isArray(tables) ? tables.find(t => t.name === name) || null : null),
@@ -55,31 +58,20 @@ const TablePreview = ({ activeObject, projectId }) => {
     [models]
   );
 
-  // Classify the data ref + pivot refs into model vs insight buckets, mirroring
-  // <Dashboard>'s collectDataNames so the right hook fetches the right data.
-  const { modelNames, insightNames } = useMemo(() => {
-    const modelSet = new Set();
-    const insightSet = new Set();
-    if (tableConfig) {
-      const { data } = tableConfig;
-      if (typeof data === 'string') {
-        const dataName = parseRefValue(data);
-        if (dataName) (knownModelNames.has(dataName) ? modelSet : insightSet).add(dataName);
-      } else if (data && data.name) {
-        const isModel = !!(data.sql || data.args || data.models);
-        (isModel ? modelSet : insightSet).add(data.name);
-      }
-      const pivotRefStrings = [
-        ...(tableConfig.columns || []),
-        ...(tableConfig.rows || []),
-        ...(tableConfig.values || []),
-      ];
-      extractRefNamesFromStrings(pivotRefStrings).forEach(n => {
-        (knownModelNames.has(n) ? modelSet : insightSet).add(n);
-      });
-    }
-    return { modelNames: [...modelSet], insightNames: [...insightSet] };
-  }, [tableConfig, knownModelNames]);
+  const knownInsightNames = useMemo(
+    () => new Set((Array.isArray(insights) ? insights : []).map(i => i.name)),
+    [insights]
+  );
+
+  const { modelNames, insightNames } = useMemo(
+    () =>
+      classifyTableDataNames(tableConfig, {
+        isKnownModel: n => knownModelNames.has(n),
+        isKnownInsight: n => knownInsightNames.has(n),
+        registriesLoading: !!(modelsLoading || insightsLoading),
+      }),
+    [tableConfig, knownModelNames, knownInsightNames, modelsLoading, insightsLoading]
+  );
 
   useModelsData(projectId, modelNames);
   useInsightsData(projectId, insightNames);

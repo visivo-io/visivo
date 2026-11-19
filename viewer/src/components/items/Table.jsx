@@ -36,6 +36,7 @@ import { itemNameToSlug } from './utils';
 import { useDashboardTheme } from '../../theme/DashboardThemeContext';
 import { createDashboardMuiTheme } from '../../theme/muiTheme';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
+import { selectTableSource } from '../../utils/tableDataNames';
 import { ROWS_PER_PAGE_OPTIONS } from './rowsPerPageOptions';
 import { buildReverseMapping, formatColumnHeader } from '../../utils/pivotRefResolver';
 
@@ -63,11 +64,7 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
   const isPivotableTable = !!dataName;
 
   const sourceData = useStore(
-    useShallow(state => {
-      if (!dataName) return null;
-      if (isModelData) return state.modelJobs?.[dataName] || null;
-      return state.insightJobs[dataName] || state.modelJobs?.[dataName] || null;
-    })
+    useShallow(state => selectTableSource(state, dataName, { modelOnly: !!isModelData }))
   );
 
   const [searchIsVisible, setSearchIsVisible] = useState(false);

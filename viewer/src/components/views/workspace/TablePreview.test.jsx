@@ -37,13 +37,21 @@ jest.mock('../../items/Input', () => ({
   default: ({ input }) => <div data-testid="input-component">{input?.name}</div>,
 }));
 
-const seed = (tables = [], models = [], { inputs = [], insightJobs = {} } = {}) => {
+const seed = (
+  tables = [],
+  models = [],
+  { inputs = [], insightJobs = {}, insights = [], insightsLoading = false } = {}
+) => {
   act(() => {
     useStore.setState({
       tables,
       models,
+      modelsLoading: false,
+      insights,
+      insightsLoading,
       fetchTables: jest.fn(),
       fetchModels: jest.fn(),
+      fetchInsights: jest.fn(),
       inputs,
       fetchInputs: jest.fn(),
       insightJobs,
@@ -77,6 +85,47 @@ describe('TablePreview (VIS-791)', () => {
     render(<TablePreview activeObject={{ type: 'table', name: 't' }} projectId="p1" />);
     expect(mockUseInsightsData).toHaveBeenCalledWith('p1', ['sales_insight']);
     expect(mockUseModelsData).toHaveBeenCalledWith('p1', []);
+  });
+
+  const pivotConfig = name => ({
+    columns: [`\${ref(${name}).region}`],
+    rows: [`\${ref(${name}).month}`],
+    values: [`sum(\${ref(${name}).amount})`],
+  });
+
+  test('loads a pivot on a registered insight through the insights hook only (VIS-1701)', () => {
+    seed([{ name: 'p', config: pivotConfig('revenue') }], [{ name: 'orders_model' }], {
+      insights: [{ name: 'revenue' }],
+    });
+    render(<TablePreview activeObject={{ type: 'table', name: 'p' }} projectId="p1" />);
+    expect(mockUseInsightsData).toHaveBeenLastCalledWith('p1', ['revenue']);
+    expect(mockUseModelsData).toHaveBeenLastCalledWith('p1', []);
+  });
+
+  test('loads a pivot on a model through the models hook only', () => {
+    seed([{ name: 'p', config: pivotConfig('orders_model') }], [{ name: 'orders_model' }]);
+    render(<TablePreview activeObject={{ type: 'table', name: 'p' }} projectId="p1" />);
+    expect(mockUseModelsData).toHaveBeenLastCalledWith('p1', ['orders_model']);
+    expect(mockUseInsightsData).toHaveBeenLastCalledWith('p1', []);
+  });
+
+  test('holds an unlisted pivot ref while the insight registry loads', () => {
+    seed([{ name: 'p', config: pivotConfig('unlisted') }], [{ name: 'orders_model' }], {
+      insightsLoading: true,
+    });
+    render(<TablePreview activeObject={{ type: 'table', name: 'p' }} projectId="p1" />);
+    expect(mockUseInsightsData).toHaveBeenLastCalledWith('p1', []);
+    expect(mockUseModelsData).toHaveBeenLastCalledWith('p1', []);
+  });
+
+  test('fetches the insight registry when it is empty', () => {
+    const fetchInsights = jest.fn();
+    seed([{ name: 'p', config: pivotConfig('revenue') }], [{ name: 'orders_model' }]);
+    act(() => {
+      useStore.setState({ fetchInsights });
+    });
+    render(<TablePreview activeObject={{ type: 'table', name: 'p' }} projectId="p1" />);
+    expect(fetchInsights).toHaveBeenCalled();
   });
 
   test('renders an empty state when the table is not found', () => {
