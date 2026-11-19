@@ -264,6 +264,7 @@ class VisivoRunValidator:
             "funnel-trace",
             "indicator-trace",
             "markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters",
+            "pivot-only-insight",
             "pivot-source-insight",
             "range-slider-insight",
             "simple-line",
