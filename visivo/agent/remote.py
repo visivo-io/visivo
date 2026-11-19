@@ -42,6 +42,9 @@ SAVE_TIMEOUT_SECONDS = 30
 # Core marks anything that is not this as a draft.
 PUBLISHED = "published"
 
+# A Project needs a name, and the objects that arrive carry none for it.
+PUBLISHED_PROJECT_NAME = "project"
+
 
 # The agent's name for it. `CloudApi` raises `CloudApiError`; everything that
 # already catches `RemoteProjectError` keeps working, because they are the
@@ -136,6 +139,28 @@ class RemoteProject:
     @property
     def managers(self):
         return dict(self._managers)
+
+    def published_project(self, fields):
+        """A Project that holds the published objects of ``fields``, for the
+        code that builds an insight's query from a Project and its DAG.
+
+        The fields are set after construction, as ``inject_cached_objects``
+        sets a draft, so a metric scoped to a model can go under its model
+        before anything reads it. There are no project defaults here: see
+        ``project`` above.
+        """
+        from visivo.models.project import Project
+        from visivo.server.jobs.project_injection import (
+            MANAGER_TO_PROJECT_FIELD,
+            renest_model_scoped_fields,
+        )
+
+        project = Project(name=PUBLISHED_PROJECT_NAME)
+        for attribute, field in MANAGER_TO_PROJECT_FIELD:
+            if field in fields:
+                setattr(project, field, list(getattr(self, attribute).published_objects.values()))
+        renest_model_scoped_fields(project)
+        return project
 
 
 def _manager_for(type_key):

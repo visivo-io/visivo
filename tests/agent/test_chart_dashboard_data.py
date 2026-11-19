@@ -520,6 +520,59 @@ class TestHowObjectsAreNamed:
             data_tools._model_rows(project, "bad", model, 5)
 
 
+class TestAProjectThatLivesElsewhere:
+    """A host that holds the project as rows fills the same managers, so both
+    tools answer as they do for a local project."""
+
+    @pytest.fixture
+    def remote(self, integration_app):
+        from tests.agent.test_remote import _envelope, _project
+
+        source = integration_app.project.sources[0]
+        rows = {
+            "sources": [_envelope(source.name, source.model_dump(exclude_none=True, mode="json"))],
+            "models": [
+                _envelope(
+                    "orders_q",
+                    {"sql": "SELECT x, y FROM test_table", "source": f"ref({source.name})"},
+                )
+            ],
+            "insights": [_envelope("by_x", {"props": _insight("by_x")["props"]})],
+            "charts": [_envelope("orders_chart", {"insights": ["ref(by_x)"]})],
+            "tables": [_envelope("model_table", {"data": "ref(orders_q)"}, status="new")],
+            "dashboards": [
+                _envelope(
+                    "orders",
+                    {"rows": [_row({"chart": "ref(orders_chart)"}, {"table": "ref(model_table)"})]},
+                )
+            ],
+        }
+        project, core = _project(rows)
+        return project, core
+
+    def test_the_list_reads_the_rows_and_names_no_project(self, remote):
+        project, core = remote
+
+        result = call(project, LIST, {})
+
+        assert result["dashboards"] == [
+            {"name": "orders", "charts": ["orders_chart"], "tables": ["model_table"]}
+        ]
+        assert "project" not in result and "branch" not in result
+        assert core.saved == []
+
+    def test_the_data_comes_from_the_source(self, remote):
+        project, core = remote
+
+        result = call(project, GET, {"type": "dashboard", "name": "orders"})
+
+        assert [(d["name"], d["kind"], d["row_count"]) for d in result["data"]] == [
+            ("by_x", "insight", 6),
+            ("orders_q", "model", 6),
+        ]
+        assert core.saved == []
+
+
 class TestTheRegistry:
     def test_both_tools_are_offered(self):
         assert {LIST, GET} <= set(TOOLS)
