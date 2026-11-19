@@ -20,7 +20,7 @@ Visivo ships ten built-in [Source](../concepts/source.md) types: seven that use 
 | `bigquery` | SQLAlchemy (`bigquery`) | Google BigQuery | `project`, `database` (dataset), `credentials_base64` |
 | `redshift` | `redshift-connector` | Amazon Redshift | `host`, `port`, `database`, `username`, `password` (or IAM) |
 | `clickhouse` | SQLAlchemy (`clickhouse`) | ClickHouse server / Cloud | `host`, `port`, `database`, `username`, `password`, `protocol`, `secure` |
-| `duckdb` | DuckDB | Local `.db` file | `database` (file path), `attach` |
+| `duckdb` | DuckDB | Local `.db` file, or a DuckLake | `database` (file path), `attach` |
 | `csv` | DuckDB | Local `.csv` file | `file` (file path), `delimiter`, `encoding`, `has_header` |
 | `xls` | DuckDB | Local spreadsheet file | `file` (file path), `delimiter`, `encoding`, `has_header` |
 
@@ -212,6 +212,63 @@ sources:
           type: duckdb
           database: local/static/static.db
 ```
+
+#### DuckLake
+
+A [DuckLake](https://ducklake.select) keeps its catalog in a database and its data in Parquet
+files. To read one, add an attachment with a `ducklake` block to a DuckDB Source. The example
+uses a PostgreSQL catalog and data files in Google Cloud Storage.
+
+```yaml title="project.visivo.yml"
+sources:
+  - name: lake
+    type: duckdb
+    database: ":memory:"
+    attach:
+      - schema_name: lake
+        ducklake:
+          catalog:
+            host: ${env.LAKE_CATALOG_HOST}
+            port: 5432
+            database: ducklake
+            username: ${env.LAKE_CATALOG_USER}
+            password: ${env.LAKE_CATALOG_PASSWORD}
+          data_path: gs://my-bucket/lake/
+          gcs:
+            key_id: ${env.GCS_HMAC_KEY_ID}
+            secret: ${env.GCS_HMAC_SECRET}
+
+models:
+  - name: orders_by_region
+    sql: select region, sum(amount) as total from lake.main.orders group by 1
+```
+
+- **Table names.** A Model reads a table as `<schema_name>.<schema>.<table>`, for example
+  `lake.main.orders`.
+- **Read-only.** Visivo attaches a DuckLake read-only. Set `read_only: false` only when a
+  query must write to the DuckLake.
+- **Catalog.** `catalog` is a PostgreSQL connection, as in the example, or a `ducklake:` URI
+  for a catalog in a file, for example `ducklake:sqlite:local/catalog.sqlite`. Visivo refuses
+  a `ducklake:postgres:` URI, because the URI would contain the password.
+- **Data path.** The catalog stores the data path when the DuckLake is created. An existing
+  DuckLake does not need `data_path`.
+- **Google Cloud Storage.** DuckDB reads `gs://` paths with an
+  [HMAC key](https://cloud.google.com/storage/docs/authentication/hmackeys). It does not
+  accept a service account key file. Give the key a role that can read the bucket.
+- **Snapshots.** Set `snapshot_version` to read the DuckLake as of one snapshot.
+- **Secrets.** Visivo reads each `${env.VAR}` value when it connects. It creates the
+  credentials as temporary DuckDB secrets on the connection, and it does not write them to disk.
+- **Errors.** If an attachment fails, Visivo stops and names the attachment. The message
+  does not contain the password or the HMAC secret.
+- **Extensions.** DuckDB downloads the `ducklake`, `postgres` and `httpfs` extensions on
+  first use, so the first connection needs network access.
+
+!!! note "DuckLake format versions"
+
+    The DuckDB version in your Visivo install sets the DuckLake format that Visivo can read.
+    DuckDB 1.5.2 and later 1.5 releases read format 1.0. DuckDB 2.0 reads formats 1.0 and 1.1.
+    DuckDB 1.5 cannot open a format 1.1 catalog. Run `visivo --version` and
+    `python -c "import duckdb; print(duckdb.__version__)"` to see what you have.
 
 ### CSV
 

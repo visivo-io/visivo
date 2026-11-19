@@ -252,6 +252,12 @@ nav:
                   - reference/configuration/Sources/DuckdbSource/index.md
                   - DuckdbAttachment:
                       - reference/configuration/Sources/DuckdbSource/DuckdbAttachment/index.md
+                      - DuckLakeAttachment:
+                          - reference/configuration/Sources/DuckdbSource/DuckdbAttachment/DuckLakeAttachment/index.md
+                          - DuckLakePostgresCatalog:
+                              - reference/configuration/Sources/DuckdbSource/DuckdbAttachment/DuckLakeAttachment/DuckLakePostgresCatalog/index.md
+                          - DuckLakeGcsCredentials:
+                              - reference/configuration/Sources/DuckdbSource/DuckdbAttachment/DuckLakeAttachment/DuckLakeGcsCredentials/index.md
                   - Seed:
                       - reference/configuration/Sources/DuckdbSource/Seed/index.md
               - CSVFileSource:

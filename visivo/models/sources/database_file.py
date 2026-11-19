@@ -4,10 +4,19 @@ from typing import Optional
 from urllib.parse import urlparse
 
 REMOTE_PREFIXES = ("https://", "http://")
+# Two or more characters, so that a Windows drive letter stays a file path.
+NON_FILE_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]+:")
 
 
 def is_remote_database(database) -> bool:
     return isinstance(database, str) and database.lower().startswith(REMOTE_PREFIXES)
+
+
+def is_file_database(database) -> bool:
+    """False for ``:memory:`` and for a URI such as ``ducklake:...``, ``md:...`` or ``https://...``."""
+    if not isinstance(database, str) or not database or database == ":memory:":
+        return False
+    return not NON_FILE_SCHEME.match(database)
 
 
 def remote_database_alias(database: str) -> str:
@@ -34,9 +43,10 @@ class DatabaseFileMixin:
         """
         databases = [self.get_database()]
         for attachment in getattr(self, "attach", None) or []:
-            databases.append(attachment.source.get_database())
+            if attachment.source is not None:
+                databases.append(attachment.source.get_database())
         for database in databases:
-            if not database or database == ":memory:" or is_remote_database(str(database)):
+            if not database or not is_file_database(str(database)):
                 continue
             path = resolve_database_path(str(database), project_dir)
             if not os.path.isfile(path):
