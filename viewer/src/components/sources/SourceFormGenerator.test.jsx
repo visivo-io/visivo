@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SourceFormGenerator, {
   getSourceSchema,
+  isStructuredValue,
   parsePortInput,
   secretRefName,
   toSecretRef,
@@ -395,5 +396,49 @@ describe('file fields', () => {
     fireEvent.change(screen.getByLabelText(/Database Path/), { target: { value: ':memory:' } });
 
     expect(onChange).toHaveBeenCalledWith({ database: ':memory:' });
+  });
+});
+
+describe('a DuckDB database that is a DuckLake object', () => {
+  const lake = {
+    catalog: 'ducklake:sqlite:local/catalog.sqlite',
+    data_path: 's3://bucket/lake/',
+    storage: { type: 's3', key_id: 'AKIAEXAMPLE', secret: rawRef('AWS_SECRET_ACCESS_KEY') },
+  };
+
+  test('is shown read-only as JSON, not in a text box', () => {
+    renderForm({ sourceType: 'duckdb', values: { database: lake } });
+
+    const block = screen.getByTestId('database-structured');
+    expect(block).toHaveTextContent('"catalog": "ducklake:sqlite:local/catalog.sqlite"');
+    expect(block).toHaveTextContent('"type": "s3"');
+    expect(block).toHaveTextContent('Edit it in the project file');
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByText('[object Object]')).not.toBeInTheDocument();
+  });
+
+  test('shows the error of the field', () => {
+    renderForm({
+      sourceType: 'duckdb',
+      values: { database: lake },
+      errors: { database: 'storage type s3 needs a data_path' },
+    });
+
+    expect(screen.getByText('storage type s3 needs a data_path')).toBeInTheDocument();
+  });
+
+  test('a string database stays a text box', () => {
+    renderForm({ sourceType: 'duckdb', values: { database: 'local/file.duckdb' } });
+
+    expect(screen.queryByTestId('database-structured')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Database Path/)).toHaveValue('local/file.duckdb');
+  });
+
+  test('isStructuredValue is true only for an object', () => {
+    expect(isStructuredValue(lake)).toBe(true);
+    expect(isStructuredValue('local/file.duckdb')).toBe(false);
+    expect(isStructuredValue('')).toBe(false);
+    expect(isStructuredValue(null)).toBe(false);
+    expect(isStructuredValue(undefined)).toBe(false);
   });
 });

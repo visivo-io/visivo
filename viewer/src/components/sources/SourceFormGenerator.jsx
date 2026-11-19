@@ -166,6 +166,9 @@ export const parsePortInput = text => (/^\d+$/.test(text) ? Number(text) : text)
 // Get schema for a source type (returns empty fields if type not found)
 export { toSecretRef, secretRefName };
 
+// A DuckDB `database` can be a DuckLake object, which a text box cannot edit.
+export const isStructuredValue = value => value !== null && typeof value === 'object';
+
 export const getSourceSchema = type => {
   return SOURCE_SCHEMAS[type] || { fields: [] };
 };
@@ -314,7 +317,20 @@ const SourceFormGenerator = ({
   return (
     <div className="space-y-4">
       {schema.fields.map(field =>
-        isSecretPicker(field) ? (
+        isStructuredValue(values[field.name]) ? (
+          <div key={field.name} data-testid={`${field.name}-structured`}>
+            <p className="text-sm font-medium text-gray-700">{field.label}</p>
+            <pre className="mt-1 px-3 py-2.5 text-xs text-gray-900 bg-gray-50 rounded-md border border-gray-300 whitespace-pre-wrap break-words">
+              {JSON.stringify(values[field.name], null, 2)}
+            </pre>
+            <p className="mt-1 text-xs text-gray-500">
+              This value is an object, for example a DuckLake. Edit it in the project file.
+            </p>
+            {errors[field.name] && (
+              <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>
+            )}
+          </div>
+        ) : isSecretPicker(field) ? (
           <div key={field.name}>
             <SecretPicker
               field={field}

@@ -229,6 +229,17 @@ describe('ModelEditForm — embedded source', () => {
     expect(screen.queryByText(/Database:/)).not.toBeInTheDocument();
   });
 
+  it('hides the database hint when the database is a DuckLake object', () => {
+    const model = embeddedModel();
+    model.config.source = {
+      type: 'duckdb',
+      database: { catalog: 'ducklake:sqlite:local/catalog.sqlite' },
+    };
+    render(<ModelEditForm model={model} onSave={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.getByText('Source: duckdb')).toBeInTheDocument();
+    expect(screen.queryByText(/Database:/)).not.toBeInTheDocument();
+  });
+
   it('navigates to the embedded source with an applyToParent that swaps the source', () => {
     const onNavigateToEmbedded = jest.fn();
     render(
