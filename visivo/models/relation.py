@@ -56,7 +56,7 @@ class Relation(NamedModel, ParentModel):
     cardinality: Optional[Literal["many_to_one", "one_to_many", "one_to_one"]] = Field(
         None,
         description="How many rows of each model match across the join, read in the order the "
-        "condition names the two models. For '${ref(orders).user_id} = ${ref(users).id}', "
+        "condition names the two models. When the condition names orders and then users, "
         "'many_to_one' means many orders rows match one users row. Visivo uses it to warn "
         "when an aggregate counts a row once per match (fan-out). It does not change the "
         "SQL of the join.",
