@@ -30,9 +30,8 @@ class ModelManager(ObjectManager[SqlModel]):
         """SQL that does not parse, a projection with no name, or a nested metric
         that does not aggregate is refused."""
         dialect = self.dialect_lookup({"source": model.source}) if self.dialect_lookup else None
-        return validate_model_sql(model.sql, dialect, model.name) or nested_metric_aggregate_error(
-            model
-        )
+        refusal = validate_model_sql(model.sql, dialect, model.name)
+        return refusal or nested_metric_aggregate_error(model)
 
     def validate_object(self, obj_data: dict) -> SqlModel:
         """
