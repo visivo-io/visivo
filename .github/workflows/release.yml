@@ -179,3 +179,11 @@ jobs:
           token: ${{ secrets.CORE_DEPLOY_TOKEN }}
           repository: visivo-io/core
           event-type: visivo-release
+
+  deploy-docs-examples:
+    needs: create-release
+    if: ${{ inputs.dryrun == false }}
+    uses: ./.github/workflows/deploy_docs_examples.yml
+    with:
+      ref: v${{ inputs.version }}
+    secrets: inherit
