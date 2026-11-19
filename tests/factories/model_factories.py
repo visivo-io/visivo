@@ -1,3 +1,5 @@
+import hashlib
+import os
 import re
 from datetime import datetime, timezone
 
@@ -190,12 +192,31 @@ class SeedFactory(factory.Factory):
     args = ["echo", "row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8"]
 
 
+SHARED_SQLITE_DATABASE = "tmp/test.sqlite"
+
+
+def sqlite_database_for_current_test():
+    """One SQLite file per test, so parallel workers never seed the same file.
+
+    Every `SourceFactory()` in one test gets the same path, which keeps a
+    project and the database a fixture seeded for it in step. Outside a
+    running test (import or collection time) there is no test to key on.
+    """
+    current_test = os.environ.get("PYTEST_CURRENT_TEST")
+    if not current_test:
+        return SHARED_SQLITE_DATABASE
+    node_id = current_test.rsplit(" (", 1)[0]
+    digest = hashlib.sha1(node_id.encode()).hexdigest()[:16]
+    os.makedirs("tmp", exist_ok=True)
+    return f"tmp/test-{digest}.sqlite"
+
+
 class SourceFactory(factory.Factory):
     class Meta:
         model = SqliteSource
 
     name = "source"
-    database = "tmp/test.sqlite"
+    database = factory.LazyFunction(sqlite_database_for_current_test)
     type = "sqlite"
 
     class Params:
