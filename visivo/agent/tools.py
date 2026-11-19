@@ -225,6 +225,19 @@ def _validate_handler(type_key):
     return handler
 
 
+def _host_run_outcome(app):
+    """``"ran"`` when the host started a build for the save, as core does."""
+    manager = getattr(app, "run_manager", None)
+    if manager is None:
+        return None
+    from visivo.agent.runs import _active_states
+
+    latest = (manager.list(limit=1) or [None])[0]
+    if latest and latest.get("state") in _active_states():
+        return "ran"
+    return None
+
+
 def _write_handler(type_key):
     def handler(app, arguments):
         config, model = _agent_config(app, type_key, arguments)
@@ -260,7 +273,9 @@ def _write_handler(type_key):
         # POST /api/<type>/<name>/. The agent saves in-process, so without this
         # its writes stage nothing (leaving the top bar on Deploy) and never
         # trigger a run, however run_trigger is set.
-        outcome = stage_and_maybe_run(app, type_key, name, before) if staging else None
+        outcome = (
+            stage_and_maybe_run(app, type_key, name, before) if staging else _host_run_outcome(app)
+        )
         result = {"name": name, "status": "draft"}
         if outcome:
             result["change"] = outcome

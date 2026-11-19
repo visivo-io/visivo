@@ -53,6 +53,7 @@ TYPE_LIST = "/api/{type_key}/"
 TYPE_DETAIL = "/api/{type_key}/{name}/"
 PROJECT = "/api/projects/{project_id}"
 PROJECT_RUNS = "/run/"
+RUN_LOGS = "/api/runs/{run_id}/logs/"
 AGENT_RENDER_TOKEN = "/agent/render-token/"
 AGENT_CAPTURES = "/agent/captures/"
 
@@ -148,6 +149,15 @@ class CloudApi:
         if response.status_code != 200:
             return []
         return response.json() or []
+
+    def run_logs(self, run_id):
+        """A run's captured output, which core keeps out of the runs list.
+        Empty on failure, like ``runs``."""
+        url = f"{self.base_url}{RUN_LOGS.format(run_id=run_id)}"
+        response = self.session.get(url, timeout=FETCH_TIMEOUT_SECONDS)
+        if response.status_code != 200:
+            return ""
+        return (response.json() or {}).get("logs") or ""
 
     # --- screenshots (VIS-1485/1486) ---------------------------------------
 
