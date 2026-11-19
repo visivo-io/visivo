@@ -20,7 +20,7 @@ Visivo ships ten built-in [Source](../concepts/source.md) types: seven that use 
 | `bigquery` | SQLAlchemy (`bigquery`) | Google BigQuery | `project`, `database` (dataset), `credentials_base64` |
 | `redshift` | `redshift-connector` | Amazon Redshift | `host`, `port`, `database`, `username`, `password` (or IAM) |
 | `clickhouse` | SQLAlchemy (`clickhouse`) | ClickHouse server / Cloud | `host`, `port`, `database`, `username`, `password`, `protocol`, `secure` |
-| `duckdb` | DuckDB | Local `.db` file, or a DuckLake | `database` (file path), `attach` |
+| `duckdb` | DuckDB | Local `.db` file, or a DuckLake | `database` (file path or DuckLake), `attach` |
 | `csv` | DuckDB | Local `.csv` file | `file` (file path), `delimiter`, `encoding`, `has_header` |
 | `xls` | DuckDB | Local spreadsheet file | `file` (file path), `delimiter`, `encoding`, `has_header` |
 
@@ -219,62 +219,160 @@ same file. If an attachment fails, Visivo stops and names the attachment.
 #### DuckLake
 
 A [DuckLake](https://ducklake.select) keeps its catalog in a database and its data in Parquet
-files. To read one, add an attachment with a `ducklake` block to a DuckDB Source. The example
-uses a PostgreSQL catalog and data files in Google Cloud Storage.
+files. To read one, set `database` to the DuckLake: an object with a `catalog`. The example
+uses a PostgreSQL catalog and data files in Amazon S3.
 
 ```yaml title="project.visivo.yml"
 sources:
   - name: lake
     type: duckdb
-    database: ":memory:"
-    attach:
-      - schema_name: lake
-        ducklake:
-          catalog:
-            host: ${env.LAKE_CATALOG_HOST}
-            port: 5432
-            database: ducklake
-            username: ${env.LAKE_CATALOG_USER}
-            password: ${env.LAKE_CATALOG_PASSWORD}
-          data_path: gs://my-bucket/lake/
-          gcs:
-            key_id: ${env.GCS_HMAC_KEY_ID}
-            secret: ${env.GCS_HMAC_SECRET}
+    database:
+      catalog:
+        host: ${env.LAKE_CATALOG_HOST}
+        port: 5432
+        database: ducklake
+        username: ${env.LAKE_CATALOG_USER}
+        password: ${env.LAKE_CATALOG_PASSWORD}
+      data_path: s3://my-bucket/lake/
+      storage:
+        type: s3
+        key_id: ${env.AWS_ACCESS_KEY_ID}
+        secret: ${env.AWS_SECRET_ACCESS_KEY}
+        region: us-east-1
 
 models:
   - name: orders_by_region
-    sql: select region, sum(amount) as total from lake.main.orders group by 1
+    sql: select region, sum(amount) as total from orders group by 1
 ```
 
-- **Table names.** A Model reads a table as `<schema_name>.<schema>.<table>`, for example
-  `lake.main.orders`.
+The DuckLake is the default database of the Source. A Model reads a table as `orders` or
+`main.orders`. The full name is `lake.main.orders`: Visivo always attaches the DuckLake of
+`database` under the name `lake`.
+
+##### Join a DuckLake with a DuckDB file
+
+To use a DuckLake together with a DuckDB file, or with a second DuckLake, put it in `attach`.
+An attachment takes a `ducklake` block with the same fields. A Model reads its tables as
+`<schema_name>.<schema>.<table>`.
+
+```yaml title="project.visivo.yml"
+sources:
+  - name: sales
+    type: duckdb
+    database: local/sales.duckdb
+    attach:
+      - schema_name: lake
+        ducklake:
+          catalog: ducklake:sqlite:local/catalog.sqlite
+
+models:
+  - name: orders_with_regions
+    sql: >
+      select r.name, sum(o.amount) as total
+      from lake.main.orders o join regions r on r.code = o.region
+      group by 1
+```
+
+`attach` also works when `database` is a DuckLake.
+
+##### Storage credentials
+
+`storage` holds the credentials for the object store of the data files. Its `type` must agree
+with the scheme of `data_path`. A local `data_path`, or a public bucket, needs no `storage`.
+
+=== "Amazon S3"
+
+    ```yaml
+    sources:
+      - name: lake
+        type: duckdb
+        database:
+          catalog: ducklake:sqlite:local/catalog.sqlite
+          data_path: s3://my-bucket/lake/
+          storage:
+            type: s3
+            key_id: ${env.AWS_ACCESS_KEY_ID}
+            secret: ${env.AWS_SECRET_ACCESS_KEY}
+            region: us-east-1
+    ```
+
+    For a store that is S3-compatible, add `endpoint` (host and port, without `https://`),
+    and usually `url_style: path`. Set `use_ssl: false` if the store uses http. Temporary
+    credentials also take a `session_token`.
+
+=== "Google Cloud Storage"
+
+    ```yaml
+    sources:
+      - name: lake
+        type: duckdb
+        database:
+          catalog: ducklake:sqlite:local/catalog.sqlite
+          data_path: gs://my-bucket/lake/
+          storage:
+            type: gcs
+            key_id: ${env.GCS_HMAC_KEY_ID}
+            secret: ${env.GCS_HMAC_SECRET}
+    ```
+
+    DuckDB reads `gs://` and `gcs://` paths with an
+    [HMAC key](https://cloud.google.com/storage/docs/authentication/hmackeys). It does not
+    accept a service account key file. Give the key a role that can read the bucket.
+
+=== "Azure"
+
+    ```yaml
+    sources:
+      - name: lake
+        type: duckdb
+        database:
+          catalog: ducklake:sqlite:local/catalog.sqlite
+          data_path: az://my-container/lake/
+          storage:
+            type: azure
+            connection_string: ${env.AZURE_STORAGE_CONNECTION_STRING}
+    ```
+
+    As an alternative to `connection_string`, set `account_name` with `tenant_id`,
+    `client_id` and `client_secret` for a service principal. With `account_name` only,
+    DuckDB uses the Azure credential chain of the machine (environment variables, a managed
+    identity, the Azure CLI). The `data_path` starts with `az://` or `abfss://`.
+
+Visivo's tests write and read a DuckLake through `type: s3` (against an S3-compatible
+server) and through `type: azure` with a `connection_string` (against the Azurite
+emulator). For `type: gcs`, and for the Azure service principal and credential chain, the
+tests check only the `CREATE SECRET` statement that Visivo gives to DuckDB. They do not read
+from a real bucket.
+
+##### Rules
+
 - **Read-only.** Visivo attaches a DuckLake read-only. Set `read_only: false` only when a
-  query must write to the DuckLake.
-- **Catalog.** `catalog` is a PostgreSQL connection, as in the example, or a `ducklake:` URI.
-  A `ducklake:` URI is for a catalog in a DuckDB or SQLite file only, for example
-  `ducklake:sqlite:local/catalog.sqlite`. Visivo refuses a URI that can hold credentials.
-  The same rule applies to a `ducklake:` URI in `database`.
+  query or a [Seed](../reference/configuration/Sources/DuckdbSource/Seed/index.md) must write
+  to the DuckLake. A Seed on a read-only DuckLake fails with a message that names the Source.
+- **Catalog.** `catalog` is a PostgreSQL connection, as in the first example, or a
+  `ducklake:` URI. A `ducklake:` URI is for a catalog in a DuckDB or SQLite file only, for
+  example `ducklake:sqlite:local/catalog.sqlite`. Visivo refuses a URI that can hold
+  credentials.
 - **Data path.** The catalog stores the data path when the DuckLake is created. An existing
-  DuckLake does not need `data_path`. With `gcs`, `data_path` also sets which paths the HMAC
-  key reads. If more than one DuckLake in a Source has `gcs`, each one must have a `data_path`.
+  DuckLake does not need `data_path`. With `storage`, `data_path` also sets which paths the
+  credentials read. If more than one DuckLake in a Source has `storage`, each one must have
+  a `data_path`.
 - **Names.** Visivo puts `schema_name` in double quotes. A name with other characters than
   letters, numbers and underscores also needs double quotes in a query, for example
   `"my-lake".main.orders`. A name cannot be the name of the primary database, or `temp` or
-  `system`.
-- **Google Cloud Storage.** DuckDB reads `gs://` paths with an
-  [HMAC key](https://cloud.google.com/storage/docs/authentication/hmackeys). It does not
-  accept a service account key file. Give the key a role that can read the bucket.
+  `system`. When `database` is a DuckLake, an attachment cannot have the name `lake`.
 - **Snapshots.** Set `snapshot_version` to read the DuckLake as of one snapshot.
-- **Secrets.** The catalog `password` and the `gcs` `secret` must be `${env.VAR}` references.
-  Visivo refuses the value itself. Visivo reads each `${env.VAR}` value when it connects. It
-  creates the credentials as temporary DuckDB secrets on the connection, and it does not write
-  them to disk.
-- **Errors.** If an attachment fails, Visivo stops and names the attachment. This applies to
-  each attachment, a database file included. The message does not contain the password or the
-  HMAC secret.
+- **Secrets.** The catalog `password` and the `storage` fields `secret`, `session_token`,
+  `connection_string` and `client_secret` must be `${env.VAR}` references. Visivo refuses the
+  value itself. Visivo reads each `${env.VAR}` value when it connects. It creates the
+  credentials as temporary DuckDB secrets on the connection, and it does not write them to
+  disk.
+- **Errors.** If the DuckLake or an attachment fails to connect, Visivo stops and names the
+  Source and the attachment. The message does not contain a password or a storage secret.
 - **Extensions.** DuckDB downloads the `ducklake` extension on first use. It also downloads
-  `postgres` for a PostgreSQL catalog, `sqlite` for a SQLite file catalog, and `httpfs` for a
-  `gs://` data path. Thus the first connection needs network access.
+  `postgres` for a PostgreSQL catalog, `sqlite` for a SQLite file catalog, `httpfs` for an
+  S3 or Google Cloud Storage data path, and `azure` for an Azure data path. Thus the first
+  connection needs network access.
 
 !!! note "DuckLake format versions"
 

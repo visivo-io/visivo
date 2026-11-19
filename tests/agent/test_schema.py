@@ -39,8 +39,12 @@ class TestItFitsInAContextWindow:
     def test_even_the_big_ones_are_kilobytes_not_megabytes(self, slicer):
         """Chart and insight closures ARE the whole 3.2 MB schema, because
         their props reach Plotly."""
-        for type_key in ("charts", "insights", "sources", "dashboards", "inputs"):
+        for type_key in ("charts", "insights", "dashboards", "inputs"):
             assert _kb(slicer.for_type(type_key)) < 50, type_key
+
+    def test_the_sources_slice_holds_every_source_type(self, slicer):
+        """One slice describes ten source types, a DuckLake and its three storage types."""
+        assert _kb(slicer.for_type("sources")) < 60
 
 
 class TestNoPlotlyEverArrives:

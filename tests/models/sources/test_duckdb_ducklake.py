@@ -15,7 +15,7 @@ from visivo.logger.logger import Logger
 from visivo.models.sources.database_file import is_file_database
 from visivo.models.sources.duckdb_source import DuckdbAttachment, DuckdbSource
 from visivo.models.sources.ducklake import (
-    DuckLakeAttachment,
+    DuckLake,
     attach_database_sql,
     check_ducklake_uri,
     quote_identifier,
@@ -48,7 +48,7 @@ def _postgres_lake(**overrides):
             "password": PASSWORD_REF,
         },
         "data_path": "gs://bucket/lake/",
-        "gcs": {"key_id": HMAC_KEY_ID, "secret": HMAC_SECRET_REF},
+        "storage": {"type": "gcs", "key_id": HMAC_KEY_ID, "secret": HMAC_SECRET_REF},
     }
     config.update(overrides)
     return config
@@ -97,7 +97,7 @@ def _create_lake(tmp_path, catalog_file="catalog.ducklake"):
 
 
 def test_a_postgres_and_gcs_ducklake_is_valid_and_read_only_by_default():
-    lake = DuckLakeAttachment(**_postgres_lake())
+    lake = DuckLake(**_postgres_lake())
 
     assert lake.read_only is True
     assert lake.snapshot_version is None
@@ -106,7 +106,7 @@ def test_a_postgres_and_gcs_ducklake_is_valid_and_read_only_by_default():
 
 
 def test_a_file_catalog_uri_is_valid():
-    lake = DuckLakeAttachment(catalog="ducklake:sqlite:local/catalog.sqlite")
+    lake = DuckLake(catalog="ducklake:sqlite:local/catalog.sqlite")
 
     assert lake.catalog == "ducklake:sqlite:local/catalog.sqlite"
     assert lake.data_path is None
@@ -126,8 +126,11 @@ def test_a_file_catalog_uri_is_valid():
             "snapshot_version needs read_only: true",
         ),
         ({"catalog": "ducklake:c.ducklake", "snapshot_version": -1}, "greater than or equal to 0"),
-        (_postgres_lake(data_path="s3://bucket/lake/"), "starts with 'gs://' or 'gcs://'"),
-        (_postgres_lake(gcs={"key_id": HMAC_KEY_ID}), "Field required"),
+        (
+            _postgres_lake(data_path="s3://bucket/lake/"),
+            "storage type 'gcs' needs a data_path that starts with 'gs://' or 'gcs://'",
+        ),
+        (_postgres_lake(storage={"type": "gcs", "key_id": HMAC_KEY_ID}), "Field required"),
         (_postgres_lake(catalog={"host": "h", "database": "d"}), "Field required"),
         (_postgres_lake(catalog={"host": "h", "database": "d", "user": "u"}), "Extra inputs"),
         (_postgres_lake(init_sql="DROP TABLE x"), "Extra inputs"),
@@ -135,7 +138,7 @@ def test_a_file_catalog_uri_is_valid():
 )
 def test_a_bad_ducklake_is_refused(config, message):
     with pytest.raises(ValidationError, match=message):
-        DuckLakeAttachment(**config)
+        DuckLake(**config)
 
 
 def test_a_refused_catalog_uri_does_not_repeat_its_password():
@@ -170,13 +173,13 @@ def test_a_refused_catalog_uri_does_not_repeat_its_password():
 )
 def test_a_catalog_uri_that_is_not_a_file_is_refused(catalog, monkeypatch):
     with pytest.raises(ValidationError, match="must name a catalog in a DuckDB or SQLite file"):
-        DuckLakeAttachment(catalog=catalog)
+        DuckLake(catalog=catalog)
     with pytest.raises(ValidationError, match="must name a catalog in a DuckDB or SQLite file"):
         DuckdbSource(name="d", type="duckdb", database=catalog)
 
     monkeypatch.setenv("LAKE_CATALOG", catalog)
     with pytest.raises(ValueError, match="must name a catalog in a DuckDB or SQLite file"):
-        DuckLakeAttachment(catalog="${env.LAKE_CATALOG}").setup_statements("lake")
+        DuckLake(catalog="${env.LAKE_CATALOG}").setup_statements("lake")
 
 
 @pytest.mark.parametrize(
@@ -211,20 +214,38 @@ def test_a_credential_uri_from_an_env_var_fails_at_connect_without_the_password(
         assert "hunter2pw" not in error.value.message
 
 
+S3_STORAGE = {"type": "s3", "key_id": "AKIAEXAMPLE", "secret": "${env.AWS_SECRET_ACCESS_KEY}"}
+AZURE_PRINCIPAL = {
+    "type": "azure",
+    "account_name": "lakeaccount",
+    "tenant_id": "tenant-1",
+    "client_id": "client-1",
+    "client_secret": "${env.AZURE_CLIENT_SECRET}",
+}
+AZURE_CONNECTION = {
+    "type": "azure",
+    "connection_string": "${env.AZURE_STORAGE_CONNECTION_STRING}",
+}
+
+
 @pytest.mark.parametrize(
-    "block, field, example",
+    "block, base, field, example",
     [
-        ("catalog", "password", "LAKE_CATALOG_PASSWORD"),
-        ("gcs", "secret", "GCS_HMAC_SECRET"),
+        ("catalog", None, "password", "LAKE_CATALOG_PASSWORD"),
+        ("storage", None, "secret", "GCS_HMAC_SECRET"),
+        ("storage", S3_STORAGE, "secret", "AWS_SECRET_ACCESS_KEY"),
+        ("storage", S3_STORAGE, "session_token", "AWS_SESSION_TOKEN"),
+        ("storage", AZURE_CONNECTION, "connection_string", "AZURE_STORAGE_CONNECTION_STRING"),
+        ("storage", AZURE_PRINCIPAL, "client_secret", "AZURE_CLIENT_SECRET"),
     ],
 )
 @pytest.mark.parametrize("value", ["plain-text-7c1", "**********", ""])
-def test_a_ducklake_credential_must_be_an_env_var_reference(block, field, example, value):
-    config = _postgres_lake()
-    config[block] = {**config[block], field: value}
+def test_a_ducklake_credential_must_be_an_env_var_reference(block, base, field, example, value):
+    config = _postgres_lake(data_path=None)
+    config[block] = {**(base or config[block]), field: value}
 
     with pytest.raises(ValidationError) as error:
-        DuckLakeAttachment(**config)
+        DuckLake(**config)
 
     assert f"must be an environment variable reference, for example ${{env.{example}}}" in str(
         error.value
@@ -242,7 +263,9 @@ def test_validation_text_hides_the_secrets_that_pydantic_repeats():
             attach=[
                 {
                     "schema_name": "lake",
-                    "ducklake": _postgres_lake(gcs={"key_id": "k", "secret": "plain-hmac-91"}),
+                    "ducklake": _postgres_lake(
+                        storage={"type": "gcs", "key_id": "k", "secret": "plain-hmac-91"}
+                    ),
                 }
             ],
         )
@@ -258,7 +281,9 @@ def test_a_line_validation_error_hides_the_secrets(tmp_path):
     from visivo.parsers.line_validation_error import LineValidationError
 
     with pytest.raises(ValidationError) as error:
-        DuckLakeAttachment(**_postgres_lake(gcs={"key_id": "k", "secret": "plain-hmac-91"}))
+        DuckLake(
+            **_postgres_lake(storage={"type": "gcs", "key_id": "k", "secret": "plain-hmac-91"})
+        )
 
     message = str(LineValidationError(error.value, files=[]))
 
@@ -346,7 +371,7 @@ def test_secrets_are_not_in_the_repr_or_the_dump():
         assert HMAC_SECRET not in text
     dumped = source.model_dump(mode="json")["attach"][0]["ducklake"]
     assert dumped["catalog"]["password"] == PASSWORD_REF
-    assert dumped["gcs"]["secret"] == HMAC_SECRET_REF
+    assert dumped["storage"]["secret"] == HMAC_SECRET_REF
 
 
 def test_the_project_schema_describes_the_ducklake_attachment():
@@ -356,14 +381,14 @@ def test_the_project_schema_describes_the_ducklake_attachment():
     definitions = json.loads(generate_schema())["$defs"]
 
     assert "ducklake" in definitions["DuckdbAttachment"]["properties"]
-    assert set(definitions["DuckLakeAttachment"]["properties"]) >= {
+    assert set(definitions["DuckLake"]["properties"]) >= {
         "catalog",
         "data_path",
         "read_only",
         "snapshot_version",
-        "gcs",
+        "storage",
     }
-    assert definitions["DuckLakeAttachment"]["properties"]["read_only"]["default"] is True
+    assert definitions["DuckLake"]["properties"]["read_only"]["default"] is True
 
 
 # --- SQL generation ---------------------------------------------------------
@@ -392,7 +417,7 @@ def test_attach_database_sql_quotes_the_path_and_the_alias():
 
 
 def test_a_postgres_and_gcs_ducklake_emits_secrets_then_a_read_only_attach():
-    statements = DuckLakeAttachment(**_postgres_lake(snapshot_version=4)).setup_statements("lake")
+    statements = DuckLake(**_postgres_lake(snapshot_version=4)).setup_statements("lake")
 
     assert statements == [
         'CREATE OR REPLACE TEMPORARY SECRET "visivo_lake_catalog" (TYPE postgres, '
@@ -406,7 +431,7 @@ def test_a_postgres_and_gcs_ducklake_emits_secrets_then_a_read_only_attach():
 
 
 def test_the_attach_statement_holds_no_credential():
-    attach = DuckLakeAttachment(**_postgres_lake()).setup_statements("lake")[-1]
+    attach = DuckLake(**_postgres_lake()).setup_statements("lake")[-1]
 
     assert PASSWORD.replace("'", "''") not in attach
     assert HMAC_SECRET not in attach
@@ -414,7 +439,7 @@ def test_the_attach_statement_holds_no_credential():
 
 
 def test_a_writable_ducklake_without_a_data_path_or_a_password():
-    lake = DuckLakeAttachment(
+    lake = DuckLake(
         catalog={"host": "h", "port": 6543, "database": "d", "username": "u"},
         read_only=False,
     )
@@ -427,14 +452,14 @@ def test_a_writable_ducklake_without_a_data_path_or_a_password():
 
 
 def test_a_gcs_secret_without_a_data_path_has_no_scope():
-    statements = DuckLakeAttachment(**_postgres_lake(data_path=None)).setup_statements("lake")
+    statements = DuckLake(**_postgres_lake(data_path=None)).setup_statements("lake")
 
     assert statements[1].endswith(f"SECRET '{HMAC_SECRET}')")
     assert "DATA_PATH" not in statements[2]
 
 
 def test_a_uri_catalog_emits_one_attach():
-    lake = DuckLakeAttachment(catalog="ducklake:sqlite:c'at.sqlite", data_path="data/")
+    lake = DuckLake(catalog="ducklake:sqlite:c'at.sqlite", data_path="data/")
 
     assert lake.setup_statements("lake") == [
         "ATTACH 'ducklake:sqlite:c''at.sqlite' AS \"lake\" (DATA_PATH 'data/', READ_ONLY)"
@@ -442,7 +467,7 @@ def test_a_uri_catalog_emits_one_attach():
 
 
 def test_injection_through_a_value_stays_inside_the_literal():
-    lake = DuckLakeAttachment(
+    lake = DuckLake(
         catalog={
             "host": "h', PORT 1); ATTACH 'evil' AS e; --",
             "database": "d",
@@ -461,7 +486,7 @@ def test_injection_through_a_value_stays_inside_the_literal():
 def test_env_vars_resolve_at_connect_time_not_at_parse_time(monkeypatch):
     for name in ("LAKE_HOST", "LAKE_PORT", "LAKE_PASSWORD", "LAKE_PATH", "LAKE_KEY", "LAKE_SECRET"):
         monkeypatch.delenv(name, raising=False)
-    lake = DuckLakeAttachment(
+    lake = DuckLake(
         catalog={
             "host": "${env.LAKE_HOST}",
             "port": "${env.LAKE_PORT}",
@@ -470,7 +495,7 @@ def test_env_vars_resolve_at_connect_time_not_at_parse_time(monkeypatch):
             "password": "${env.LAKE_PASSWORD}",
         },
         data_path="${env.LAKE_PATH}",
-        gcs={"key_id": "${env.LAKE_KEY}", "secret": "${env.LAKE_SECRET}"},
+        storage={"type": "gcs", "key_id": "${env.LAKE_KEY}", "secret": "${env.LAKE_SECRET}"},
     )
     assert "${env.LAKE_PASSWORD}" in lake.model_dump_json()
 
@@ -498,18 +523,21 @@ def test_env_vars_resolve_at_connect_time_not_at_parse_time(monkeypatch):
         ({"LAKE_PORT": "70000"}, "catalog port must be between 1 and 65535"),
         ({"LAKE_CATALOG": "ducklake:postgres:dbname=x"}, "must use the catalog fields"),
         ({"LAKE_CATALOG": "ducklake:pg:dbname=x"}, "must name a catalog in a DuckDB or SQLite"),
-        ({"LAKE_PATH": "s3://bucket/"}, "starts with 'gs://' or 'gcs://'"),
+        (
+            {"LAKE_PATH": "s3://bucket/"},
+            "storage type 'gcs' needs a data_path that starts with 'gs://' or 'gcs://'",
+        ),
     ],
 )
 def test_a_resolved_value_is_validated_again(monkeypatch, env, message):
     for name, value in env.items():
         monkeypatch.setenv(name, value)
     if "LAKE_CATALOG" in env:
-        lake = DuckLakeAttachment(catalog="${env.LAKE_CATALOG}")
+        lake = DuckLake(catalog="${env.LAKE_CATALOG}")
     elif "LAKE_PATH" in env:
-        lake = DuckLakeAttachment(**_postgres_lake(data_path="${env.LAKE_PATH}"))
+        lake = DuckLake(**_postgres_lake(data_path="${env.LAKE_PATH}"))
     else:
-        lake = DuckLakeAttachment(
+        lake = DuckLake(
             catalog={"host": "h", "port": "${env.LAKE_PORT}", "database": "d", "username": "u"}
         )
 
@@ -1012,7 +1040,10 @@ def test_a_new_ducklake_is_created_with_a_data_path(tmp_path):
 def test_the_gcs_secret_is_created_as_a_temporary_secret(tmp_path):
     catalog_uri, _ = _create_lake(tmp_path)
     source = _source(
-        {"catalog": catalog_uri, "gcs": {"key_id": HMAC_KEY_ID, "secret": HMAC_SECRET_REF}}
+        {
+            "catalog": catalog_uri,
+            "storage": {"type": "gcs", "key_id": HMAC_KEY_ID, "secret": HMAC_SECRET_REF},
+        }
     )
 
     with source.connect(read_only=True) as connection:
