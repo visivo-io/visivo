@@ -570,7 +570,7 @@ def _preview_insight_handler(app, arguments):
     return _within_bytes(_insight_rows(app, config, input_values, limit))
 
 
-def _insight_rows(app, config, input_values, limit):
+def _insight_rows(app, config, input_values, limit, timeout_s=AGENT_QUERY_TIMEOUT_S):
     """The rows a chart draws for the insight ``config``, inputs filled in."""
     substituted = {}
     try:
@@ -587,7 +587,7 @@ def _insight_rows(app, config, input_values, limit):
             config,
             model_schemas=_unbuilt_model_schemas(app, config),
             max_rows=limit,
-            timeout_s=AGENT_QUERY_TIMEOUT_S,
+            timeout_s=timeout_s,
         )
     except DraftInsightError as refused:
         raise ToolError(refused.payload.get("error") or "The insight could not be previewed.")
@@ -715,9 +715,17 @@ def _preview_table_handler(app, arguments):
 # --- list_charts_and_dashboards / get_chart_or_dashboard_data ------------------
 
 # One call can read every insight of a dashboard, so the whole answer has a
-# budget of bytes and of seconds on top of each query's own.
+# budget of bytes and of seconds on top of each query's own. No new query
+# starts after SAVED_DATA_BUDGET_S, and no query runs past
+# SAVED_DATA_DEADLINE_S, so a host that waits longer than the deadline gets the
+# answer and not its own timeout.
 MAX_SAVED_RESULT_BYTES = 96_000
-SAVED_DATA_BUDGET_S = 20
+SAVED_DATA_BUDGET_S = 15
+SAVED_DATA_DEADLINE_S = 30
+SPECS_LEFT_OUT = (
+    "The specs were left out to fit the size limit. Read one with get_chart, "
+    "get_insight, get_table or get_dashboard."
+)
 
 
 def _saved(app, manager_name):
@@ -868,16 +876,14 @@ def _table_data(app, table):
     return None, name, None
 
 
-def _model_rows(app, name, model, limit):
+def _model_rows(app, name, model, limit, timeout_s=AGENT_QUERY_TIMEOUT_S):
     sql = getattr(model, "sql", None)
     source = source_for_model(app, model, app.output_dir) or _default_source(app)
     if source is None or not isinstance(sql, str) or not sql.strip():
         raise ToolError(f"Model '{name}' has no SQL on a source to read.")
     # One row past the limit, so `truncated` says whether the model has more.
     bounded = guard_read_only(sql, source.get_sqlglot_dialect(), limit + 1)
-    result = execute_and_get_result(
-        source, bounded, max_rows=limit, timeout_s=AGENT_QUERY_TIMEOUT_S
-    )
+    result = execute_and_get_result(source, bounded, max_rows=limit, timeout_s=timeout_s)
     return _rows_payload(result["columns"], result["rows"], truncated=result["truncated"])
 
 
@@ -888,13 +894,15 @@ class _SavedData:
         self._app = app
         self._input_values = input_values
         self._limit = limit
-        self._deadline = monotonic() + SAVED_DATA_BUDGET_S
+        started = monotonic()
+        self._last_start = started + SAVED_DATA_BUDGET_S
+        self._deadline = started + SAVED_DATA_DEADLINE_S
         self.datasets = {}
 
     def insight(self, name, insight):
-        def read():
+        def read(timeout_s):
             config = {**_spec(insight), "name": name}
-            return _insight_rows(self._app, config, self._input_values, self._limit)
+            return _insight_rows(self._app, config, self._input_values, self._limit, timeout_s)
 
         spec = None if insight is None else {**_spec(insight), "name": name}
         missing = None if insight is not None else f"No insight named '{name}'."
@@ -906,7 +914,10 @@ class _SavedData:
             self.insight(name, obj)
             return name
         if kind == "model":
-            self._read(("model", name), lambda: _model_rows(self._app, name, obj, self._limit))
+            self._read(
+                ("model", name),
+                lambda timeout_s: _model_rows(self._app, name, obj, self._limit, timeout_s),
+            )
             return name
         return None
 
@@ -918,14 +929,16 @@ class _SavedData:
         self.datasets[key] = entry
         if missing:
             entry["error"] = missing
-        elif monotonic() > self._deadline:
+        elif monotonic() > self._last_start:
             entry["skipped"] = (
                 f"Not read: the call's {SAVED_DATA_BUDGET_S} seconds were used. "
                 "Get this chart on its own."
             )
         else:
+            # A query gets its own limit, or the time left to the deadline.
+            left = round(self._deadline - monotonic(), 1)
             try:
-                rows = read()
+                rows = read(max(min(AGENT_QUERY_TIMEOUT_S, left), 0))
             except Exception as error:
                 entry["error"] = str(error).strip()[:400]
             else:
@@ -947,16 +960,46 @@ def _table_entry(name, table, reader):
     return _without_empty({"name": name, "spec": _spec(table), "data": reader.table(table)})
 
 
-def _fit_datasets(payload):
-    """Trim rows until the whole answer fits ``MAX_SAVED_RESULT_BYTES``. The
-    smallest datasets are served first, so one large table does not empty the rest."""
-    datasets = [entry for entry in payload["data"] if entry.get("rows")]
+def _size(payload):
+    return len(json.dumps(payload, default=str))
+
+
+def _without_rows(payload):
+    """``payload`` at its largest with no rows: an untrimmed dataset says
+    ``"truncated": false``, which is the longer word."""
     emptied = [{**entry, "rows": []} if "rows" in entry else entry for entry in payload["data"]]
-    budget = MAX_SAVED_RESULT_BYTES - len(json.dumps({**payload, "data": emptied}, default=str))
+    return {**payload, "data": emptied, "truncated": False}
+
+
+def _drop_specs(payload):
+    """Leave the names and take out each spec, which a per-type tool returns."""
+    payload.pop("spec", None)
+    for group in ("charts", "tables", "data"):
+        for entry in payload.get(group) or []:
+            entry.pop("spec", None)
+    payload["specs_omitted"] = SPECS_LEFT_OUT
+
+
+def _fit_datasets(payload):
+    """Make the whole answer fit ``MAX_SAVED_RESULT_BYTES``. Rows are trimmed
+    first, and the smallest datasets are served first, so one large table does
+    not empty the rest. When the answer is too large with no rows, the specs
+    go. When it is still too large, the call is refused."""
+    if _size(_without_rows(payload)) > MAX_SAVED_RESULT_BYTES:
+        _drop_specs(payload)
+    fixed = _size(_without_rows(payload))
+    if fixed > MAX_SAVED_RESULT_BYTES:
+        raise ToolError(
+            f"This {payload.get('type', 'answer')} is too large for one answer "
+            f"({fixed} bytes with no rows, and the limit is {MAX_SAVED_RESULT_BYTES}). "
+            "Call get_chart_or_dashboard_data for each chart on its own: "
+            "list_charts_and_dashboards names them."
+        )
+    budget = MAX_SAVED_RESULT_BYTES - fixed
+    datasets = [entry for entry in payload["data"] if entry.get("rows")]
     datasets.sort(key=lambda entry: len(json.dumps(entry["rows"], default=str)))
     for position, entry in enumerate(datasets):
-        share = max(budget, 0) // (len(datasets) - position)
-        budget -= _trim_rows(entry, share)
+        budget -= _trim_rows(entry, budget // (len(datasets) - position))
     payload["truncated"] = any(entry.get("truncated") for entry in payload["data"])
     return payload
 
@@ -1173,8 +1216,9 @@ DATA_TOOLS = {
             "A dashboard also returns each chart and table it shows, and each names "
             "its entries in `data`. Inputs take their defaults, or the "
             "'input_values' you choose. A dataset that fails or is skipped says why, "
-            "and the others still return. list_charts_and_dashboards names what you "
-            "can read."
+            "and the others still return. When the answer is too large, rows are cut "
+            "first (`truncated`), then the specs are left out (`specs_omitted`). "
+            "list_charts_and_dashboards names what you can read."
         ),
         input_schema={
             "type": "object",

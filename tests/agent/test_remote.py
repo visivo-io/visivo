@@ -503,3 +503,21 @@ class TestAnInsightPreviewsAgainstTheSource:
         call(project, "preview_insight", {"name": "by_x"})
 
         assert project.project is None
+
+    def test_a_preview_leaves_what_the_managers_hold_unchanged(self, rows):
+        """The Project is built from copies: a metric scoped to a model goes
+        under the copy of its model, not under the model the tools read."""
+        rows["metrics"] = [
+            _envelope("total_y", {"expression": "sum(y)", "parentModel": "orders_q"})
+        ]
+        project, core = _project(rows)
+        before = call(project, "get_model", {"name": "orders_q"})
+
+        call(project, "preview_insight", {"name": "by_x"})
+        published = project.published_project(("models", "metrics"))
+
+        assert [metric.name for metric in published.models[0].metrics] == ["total_y"]
+        assert call(project, "get_model", {"name": "orders_q"}) == before
+        assert not project.model_manager.published_objects["orders_q"].metrics
+        assert published.models[0] is not project.model_manager.published_objects["orders_q"]
+        assert core.saved == []

@@ -25,6 +25,7 @@ person reviews. Nothing here can publish.
 
 import os
 import tempfile
+from copy import deepcopy
 from functools import partial
 
 from visivo.cloud_api import CloudApi, CloudApiError
@@ -126,6 +127,10 @@ class RemoteProject:
         # resolved here. That degrades the SQL probe to "not judged", which is
         # a documented outcome of it, rather than failing the write.
         self.project = None
+        # The names a tool gives for the project it answers for. The host sets
+        # them when it knows them.
+        self.project_name = None
+        self.branch_name = None
         self.run_manager = RemoteRunManager(client)
         self._managers = {}
         for type_key, attribute in TYPE_TO_MANAGER.items():
@@ -146,8 +151,9 @@ class RemoteProject:
 
         The fields are set after construction, as ``inject_cached_objects``
         sets a draft, so a metric scoped to a model can go under its model
-        before anything reads it. There are no project defaults here: see
-        ``project`` above.
+        before anything reads it. Each object is a copy, so the managers keep
+        what they hold. There are no project defaults here: see ``project``
+        above.
         """
         from visivo.models.project import Project
         from visivo.server.jobs.project_injection import (
@@ -158,7 +164,8 @@ class RemoteProject:
         project = Project(name=PUBLISHED_PROJECT_NAME)
         for attribute, field in MANAGER_TO_PROJECT_FIELD:
             if field in fields:
-                setattr(project, field, list(getattr(self, attribute).published_objects.values()))
+                published = getattr(self, attribute).published_objects.values()
+                setattr(project, field, [deepcopy(obj) for obj in published])
         renest_model_scoped_fields(project)
         return project
 

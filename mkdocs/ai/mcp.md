@@ -154,11 +154,16 @@ The arguments to `get_chart_or_dashboard_data` are:
 - `input_values` sets a selection for an Input. Without it, each Input uses its
   default.
 - The answer has a size limit. When rows do not fit, the dataset has
-  `truncated: true`.
+  `truncated: true`. When the answer is too large with no rows, the specs are
+  left out and the answer has `specs_omitted`. Read a spec with `get_chart`,
+  `get_insight`, `get_table` or `get_dashboard`. When the names alone are too
+  large, the call is refused. Get each chart alone.
 - A query that fails does not stop the call. Its dataset has an `error` and the
   other datasets return.
-- A dashboard with many charts can use all of the time for the call. A dataset
-  that was not read has `skipped`. Get that chart alone.
+- The call has a time limit of 30 seconds for its queries. No new query starts
+  after 15 seconds, and a dataset that was not read has `skipped`. Get that
+  chart alone. A query that is not complete at 30 seconds puts an `error` on
+  its dataset.
 
 Each tool in `tools/list` carries a `title` and MCP annotations, so your client
 can decide which calls need approval:

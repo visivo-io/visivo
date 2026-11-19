@@ -206,7 +206,8 @@ class TestGetChartData:
         monkeypatch.setattr(
             data_tools,
             "_insight_rows",
-            lambda app, config, values, limit: seen.append(limit) or real(app, config, values, 1),
+            lambda app, config, values, limit, *timeout: seen.append(limit)
+            or real(app, config, values, 1, *timeout),
         )
 
         call(project, GET, {"type": "chart", "name": "orders_chart", "limit": 100_000})
@@ -340,15 +341,63 @@ class TestGetDashboardData:
     def test_the_whole_answer_fits_the_byte_budget(self, project, monkeypatch):
         whole = call(project, GET, {"type": "dashboard", "name": "orders"})
         without_rows = {**whole, "data": [{**d, "rows": []} for d in whole["data"]]}
-        budget = len(json.dumps(without_rows, default=str)) + 60
+        budget = len(json.dumps(without_rows, default=str)) + 120
         monkeypatch.setattr(data_tools, "MAX_SAVED_RESULT_BYTES", budget)
 
         result = call(project, GET, {"type": "dashboard", "name": "orders"})
 
-        assert len(json.dumps(result, default=str)) <= budget + 60
-        assert result["truncated"] is True
+        assert len(json.dumps(result, default=str)) <= budget
+        assert result["truncated"] is True and "specs_omitted" not in result
         assert all(d["truncated"] and d["row_count"] == len(d["rows"]) for d in result["data"])
         assert 0 < sum(d["row_count"] for d in result["data"]) < 18
+
+    def _many_charts(self, app, count, title):
+        names = [
+            _write(
+                app,
+                "chart",
+                {
+                    "name": f"wide_{index:02d}",
+                    "insights": ["ref(by_x)"],
+                    "layout": {"title": {"text": title}},
+                },
+            )
+            for index in range(count)
+        ]
+        rows = [_row({"chart": f"ref({name})"}) for name in names]
+        _write(app, "dashboard", {"name": "wide", "rows": rows})
+        return names
+
+    def test_specs_larger_than_the_limit_are_left_out_and_the_answer_fits(self, project):
+        """The limit bounds the answer, not only its rows: 60 charts with a
+        1,500 character title are above it with no row at all."""
+        names = self._many_charts(project, 60, "t" * 1500)
+
+        result = call(project, GET, {"type": "dashboard", "name": "wide"})
+
+        assert len(json.dumps(result, default=str)) <= data_tools.MAX_SAVED_RESULT_BYTES
+        assert "get_chart" in result["specs_omitted"]
+        assert "spec" not in result
+        assert [chart["name"] for chart in result["charts"]] == names
+        assert all("spec" not in chart for chart in result["charts"])
+        assert all("spec" not in dataset for dataset in result["data"])
+        assert _dataset(result, "by_x")["row_count"] == 6
+
+    def test_specs_that_fit_are_not_left_out(self, project):
+        self._many_charts(project, 3, "short")
+
+        result = call(project, GET, {"type": "dashboard", "name": "wide"})
+
+        assert "specs_omitted" not in result
+        assert result["spec"]["name"] == "wide"
+        assert all("spec" in chart for chart in result["charts"])
+
+    def test_names_larger_than_the_limit_are_a_refusal(self, project, monkeypatch):
+        self._many_charts(project, 3, "short")
+        monkeypatch.setattr(data_tools, "MAX_SAVED_RESULT_BYTES", 200)
+
+        with pytest.raises(ToolError, match="too large for one answer.*each chart on its own"):
+            call(project, GET, {"type": "dashboard", "name": "wide"})
 
     def test_a_small_dataset_keeps_its_rows_when_a_large_one_is_trimmed(self):
         small = {"name": "small", "rows": [{"a": 1}], "row_count": 1, "truncated": False}
@@ -377,6 +426,43 @@ class TestGetDashboardData:
 
         assert all("Get this chart on its own" in d["skipped"] for d in result["data"])
         assert all("rows" not in d for d in result["data"])
+
+    def test_a_slow_source_cannot_hold_the_call_past_its_deadline(self, project, monkeypatch):
+        """No new query starts after the budget, and a query that runs gets no
+        more than the time left to the deadline. So the call returns by the
+        deadline, with a reason on each dataset."""
+        from time import monotonic, sleep
+
+        from visivo.models.sources.sqlite_source import SqliteSource
+
+        monkeypatch.setattr(data_tools, "SAVED_DATA_BUDGET_S", 0.3)
+        monkeypatch.setattr(data_tools, "SAVED_DATA_DEADLINE_S", 0.6)
+        monkeypatch.setattr(SqliteSource, "read_sql", lambda self, query, **kwargs: sleep(3))
+
+        started = monotonic()
+        result = call(project, GET, {"type": "dashboard", "name": "orders"})
+        took = monotonic() - started
+
+        assert took < 1.5, took
+        reasons = [d.get("error") or d.get("skipped") for d in result["data"]]
+        assert len(reasons) == 3 and all(reasons)
+        assert "did not return within 0.6s" in _dataset(result, "by_x")["error"]
+        assert any("skipped" in d for d in result["data"])
+        assert all("rows" not in d for d in result["data"])
+
+    def test_a_query_gets_its_own_limit_when_the_deadline_is_far(self, project, monkeypatch):
+        seen = []
+
+        def record(*args, timeout_s=None, **kwargs):
+            seen.append(timeout_s)
+            raise draft_insight.DraftInsightError(400, {"error": "stop"})
+
+        monkeypatch.setattr(data_tools, "execute_draft_insight", record)
+        monkeypatch.setattr(data_tools, "SAVED_DATA_DEADLINE_S", 600)
+
+        call(project, GET, {"type": "chart", "name": "orders_chart"})
+
+        assert seen == [data_tools.AGENT_QUERY_TIMEOUT_S]
 
     def test_a_chart_the_dashboard_names_that_does_not_exist_says_so(self, project, monkeypatch):
         monkeypatch.setattr(
@@ -571,6 +657,16 @@ class TestAProjectThatLivesElsewhere:
             ("orders_q", "model", 6),
         ]
         assert core.saved == []
+
+    def test_both_name_the_project_and_the_branch_the_host_set(self, remote):
+        project, _ = remote
+        project.project_name, project.branch_name = "sales", "main"
+
+        listed = call(project, LIST, {})
+        fetched = call(project, GET, {"type": "chart", "name": "orders_chart"})
+
+        for result in (listed, fetched):
+            assert (result["project"], result["branch"]) == ("sales", "main")
 
 
 class TestTheRegistry:
