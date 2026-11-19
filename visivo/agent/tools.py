@@ -357,6 +357,9 @@ _CONFIG_SCHEMA = {
 
 _EMPTY_SCHEMA = {"type": "object", "properties": {}}
 
+# The types whose write runs a query on the source and returns what it found.
+_PROBES_SOURCE = ("models", "relations", "insights", "inputs")
+
 # verb -> (schema, handler factory, description template, annotations)
 _PER_TYPE = {
     "list": (
@@ -383,7 +386,9 @@ _PER_TYPE = {
         _write_handler,
         "Create or replace a {singular} in the draft tier. Never writes to a file — "
         "the change appears as an uncommitted edit for a person to review and commit.",
-        lambda singular, plural: writes(f"Write {singular}", destructive=True),
+        lambda singular, plural: writes(
+            f"Write {singular}", destructive=True, open_world=plural in _PROBES_SOURCE
+        ),
     ),
 }
 

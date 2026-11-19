@@ -96,8 +96,9 @@ class TestListing:
             "title": "Write model",
             "readOnlyHint": False,
             "destructiveHint": True,
-            "openWorldHint": False,
+            "openWorldHint": True,
         }
+        assert listed["write_chart"]["annotations"]["openWorldHint"] is False
         assert listed["query_source"]["annotations"]["openWorldHint"] is True
 
     def test_still_no_commit_tool_over_the_wire(self, integration_client):

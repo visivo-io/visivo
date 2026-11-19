@@ -52,6 +52,27 @@ class TestEveryToolIsAnnotated:
 
         assert writers == {name for name in TOOLS if name.startswith("write_")}
 
+    def test_the_open_world_tools_are_exactly_these(self):
+        """A tool whose result carries what a source returned. A write is here
+        when it probes the source and returns the source's answer."""
+        open_world = {t["name"] for t in tool_list() if t["annotations"]["openWorldHint"]}
+
+        assert open_world == {
+            "describe_source",
+            "infer_columns",
+            "preview_insight",
+            "preview_table",
+            "profile_columns",
+            "profile_model",
+            "query_source",
+            "score_candidates",
+            "screenshot_dashboard",
+            "write_input",
+            "write_insight",
+            "write_model",
+            "write_relation",
+        }
+
     def test_every_write_tool_is_destructive(self):
         for listed in tool_list():
             if listed["name"].startswith("write_"):
@@ -79,15 +100,16 @@ class TestTheAnnotationCheckRefuses:
 
         assert problems == ["list_things reads, but readOnlyHint is not true"]
 
-    def test_a_write_tool_that_claims_to_be_read_only(self):
-        problems = annotation_problems(_listed("write_thing", reads("Write thing")))
+    @pytest.mark.parametrize("name", ["write_thing", "frobnicate"])
+    def test_a_tool_without_a_read_style_name_that_claims_to_be_read_only(self, name):
+        problems = annotation_problems(_listed(name, reads("Thing")))
 
-        assert problems == ["write_thing writes, but readOnlyHint is not false"]
+        assert problems == [
+            f"{name} does not have a read-style name, but readOnlyHint is not false"
+        ]
 
-    def test_a_name_that_is_neither_read_nor_write_style(self):
-        problems = annotation_problems(_listed("frobnicate", reads("Frobnicate")))
-
-        assert len(problems) == 1 and "neither a read-style nor a write-style name" in problems[0]
+    def test_a_tool_without_a_read_style_name_that_writes(self):
+        assert annotation_problems(_listed("frobnicate", writes("Frobnicate", False))) == []
 
     def test_a_missing_title(self):
         listed = _listed("get_thing", reads("Get thing"))
@@ -122,12 +144,9 @@ class TestNamesTellReadsFromWrites:
     def test_read_style(self, name):
         assert reads_by_name(name) is True
 
-    @pytest.mark.parametrize("name", ["write_model", "start_edit", "create_branch"])
-    def test_write_style(self, name):
+    @pytest.mark.parametrize("name", ["write_model", "frobnicate", ""])
+    def test_every_other_name_writes(self, name):
         assert reads_by_name(name) is False
-
-    def test_neither(self):
-        assert reads_by_name("frobnicate") is None
 
 
 def test_annotations_cannot_be_read_only_and_destructive():

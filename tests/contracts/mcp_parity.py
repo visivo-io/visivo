@@ -33,18 +33,13 @@ READ_PREFIXES = (
     "score_",
 )
 READ_NAMES = frozenset({"query_source", "read_skill"})
-WRITE_PREFIXES = ("write_",)
-WRITE_NAMES = frozenset({"start_edit", "create_branch"})
 HINTS = ("readOnlyHint", "destructiveHint", "openWorldHint")
 
 
 def reads_by_name(name):
-    """True for a read-style name, False for a write-style one, None for neither."""
-    if name in READ_NAMES or name.startswith(READ_PREFIXES):
-        return True
-    if name in WRITE_NAMES or name.startswith(WRITE_PREFIXES):
-        return False
-    return None
+    """True for a read-style name. Each other name is taken to write, so a tool
+    with a new kind of name asks for approval until its name says it reads."""
+    return name in READ_NAMES or name.startswith(READ_PREFIXES)
 
 
 def annotation_problems(tool):
@@ -65,16 +60,11 @@ def annotation_problems(tool):
             problems.append(f"{name} does not declare {hint}")
 
     read_only = annotations.get("readOnlyHint")
-    expected = reads_by_name(name or "")
-    if expected is None:
-        problems.append(
-            f"{name} has neither a read-style nor a write-style name, so the "
-            "contract cannot tell what readOnlyHint it needs"
-        )
-    elif expected and read_only is not True:
-        problems.append(f"{name} reads, but readOnlyHint is not true")
-    elif not expected and read_only is not False:
-        problems.append(f"{name} writes, but readOnlyHint is not false")
+    if reads_by_name(name or ""):
+        if read_only is not True:
+            problems.append(f"{name} reads, but readOnlyHint is not true")
+    elif read_only is not False:
+        problems.append(f"{name} does not have a read-style name, but readOnlyHint is not false")
     if read_only is True and annotations.get("destructiveHint") is not False:
         problems.append(f"{name} is read-only, but destructiveHint is not false")
     return problems

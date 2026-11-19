@@ -459,6 +459,6 @@ SCREENSHOT_TOOLS = {
             "required": ["name"],
         },
         handler=_screenshot_handler,
-        annotations=reads("Screenshot dashboard"),
+        annotations=reads("Screenshot dashboard", open_world=True),
     ),
 }
