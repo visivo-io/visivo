@@ -23,22 +23,34 @@ class MetricManager(ObjectManager[Metric]):
     def __init__(self):
         super().__init__()
         self._metric_adapter = TypeAdapter(Metric)
-        # (ref_name, field_name) -> what the ref reads, and ref_name -> the names
-        # of the sources it reads. ``install_field_rules`` sets both; without
-        # them a ref is not judged.
+        # ``install_field_rules`` sets these project lookups; without one, its
+        # part of the rule is not judged.
         self.ref_kind = None
         self.source_names = None
+        self.dialect_lookup = None
+        self.dependents_error = None
 
     def save_error(self, obj: Metric) -> Optional[str]:
         """A metric aggregates. A project-level metric also names a model and
-        reads one source; a nested one is tied to its model by nesting."""
+        reads one source; a nested one is tied to its model by nesting. No other
+        field reads two sources because of this save."""
         if getattr(obj, "_parent_name", None):
-            return metric_aggregate_error(obj.expression, obj.name, self.ref_kind)
+            return self._aggregate_error(obj)
         return (
             standalone_field_ref_error(obj.expression, "metric", obj.name)
-            or metric_aggregate_error(obj.expression, obj.name, self.ref_kind)
+            or self._aggregate_error(obj)
             or field_sources_error(obj.expression, "metric", obj.name, self.source_names)
+            or (self.dependents_error(obj) if self.dependents_error else None)
         )
+
+    def _aggregate_error(self, obj: Metric) -> Optional[str]:
+        """An expression the manager already holds under this name is not judged,
+        so a metric that a project already has stays editable."""
+        held = self.get(obj.name)
+        if held is not None and held.expression == obj.expression:
+            return None
+        dialect = self.dialect_lookup(obj) if self.dialect_lookup else None
+        return metric_aggregate_error(obj.expression, obj.name, self.ref_kind, dialect)
 
     def validate_object(self, obj_data: dict) -> Metric:
         """

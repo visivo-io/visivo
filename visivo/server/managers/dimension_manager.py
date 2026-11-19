@@ -26,15 +26,19 @@ class DimensionManager(ObjectManager[Dimension]):
         # ref_name -> the names of the sources it reads. ``install_field_rules``
         # sets it; without it the sources are not judged.
         self.source_names = None
+        self.dependents_error = None
 
     def save_error(self, obj: Dimension) -> Optional[str]:
         """A project-level dimension names a model and reads one source; a nested
-        one is tied to its model by nesting."""
+        one is tied to its model by nesting. No other field reads two sources
+        because of this save."""
         if getattr(obj, "_parent_name", None):
             return None
-        return standalone_field_ref_error(
-            obj.expression, "dimension", obj.name
-        ) or field_sources_error(obj.expression, "dimension", obj.name, self.source_names)
+        return (
+            standalone_field_ref_error(obj.expression, "dimension", obj.name)
+            or field_sources_error(obj.expression, "dimension", obj.name, self.source_names)
+            or (self.dependents_error(obj) if self.dependents_error else None)
+        )
 
     def validate_object(self, obj_data: dict) -> Dimension:
         """

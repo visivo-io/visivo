@@ -296,6 +296,8 @@ class TestDefaultsViews:
 
     def test_save_valid(self):
         client, fa = _client(register_defaults_views)
+        fa.metric_manager.get_all_objects.return_value = {}
+        fa.dimension_manager.get_all_objects.return_value = {}
         resp = client.post("/api/defaults/", json={"source_name": "db"})
         assert resp.status_code == 200
         assert "saved" in resp.get_json()["message"].lower()
