@@ -2,8 +2,11 @@ from typing import Literal, Optional, Dict, List, Any
 from visivo.models.sources.base_duckdb_source import BaseDuckdbSource
 from pydantic import Field
 import click
+import glob
 import os
 from visivo.logger.logger import Logger
+from visivo.models.sources.project_root import resolve_project_path
+from visivo.models.sources.seed import sql_string_literal
 
 
 class ExcelFileSource(BaseDuckdbSource):
@@ -30,8 +33,16 @@ class ExcelFileSource(BaseDuckdbSource):
 
     type: Literal["xls"]
     file: str = Field(..., description="Path to the Excel file, relative to the project directory.")
-    delimiter: Optional[str] = Field(",", description="Character separating values in the file.")
-    encoding: Optional[str] = Field("utf-8", description="Text encoding of the file.")
+    sheet: Optional[str] = Field(
+        None, description="The worksheet to read. Defaults to the first sheet."
+    )
+    delimiter: Optional[str] = Field(
+        ",", description="Not used: Excel files have no delimiter. Kept so older projects load."
+    )
+    encoding: Optional[str] = Field(
+        "utf-8",
+        description="Not used: Excel files carry their own encoding. Kept so older projects load.",
+    )
     has_header: Optional[bool] = Field(
         True, description="Whether the first row of the sheet contains column names."
     )
@@ -42,7 +53,7 @@ class ExcelFileSource(BaseDuckdbSource):
         """Create an in-memory DuckDB connection with the Excel file loaded as a view."""
         try:
             # Check if file exists
-            if not os.path.exists(self.file):
+            if not os.path.exists(resolve_project_path(self.file)):
                 raise click.ClickException(f"Excel file not found: {self.file}")
 
             connection = duckdb.connect(":memory:")
@@ -53,15 +64,18 @@ class ExcelFileSource(BaseDuckdbSource):
             )
 
     def _setup_connection(self, connection, **kwargs):
-        """Setup the DuckDB connection by creating a view from the Excel file."""
+        """Create a view named after the source over the Excel file."""
+        path = glob.escape(resolve_project_path(self.file))
+        options = [sql_string_literal(path), f"header = {str(bool(self.has_header)).lower()}"]
+        if self.sheet:
+            options.append(f"sheet = {sql_string_literal(self.sheet)}")
         try:
-            # For Excel files, we'll need to use the spatial extension or convert to CSV first
-            # For now, let's try to use read_csv_auto assuming it's been converted
-            # TODO: In the future, we could add Excel-specific handling here
-            connection.execute(f"""
-                CREATE VIEW "{self.name}" AS
-                SELECT * FROM read_csv_auto('{self.file}', delim='{self.delimiter}', header={str(self.has_header).upper()})
-                """)
+            connection.execute("INSTALL excel")
+            connection.execute("LOAD excel")
+            connection.execute(
+                f"CREATE VIEW {self._quote_table(self.name)} AS "
+                f"SELECT * FROM read_xlsx({', '.join(options)})"
+            )
         except Exception as e:
             raise click.ClickException(f"Error setting up Excel view: {e}")
 

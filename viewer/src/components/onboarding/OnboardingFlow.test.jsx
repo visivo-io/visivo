@@ -4,34 +4,45 @@ import { MemoryRouter } from 'react-router-dom';
 
 import OnboardingFlow, { sampleDestination } from './OnboardingFlow';
 import useStore from '../../stores/store';
-import {
-  clearOnboardingState,
-  readOnboardingState,
-  writeOnboardingState,
-} from './onboardingState';
+import { clearOnboardingState, readOnboardingState, writeOnboardingState } from './onboardingState';
 import { clearEventBuffer, getEventBuffer } from './telemetry';
+import { listProjectFiles, uploadProjectFile } from '../../api/projectFiles';
+import { testSourceConnection } from '../../api/sources';
+
+const CSV_FORMAT = {
+  format: 'csv',
+  label: 'CSV',
+  extensions: ['.csv', '.tsv'],
+  source_type: 'csv',
+  options: ['header', 'delimiter', 'encoding'],
+};
+const VERSION = {
+  path: 'files/Sales_Q3.csv',
+  filename: 'Sales_Q3.csv',
+  version_id: 'fv_1',
+  format: 'csv',
+};
+let storeState;
 
 jest.mock('../../stores/store');
-jest.mock('../views/common/SourceEditForm', () => ({ onSave }) => (
-  <div data-testid="source-edit-form">
-    <button
-      onClick={() => onSave('postgres', 'demo', { type: 'postgres', name: 'demo' })}
-    >
-      mock-connect
-    </button>
-    <button
-      onClick={() =>
-        onSave('csv', 'demo-csv', {
-          type: 'csv',
-          name: 'demo-csv',
-          file: new File(['a,b\n1,2'], 'demo.csv', { type: 'text/csv' }),
-        })
-      }
-    >
-      mock-connect-file
-    </button>
-  </div>
-));
+jest.mock('../../api/projectFiles');
+jest.mock('../../api/sources');
+jest.mock('../views/common/SourceEditForm', () => ({ onSave }) => {
+  const [error, setError] = require('react').useState(null);
+  return (
+    <div data-testid="source-edit-form">
+      <button
+        onClick={async () => {
+          const result = await onSave('source', 'demo', { type: 'postgresql', name: 'demo' });
+          setError(result?.success ? null : result?.error);
+        }}
+      >
+        mock-connect
+      </button>
+      {error && <p data-testid="form-error">{error}</p>}
+    </div>
+  );
+});
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -40,6 +51,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 beforeEach(() => {
+  jest.clearAllMocks();
   clearOnboardingState();
   clearEventBuffer();
   mockNavigate.mockReset();
@@ -54,12 +66,19 @@ beforeEach(() => {
     })
   );
 
-  useStore.mockImplementation(selector =>
-    selector({
-      project: { project_dir: '/tmp/demo', name: 'Quickstart Visivo' },
-      fetchProject: jest.fn().mockResolvedValue(undefined),
-    })
-  );
+  storeState = {
+    project: { project_dir: '/tmp/demo', name: 'Quickstart Visivo' },
+    fetchProject: jest.fn().mockResolvedValue(undefined),
+    saveSource: jest.fn().mockResolvedValue({ success: true }),
+    fetchSources: jest.fn().mockResolvedValue(undefined),
+    sources: [{ name: 'sales_q3' }],
+  };
+  useStore.mockImplementation(selector => selector(storeState));
+  useStore.getState = () => storeState;
+
+  listProjectFiles.mockResolvedValue({ files: [], formats: [CSV_FORMAT], max_bytes: 104857600 });
+  uploadProjectFile.mockResolvedValue(VERSION);
+  testSourceConnection.mockResolvedValue({ source: 'sales_q3_2', status: 'connected' });
 });
 
 afterEach(() => {
@@ -76,24 +95,155 @@ const renderFlow = () =>
     </MemoryRouter>
   );
 
-
 const startTour = (role = 'analytics_engineer') => {
   fireEvent.click(screen.getByTestId('onb-start-tour'));
   fireEvent.click(screen.getByTestId(`onb-role-${role}`));
   fireEvent.click(screen.getByTestId('onb-role-continue'));
 };
 
+const openExample = () => fireEvent.click(screen.getByTestId('onb-path-example'));
+
+const pickSample = name => {
+  openExample();
+  fireEvent.click(screen.getByTestId(`onb-sample-${name}`));
+};
+
+const openUpload = () => {
+  fireEvent.click(screen.getByTestId('onb-path-data'));
+  fireEvent.click(screen.getByTestId('onb-data-upload'));
+};
+
+const dropFile = file =>
+  fireEvent.change(screen.getByTestId('onb-upload-input'), { target: { files: [file] } });
+
+const salesFile = () => new File(['region,units\nWest,12\n'], 'Sales Q3.csv', { type: 'text/csv' });
+
+const connectDatabase = () => {
+  fireEvent.click(screen.getByTestId('onb-path-data'));
+  fireEvent.click(screen.getByTestId('onb-data-connect'));
+};
+
 describe('OnboardingFlow', () => {
-  test('opens on the start screen with every sample and no progress bar', () => {
+  test('opens on Example and Your data, with neither chosen and no progress bar', () => {
     renderFlow();
     expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
-    expect(screen.getByText(/Welcome to Visivo/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Start with something to explore.' })
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('onb-path-example')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByTestId('onb-path-data')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('onb-sample-ev-sales')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('onb-data-connect')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('onboarding-progress')).not.toBeInTheDocument();
+    expect(getEventBuffer().map(e => e.event)).toContain('onboarding_data_seen');
+  });
+
+  test('Example opens every sample and moves focus to its heading', () => {
+    renderFlow();
+    openExample();
+    expect(screen.getByTestId('onb-path-example')).toHaveAttribute('aria-expanded', 'true');
     for (const name of ['ev-sales', 'github-releases', 'college-football']) {
       expect(screen.getByTestId(`onb-sample-${name}`)).toBeInTheDocument();
     }
-    expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();
-    expect(screen.queryByTestId('onboarding-progress')).not.toBeInTheDocument();
-    expect(getEventBuffer().map(e => e.event)).toContain('onboarding_data_seen');
+    expect(screen.getByRole('heading', { name: 'Pick an example' })).toHaveFocus();
+    expect(screen.getByTestId('onb-sample-ev-sales')).toHaveTextContent('Suggested');
+    expect(screen.getByTestId('onb-sample-github-releases')).not.toHaveTextContent('Suggested');
+  });
+
+  test('Your data offers a database connection, and Example stays one click away', () => {
+    renderFlow();
+    fireEvent.click(screen.getByTestId('onb-path-data'));
+    expect(screen.getByTestId('onb-data-connect')).toHaveTextContent('Connect a data source');
+    expect(screen.getByRole('heading', { name: 'How would you like to add data?' })).toHaveFocus();
+    expect(screen.queryByTestId('onb-sample-ev-sales')).not.toBeInTheDocument();
+
+    openExample();
+    expect(screen.getByTestId('onb-path-data')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByTestId('onb-sample-ev-sales')).toBeInTheDocument();
+  });
+
+  describe('upload a data file', () => {
+    test('Your data offers an upload, and Back returns to the two choices', async () => {
+      renderFlow();
+      openUpload();
+      expect(screen.getByRole('heading', { name: 'Upload a data file' })).toBeInTheDocument();
+      expect(await screen.findByText('CSV files up to 100 MB')).toBeInTheDocument();
+      expect(screen.getByTestId('onb-upload-input')).toHaveAttribute('accept', '.csv,.tsv');
+
+      fireEvent.click(screen.getByTestId('onb-upload-back'));
+      expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();
+    });
+
+    test('a dropped file becomes a draft source and opens the explorer on it', async () => {
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(salesFile());
+
+      await waitFor(() =>
+        expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
+      );
+      expect(uploadProjectFile).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Sales Q3.csv' }),
+        expect.objectContaining({ projectId: null })
+      );
+      const config = { name: 'sales_q3_2', type: 'csv', file: 'files/Sales_Q3.csv' };
+      expect(testSourceConnection).toHaveBeenCalledWith(config);
+      expect(storeState.saveSource).toHaveBeenCalledWith('sales_q3_2', config);
+      expect(readOnboardingState()).toMatchObject({ path: 'data', source_connected: true });
+      const succeeded = getEventBuffer().find(e => e.event === 'onboarding_data_connect_succeeded');
+      expect(succeeded.props).toMatchObject({ source_type: 'csv' });
+    });
+
+    test('shows where the file is going while it creates the source', async () => {
+      testSourceConnection.mockReturnValue(new Promise(() => {}));
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(salesFile());
+
+      expect(await screen.findByText('Saved as files/Sales_Q3.csv')).toBeInTheDocument();
+      expect(screen.getByText('Creating a source you can query')).toBeInTheDocument();
+    });
+
+    test('a file of an unlisted type is refused before upload', async () => {
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(new File(['x'], 'budget.xlsx'));
+
+      expect(await screen.findByTestId('onb-upload-error')).toHaveTextContent(
+        "Visivo can't import budget.xlsx yet. Use a CSV file."
+      );
+      expect(uploadProjectFile).not.toHaveBeenCalled();
+    });
+
+    test('a file that does not read shows the reason and saves no source', async () => {
+      testSourceConnection.mockResolvedValue({ status: 'connection_failed', error: 'bad row 3' });
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(salesFile());
+
+      expect(await screen.findByTestId('onb-upload-error')).toHaveTextContent(
+        'Could not read files/Sales_Q3.csv: bad row 3'
+      );
+      expect(screen.getByTestId('onb-upload-drop')).toBeInTheDocument();
+      expect(storeState.saveSource).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    test('Cancel stops waiting and adds nothing to the flow', async () => {
+      uploadProjectFile.mockReturnValue(new Promise(() => {}));
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(salesFile());
+
+      fireEvent.click(await screen.findByText('Cancel'));
+      expect(screen.getByTestId('onb-upload-drop')).toBeInTheDocument();
+      expect(testSourceConnection).not.toHaveBeenCalled();
+    });
   });
 
   test('never claims more source types than the source picker offers', () => {
@@ -114,7 +264,10 @@ describe('OnboardingFlow', () => {
 
   test('ev-sales is the suggested sample when no role is chosen', () => {
     renderFlow();
-    expect(within(screen.getByTestId('onb-sample-ev-sales')).getByText('Suggested')).toBeInTheDocument();
+    openExample();
+    expect(
+      within(screen.getByTestId('onb-sample-ev-sales')).getByText('Suggested')
+    ).toBeInTheDocument();
   });
 
   test('a stale step index from an older flow still opens on the start screen', () => {
@@ -157,6 +310,7 @@ describe('OnboardingFlow', () => {
       renderFlow();
       startTour('software_engineer');
       for (let i = 0; i < 7; i++) fireEvent.click(screen.getByTestId('onb-concept-continue'));
+      openExample();
       const tile = screen.getByTestId('onb-sample-github-releases');
       expect(within(tile).getByText('Suggested')).toBeInTheDocument();
     });
@@ -201,13 +355,15 @@ describe('OnboardingFlow', () => {
   describe('sample import', () => {
     test('one click loads the sample and opens its dashboard', async () => {
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-sample-ev-sales'));
+      pickSample('ev-sales');
       await waitFor(() =>
         expect(mockNavigate).toHaveBeenCalledWith('/project/EV%20Sales%20Overview', {
           replace: true,
         })
       );
-      const loadCall = global.fetch.mock.calls.find(([url]) => url === '/api/project/load_example/');
+      const loadCall = global.fetch.mock.calls.find(
+        ([url]) => url === '/api/project/load_example/'
+      );
       expect(JSON.parse(loadCall[1].body)).toMatchObject({
         project_dir: '/tmp/demo',
         project_name: 'Quickstart Visivo',
@@ -221,18 +377,20 @@ describe('OnboardingFlow', () => {
       });
       expect(persisted.completed_at).toBeTruthy();
       const events = getEventBuffer().map(e => e.event);
-      expect(events).toEqual(expect.arrayContaining(['onboarding_sample_picked', 'onboarding_completed']));
+      expect(events).toEqual(
+        expect.arrayContaining(['onboarding_sample_picked', 'onboarding_completed'])
+      );
     });
 
     test('shows a building status and disables every choice while the sample loads', async () => {
       global.fetch = jest.fn(() => new Promise(() => {}));
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-sample-college-football'));
+      pickSample('college-football');
       expect(await screen.findByTestId('onb-sample-loading')).toHaveTextContent(
         'Building College Football'
       );
       expect(screen.getByTestId('onb-sample-ev-sales')).toBeDisabled();
-      expect(screen.getByTestId('onb-data-connect')).toBeDisabled();
+      expect(screen.getByTestId('onb-path-data')).toBeDisabled();
       expect(screen.getByTestId('onb-start-empty')).toBeDisabled();
     });
 
@@ -241,7 +399,7 @@ describe('OnboardingFlow', () => {
         Promise.resolve({ ok: false, json: () => Promise.resolve({ message: 'Import exploded' }) })
       );
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-sample-github-releases'));
+      pickSample('github-releases');
 
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent('Import exploded');
@@ -270,12 +428,12 @@ describe('OnboardingFlow', () => {
   describe('source connect flow', () => {
     test('closes the source modal via the ✕ button and the backdrop', () => {
       const { container } = renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
       fireEvent.click(screen.getByLabelText('Close'));
       expect(screen.queryByTestId('onb-source-modal')).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
       fireEvent.click(container.querySelector('.onb-modal-backdrop'));
       expect(screen.queryByTestId('onb-source-modal')).not.toBeInTheDocument();
@@ -283,89 +441,45 @@ describe('OnboardingFlow', () => {
 
     test('Escape closes the source modal, but not while a save is in flight', async () => {
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       fireEvent.keyDown(document, { key: 'Escape' });
       expect(screen.queryByTestId('onb-source-modal')).not.toBeInTheDocument();
       expect(screen.getByTestId('onb-step-start')).toBeInTheDocument();
 
-      global.fetch = jest.fn(() => new Promise(() => {}));
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      storeState.saveSource.mockReturnValue(new Promise(() => {}));
+      connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
-      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+      await waitFor(() => expect(storeState.saveSource).toHaveBeenCalled());
       fireEvent.keyDown(document, { key: 'Escape' });
       expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
     });
 
-    test('a connected source goes straight to the explorer and persists completion', async () => {
+    test('a connected source is saved as a draft and goes straight to the explorer', async () => {
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
       await waitFor(() =>
         expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
       );
+      expect(storeState.saveSource).toHaveBeenCalledWith('demo', {
+        type: 'postgresql',
+        name: 'demo',
+      });
+      expect(global.fetch).not.toHaveBeenCalled();
       expect(readOnboardingState()).toMatchObject({ path: 'data', source_connected: true });
       expect(getEventBuffer().map(e => e.event)).toEqual(
         expect.arrayContaining(['onboarding_data_connect_succeeded', 'onboarding_completed'])
       );
     });
 
-    test('a file-based source uploads the file and finalizes with its dashboard', async () => {
-      global.fetch = jest.fn(url => {
-        if (url === '/api/source/create/') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ source: { name: 'demo-csv', type: 'csv' } }),
-          });
-        }
-        if (url === '/api/source/upload/') {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ dashboard: { name: 'generated-dashboard' } }),
-          });
-        }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-      });
+    test('a failed save keeps the modal open and shows the reason in the form', async () => {
+      storeState.saveSource.mockResolvedValue({ success: false, error: 'bad creds' });
       renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
-      fireEvent.click(screen.getByText('mock-connect-file'));
-
-      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
-      const finalizeCall = global.fetch.mock.calls.find(([url]) => url === '/api/project/finalize/');
-      expect(JSON.parse(finalizeCall[1].body).dashboards).toEqual([
-        { name: 'generated-dashboard' },
-      ]);
-    });
-
-    test('a failed source create keeps the modal open and shows the backend message', async () => {
-      global.fetch = jest.fn(() =>
-        Promise.resolve({ ok: false, json: () => Promise.resolve({ message: 'bad creds' }) })
-      );
-      renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
+      connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
 
-      expect(await screen.findByRole('alert')).toHaveTextContent('bad creds');
+      expect(await screen.findByTestId('form-error')).toHaveTextContent('bad creds');
       expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
-    });
-
-    test('a failed finalize surfaces its error', async () => {
-      global.fetch = jest.fn(url => {
-        if (url === '/api/project/finalize/') {
-          return Promise.resolve({
-            ok: false,
-            json: () => Promise.resolve({ message: 'finalize failed' }),
-          });
-        }
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ source: { name: 'demo', type: 'postgres' } }),
-        });
-      });
-      renderFlow();
-      fireEvent.click(screen.getByTestId('onb-data-connect'));
-      fireEvent.click(screen.getByText('mock-connect'));
-
-      expect(await screen.findByRole('alert')).toHaveTextContent('finalize failed');
       expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
