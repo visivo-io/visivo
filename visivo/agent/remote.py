@@ -30,6 +30,7 @@ from functools import partial
 from visivo.cloud_api import CloudApi, CloudApiError
 
 from visivo.logger.logger import Logger
+from visivo.server.field_rules import install_field_rules
 from visivo.server.model_sql_validation import dialect_for_insight, dialect_for_model
 from visivo.server.rename_service import TYPE_TO_MANAGER
 
@@ -132,6 +133,7 @@ class RemoteProject:
         self.model_manager.dialect_lookup = partial(dialect_for_model, self)
         self.insight_manager.input_lookup = self.input_manager.get
         self.insight_manager.dialect_lookup = partial(dialect_for_insight, self)
+        install_field_rules(self)
 
     @property
     def managers(self):

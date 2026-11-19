@@ -12,6 +12,15 @@ if TYPE_CHECKING:
     from visivo.models.project import Project
 
 
+def multiple_sources_error(obj_type: str, name: str, source_names) -> str:
+    """The message for a metric or dimension that reads more than one source.
+    ``obj_type`` is "Metric" or "Dimension"."""
+    return (
+        f"{obj_type} '{name}' ties back to multiple sources: {', '.join(source_names)}. "
+        f"All {obj_type.lower()}s must tie back to a single source."
+    )
+
+
 class SingleSourceValidator(BaseProjectValidator):
     """
     Validates that metrics and dimensions tie back to a single source.
@@ -69,10 +78,7 @@ class SingleSourceValidator(BaseProjectValidator):
 
         if len(sources) > 1:
             source_names = sorted([source.name for source in sources])
-            raise ValueError(
-                f"{obj_type} '{obj.name}' ties back to multiple sources: {', '.join(source_names)}. "
-                f"All {obj_type.lower()}s must tie back to a single source."
-            )
+            raise ValueError(multiple_sources_error(obj_type, obj.name, source_names))
 
     def _get_sources(self, obj, dag, visited: Set) -> Set[Source]:
         """

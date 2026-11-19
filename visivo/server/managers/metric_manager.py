@@ -6,6 +6,7 @@ from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.metric import Metric
 from visivo.models.validators import standalone_field_ref_error
+from visivo.server.field_rules import field_sources_error, metric_aggregate_error
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
@@ -22,12 +23,22 @@ class MetricManager(ObjectManager[Metric]):
     def __init__(self):
         super().__init__()
         self._metric_adapter = TypeAdapter(Metric)
+        # (ref_name, field_name) -> what the ref reads, and ref_name -> the names
+        # of the sources it reads. ``install_field_rules`` sets both; without
+        # them a ref is not judged.
+        self.ref_kind = None
+        self.source_names = None
 
     def save_error(self, obj: Metric) -> Optional[str]:
-        """A project-level metric must name a model; a nested one is tied by nesting."""
+        """A metric aggregates. A project-level metric also names a model and
+        reads one source; a nested one is tied to its model by nesting."""
         if getattr(obj, "_parent_name", None):
-            return None
-        return standalone_field_ref_error(obj.expression, "metric", obj.name)
+            return metric_aggregate_error(obj.expression, obj.name, self.ref_kind)
+        return (
+            standalone_field_ref_error(obj.expression, "metric", obj.name)
+            or metric_aggregate_error(obj.expression, obj.name, self.ref_kind)
+            or field_sources_error(obj.expression, "metric", obj.name, self.source_names)
+        )
 
     def validate_object(self, obj_data: dict) -> Metric:
         """
