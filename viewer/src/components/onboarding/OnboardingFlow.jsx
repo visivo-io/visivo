@@ -4,7 +4,7 @@ import './onboarding.css';
 import { CONCEPTS } from './concepts';
 import Role from './screens/Role';
 import Concept from './screens/Concept';
-import Start from './screens/Start';
+import Start, { ALL_PATHS } from './screens/Start';
 import { fireEvent } from './telemetry';
 import { readOnboardingState, writeOnboardingState } from './onboardingState';
 import SourceEditForm from '../views/common/SourceEditForm';
@@ -25,11 +25,23 @@ export function sampleDestination(sample) {
   return sample?.dashboard ? `/project/${encodeURIComponent(sample.dashboard)}` : '/project';
 }
 
-export default function OnboardingFlow() {
+/**
+ * `paths` limits the Start screen to the paths the host can back. `openConnect`
+ * opens the source form on mount, for a host that asked "Connect a data source"
+ * before this flow was mounted. `tour` and `startEmpty` show those links.
+ */
+export default function OnboardingFlow({
+  paths = ALL_PATHS,
+  openConnect = false,
+  tour = true,
+  startEmpty = true,
+} = {}) {
   const navigate = useViewerNavigate();
   const project = useStore(s => s.project);
   const fetchProject = useStore(s => s.fetchProject);
   const saveSource = useStore(s => s.saveSource);
+  // Null under local serve, where credentials go to the project's .env.
+  const inCloud = useStore(s => Boolean(s.capabilities));
 
   const projectDir = project?.project_dir ?? '';
   const projectName = project?.name || 'Quickstart Visivo';
@@ -57,7 +69,7 @@ export default function OnboardingFlow() {
       return nextRole;
     });
   }, []);
-  const [showSourceModal, setShowSourceModal] = useState(false);
+  const [showSourceModal, setShowSourceModal] = useState(openConnect);
   const [sampleLoading, setSampleLoading] = useState(false);
   const [sampleLoadingText, setSampleLoadingText] = useState('');
   const [errorMessage, setErrorMessage] = useState(null);
@@ -158,13 +170,14 @@ export default function OnboardingFlow() {
         total_duration_ms: totalDurationMs,
         destination,
       });
-      // Refresh the project so isNewProject flips and Home renders the real app
-      const refreshed = fetchProject ? fetchProject() : Promise.resolve();
+      // Refresh the project so isNewProject flips and Home renders the real app.
+      // A cloud host loaded the draft itself and has no such route.
+      const refreshed = fetchProject && !inCloud ? fetchProject() : Promise.resolve();
       Promise.resolve(refreshed).finally(() => {
         navigate(destination, { replace: true });
       });
     },
-    [navigate, fetchProject, fire]
+    [navigate, fetchProject, fire, inCloud]
   );
 
   const handleSkip = useCallback(() => {
@@ -258,8 +271,9 @@ export default function OnboardingFlow() {
         onConnectClick={() => setShowSourceModal(true)}
         onFileImported={handleFileImported}
         onSamplePick={handleSamplePick}
-        onStartEmpty={handleSkip}
-        onTakeTour={goNext}
+        onStartEmpty={startEmpty ? handleSkip : undefined}
+        onTakeTour={tour ? goNext : undefined}
+        paths={paths}
         fire={fire}
         isLoadingSample={sampleLoading}
         loadingText={sampleLoadingText}
@@ -385,8 +399,17 @@ export default function OnboardingFlow() {
                 <div>
                   <h3 className="onb-modal__title">Add a Source</h3>
                   <div style={{ fontSize: 12, color: 'var(--onb-fg-muted)', marginTop: 2 }}>
-                    Credentials are saved to a local <code>.env</code> file and referenced securely
-                    — never written into your project.
+                    {inCloud ? (
+                      <>
+                        Credentials are saved as account secrets and referenced securely — never
+                        written into your project.
+                      </>
+                    ) : (
+                      <>
+                        Credentials are saved to a local <code>.env</code> file and referenced
+                        securely — never written into your project.
+                      </>
+                    )}
                   </div>
                 </div>
                 <button
