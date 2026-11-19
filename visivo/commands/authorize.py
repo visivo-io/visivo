@@ -1,6 +1,8 @@
 import os
 import platform
+import re
 import sys
+from typing import Optional
 import click
 from threading import Thread
 from visivo.logger.logger import Logger
@@ -21,10 +23,22 @@ from visivo.telemetry.machine_id import get_machine_id
 PROFILE_PATH = os.path.expanduser("~/.visivo/profile.yml")
 CALLBACK_RESPONSE_WAIT_TIME = 120
 NON_INTERACTIVE_WAIT_TIME = 600
+AUTHORIZE_SOURCE_ENV_VAR = "VISIVO_AUTHORIZE_SOURCE"
+AUTHORIZE_SOURCE_PATTERN = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}")
 RESUME_HINT = (
     "The authorize page in your browser still works. Run 'visivo authorize' again, "
     "then click Authorize on that page."
 )
+
+
+def authorize_source() -> Optional[str]:
+    """The tool that started this authorize, from VISIVO_AUTHORIZE_SOURCE, e.g. ``plugin``.
+
+    Anything that is not a short lowercase label is dropped, so the variable
+    cannot put free text in the authorize URL.
+    """
+    source = os.environ.get(AUTHORIZE_SOURCE_ENV_VAR, "").strip()
+    return source if AUTHORIZE_SOURCE_PATTERN.fullmatch(source) else None
 
 
 def is_interactive() -> bool:
@@ -107,6 +121,9 @@ def authorize(host, replace, timeout):
             params["machine_id"] = get_machine_id()
         except Exception:
             pass  # never block authorize on telemetry id resolution
+        source = authorize_source()
+        if source:
+            params["source"] = source
 
     query_string = urllib.parse.urlencode(params)
 

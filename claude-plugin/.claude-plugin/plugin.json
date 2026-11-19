@@ -1,0 +1,32 @@
+{
+  "name": "visivo",
+  "displayName": "Visivo",
+  "version": "2.3.2",
+  "description": "Build Visivo dashboards from Claude Code: project YAML, the visivo CLI, and the local Visivo MCP server.",
+  "author": {
+    "name": "Visivo",
+    "url": "https://visivo.io"
+  },
+  "homepage": "https://docs.visivo.io/ai/mcp/",
+  "repository": "https://github.com/visivo-io/visivo",
+  "keywords": [
+    "visivo",
+    "bi",
+    "dashboards",
+    "analytics",
+    "sql",
+    "mcp"
+  ],
+  "documentationUrl": "https://docs.visivo.io/ai/mcp/",
+  "supportUrl": "https://github.com/visivo-io/visivo/issues",
+  "privacyPolicyUrl": "https://visivo.io/privacy",
+  "termsOfServiceUrl": "https://visivo.io/terms",
+  "userConfig": {
+    "server_url": {
+      "type": "string",
+      "title": "Visivo MCP server URL",
+      "description": "The MCP endpoint of your running `visivo serve`. Change the port if you start the server with --port.",
+      "default": "http://localhost:8000/api/mcp/"
+    }
+  }
+}

@@ -109,6 +109,7 @@ jobs:
           # travels with the bump -- it must, or the next --frozen sync fails.
           uv version ${{ inputs.version }}
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo/version.py
+          python .github/scripts/set_plugin_version.py ${{ inputs.version }}
           uv run write-schema-json
           uv run copy-install-script
 
