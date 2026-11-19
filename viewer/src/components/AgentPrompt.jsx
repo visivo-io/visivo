@@ -8,6 +8,7 @@ import {
   startAgentSession,
 } from '../api/agent';
 import AgentToolCalls, { ActionRow } from './AgentToolCalls';
+import AgentReply from './AgentReply';
 import { subscribe } from '../events/eventSource';
 import { AGENT_ACTIVITY } from '../events/topics';
 import AgentAuthorize from './AgentAuthorize';
@@ -430,13 +431,11 @@ export function AgentTimeline({ items }) {
           it was collapsed. */}
       {groups.map((entry, index) =>
         entry.kind === 'text' ? (
-          <p
+          <AgentReply
             key={`text-${index}`}
-            className="whitespace-pre-wrap"
+            text={entry.text}
             data-testid="agent-timeline-text"
-          >
-            {entry.text}
-          </p>
+          />
         ) : (
           <ToolGroup
             key={`actions-${index}`}
@@ -474,7 +473,11 @@ export function Transcript({ entries, running }) {
           ) : (
             <>
               <AgentToolCalls actions={entry.actions} />
-              {entry.text}
+              {entry.role === 'user' ? (
+                <p className="whitespace-pre-wrap">{entry.text}</p>
+              ) : (
+                <AgentReply text={entry.text} data-testid="agent-reply" />
+              )}
             </>
           )}
         </div>

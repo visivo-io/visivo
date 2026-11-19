@@ -876,3 +876,176 @@ class TestInsightChecksReachEveryWriter:
         response = integration_client.post("/api/insights/bad_sort/", json=body)
 
         assert response.status_code == 400
+
+
+class TestADuckLakeCredentialIsAnEnvVarReference:
+    """The rule is in the model, so each writer refuses a plaintext or masked value
+    and no writer repeats it."""
+
+    @staticmethod
+    def _source(password):
+        return {
+            "name": "lake",
+            "type": "duckdb",
+            "database": ":memory:",
+            "attach": [
+                {
+                    "schema_name": "lake",
+                    "ducklake": {
+                        "catalog": {
+                            "host": "db.example.com",
+                            "database": "ducklake",
+                            "username": "reader",
+                            "password": password,
+                        }
+                    },
+                }
+            ],
+        }
+
+    @pytest.mark.parametrize("password", ["plain-text-7c1", "**********"])
+    def test_the_tool_and_the_route_refuse_a_value(
+        self, integration_app, integration_client, password
+    ):
+        with pytest.raises(ToolError, match="must be an environment variable reference") as error:
+            call(integration_app, "write_source", {"config": self._source(password)})
+        validated = call(integration_app, "validate_source", {"config": self._source(password)})
+        response = integration_client.post("/api/sources/lake/", json=self._source(password))
+
+        assert "plain-text-7c1" not in str(error.value)
+        assert validated["valid"] is False and "plain-text-7c1" not in validated["error"]
+        assert response.status_code == 400
+        assert "must be an environment variable reference" in response.get_json()["error"]
+        assert integration_app.source_manager.get("lake") is None
+
+    def test_the_tool_and_the_route_keep_a_reference(self, integration_app, integration_client):
+        config = self._source("${env.LAKE_CATALOG_PASSWORD}")
+
+        call(integration_app, "write_source", {"config": config})
+        echoed = call(integration_app, "get_source", {"name": "lake"})
+        response = integration_client.post("/api/sources/lake/", json=echoed)
+
+        assert response.status_code in (200, 201)
+        saved = integration_app.source_manager.get("lake").model_dump(mode="json")
+        assert saved["attach"][0]["ducklake"]["catalog"]["password"] == (
+            "${env.LAKE_CATALOG_PASSWORD}"
+        )
+
+
+class TestADuckLakeDatabaseReachesEveryWriter:
+    """`database` of a DuckDB source can be a DuckLake object. The rules for it are in
+    the model, so the agent tool and the API route accept and refuse the same configs."""
+
+    @staticmethod
+    def _source(secret="${env.AWS_SECRET_ACCESS_KEY}", **lake):
+        return {
+            "name": "lake",
+            "type": "duckdb",
+            "database": {
+                "catalog": "ducklake:sqlite:local/catalog.sqlite",
+                "data_path": "s3://bucket/lake/",
+                "storage": {"type": "s3", "key_id": "AKIAEXAMPLE", "secret": secret},
+                **lake,
+            },
+        }
+
+    @pytest.mark.parametrize("secret", ["plain-text-7c1", "**********"])
+    def test_the_tool_and_the_route_refuse_a_storage_secret_value(
+        self, integration_app, integration_client, secret
+    ):
+        config = self._source(secret)
+
+        with pytest.raises(ToolError, match="must be an environment variable reference") as error:
+            call(integration_app, "write_source", {"config": config})
+        validated = call(integration_app, "validate_source", {"config": config})
+        response = integration_client.post("/api/sources/lake/", json=config)
+
+        assert "plain-text-7c1" not in str(error.value)
+        assert validated["valid"] is False and "plain-text-7c1" not in validated["error"]
+        assert response.status_code == 400
+        assert "must be an environment variable reference" in response.get_json()["error"]
+        assert integration_app.source_manager.get("lake") is None
+
+    def test_the_tool_and_the_route_refuse_a_data_path_of_another_store(
+        self, integration_app, integration_client
+    ):
+        config = self._source(data_path="gs://bucket/lake/")
+        message = "storage type 's3' needs a data_path that starts with 's3://'"
+
+        with pytest.raises(ToolError) as error:
+            call(integration_app, "write_source", {"config": config})
+        response = integration_client.post("/api/sources/lake/", json=config)
+
+        assert message in str(error.value)
+        assert response.status_code == 400 and message in response.get_json()["error"]
+        assert integration_app.source_manager.get("lake") is None
+
+    def test_the_tool_and_the_route_keep_the_object(self, integration_app, integration_client):
+        config = self._source()
+
+        call(integration_app, "write_source", {"config": config})
+        echoed = call(integration_app, "get_source", {"name": "lake"})
+        response = integration_client.post("/api/sources/lake/", json=echoed)
+        listed = integration_client.get("/api/sources/lake/")
+
+        assert response.status_code in (200, 201)
+        saved = integration_app.source_manager.get("lake").model_dump(
+            mode="json", exclude_none=True
+        )
+        assert saved["database"] == {
+            "catalog": "ducklake:sqlite:local/catalog.sqlite",
+            "data_path": "s3://bucket/lake/",
+            "read_only": True,
+            "storage": {
+                "type": "s3",
+                "key_id": "AKIAEXAMPLE",
+                "secret": "${env.AWS_SECRET_ACCESS_KEY}",
+            },
+        }
+        assert listed.status_code == 200
+        assert "${env.AWS_SECRET_ACCESS_KEY}" in listed.get_data(as_text=True)
+
+    AWS_SECRET = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYzEXAMPLEKEY"
+    LONG_SECRET = "Zq7" + "".join(f"{n:02d}xK" for n in range(50))
+
+    @pytest.mark.parametrize(
+        "storage, secret",
+        [
+            ({"type": "azure", "account_name": "a", "account_key": AWS_SECRET}, AWS_SECRET),
+            ({"type": "s3", "key_id": "AK", "secret_access_key": AWS_SECRET}, AWS_SECRET),
+            (
+                {
+                    "type": "s3",
+                    "key_id": "AK",
+                    "secret": "${env.AWS_SECRET_ACCESS_KEY}",
+                    "session_token": LONG_SECRET,
+                },
+                LONG_SECRET,
+            ),
+            ({"type": "aws", "key_id": "AK", "secret": AWS_SECRET}, AWS_SECRET),
+            ({"key_id": "AK", "secret": AWS_SECRET}, AWS_SECRET),
+        ],
+    )
+    def test_the_tool_and_the_route_repeat_no_part_of_a_secret(
+        self, integration_app, integration_client, monkeypatch, storage, secret
+    ):
+        from visivo.logger.logger import Logger
+
+        logged = []
+        for level in ("debug", "info", "error"):
+            monkeypatch.setattr(Logger.instance(), level, logged.append)
+        config = self._source()
+        config["database"]["storage"] = storage
+
+        with pytest.raises(ToolError) as error:
+            call(integration_app, "write_source", {"config": config})
+        validated = call(integration_app, "validate_source", {"config": config})
+        response = integration_client.post("/api/sources/lake/", json=config)
+
+        assert validated["valid"] is False and response.status_code == 400
+        text = "\n".join(
+            [str(error.value), str(validated), response.get_data(as_text=True)]
+            + [str(line) for line in logged]
+        )
+        assert not [secret[i : i + 8] for i in range(len(secret) - 7) if secret[i : i + 8] in text]
+        assert integration_app.source_manager.get("lake") is None
