@@ -1,5 +1,20 @@
 import os
+import re
 from typing import Optional
+from urllib.parse import urlparse
+
+REMOTE_PREFIXES = ("https://", "http://")
+
+
+def is_remote_database(database) -> bool:
+    return isinstance(database, str) and database.lower().startswith(REMOTE_PREFIXES)
+
+
+def remote_database_alias(database: str) -> str:
+    """The name a remote database is attached under: its file stem, as DuckDB names a local one."""
+    stem = os.path.splitext(os.path.basename(urlparse(database).path))[0]
+    alias = re.sub(r"[^A-Za-z0-9_]", "_", stem) or "remote"
+    return alias if not alias[0].isdigit() else f"_{alias}"
 
 
 def resolve_database_path(database: str, project_dir: Optional[str] = None) -> str:
@@ -21,7 +36,7 @@ class DatabaseFileMixin:
         for attachment in getattr(self, "attach", None) or []:
             databases.append(attachment.source.get_database())
         for database in databases:
-            if not database or database == ":memory:":
+            if not database or database == ":memory:" or is_remote_database(str(database)):
                 continue
             path = resolve_database_path(str(database), project_dir)
             if not os.path.isfile(path):
