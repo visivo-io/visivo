@@ -24,6 +24,7 @@ PARSE_ERROR = -32700
 INVALID_REQUEST = -32600
 METHOD_NOT_FOUND = -32601
 INVALID_PARAMS = -32602
+INTERNAL_ERROR = -32603
 
 
 def respond(app, payload):
@@ -36,8 +37,13 @@ def respond(app, payload):
     if not isinstance(method, str):
         return _error(request_id, INVALID_REQUEST, "Missing 'method'.")
 
-    if request_id is None and method.startswith("notifications/"):
+    if "id" not in payload:
         return None
+
+    params = payload.get("params")
+    if params is not None and not isinstance(params, dict):
+        return _error(request_id, INVALID_PARAMS, "'params' must be an object.")
+    params = params or {}
 
     if method == "initialize":
         return _result(request_id, initialize())
@@ -49,13 +55,15 @@ def respond(app, payload):
         # A resource that does not exist is the caller getting the protocol
         # wrong, not a tool refusing, so it is a JSON-RPC error.
         try:
-            return _result(request_id, read_resource(payload.get("params") or {}))
+            return _result(request_id, read_resource(params))
         except ToolError as refused:
             return _error(request_id, INVALID_PARAMS, str(refused))
     if method == "tools/list":
         return _result(request_id, {"tools": tool_list()})
     if method == "tools/call":
-        return _result(request_id, _call(app, payload.get("params") or {}))
+        if not isinstance(params.get("arguments") or {}, dict):
+            return _error(request_id, INVALID_PARAMS, "'arguments' must be an object.")
+        return _result(request_id, _call(app, params))
 
     return _error(request_id, METHOD_NOT_FOUND, f"Unknown method '{method}'.")
 
@@ -97,6 +105,13 @@ def _image_content(result):
 
 def _result(request_id, result):
     return {"jsonrpc": "2.0", "id": request_id, "result": result}
+
+
+def internal_error(payload, error):
+    """The reply for a message whose answer raised, or ``None`` for a notification."""
+    if not isinstance(payload, dict) or "id" not in payload:
+        return None
+    return _error(payload["id"], INTERNAL_ERROR, f"{type(error).__name__}: {error}")
 
 
 def _error(request_id, code, message):

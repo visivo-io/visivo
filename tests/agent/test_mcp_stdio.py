@@ -63,6 +63,43 @@ class TestFraming:
         assert replies[0]["id"] is None
         assert replies[1] == {"jsonrpc": "2.0", "id": 2, "result": {}}
 
+    def test_malformed_params_cost_one_reply_not_the_session(self, integration_app):
+        replies = _replies(
+            integration_app,
+            {"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": "oops"},
+            _request("ping", request_id=9),
+        )
+
+        assert replies[0]["id"] == 8
+        assert replies[0]["error"]["code"] == -32602
+        assert replies[1] == {"jsonrpc": "2.0", "id": 9, "result": {}}
+
+    def test_a_message_that_raises_is_an_internal_error_and_the_loop_goes_on(
+        self, integration_app, monkeypatch
+    ):
+        from visivo.agent import mcp_dispatch
+
+        def explode():
+            raise RuntimeError("registry broke")
+
+        monkeypatch.setattr(mcp_dispatch, "tool_list", explode)
+
+        replies = _replies(
+            integration_app,
+            _request("tools/list", request_id=5),
+            {"jsonrpc": "2.0", "method": "tools/list"},
+            _request("ping", request_id=6),
+        )
+
+        assert replies[0]["id"] == 5
+        assert replies[0]["error"]["code"] == -32603
+        assert "registry broke" in replies[0]["error"]["message"]
+        assert replies[1] == {"jsonrpc": "2.0", "id": 6, "result": {}}
+        assert len(replies) == 2
+
+    def test_a_request_without_an_id_gets_no_line(self, integration_app):
+        assert _exchange(integration_app, {"jsonrpc": "2.0", "method": "tools/list"}) == ""
+
     def test_a_reply_never_spans_lines(self, integration_app):
         """The transport forbids an embedded newline, and skills are full of them."""
         output = _exchange(

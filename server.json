@@ -22,6 +22,19 @@
         {
           "type": "positional",
           "value": "mcp"
+        },
+        {
+          "type": "named",
+          "name": "--working-dir",
+          "description": "Path to the Visivo project",
+          "isRequired": true,
+          "format": "filepath"
+        },
+        {
+          "type": "named",
+          "name": "--port",
+          "description": "Port of the local web app where you review drafts. The default is 8000.",
+          "format": "number"
         }
       ]
     }

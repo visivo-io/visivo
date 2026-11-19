@@ -6,7 +6,8 @@ for the HTTP endpoint.
 
 import json
 
-from visivo.agent.mcp_dispatch import respond
+from visivo.agent.mcp_dispatch import internal_error, respond
+from visivo.logger.logger import Logger
 
 
 def serve_stdio(app, reader, writer):
@@ -18,7 +19,11 @@ def serve_stdio(app, reader, writer):
             payload = json.loads(line)
         except ValueError:
             payload = None
-        reply = respond(app, payload)
+        try:
+            reply = respond(app, payload)
+        except Exception as unexpected:  # noqa: BLE001 — one message must not end the session
+            Logger.instance().error(f"MCP message failed: {unexpected!r}")
+            reply = internal_error(payload, unexpected)
         if reply is not None:
             writer.write(json.dumps(reply, default=str) + "\n")
             writer.flush()

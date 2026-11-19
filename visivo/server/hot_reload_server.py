@@ -67,6 +67,7 @@ class HotReloadServer:
         self.server_thread = None
         self.on_project_change = on_project_change
         self.stop_event = Event()
+        self.start_error = None
         self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode="threading")
         self.pause_lock = Lock()  # Lock for pausing file watcher during operations
 
@@ -116,15 +117,19 @@ class HotReloadServer:
         """Run the Flask server in a separate thread"""
 
         def run():
-            self.socketio.run(
-                self.app,
-                host=host,
-                port=port,
-                use_reloader=False,
-                allow_unsafe_werkzeug=True,
-                debug=bool(os.environ.get("DEBUG")),
-                log_output=bool(os.environ.get("DEBUG")),
-            )
+            try:
+                self.socketio.run(
+                    self.app,
+                    host=host,
+                    port=port,
+                    use_reloader=False,
+                    allow_unsafe_werkzeug=True,
+                    debug=bool(os.environ.get("DEBUG")),
+                    log_output=bool(os.environ.get("DEBUG")),
+                )
+            except BaseException as failed:  # werkzeug exits the thread when the bind fails
+                self.start_error = failed
+                raise
 
         self.server_thread = Thread(target=run, daemon=True)
         self.server_thread.start()

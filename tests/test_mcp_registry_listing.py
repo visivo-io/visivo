@@ -41,9 +41,30 @@ def test_it_starts_a_command_the_cli_has():
     from visivo.command_line import visivo
 
     assert PACKAGE["transport"] == {"type": "stdio"}
-    arguments = [argument["value"] for argument in PACKAGE["packageArguments"]]
-    assert arguments == ["mcp"]
-    assert CliRunner().invoke(visivo, [*arguments, "--help"]).exit_code == 0
+    positional = [a["value"] for a in PACKAGE["packageArguments"] if a["type"] == "positional"]
+    assert PACKAGE["packageArguments"][0] == {"type": "positional", "value": "mcp"}
+    assert positional == ["mcp"]
+    assert CliRunner().invoke(visivo, [*positional, "--help"]).exit_code == 0
+
+
+def test_it_makes_the_client_name_the_project():
+    """A registry client starts the command from a directory the user did not
+    choose, so the listing must ask for the project path."""
+    named = {a["name"]: a for a in PACKAGE["packageArguments"] if a["type"] == "named"}
+
+    assert named["--working-dir"]["isRequired"] is True
+    assert named["--working-dir"]["format"] == "filepath"
+    assert not named["--port"].get("isRequired")
+
+
+def test_each_named_argument_is_an_option_of_the_command():
+    from visivo.commands.mcp import mcp
+
+    options = {flag for parameter in mcp.params for flag in parameter.opts}
+    named = [a["name"] for a in PACKAGE["packageArguments"] if a["type"] == "named"]
+
+    assert named
+    assert set(named) <= options
 
 
 def test_the_release_script_moves_both_versions(tmp_path):

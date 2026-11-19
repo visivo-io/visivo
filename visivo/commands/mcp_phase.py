@@ -1,4 +1,6 @@
+import os
 import socket
+import time
 from threading import Thread
 
 import click
@@ -10,16 +12,30 @@ from visivo.discovery.discover import Discover
 from visivo.logger.logger import Logger
 
 LOCAL_HOST = "127.0.0.1"
+LOCAL_ADDRESSES = (LOCAL_HOST, "::1")
+WEB_APP_START_TIMEOUT_S = 15
 
 
 def port_is_free(port):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    """False when something answers on the port, whatever address it bound."""
+    for address in LOCAL_ADDRESSES:
         try:
-            probe.bind((LOCAL_HOST, port))
+            socket.create_connection((address, port), timeout=0.5).close()
         except OSError:
-            return False
+            continue
+        return False
     return True
+
+
+def web_app_started(server, port, timeout=None):
+    deadline = time.monotonic() + (timeout or WEB_APP_START_TIMEOUT_S)
+    while time.monotonic() < deadline:
+        if server.start_error is not None:
+            return False
+        if not port_is_free(port):
+            return True
+        time.sleep(0.05)
+    return False
 
 
 def mcp_phase(
@@ -43,9 +59,22 @@ def mcp_phase(
             "Otherwise pass --port."
         )
 
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+    except OSError as refused:
+        raise click.ClickException(
+            f"Cannot create the output directory {output_dir}: {refused.strerror}. "
+            "Pass --working-dir with the path of your Visivo project, or --output-dir."
+        )
+
     project_file_exists = Discover(
         working_dir=working_dir, output_dir=output_dir
     ).project_file_exists
+    if not project_file_exists:
+        Logger.instance().info(
+            f"No Visivo project file in {working_dir}. Serving an empty project. "
+            "Pass --working-dir with the path of your project."
+        )
     project = parse_project_phase(
         working_dir=working_dir,
         output_dir=output_dir,
@@ -81,6 +110,11 @@ def mcp_phase(
         },
         daemon=True,
     ).start()
+    if not web_app_started(server, port):
+        server.stop()
+        raise click.ClickException(
+            f"The web app did not start on port {port}. Pass --port to use another port."
+        )
     Logger.instance().info(f"Serving MCP over stdio. Review drafts at {server_url}")
 
     try:

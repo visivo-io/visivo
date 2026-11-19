@@ -42,8 +42,15 @@ def mcp(
 
     Also serves the local web app on --port, where you review and commit the
     drafts the agent writes. Logs go to stderr. The command ends when the
-    client closes stdin.
+    client closes stdin. The output directory defaults to "target" in the
+    working directory, because a client can start the command from anywhere.
     """
+    from click.core import ParameterSource
+
+    context = click.get_current_context()
+    if context.get_parameter_source("output_dir") == ParameterSource.DEFAULT:
+        output_dir = os.path.join(working_dir, "target")
+
     from visivo.logger.stdio import claim_stdout
 
     writer = claim_stdout()

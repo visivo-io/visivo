@@ -191,9 +191,12 @@ class TestTheEndpointDoesNotKnowItRecords:
         would drift."""
         from pathlib import Path
 
-        source = Path("visivo/server/views/mcp_views.py").read_text()
-
-        assert ".record(" not in source
+        for transport in (
+            "visivo/server/views/mcp_views.py",
+            "visivo/agent/mcp_dispatch.py",
+            "visivo/agent/mcp_stdio.py",
+        ):
+            assert ".record(" not in Path(transport).read_text(), transport
 
 
 class TestListenersSeeRecordings:

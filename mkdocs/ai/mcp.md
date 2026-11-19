@@ -42,6 +42,10 @@ local web app at `http://localhost:8000`, where you review and commit the drafts
 your agent writes. Pass `--port` to use a different port. If the port is in use,
 the command stops and tells you so.
 
+A client can start the command from any directory, so always pass
+`--working-dir`. The command writes its output to `target` in that directory
+unless you pass `--output-dir`.
+
 The command writes only MCP messages to standard output. Logs go to standard
 error. It ends when the client closes standard input, and drafts that you did
 not commit end with it.
