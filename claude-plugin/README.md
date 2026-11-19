@@ -19,11 +19,12 @@ The plugin does not install Visivo. [Install Visivo](https://docs.visivo.io/inst
 Run these commands in your shell:
 
 ```bash
-claude plugin marketplace add visivo-io/visivo
+claude plugin marketplace add visivo-io/visivo --sparse .claude-plugin claude-plugin
 claude plugin install visivo@visivo
 ```
 
-Or run `/plugin install visivo --marketplace visivo-io/visivo` in a Claude Code session.
+`--sparse` downloads only the plugin directories and the files at the top level of the repository, about 3 MB.
+Without it, the command downloads all files of the Visivo repository, more than 150 MB.
 
 ## Connect the MCP server
 
@@ -49,6 +50,7 @@ Tell Claude which way you want. The skills tell Claude not to use the two ways o
 When you ask for a deploy, the `deploy` skill runs `VISIVO_AUTHORIZE_SOURCE=plugin visivo authorize`.
 The CLI then adds `source=plugin` to the authorize URL that it opens.
 The label says only that the authorization started from this plugin.
+Visivo Cloud uses it only to count authorizations. Any tool can set the label, so it gives no access and no benefit.
 The CLI sends it only when telemetry is on. Run `visivo telemetry off` to stop it.
 
 ## What the plugin does not contain

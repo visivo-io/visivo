@@ -17,12 +17,14 @@ Run `visivo run` in the project directory. Stop if it fails, and report the erro
 Run:
 
 ```bash
-VISIVO_AUTHORIZE_SOURCE=plugin visivo authorize
+VISIVO_AUTHORIZE_SOURCE=plugin visivo authorize --timeout 540
 ```
 
+- Run the command in the background. If you cannot, set the timeout of the Bash tool to 600000 ms. The default tool timeout is 120 seconds, and that is too short for a user who must sign up or sign in.
 - The command prints a URL and opens it in a browser. The user signs in and clicks Authorize on that page. You cannot do this step for the user.
-- Without a terminal the command waits 600 seconds for the user. Tell the user that the page is open.
-- If the command times out, run it again. The page from the first run continues to work.
+- The command must be in operation when the user clicks Authorize. The page sends the token to a listener on `localhost:5001`, and the listener stops when the command stops.
+- Tell the user that the page is open and that they have 9 minutes. `--timeout 540` makes the CLI stop after 540 seconds with a message, before the Bash tool stops it.
+- If the command stops before the user clicks Authorize, start it again and then tell the user to click. The page from the first run continues to work.
 - If a token exists, the command keeps it and stops. That is a success. Add `--replace` only when the user asks for a new token.
 - Do not print, read or copy the token. The CLI stores it in `~/.visivo/profile.yml`.
 

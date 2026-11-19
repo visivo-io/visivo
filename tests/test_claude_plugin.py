@@ -9,7 +9,7 @@ import yaml
 from visivo.agent import skills as agent_skills
 from visivo.agent.tools import tool_names
 from visivo.command_line import visivo as cli
-from visivo.commands.authorize import AUTHORIZE_SOURCE_ENV_VAR
+from visivo.commands.authorize import AUTHORIZE_SOURCE_ENV_VAR, NON_INTERACTIVE_WAIT_TIME
 from visivo.version import VISIVO_VERSION
 
 REPO = Path(__file__).resolve().parents[1]
@@ -56,7 +56,13 @@ def test_manifest_names_the_plugin_and_tracks_the_release_version():
 def test_manifest_listing_urls_are_https():
     manifest = _manifest()
 
-    for key in ("homepage", "documentationUrl", "supportUrl", "privacyPolicyUrl"):
+    for key in (
+        "homepage",
+        "documentationUrl",
+        "supportUrl",
+        "privacyPolicyUrl",
+        "termsOfServiceUrl",
+    ):
         assert manifest[key].startswith("https://"), key
 
 
@@ -146,7 +152,7 @@ def test_skills_name_only_cli_commands_and_options_that_exist():
         "run": [],
         "test": [],
         "serve": ["--port"],
-        "authorize": ["--replace"],
+        "authorize": ["--replace", "--timeout"],
         "deploy": ["--branch", "--force"],
     }
 
@@ -162,6 +168,41 @@ def test_deploy_skill_sets_the_authorize_source_the_cli_reads():
     deploy = (PLUGIN / "skills" / "deploy" / "SKILL.md").read_text()
 
     assert f"{AUTHORIZE_SOURCE_ENV_VAR}=plugin visivo authorize" in deploy
+
+
+def test_deploy_skill_keeps_the_authorize_listener_alive_for_a_slow_user():
+    deploy = (PLUGIN / "skills" / "deploy" / "SKILL.md").read_text()
+    bash_tool_max_seconds = 600
+    bash_tool_default_seconds = 120
+
+    waits = [int(value) for value in re.findall(r"visivo authorize --timeout (\d+)", deploy)]
+    assert waits and all(bash_tool_default_seconds < wait < bash_tool_max_seconds for wait in waits)
+    assert all(wait <= NON_INTERACTIVE_WAIT_TIME for wait in waits)
+    assert "in the background" in deploy
+    assert f"{bash_tool_max_seconds * 1000} ms" in deploy
+    assert re.findall(r"^VISIVO_AUTHORIZE_SOURCE=plugin visivo authorize.*$", deploy, re.M) == [
+        f"VISIVO_AUTHORIZE_SOURCE=plugin visivo authorize --timeout {waits[0]}"
+    ]
+
+
+def test_mcp_skill_does_not_tell_the_model_to_run_a_user_only_command():
+    mcp = (PLUGIN / "skills" / "mcp-drafts" / "SKILL.md").read_text()
+
+    assert "ask the user to run `/mcp`" in mcp
+    assert not re.search(r"(?m)^\d+\. Run `/(mcp|plugin)", mcp)
+
+
+def test_readme_installs_from_a_sparse_checkout_that_holds_the_plugin():
+    readme = (PLUGIN / "README.md").read_text()
+    marketplace = json.loads(MARKETPLACE.read_text())
+
+    command = re.search(r"claude plugin marketplace add visivo-io/visivo --sparse (.+)", readme)
+    assert command, "the documented install command has no --sparse"
+    sparse = command.group(1).split()
+    assert MARKETPLACE.parent.name in sparse
+    for entry in marketplace["plugins"]:
+        assert entry["source"].removeprefix("./").split("/")[0] in sparse
+    assert "claude plugin marketplace add visivo-io/visivo\n" not in readme
 
 
 def test_mcp_skill_scopes_the_draft_rule_to_the_mcp_tools():

@@ -11,10 +11,10 @@ The default address is `http://localhost:8000/api/mcp/`.
 ## Connect
 
 1. Run `visivo serve` in the project directory. The command does not stop by itself, so start it in the background or ask the user to start it.
-2. Run `/mcp` and find `plugin:visivo:visivo`. Reconnect it if the server started after the session started.
+2. If the visivo MCP tools are not available after the server starts, ask the user to run `/mcp` and reconnect `plugin:visivo:visivo`. You cannot run `/mcp`. Until then, use the `project-files` skill.
 3. If the server uses a different port, the user sets the URL with `/plugin configure visivo@visivo`.
 
-If the server does not connect, use the `project-files` skill. The project files and the CLI do not need the MCP server.
+If the server does not connect after that, continue with the `project-files` skill. The project files and the CLI do not need the MCP server.
 
 ## Use the tools
 
