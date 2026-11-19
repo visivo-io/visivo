@@ -19,6 +19,67 @@ def load_cases():
     return json.loads(CASES_FILE.read_text())["cases"]
 
 
+READ_PREFIXES = (
+    "list_",
+    "get_",
+    "validate_",
+    "preview_",
+    "describe_",
+    "profile_",
+    "infer_",
+    "screenshot_",
+    "recommend_",
+    "check_",
+    "score_",
+)
+READ_NAMES = frozenset({"query_source", "read_skill"})
+WRITE_PREFIXES = ("write_",)
+WRITE_NAMES = frozenset({"start_edit", "create_branch"})
+HINTS = ("readOnlyHint", "destructiveHint", "openWorldHint")
+
+
+def reads_by_name(name):
+    """True for a read-style name, False for a write-style one, None for neither."""
+    if name in READ_NAMES or name.startswith(READ_PREFIXES):
+        return True
+    if name in WRITE_NAMES or name.startswith(WRITE_PREFIXES):
+        return False
+    return None
+
+
+def annotation_problems(tool):
+    """What is wrong with one listed tool's annotations. Empty means nothing."""
+    name = tool.get("name")
+    annotations = tool.get("annotations")
+    if not isinstance(annotations, dict):
+        return [f"{name} has no annotations"]
+
+    problems = []
+    title = tool.get("title")
+    if not isinstance(title, str) or not title.strip():
+        problems.append(f"{name} has no title")
+    if annotations.get("title") != title:
+        problems.append(f"{name} annotations.title differs from its title")
+    for hint in HINTS:
+        if not isinstance(annotations.get(hint), bool):
+            problems.append(f"{name} does not declare {hint}")
+
+    read_only = annotations.get("readOnlyHint")
+    expected = reads_by_name(name or "")
+    if expected is None:
+        problems.append(
+            f"{name} has neither a read-style nor a write-style name, so the "
+            "contract cannot tell what readOnlyHint it needs"
+        )
+    elif expected and read_only is not True:
+        problems.append(f"{name} reads, but readOnlyHint is not true")
+    elif not expected and read_only is not False:
+        problems.append(f"{name} writes, but readOnlyHint is not false")
+    if read_only is True and annotations.get("destructiveHint") is not False:
+        problems.append(f"{name} is read-only, but destructiveHint is not false")
+    return problems
+
+
 def check(case, status, body, registry_tool_names):
     """Return a list of failures for one case. Empty means it passed.
 
@@ -97,6 +158,10 @@ def check(case, status, body, registry_tool_names):
                         f"{where}: {tool.get('name')} requires '{required}' "
                         "but does not describe it"
                     )
+
+    if expect.get("tools_are_annotated"):
+        for tool in result.get("tools", []):
+            problems += [f"{where}: {problem}" for problem in annotation_problems(tool)]
 
     for forbidden in expect.get("no_tool_name_contains", []):
         offenders = [t["name"] for t in result.get("tools", []) if forbidden in t["name"]]

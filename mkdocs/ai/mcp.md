@@ -133,6 +133,15 @@ Additional tools include `get_schema`, `read_skill`, `list_runs`, and `get_run`.
 Theme tools read, validate, and replace the whole project's theme rather than a
 named object.
 
+Each tool in `tools/list` carries a `title` and MCP annotations, so your client
+can decide which calls need approval:
+
+| Annotation | Value |
+| --- | --- |
+| `readOnlyHint` | `true` for every tool that only reads, including `validate_*`. `false` for `write_*`. |
+| `destructiveHint` | `true` for `write_*`, because a write replaces the draft of the object. `false` for every read. |
+| `openWorldHint` | `true` for tools that return data from a Source, such as `query_source`. `false` for the rest. |
+
 Ask the agent to read existing objects, call `get_schema` before authoring a new
 type, validate non-trivial configuration, then write a draft. For example, the
 arguments to `get_schema` are:
