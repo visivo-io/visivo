@@ -74,6 +74,22 @@ describe('commonStore - onboarding URL routing', () => {
     expect(loadStore().getState().isOnboardingRequested).toBe(false);
   });
 
+  test("loading a project reads that project's onboarding, not another's", async () => {
+    setLocation('?onboarding=1', '/');
+    window.localStorage.setItem(
+      `${ONBOARDING_STATE_KEY}:/projects/other/project.visivo.yml`,
+      JSON.stringify({ completed_at: new Date().toISOString() })
+    );
+    fetchProjectBlob.mockResolvedValue({ id: 'id', name: 'project', project_file_path: '/projects/mine/project.visivo.yml' });
+    const useStore = loadStore();
+    await useStore.getState().fetchProject();
+    expect(useStore.getState().isOnboardingRequested).toBe(true);
+
+    fetchProjectBlob.mockResolvedValue({ id: 'id', name: 'project', project_file_path: '/projects/other/project.visivo.yml' });
+    await useStore.getState().fetchProject();
+    expect(useStore.getState().isOnboardingRequested).toBe(false);
+  });
+
   test('isOnboardingRequested false when URL has no onboarding param', () => {
     setLocation('', '/');
 

@@ -203,7 +203,7 @@ Now that you have a running dashboard, explore what's possible:
 
     Learn how to modify layouts, rows, items, and styling
     
-    [:octicons-arrow-right-24: Dashboard reference](reference/configuration/Dashboards/Dashboard/index.md)
+    [:octicons-arrow-right-24: Build a Dashboard guide](topics/dashboards.md)
 
 -   :material-chart-line:{ .lg .middle } **Add Charts & Visualizations**
 

@@ -111,7 +111,7 @@ describe('storeTypedSecrets', () => {
 
     expect(error.status).toBe(status);
     expect(error.message).toBe(
-      'Only an account admin can add a secret. Choose an existing one instead.'
+      'Your role cannot add a secret. Choose an existing one instead.'
     );
   });
 });

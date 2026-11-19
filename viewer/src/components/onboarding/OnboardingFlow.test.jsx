@@ -3,6 +3,7 @@ import { render, screen, fireEvent, within, waitFor } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 
 import OnboardingFlow, { sampleDestination } from './OnboardingFlow';
+import Start from './screens/Start';
 import useStore from '../../stores/store';
 import { clearOnboardingState, readOnboardingState, writeOnboardingState } from './onboardingState';
 import { clearEventBuffer, getEventBuffer } from './telemetry';
@@ -88,10 +89,10 @@ afterEach(() => {
 
 const ROUTER_FUTURE = { v7_startTransition: true, v7_relativeSplatPath: true };
 
-const renderFlow = () =>
+const renderFlow = props =>
   render(
     <MemoryRouter future={ROUTER_FUTURE}>
-      <OnboardingFlow />
+      <OnboardingFlow {...props} />
     </MemoryRouter>
   );
 
@@ -162,6 +163,50 @@ describe('OnboardingFlow', () => {
     expect(screen.getByTestId('onb-sample-ev-sales')).toBeInTheDocument();
   });
 
+  describe('a host that limits the paths', () => {
+    const CONNECT_ONLY = { example: false, upload: false, connect: true };
+
+    test('shows only the paths it can back', () => {
+      renderFlow({ paths: CONNECT_ONLY, tour: false, startEmpty: false });
+      expect(screen.queryByTestId('onb-path-example')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Try an example/)).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('onb-path-data'));
+      expect(screen.queryByTestId('onb-data-upload')).not.toBeInTheDocument();
+      expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();
+      expect(screen.queryByTestId('onb-start-tour')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('onb-start-empty')).not.toBeInTheDocument();
+    });
+
+    test('a host can add its own link under the paths', () => {
+      render(
+        <MemoryRouter future={ROUTER_FUTURE}>
+          <Start paths={CONNECT_ONLY} fire={() => {}} footer={<a href="/cli">Use the CLI</a>} />
+        </MemoryRouter>
+      );
+      expect(screen.getByRole('link', { name: 'Use the CLI' })).toBeInTheDocument();
+    });
+
+    test('openConnect opens the source form straight away', () => {
+      renderFlow({ paths: CONNECT_ONLY, openConnect: true });
+      expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
+    });
+
+    test('in cloud the form says credentials become account secrets', () => {
+      storeState.capabilities = { secrets_required: true };
+      renderFlow({ openConnect: true });
+      expect(screen.getByTestId('onb-source-modal')).toHaveTextContent('account secrets');
+      expect(screen.getByTestId('onb-source-modal')).not.toHaveTextContent('.env');
+    });
+
+    test('in cloud a saved source does not re-read the project from the local route', async () => {
+      storeState.capabilities = { secrets_required: true };
+      renderFlow({ openConnect: true });
+      fireEvent.click(screen.getByText('mock-connect'));
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+      expect(storeState.fetchProject).not.toHaveBeenCalled();
+    });
+  });
+
   describe('upload a data file', () => {
     test('Your data offers an upload, and Back returns to the two choices', async () => {
       renderFlow();
@@ -174,14 +219,16 @@ describe('OnboardingFlow', () => {
       expect(screen.getByTestId('onb-data-connect')).toBeInTheDocument();
     });
 
-    test('a dropped file becomes a draft source and opens the explorer on it', async () => {
+    test('a dropped file becomes a draft source and opens the first session on it', async () => {
       renderFlow();
       openUpload();
       await screen.findByText('CSV files up to 100 MB');
       dropFile(salesFile());
 
       await waitFor(() =>
-        expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
+        expect(mockNavigate).toHaveBeenCalledWith('/agent?first_session=sales_q3_2', {
+          replace: true,
+        })
       );
       expect(uploadProjectFile).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Sales Q3.csv' }),
@@ -454,13 +501,15 @@ describe('OnboardingFlow', () => {
       expect(screen.getByTestId('onb-source-modal')).toBeInTheDocument();
     });
 
-    test('a connected source is saved as a draft and goes straight to the explorer', async () => {
+    test('a connected source is saved as a draft and goes straight to the first session', async () => {
       renderFlow();
       connectDatabase();
       fireEvent.click(screen.getByText('mock-connect'));
       await waitFor(() =>
-        expect(mockNavigate).toHaveBeenCalledWith('/workspace/exploration', { replace: true })
+        expect(mockNavigate).toHaveBeenCalledWith('/agent?first_session=demo', { replace: true })
       );
+      expect(readOnboardingState().first_session).toMatchObject({ source: 'demo' });
+      expect(readOnboardingState().first_session.started_at).toBeUndefined();
       expect(storeState.saveSource).toHaveBeenCalledWith('demo', {
         type: 'postgresql',
         name: 'demo',

@@ -6,6 +6,7 @@ from flask import jsonify, send_from_directory
 from visivo.utils import VIEWER_PATH
 from visivo.telemetry.config import is_telemetry_enabled, is_ci_environment
 from visivo.server.services.theme_service import current_theme_config
+from visivo.server.views.commit_views import _project_file_path
 
 
 def register_data_views(app, flask_app, output_dir):
@@ -31,6 +32,9 @@ def register_data_views(app, flask_app, output_dir):
             "id": "id",
             "name": flask_app._project.name,
             "project_dir": flask_app._project.project_dir or "",
+            # Local serve has no project id; the viewer keys per-project
+            # browser state (onboarding) by this path instead.
+            "project_file_path": os.path.abspath(_project_file_path(flask_app)),
             "config": {
                 "defaults": project_data.get("defaults", {}),
                 "theme": current_theme_config(flask_app),

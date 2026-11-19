@@ -1,6 +1,10 @@
 import { fetchProjectBlob } from '../api/project';
 import { fetchProjectFilePath } from '../api/projectFilePath';
-import { hasCompletedOnboarding } from '../components/onboarding/onboardingState';
+import {
+  hasCompletedOnboarding,
+  onboardingScopeFor,
+  setOnboardingScope,
+} from '../components/onboarding/onboardingState';
 import { resetProjectSchemaCache } from '../schemas/projectSchema';
 import { clearValidationCache } from '../components/views/workspace/validateAgainstSchema';
 
@@ -26,9 +30,10 @@ const computeIsOnboardingRequested = () => {
 const createCommonSlice = (set, get) => {
   const evaluateIsNewProject = () => {
     const { project } = get();
+    setOnboardingScope(onboardingScopeFor(project));
     const isNew =
       project?.name === 'Quickstart Visivo' && (project?.dashboard_count ?? 0) === 0;
-    set({ isNewProject: isNew });
+    set({ isNewProject: isNew, isOnboardingRequested: computeIsOnboardingRequested() });
   };
 
   // VIS-1025: the schema caches (projectSchema's loader caches + the compiled
