@@ -12,6 +12,17 @@ def first_dashboard_path(project):
     return f"/project/{quote(dashboards[0].name, safe='')}"
 
 
+def with_cloud_next_steps(on_ready, example):
+    def run(*args, **kwargs):
+        result = on_ready(*args, **kwargs)
+        from visivo.commands.cloud_next_steps import log_cloud_next_steps
+
+        log_cloud_next_steps(example)
+        return result
+
+    return run
+
+
 @click.command()
 @project_dir
 @click.option(
@@ -104,6 +115,9 @@ def init(project_dir, example, bare, headless, no_onboarding, port):
         no_deprecation_warnings=False,
         open_path=open_path,
     )
+
+    if example:
+        on_ready = with_cloud_next_steps(on_ready, example)
 
     Logger.instance().info(f"Server running at {server_url}")
     server.serve(
