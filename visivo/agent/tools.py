@@ -37,10 +37,15 @@ from visivo.agent.data_tools import DATA_TOOLS
 from visivo.agent.schema import SchemaSlicer
 from visivo.agent.screenshot import SCREENSHOT_TOOLS
 from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
+from visivo.agent.write_errors import clean_message, generic_hints
 from visivo.jobs.run_model_data_job import QueryTimeout
 from visivo.query.patterns import is_valid_name, ref_name
 from visivo.server.managers.object_manager import NameTakenError, SaveRefusedError
 from visivo.server.rename_service import TYPE_TO_MANAGER
+
+
+def _article(noun):
+    return f"{'An' if noun[:1] in 'aeiou' else 'A'} {noun}"
 
 
 def _singular(type_key):
@@ -193,7 +198,7 @@ def _validate_handler(type_key):
         except ToolError:
             raise
         except Exception as error:
-            return {"valid": False, "error": str(error)}
+            return {"valid": False, "error": _invalid_text(type_key, error)}
         if model:
             obj.set_parent_name(model)
         name = config.get("name")
@@ -219,8 +224,7 @@ def _write_handler(type_key):
         try:
             obj = manager.validate_object(config)
         except Exception as error:
-            hints = "".join(f"\nHint: {hint}" for hint in _write_hints(type_key, error))
-            raise ToolError(f"Invalid {_singular(type_key)}: {error}{hints}")
+            raise ToolError(f"Invalid {_singular(type_key)}: {_invalid_text(type_key, error)}")
         if model:
             obj.set_parent_name(model)
 
@@ -312,6 +316,11 @@ def _write_handler(type_key):
 _INTERACTION_FIELDS = ("filter", "split", "sort")
 
 
+def _invalid_text(type_key, error):
+    hints = "".join(f"\nHint: {hint}" for hint in _write_hints(type_key, error))
+    return f"{clean_message(error)}{hints}"
+
+
 def _write_hints(type_key, error):
     errors = error.errors() if callable(getattr(error, "errors", None)) else []
     hints = []
@@ -325,7 +334,7 @@ def _write_hints(type_key, error):
             )
         elif field == "model" and problem.get("type") == "extra_forbidden":
             hints.append(
-                f"A {_singular(type_key)} has no `model` field. Name the model inside its "
+                f"{_article(_singular(type_key))} has no `model` field. Name the model inside its "
                 "expressions, e.g. `?{ sum(${ref(trips).fare}) }`."
             )
         elif type_key == "models" and field == "source":
@@ -335,7 +344,7 @@ def _write_hints(type_key, error):
                 f"Write the source as a reference to one of the project's sources, e.g. "
                 f"`source: ${{ref({name})}}`; list_sources names them."
             )
-    return list(dict.fromkeys(hints))
+    return list(dict.fromkeys(hints + generic_hints(type_key, errors)))
 
 
 _NAME_SCHEMA = {

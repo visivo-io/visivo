@@ -383,6 +383,77 @@ class TestWriteHints:
         with pytest.raises(ToolError, match=r"has no `model` field"):
             call(integration_app, "write_insight", {"config": config})
 
+    @pytest.mark.parametrize(
+        "tool, config, hint",
+        [
+            (
+                "markdown",
+                {"name": "md", "text": "hi"},
+                "A markdown has no `text` field. It accepts: `name`, `content`, `align`, `justify`.",
+            ),
+            (
+                "insight",
+                {"name": "i", "props": {"type": "bar"}, "dimensions": [], "metrics": []},
+                "An insight has no `dimensions` or `metrics` fields. It accepts: `name`, "
+                "`description`, `props`, `interactions`.",
+            ),
+            (
+                "dashboard",
+                {"name": "d", "rows": [{"items": [{"insight": "x"}]}]},
+                "An entry in `items` has no `insight` field. It accepts: `name`, `width`, "
+                "`markdown`, `chart`, `table`, `input`, `rows`.",
+            ),
+        ],
+    )
+    def test_a_refused_field_lists_what_the_object_accepts(
+        self, integration_app, tool, config, hint
+    ):
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, f"write_{tool}", {"config": config})
+        assert f"Hint: {hint}" in str(raised.value)
+
+        checked = call(integration_app, f"validate_{tool}", {"config": config})
+        assert checked["valid"] is False
+        assert f"Hint: {hint}" in checked["error"]
+
+    @pytest.mark.parametrize(
+        "tool, config, hint",
+        [
+            (
+                "chart",
+                {"name": "c", "insights": ["revenue_by_month"]},
+                "`insights` takes a reference to another object, not its bare name: "
+                "write `${ref(revenue_by_month)}`.",
+            ),
+            (
+                "dashboard",
+                {"name": "d", "rows": [{"items": [{"chart": "revenue_chart"}]}]},
+                "`chart` takes a reference to another object, not its bare name: "
+                "write `${ref(revenue_chart)}`.",
+            ),
+        ],
+    )
+    def test_a_bare_name_where_a_reference_belongs_shows_the_reference(
+        self, integration_app, tool, config, hint
+    ):
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, f"write_{tool}", {"config": config})
+        assert f"Hint: {hint}" in str(raised.value)
+        assert (
+            f"Hint: {hint}"
+            in call(integration_app, f"validate_{tool}", {"config": config})["error"]
+        )
+
+    def test_the_pydantic_documentation_link_is_left_out(self, integration_app):
+        config = {"name": "md", "text": "hi"}
+        with pytest.raises(ToolError) as raised:
+            call(integration_app, "write_markdown", {"config": config})
+        assert "errors.pydantic.dev" not in str(raised.value)
+        assert (
+            "errors.pydantic.dev"
+            not in call(integration_app, "validate_markdown", {"config": config})["error"]
+        )
+
     def test_an_unknown_source_name_asks_for_a_reference_to_it(self, integration_app):
         config = {"name": "m", "source": "nope", "sql": "select 1"}
         with pytest.raises(ToolError, match=r"source: \$\{ref\(nope\)\}`; list_sources"):
