@@ -876,3 +876,57 @@ class TestInsightChecksReachEveryWriter:
         response = integration_client.post("/api/insights/bad_sort/", json=body)
 
         assert response.status_code == 400
+
+
+class TestADuckLakeCredentialIsAnEnvVarReference:
+    """The rule is in the model, so each writer refuses a plaintext or masked value
+    and no writer repeats it."""
+
+    @staticmethod
+    def _source(password):
+        return {
+            "name": "lake",
+            "type": "duckdb",
+            "database": ":memory:",
+            "attach": [
+                {
+                    "schema_name": "lake",
+                    "ducklake": {
+                        "catalog": {
+                            "host": "db.example.com",
+                            "database": "ducklake",
+                            "username": "reader",
+                            "password": password,
+                        }
+                    },
+                }
+            ],
+        }
+
+    @pytest.mark.parametrize("password", ["plain-text-7c1", "**********"])
+    def test_the_tool_and_the_route_refuse_a_value(
+        self, integration_app, integration_client, password
+    ):
+        with pytest.raises(ToolError, match="must be an environment variable reference") as error:
+            call(integration_app, "write_source", {"config": self._source(password)})
+        validated = call(integration_app, "validate_source", {"config": self._source(password)})
+        response = integration_client.post("/api/sources/lake/", json=self._source(password))
+
+        assert "plain-text-7c1" not in str(error.value)
+        assert validated["valid"] is False and "plain-text-7c1" not in validated["error"]
+        assert response.status_code == 400
+        assert "must be an environment variable reference" in response.get_json()["error"]
+        assert integration_app.source_manager.get("lake") is None
+
+    def test_the_tool_and_the_route_keep_a_reference(self, integration_app, integration_client):
+        config = self._source("${env.LAKE_CATALOG_PASSWORD}")
+
+        call(integration_app, "write_source", {"config": config})
+        echoed = call(integration_app, "get_source", {"name": "lake"})
+        response = integration_client.post("/api/sources/lake/", json=echoed)
+
+        assert response.status_code in (200, 201)
+        saved = integration_app.source_manager.get("lake").model_dump(mode="json")
+        assert saved["attach"][0]["ducklake"]["catalog"]["password"] == (
+            "${env.LAKE_CATALOG_PASSWORD}"
+        )

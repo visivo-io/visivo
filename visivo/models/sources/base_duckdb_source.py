@@ -401,7 +401,7 @@ class DuckdbConnection:
     def __enter__(self):
         self.connection = self.source.get_connection(read_only=self.read_only)
         try:
-            self.source._setup_connection(self.connection, **self.kwargs)
+            self.source._setup_connection(self.connection, read_only=self.read_only, **self.kwargs)
         except Exception:
             self.connection.close()
             self.connection = None

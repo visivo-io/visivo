@@ -1,33 +1,42 @@
 import re
 from typing import List, Literal, Optional, Union
 
-from pydantic import Field, model_validator
+from pydantic import Field, ValidationError, field_validator, model_validator
 
 from visivo.models.base.base_model import (
     BaseModel,
     IntOrEnvVar,
-    SecretStrOrEnvVar,
     StringOrEnvVar,
 )
 from visivo.models.base.env_var_string import EnvVarString
+from visivo.models.sources.database_file import NON_FILE_SCHEME
 
 DUCKLAKE_PREFIX = "ducklake:"
 GCS_PREFIXES = ("gs://", "gcs://")
 REDACTED = "***"
 
-_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+FILE_CATALOG_PREFIXES = ("sqlite:", "duckdb:")
+SECRET_KEYS = ("password", "passwd", "secret", "token", "motherduck_token")
+
 _CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f]")
 _CREDENTIAL_ASSIGNMENT = re.compile(
-    r"(?i)\b(password|passwd|secret|key_id|token)(\s*=\s*)(\"[^\"]*\"|'[^']*'|[^\s;&]+)"
+    r"(?i)(password|passwd|secret|key_id|token)(\s*=\s*)(\"[^\"]*\"|'[^']*'|[^\s;&]+)"
 )
-_URL_CREDENTIALS = re.compile(r"(://[^/\s:@]+:)[^@\s/]+@")
+# DuckDB prints a URL a second time as a path, with '://' collapsed to ':/'.
+_URL_CREDENTIALS = re.compile(r"(:/+[^/\s:@]+:)[^@\s/]+@")
 
 
 def validate_identifier(name: str, field: str = "schema_name") -> str:
-    if not isinstance(name, str) or not _IDENTIFIER.match(name):
+    """Visivo writes the name inside double quotes, so only a quote can end it."""
+    if (
+        not isinstance(name, str)
+        or not name.strip()
+        or '"' in name
+        or _CONTROL_CHARACTERS.search(name)
+    ):
         raise ValueError(
-            f"{field} must start with a letter or an underscore and contain only "
-            "letters, numbers and underscores."
+            f"{field} must not be empty and must not contain a double quote or a "
+            "control character."
         )
     return name
 
@@ -73,18 +82,66 @@ def redact(message: str, secrets: Optional[List[Optional[str]]] = None) -> str:
     return _URL_CREDENTIALS.sub(rf"\1{REDACTED}@", message)
 
 
-def _check_catalog_uri(uri: str) -> str:
-    if not uri.lower().startswith(DUCKLAKE_PREFIX) or len(uri) == len(DUCKLAKE_PREFIX):
+def _input_secrets(value, key=None) -> List[str]:
+    if isinstance(value, dict):
+        return [s for k, v in value.items() for s in _input_secrets(v, k)]
+    if isinstance(value, (list, tuple)):
+        return [s for item in value for s in _input_secrets(item, key)]
+    if isinstance(value, str) and str(key).lower() in SECRET_KEYS:
+        return [] if EnvVarString.contains_pattern(value) else [value]
+    return []
+
+
+def validation_error_text(error: ValidationError) -> str:
+    """The text of a validation error, without the secrets that pydantic repeats from the input."""
+    secrets = []
+    for line in error.errors():
+        loc = line.get("loc") or (None,)
+        secrets.extend(_input_secrets(line.get("input"), loc[-1]))
+    return redact(str(error), secrets)
+
+
+def is_ducklake_uri(value) -> bool:
+    return isinstance(value, str) and value.lower().startswith(DUCKLAKE_PREFIX)
+
+
+def check_ducklake_uri(uri: str, field: str = "catalog") -> str:
+    """Accept only a catalog in a file: `ducklake:<path>`, `ducklake:sqlite:<path>` or
+    `ducklake:duckdb:<path>`. Any other form can hold a credential."""
+    if not is_ducklake_uri(uri) or len(uri) == len(DUCKLAKE_PREFIX):
         raise ValueError(
-            "catalog must be a 'ducklake:' URI, for example 'ducklake:sqlite:catalog.sqlite', "
+            f"{field} must be a 'ducklake:' URI, for example 'ducklake:sqlite:catalog.sqlite', "
             "or a Postgres catalog with host, database and username."
         )
-    if uri.lower().startswith(f"{DUCKLAKE_PREFIX}postgres:"):
+    path = uri[len(DUCKLAKE_PREFIX) :]
+    if path.lower().startswith("postgres:"):
         raise ValueError(
             "A Postgres catalog must use the catalog fields (host, port, database, username, "
             "password), not a URI, so that the password stays out of the connection string."
         )
+    if path.lower().startswith(FILE_CATALOG_PREFIXES):
+        path = path.split(":", 1)[1]
+    if (
+        NON_FILE_SCHEME.match(path)
+        or "://" in path
+        or "@" in path
+        or _CREDENTIAL_ASSIGNMENT.search(path)
+    ):
+        raise ValueError(
+            f"A 'ducklake:' URI in {field} must name a catalog in a DuckDB or SQLite file, "
+            "for example 'ducklake:sqlite:catalog.sqlite'. Visivo refuses a URI that can "
+            "hold credentials."
+        )
     return uri
+
+
+def _env_var_reference(value, field: str, example: str):
+    if value is None or EnvVarString.contains_pattern(value):
+        return value
+    raise ValueError(
+        f"{field} must be an environment variable reference, for example ${{env.{example}}}. "
+        "Visivo does not accept the value itself here."
+    )
 
 
 def _check_gcs_data_path(data_path: str) -> str:
@@ -103,9 +160,15 @@ class DuckLakePostgresCatalog(BaseModel):
     port: IntOrEnvVar = Field(5432, description="The port of the catalog database.")
     database: StringOrEnvVar = Field(..., description="The name of the catalog database.")
     username: StringOrEnvVar = Field(..., description="Username for the catalog database.")
-    password: Optional[SecretStrOrEnvVar] = Field(
-        None, description="Password corresponding to the username."
+    password: Optional[EnvVarString] = Field(
+        None,
+        description="Password corresponding to the username. It must be an environment variable reference, for example `${env.LAKE_CATALOG_PASSWORD}`.",
     )
+
+    @field_validator("password", mode="before")
+    @classmethod
+    def validate_password(cls, password):
+        return _env_var_reference(password, "catalog password", "LAKE_CATALOG_PASSWORD")
 
     def get_port(self) -> int:
         port = resolve_value(self.port)
@@ -141,7 +204,15 @@ class DuckLakeGcsCredentials(BaseModel):
     """
 
     key_id: StringOrEnvVar = Field(..., description="The access id of the HMAC key.")
-    secret: SecretStrOrEnvVar = Field(..., description="The secret of the HMAC key.")
+    secret: EnvVarString = Field(
+        ...,
+        description="The secret of the HMAC key. It must be an environment variable reference, for example `${env.GCS_HMAC_SECRET}`.",
+    )
+
+    @field_validator("secret", mode="before")
+    @classmethod
+    def validate_secret(cls, secret):
+        return _env_var_reference(secret, "gcs secret", "GCS_HMAC_SECRET")
 
     def secret_sql(self, secret_name: str, scope: Optional[str]) -> str:
         parameters = [
@@ -193,7 +264,7 @@ class DuckLakeAttachment(BaseModel):
     )
     data_path: Optional[StringOrEnvVar] = Field(
         None,
-        description="Where the DuckLake keeps its data files. An existing DuckLake does not need it.",
+        description="Where the DuckLake keeps its data files. An existing DuckLake does not need it. With `gcs` it is also the scope of the HMAC key, and it is necessary when more than one DuckLake of a source has `gcs`.",
     )
     read_only: bool = Field(
         True, description="Attach the DuckLake read-only. Set to false to allow writes."
@@ -208,7 +279,7 @@ class DuckLakeAttachment(BaseModel):
     @model_validator(mode="after")
     def validate_ducklake(self):
         if isinstance(self.catalog, str):
-            _check_catalog_uri(self.catalog)
+            check_ducklake_uri(self.catalog)
         if self.snapshot_version is not None and not self.read_only:
             raise ValueError("snapshot_version needs read_only: true. A snapshot cannot change.")
         if self.gcs is not None and isinstance(self.data_path, str):
@@ -245,7 +316,7 @@ class DuckLakeAttachment(BaseModel):
             catalog_uri = f"{DUCKLAKE_PREFIX}postgres:"
             options.append(f"META_SECRET {quote_literal(catalog_secret, 'catalog secret')}")
         else:
-            catalog_uri = _check_catalog_uri(resolve_value(self.catalog))
+            catalog_uri = check_ducklake_uri(resolve_value(self.catalog))
 
         if self.gcs is not None:
             if data_path:

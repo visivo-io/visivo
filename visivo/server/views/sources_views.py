@@ -1,6 +1,7 @@
 from flask import jsonify, request
 from pydantic import ValidationError
 from visivo.logger.logger import Logger
+from visivo.models.sources.ducklake import validation_error_text
 from visivo.server.managers.object_manager import ObjectStatus, SaveRefusedError
 from visivo.server.managers.source_op_job_manager import SourceOpJobManager
 from visivo.server.source_metadata import (
@@ -94,7 +95,7 @@ def register_source_views(app, flask_app, output_dir):
         except SaveRefusedError as e:
             return jsonify({"error": str(e)}), e.status
         except ValidationError as e:
-            Logger.instance().debug(f"Source validation failed: {e}")
+            Logger.instance().debug(f"Source validation failed: {validation_error_text(e)}")
             first_error = e.errors()[0]
             return (
                 jsonify(

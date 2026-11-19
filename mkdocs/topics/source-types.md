@@ -213,6 +213,9 @@ sources:
           database: local/static/static.db
 ```
 
+When Visivo only reads data, it attaches the file read-only. Thus two processes can read the
+same file. If an attachment fails, Visivo stops and names the attachment.
+
 #### DuckLake
 
 A [DuckLake](https://ducklake.select) keeps its catalog in a database and its data in Parquet
@@ -247,21 +250,31 @@ models:
   `lake.main.orders`.
 - **Read-only.** Visivo attaches a DuckLake read-only. Set `read_only: false` only when a
   query must write to the DuckLake.
-- **Catalog.** `catalog` is a PostgreSQL connection, as in the example, or a `ducklake:` URI
-  for a catalog in a file, for example `ducklake:sqlite:local/catalog.sqlite`. Visivo refuses
-  a `ducklake:postgres:` URI, because the URI would contain the password.
+- **Catalog.** `catalog` is a PostgreSQL connection, as in the example, or a `ducklake:` URI.
+  A `ducklake:` URI is for a catalog in a DuckDB or SQLite file only, for example
+  `ducklake:sqlite:local/catalog.sqlite`. Visivo refuses a URI that can hold credentials.
+  The same rule applies to a `ducklake:` URI in `database`.
 - **Data path.** The catalog stores the data path when the DuckLake is created. An existing
-  DuckLake does not need `data_path`.
+  DuckLake does not need `data_path`. With `gcs`, `data_path` also sets which paths the HMAC
+  key reads. If more than one DuckLake in a Source has `gcs`, each one must have a `data_path`.
+- **Names.** Visivo puts `schema_name` in double quotes. A name with other characters than
+  letters, numbers and underscores also needs double quotes in a query, for example
+  `"my-lake".main.orders`. A name cannot be the name of the primary database, or `temp` or
+  `system`.
 - **Google Cloud Storage.** DuckDB reads `gs://` paths with an
   [HMAC key](https://cloud.google.com/storage/docs/authentication/hmackeys). It does not
   accept a service account key file. Give the key a role that can read the bucket.
 - **Snapshots.** Set `snapshot_version` to read the DuckLake as of one snapshot.
-- **Secrets.** Visivo reads each `${env.VAR}` value when it connects. It creates the
-  credentials as temporary DuckDB secrets on the connection, and it does not write them to disk.
-- **Errors.** If an attachment fails, Visivo stops and names the attachment. The message
-  does not contain the password or the HMAC secret.
-- **Extensions.** DuckDB downloads the `ducklake`, `postgres` and `httpfs` extensions on
-  first use, so the first connection needs network access.
+- **Secrets.** The catalog `password` and the `gcs` `secret` must be `${env.VAR}` references.
+  Visivo refuses the value itself. Visivo reads each `${env.VAR}` value when it connects. It
+  creates the credentials as temporary DuckDB secrets on the connection, and it does not write
+  them to disk.
+- **Errors.** If an attachment fails, Visivo stops and names the attachment. This applies to
+  each attachment, a database file included. The message does not contain the password or the
+  HMAC secret.
+- **Extensions.** DuckDB downloads the `ducklake` extension on first use. It also downloads
+  `postgres` for a PostgreSQL catalog, `sqlite` for a SQLite file catalog, and `httpfs` for a
+  `gs://` data path. Thus the first connection needs network access.
 
 !!! note "DuckLake format versions"
 

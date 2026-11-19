@@ -2,6 +2,7 @@ import os
 import shutil
 import socket
 import subprocess
+import sys
 import time
 import uuid
 
@@ -10,19 +11,32 @@ import duckdb
 import pytest
 from pydantic import ValidationError
 
+from visivo.logger.logger import Logger
 from visivo.models.sources.database_file import is_file_database
 from visivo.models.sources.duckdb_source import DuckdbAttachment, DuckdbSource
 from visivo.models.sources.ducklake import (
     DuckLakeAttachment,
     attach_database_sql,
+    check_ducklake_uri,
     quote_identifier,
     quote_literal,
     redact,
+    validation_error_text,
 )
 
 PASSWORD = "pg-pass-9f3'k"
 HMAC_SECRET = "hmac-secret-71c2"
 HMAC_KEY_ID = "GOOG1EXAMPLEKEYID"
+
+
+PASSWORD_REF = "${env.LAKE_TEST_PASSWORD}"
+HMAC_SECRET_REF = "${env.LAKE_TEST_HMAC_SECRET}"
+
+
+@pytest.fixture(autouse=True)
+def lake_credentials(monkeypatch):
+    monkeypatch.setenv("LAKE_TEST_PASSWORD", PASSWORD)
+    monkeypatch.setenv("LAKE_TEST_HMAC_SECRET", HMAC_SECRET)
 
 
 def _postgres_lake(**overrides):
@@ -31,10 +45,10 @@ def _postgres_lake(**overrides):
             "host": "db.example.com",
             "database": "ducklake",
             "username": "reader",
-            "password": PASSWORD,
+            "password": PASSWORD_REF,
         },
         "data_path": "gs://bucket/lake/",
-        "gcs": {"key_id": HMAC_KEY_ID, "secret": HMAC_SECRET},
+        "gcs": {"key_id": HMAC_KEY_ID, "secret": HMAC_SECRET_REF},
     }
     config.update(overrides)
     return config
@@ -139,14 +153,178 @@ def test_a_refused_catalog_uri_does_not_repeat_its_password():
         )
 
     assert "hunter2" not in str(error.value.errors(include_input=False))
+    assert "hunter2" not in validation_error_text(error.value)
 
 
 @pytest.mark.parametrize(
-    "schema_name", ["lake; DROP TABLE x", 'la"ke', "1lake", "my lake", "", "a'b"]
+    "catalog",
+    [
+        "ducklake:postgresql://postgres:hunter2pw@127.0.0.1:5432/ducklake",
+        "ducklake:mysql:host=h user=u password=hunter2pw database=d",
+        "ducklake:pg:dbname=x",
+        "ducklake:md:lake?motherduck_token=hunter2pw",
+        "ducklake:sqlite:catalog.sqlite?password=hunter2pw",
+        "ducklake:reader@host/catalog",
+        "ducklake:duckdb:s3://bucket/catalog.duckdb",
+    ],
 )
-def test_an_attachment_schema_name_must_be_an_identifier(schema_name):
-    with pytest.raises(ValidationError, match="schema_name must start with a letter"):
+def test_a_catalog_uri_that_is_not_a_file_is_refused(catalog, monkeypatch):
+    with pytest.raises(ValidationError, match="must name a catalog in a DuckDB or SQLite file"):
+        DuckLakeAttachment(catalog=catalog)
+    with pytest.raises(ValidationError, match="must name a catalog in a DuckDB or SQLite file"):
+        DuckdbSource(name="d", type="duckdb", database=catalog)
+
+    monkeypatch.setenv("LAKE_CATALOG", catalog)
+    with pytest.raises(ValueError, match="must name a catalog in a DuckDB or SQLite file"):
+        DuckLakeAttachment(catalog="${env.LAKE_CATALOG}").setup_statements("lake")
+
+
+@pytest.mark.parametrize(
+    "catalog",
+    [
+        "ducklake:c.ducklake",
+        "ducklake:sqlite:local/catalog.sqlite",
+        "ducklake:duckdb:/abs/catalog.duckdb",
+        "DuckLake:SQLite:catalog.sqlite",
+        "ducklake:C:\\lake\\catalog.ducklake",
+    ],
+)
+def test_a_file_catalog_uri_is_accepted(catalog):
+    assert check_ducklake_uri(catalog) == catalog
+    assert DuckdbSource(name="d", type="duckdb", database=catalog).database == catalog
+
+
+def test_a_credential_uri_from_an_env_var_fails_at_connect_without_the_password(monkeypatch):
+    uri = "ducklake:postgresql://postgres:hunter2pw@127.0.0.1:5432/ducklake"
+    monkeypatch.setenv("LAKE_CATALOG", uri)
+    attached = _source({"catalog": "${env.LAKE_CATALOG}"})
+    primary = DuckdbSource(name="d", type="duckdb", database="${env.LAKE_CATALOG}")
+
+    with pytest.raises(click.ClickException) as attach_error:
+        attached.read_sql("SELECT 1")
+    with pytest.raises(click.ClickException) as primary_error:
+        primary.read_sql("SELECT 1")
+
+    assert "Error attaching 'lake'" in attach_error.value.message
+    for error in (attach_error, primary_error):
+        assert "must name a catalog in a DuckDB or SQLite file" in error.value.message
+        assert "hunter2pw" not in error.value.message
+
+
+@pytest.mark.parametrize(
+    "block, field, example",
+    [
+        ("catalog", "password", "LAKE_CATALOG_PASSWORD"),
+        ("gcs", "secret", "GCS_HMAC_SECRET"),
+    ],
+)
+@pytest.mark.parametrize("value", ["plain-text-7c1", "**********", ""])
+def test_a_ducklake_credential_must_be_an_env_var_reference(block, field, example, value):
+    config = _postgres_lake()
+    config[block] = {**config[block], field: value}
+
+    with pytest.raises(ValidationError) as error:
+        DuckLakeAttachment(**config)
+
+    assert f"must be an environment variable reference, for example ${{env.{example}}}" in str(
+        error.value
+    )
+    if value == "plain-text-7c1":
+        assert value not in validation_error_text(error.value)
+
+
+def test_validation_text_hides_the_secrets_that_pydantic_repeats():
+    with pytest.raises(ValidationError) as error:
+        DuckdbSource(
+            name="d",
+            type="duckdb",
+            database="ducklake:postgresql://postgres:hunter2pw@db/lake",
+            attach=[
+                {
+                    "schema_name": "lake",
+                    "ducklake": _postgres_lake(gcs={"key_id": "k", "secret": "plain-hmac-91"}),
+                }
+            ],
+        )
+
+    assert "hunter2pw" in str(error.value) and "plain-hmac-91" in str(error.value)
+    text = validation_error_text(error.value)
+    assert "hunter2pw" not in text and "plain-hmac-91" not in text
+    assert "must be an environment variable reference" in text
+    assert "must name a catalog in a DuckDB or SQLite file" in text
+
+
+def test_a_line_validation_error_hides_the_secrets(tmp_path):
+    from visivo.parsers.line_validation_error import LineValidationError
+
+    with pytest.raises(ValidationError) as error:
+        DuckLakeAttachment(**_postgres_lake(gcs={"key_id": "k", "secret": "plain-hmac-91"}))
+
+    message = str(LineValidationError(error.value, files=[]))
+
+    assert "gcs secret must be an environment variable reference" in message
+    assert "plain-hmac-91" not in message
+
+
+@pytest.mark.parametrize("schema_name", ['la"ke', "", "   ", "a\n", "a\x00b", '"', '""'])
+def test_an_attachment_schema_name_is_refused(schema_name):
+    with pytest.raises(ValidationError, match="schema_name must not be empty"):
         DuckdbAttachment(schema_name=schema_name, ducklake={"catalog": "ducklake:c.ducklake"})
+
+
+@pytest.mark.parametrize(
+    "schema_name, alias",
+    [
+        ("lake_1", "lake_1"),
+        ("données", "données"),
+        ("my-db", "my-db"),
+        ('"my-db"', "my-db"),
+        ("lake; DROP TABLE x", "lake; DROP TABLE x"),
+    ],
+)
+def test_an_attachment_schema_name_is_attached_under_a_quoted_name(tmp_path, schema_name, alias):
+    other = tmp_path / "other.duckdb"
+    with duckdb.connect(str(other)) as connection:
+        connection.execute("CREATE TABLE t AS SELECT 7 AS n")
+    source = DuckdbSource(
+        name="d",
+        type="duckdb",
+        database=":memory:",
+        attach=[
+            {
+                "schema_name": schema_name,
+                "source": {"name": "o", "type": "duckdb", "database": str(other)},
+            }
+        ],
+    )
+
+    assert source.attach[0].schema_name == alias
+    assert source.read_sql(f'SELECT n FROM "{alias}".t') == [{"n": 7}]
+    assert alias in source.list_databases()
+
+
+def test_two_ducklakes_with_gcs_credentials_each_need_a_data_path():
+    def source(first_path, second_path):
+        return DuckdbSource(
+            name="d",
+            type="duckdb",
+            database=":memory:",
+            attach=[
+                {"schema_name": "a", "ducklake": _postgres_lake(data_path=first_path)},
+                {"schema_name": "b", "ducklake": _postgres_lake(data_path=second_path)},
+            ],
+        )
+
+    with pytest.raises(ValidationError, match="Attachment 'b' needs a data_path"):
+        source("gs://bucket-a/lake/", None)
+    with pytest.raises(ValidationError, match="Attachment 'a' needs a data_path"):
+        source(None, "gs://bucket-b/lake/")
+
+    scoped = source("gs://bucket-a/lake/", "gs://bucket-b/lake/")
+    statements = [s for a in scoped.attach for s in a.setup_statements()]
+    assert "SCOPE 'gs://bucket-a/lake/'" in statements[1]
+    assert "SCOPE 'gs://bucket-b/lake/'" in statements[4]
+    assert _source(_postgres_lake(data_path=None)).attach[0].ducklake.data_path is None
 
 
 def test_an_attachment_needs_exactly_one_of_source_or_ducklake():
@@ -166,6 +344,9 @@ def test_secrets_are_not_in_the_repr_or_the_dump():
     for text in (repr(source), str(source), source.model_dump_json(), str(source.model_dump())):
         assert PASSWORD not in text
         assert HMAC_SECRET not in text
+    dumped = source.model_dump(mode="json")["attach"][0]["ducklake"]
+    assert dumped["catalog"]["password"] == PASSWORD_REF
+    assert dumped["gcs"]["secret"] == HMAC_SECRET_REF
 
 
 def test_the_project_schema_describes_the_ducklake_attachment():
@@ -196,9 +377,10 @@ def test_quote_literal_escapes_quotes_and_refuses_control_characters():
             quote_literal(bad, "f")
 
 
-def test_quote_identifier_refuses_anything_but_a_plain_name():
+def test_quote_identifier_refuses_a_name_that_can_end_the_quotes():
     assert quote_identifier("lake_1") == '"lake_1"'
-    for bad in ('a"b', "a b", "a;b", "", None):
+    assert quote_identifier("a b;c") == '"a b;c"'
+    for bad in ('a"b', "a\nb", "a\n", "", None):
         with pytest.raises(ValueError):
             quote_identifier(bad)
 
@@ -315,6 +497,7 @@ def test_env_vars_resolve_at_connect_time_not_at_parse_time(monkeypatch):
         ({"LAKE_PORT": "not-a-port"}, "catalog port is not an integer"),
         ({"LAKE_PORT": "70000"}, "catalog port must be between 1 and 65535"),
         ({"LAKE_CATALOG": "ducklake:postgres:dbname=x"}, "must use the catalog fields"),
+        ({"LAKE_CATALOG": "ducklake:pg:dbname=x"}, "must name a catalog in a DuckDB or SQLite"),
         ({"LAKE_PATH": "s3://bucket/"}, "starts with 'gs://' or 'gcs://'"),
     ],
 )
@@ -404,6 +587,18 @@ def test_redact_removes_secret_values_and_credential_assignments():
     assert "https://user:***@host/x" in redacted
 
 
+def test_redact_removes_url_credentials_that_duckdb_prints_as_a_path():
+    message = (
+        'at path + "postgresql://postgres:hunter2pw@127.0.0.1:5432/lake"Cannot open file '
+        '"/work/postgresql:/postgres:hunter2pw@127.0.0.1:5432/lake" md:x?motherduck_token=tok77'
+    )
+
+    redacted = redact(message)
+
+    assert "hunter2pw" not in redacted and "tok77" not in redacted
+    assert "postgresql:/postgres:***@127.0.0.1:5432/lake" in redacted
+
+
 def test_a_failed_file_attach_raises_and_names_the_attachment(tmp_path):
     not_a_database = tmp_path / "broken.duckdb"
     not_a_database.write_text("this is not a duckdb file")
@@ -485,15 +680,18 @@ def test_a_failed_primary_connection_does_not_repeat_a_password_from_its_uri(mon
         raise RuntimeError(f"Unable to connect: {database}")
 
     monkeypatch.setattr(duckdb, "connect", _refuse)
-    source = DuckdbSource(
-        name="d", type="duckdb", database="ducklake:postgres:dbname=lake password=hunter2"
-    )
+    logged = []
+    monkeypatch.setattr(Logger.instance(), "debug", logged.append)
+    source = DuckdbSource(name="d", type="duckdb", database="md:lake?motherduck_token=hunter2")
 
     with pytest.raises(click.ClickException) as error:
         source.get_connection(read_only=True)
 
     assert "hunter2" not in error.value.message
-    assert "password=***" in error.value.message
+    assert "motherduck_token=***" in error.value.message
+    assert "Connecting to md:lake?motherduck_token=*** with read_only=True" in logged
+    assert "hunter2" not in "".join(logged)
+    assert "hunter2" not in source.description()
 
 
 @needs_ducklake
@@ -502,6 +700,150 @@ def test_a_missing_ducklake_catalog_fails_at_connect_not_at_query_time(tmp_path)
 
     with pytest.raises(click.ClickException, match="Error attaching 'lake' on duckdb source"):
         source.read_sql("SELECT 1")
+
+
+# --- A name that is in use, and read-only file attachments -------------------
+
+
+@pytest.mark.parametrize(
+    "database, schema_name, owner",
+    [
+        ("lake.duckdb", "lake", "the primary database"),
+        (":memory:", "memory", "the primary database"),
+        (":memory:", "temp", "a DuckDB system database"),
+        (":memory:", "system", "a DuckDB system database"),
+    ],
+)
+def test_an_attachment_under_a_name_that_is_in_use_fails_at_connect(
+    tmp_path, database, schema_name, owner
+):
+    if database != ":memory:":
+        database = str(tmp_path / database)
+        duckdb.connect(database).close()
+    source = DuckdbSource(
+        name="d",
+        type="duckdb",
+        database=database,
+        attach=[
+            {
+                "schema_name": schema_name,
+                "ducklake": {"catalog": f"ducklake:{tmp_path / 'missing' / 'x.ducklake'}"},
+            }
+        ],
+    )
+
+    with pytest.raises(click.ClickException) as error:
+        with source.connect(read_only=True):
+            pass
+
+    assert error.value.message == (
+        f"Error attaching '{schema_name}' on duckdb source 'd': "
+        f"the name is already used by {owner}. Change schema_name."
+    )
+
+
+def _file_database(path, value=7):
+    with duckdb.connect(str(path)) as connection:
+        connection.execute(f"CREATE TABLE t AS SELECT {value} AS n")
+    return str(path)
+
+
+def _with_file_attachment(database, attached, schema_name="other"):
+    return DuckdbSource(
+        name="d",
+        type="duckdb",
+        database=database,
+        attach=[
+            {
+                "schema_name": schema_name,
+                "source": {"name": "o", "type": "duckdb", "database": attached},
+            }
+        ],
+    )
+
+
+def test_a_name_used_by_an_attachment_of_another_kind_fails_at_connect(tmp_path):
+    primary = _file_database(tmp_path / "main.duckdb")
+    files = _with_file_attachment(primary, _file_database(tmp_path / "other.duckdb"))
+    lake = DuckdbSource(
+        name="l",
+        type="duckdb",
+        database=primary,
+        attach=[{"schema_name": "other", "ducklake": {"catalog": "ducklake:c.ducklake"}}],
+    )
+
+    with files.connect(read_only=True):
+        with pytest.raises(click.ClickException, match="already used by a duckdb database"):
+            with lake.connect(read_only=True):
+                pass
+
+
+def test_a_read_only_connection_attaches_a_file_read_only():
+    attachment = _with_file_attachment(":memory:", "o.duckdb").attach[0]
+
+    assert attachment.setup_statements(read_only=True) == [
+        """ATTACH 'o.duckdb' AS "other" (READ_ONLY)"""
+    ]
+    assert attachment.setup_statements() == ["""ATTACH 'o.duckdb' AS "other\""""]
+
+
+def test_two_read_only_connections_read_the_same_attached_file(tmp_path):
+    source = _with_file_attachment(":memory:", _file_database(tmp_path / "other.duckdb"))
+
+    with source.connect(read_only=True) as first:
+        with source.connect(read_only=True) as second:
+            assert second.execute("SELECT n FROM other.t").fetchone() == (7,)
+            assert first.execute("SELECT n FROM other.t").fetchone() == (7,)
+        assert source.read_sql("SELECT n FROM other.t") == [{"n": 7}]
+        assert "other" in source.list_databases()
+        with pytest.raises(duckdb.Error, match="read-only"):
+            first.execute("INSERT INTO other.t VALUES (1)")
+
+
+def test_two_connections_to_a_file_primary_share_one_attachment(tmp_path):
+    source = _with_file_attachment(
+        _file_database(tmp_path / "main.duckdb", 3), _file_database(tmp_path / "other.duckdb")
+    )
+
+    with source.connect(read_only=True):
+        assert source.read_sql("SELECT a.n + b.n AS n FROM t a, other.t b") == [{"n": 10}]
+
+
+def test_a_write_connection_attaches_a_file_read_write(tmp_path):
+    source = _with_file_attachment(":memory:", _file_database(tmp_path / "other.duckdb"))
+
+    with source.connect(read_only=False) as connection:
+        connection.execute("INSERT INTO other.t VALUES (8)")
+
+    assert source.read_sql("SELECT count(*) AS n FROM other.t") == [{"n": 2}]
+
+
+def test_another_process_that_reads_the_attached_file_does_not_block_the_source(tmp_path):
+    attached = _file_database(tmp_path / "other.duckdb")
+    source = _with_file_attachment(_file_database(tmp_path / "main.duckdb", 3), attached)
+    holder = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "import duckdb, sys\n"
+            "connection = duckdb.connect(':memory:')\n"
+            'connection.execute("ATTACH \'" + sys.argv[1] + "\' AS other (READ_ONLY)")\n'
+            "print('ready', flush=True)\n"
+            "sys.stdin.read()\n",
+            attached,
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        assert holder.stdout.readline().strip() == "ready"
+
+        assert source.read_sql("SELECT n FROM t") == [{"n": 3}]
+        assert source.read_sql("SELECT n FROM other.t") == [{"n": 7}]
+        assert "other" in source.list_databases()
+    finally:
+        holder.communicate("")
 
 
 # --- File check -------------------------------------------------------------
@@ -549,6 +891,29 @@ def test_the_file_check_still_reports_a_missing_file_next_to_a_ducklake(tmp_path
 
     with pytest.raises(FileNotFoundError, match="missing.duckdb"):
         source.check_database_files_exist()
+
+
+@pytest.mark.parametrize(
+    "database", ["ducklake:sqlite:sub/catalog.sqlite", ":memory:", "md:my_db", "sub/a.duckdb"]
+)
+def test_the_working_dir_is_joined_to_a_file_path_only(tmp_path, monkeypatch, database):
+    opened = []
+
+    class _Connection:
+        def close(self):
+            pass
+
+    def _connect(path, **kwargs):
+        opened.append(path)
+        return _Connection()
+
+    monkeypatch.setattr(duckdb, "connect", _connect)
+    source = DuckdbSource(name="d", type="duckdb", database=database)
+
+    source.get_connection(read_only=True, working_dir=tmp_path)
+
+    expected = str(tmp_path / "sub" / "a.duckdb") if database == "sub/a.duckdb" else database
+    assert opened == [expected]
 
 
 def test_a_ducklake_primary_database_does_not_create_a_directory(tmp_path, monkeypatch):
@@ -647,7 +1012,7 @@ def test_a_new_ducklake_is_created_with_a_data_path(tmp_path):
 def test_the_gcs_secret_is_created_as_a_temporary_secret(tmp_path):
     catalog_uri, _ = _create_lake(tmp_path)
     source = _source(
-        {"catalog": catalog_uri, "gcs": {"key_id": HMAC_KEY_ID, "secret": HMAC_SECRET}}
+        {"catalog": catalog_uri, "gcs": {"key_id": HMAC_KEY_ID, "secret": HMAC_SECRET_REF}}
     )
 
     with source.connect(read_only=True) as connection:
@@ -832,9 +1197,12 @@ def test_a_postgres_catalog_ducklake_is_written_then_read_read_only(
 
 
 @needs_ducklake
-def test_a_wrong_postgres_password_is_an_attach_error_without_the_password(postgres_catalog):
+def test_a_wrong_postgres_password_is_an_attach_error_without_the_password(
+    postgres_catalog, monkeypatch
+):
     wrong = "wrong-password-5d1e"
-    source = _source({"catalog": {**postgres_catalog, "password": wrong}})
+    monkeypatch.setenv("LAKE_WRONG_PASSWORD", wrong)
+    source = _source({"catalog": {**postgres_catalog, "password": "${env.LAKE_WRONG_PASSWORD}"}})
 
     with pytest.raises(click.ClickException) as error:
         source.read_sql("SELECT 1")

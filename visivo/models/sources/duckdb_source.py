@@ -11,6 +11,8 @@ from visivo.models.sources.database_file import (
 from visivo.models.sources.ducklake import (
     DuckLakeAttachment,
     attach_database_sql,
+    check_ducklake_uri,
+    is_ducklake_uri,
     redact,
     validate_identifier,
 )
@@ -46,6 +48,9 @@ class DuckdbAttachment(BaseModel):
     @field_validator("schema_name")
     @classmethod
     def validate_schema_name(cls, schema_name):
+        if isinstance(schema_name, str) and len(schema_name) > 2:
+            if schema_name.startswith('"') and schema_name.endswith('"'):
+                schema_name = schema_name[1:-1]
         return validate_identifier(schema_name)
 
     @model_validator(mode="after")
@@ -56,10 +61,14 @@ class DuckdbAttachment(BaseModel):
             )
         return self
 
-    def setup_statements(self) -> List[str]:
+    def setup_statements(self, read_only: bool = False) -> List[str]:
         if self.ducklake is not None:
             return self.ducklake.setup_statements(self.schema_name)
-        return [attach_database_sql(self.source.get_database(), self.schema_name)]
+        options = ["READ_ONLY"] if read_only else None
+        return [attach_database_sql(self.source.get_database(), self.schema_name, options)]
+
+    def is_ducklake(self) -> bool:
+        return self.ducklake is not None or is_ducklake_uri(self.source.get_database())
 
     def secret_values(self) -> List[str]:
         return self.ducklake.secret_values() if self.ducklake is not None else []
@@ -107,21 +116,49 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
         description="List of other DuckDB databases and DuckLakes to attach in the connection that will be available in the base SQL query.",
     )
 
-    def safe_attach(self, connection, attachment):
+    @field_validator("database")
+    @classmethod
+    def validate_ducklake_database(cls, database):
+        if is_ducklake_uri(database):
+            check_ducklake_uri(database, "database")
+        return database
+
+    @model_validator(mode="after")
+    def validate_gcs_scopes(self):
+        with_gcs = [a for a in self.attach or [] if a.ducklake and a.ducklake.gcs]
+        if len(with_gcs) > 1:
+            for attachment in with_gcs:
+                if not attachment.ducklake.data_path:
+                    raise ValueError(
+                        f"Attachment '{attachment.schema_name}' needs a data_path. When more "
+                        "than one DuckLake of a source has gcs credentials, the data_path of "
+                        "each one sets which paths its HMAC key reads."
+                    )
+        return self
+
+    def safe_attach(self, connection, attachment, read_only: bool = False):
+        """Attach once for each DuckDB instance. Connections to one file share their attachments."""
         with attach_function_lock:
-            result = connection.execute(
-                """
-                SELECT count(*) as cnt
-                FROM pragma_database_list
-                WHERE name = ?
-            """,
+            existing = connection.execute(
+                "SELECT type, internal, database_name = current_database() "
+                "FROM duckdb_databases() WHERE database_name = ?",
                 [attachment.schema_name],
             ).fetchone()
 
-            if result[0] == 0:
-                for statement in attachment.setup_statements():
+            if existing is None:
+                for statement in attachment.setup_statements(read_only=read_only):
                     connection.execute(statement)
                 return True
+
+            database_type, internal, is_primary = existing
+            if is_primary or internal:
+                owner = "the primary database" if is_primary else "a DuckDB system database"
+                raise ValueError(f"the name is already used by {owner}. Change schema_name.")
+            if (database_type == "ducklake") != attachment.is_ducklake():
+                raise ValueError(
+                    f"the name is already used by a {database_type} database that is not "
+                    "this attachment. Change schema_name."
+                )
             return False
 
     def get_connection(self, read_only: bool = False, working_dir=None):
@@ -132,6 +169,8 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
             Logger.instance().debug(f"Getting connection for {self.name}, read_only={read_only}")
 
             database_path = self.get_database()
+            if is_ducklake_uri(database_path):
+                check_ducklake_uri(database_path, "database")
             if is_remote_database(database_path):
                 return self._connect_remote(duckdb, database_path)
             if working_dir and is_file_database(database_path):
@@ -153,7 +192,7 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
                 and not os.path.exists(database_path)
             ):
                 Logger.instance().debug(
-                    f"Database file {database_path} does not exist, creating it"
+                    f"Database file {redact(database_path)} does not exist, creating it"
                 )
                 # `or "."` — a bare filename like `bike.duckdb` makes dirname()
                 # return '' and makedirs('') raises FileNotFoundError('' ),
@@ -165,7 +204,9 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
                 temp_conn.close()
 
             # Connect directly to DuckDB with proper read_only flag
-            Logger.instance().debug(f"Connecting to {database_path} with read_only={read_only}")
+            Logger.instance().debug(
+                f"Connecting to {redact(database_path)} with read_only={read_only}"
+            )
             connection = duckdb.connect(database_path, read_only=read_only)
             Logger.instance().debug(f"Direct DuckDB connection established for {self.name}")
 
@@ -192,11 +233,15 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
             raise
         return connection
 
-    def _setup_connection(self, connection, **kwargs):
-        """Attach the databases and DuckLakes of this source to the connection."""
+    def _setup_connection(self, connection, read_only: bool = False, **kwargs):
+        """Attach the databases and DuckLakes of this source to the connection.
+
+        A read-only connection attaches a database file read-only, so that two connections
+        or two processes can read the same file.
+        """
         for attachment in self.attach or []:
             try:
-                attached = self.safe_attach(connection, attachment)
+                attached = self.safe_attach(connection, attachment, read_only=read_only)
             except Exception as error:
                 detail = redact(str(error), attachment.secret_values())
                 raise click.ClickException(
@@ -222,7 +267,7 @@ class DuckdbSource(DatabaseFileMixin, ServerSource, BaseDuckdbSource):
 
     def description(self):
         """Return a description of this source for logging and error messages."""
-        return f"{self.type} source '{self.name}' (database: {self.database})"
+        return f"{self.type} source '{self.name}' (database: {redact(str(self.database))})"
 
     def list_databases(self):
         """Return list of databases for DuckDB (includes attached databases)."""

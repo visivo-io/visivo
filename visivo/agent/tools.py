@@ -184,6 +184,17 @@ def _agent_config(app, type_key, arguments):
     return _source_reference(app, type_key, config), model
 
 
+def _error_text(error):
+    """A validation error without the secrets that pydantic repeats from the config."""
+    from pydantic import ValidationError
+
+    if isinstance(error, ValidationError):
+        from visivo.models.sources.ducklake import validation_error_text
+
+        return validation_error_text(error)
+    return str(error)
+
+
 def _validate_handler(type_key):
     def handler(app, arguments):
         config, model = _agent_config(app, type_key, arguments)
@@ -193,7 +204,7 @@ def _validate_handler(type_key):
         except ToolError:
             raise
         except Exception as error:
-            return {"valid": False, "error": str(error)}
+            return {"valid": False, "error": _error_text(error)}
         if model:
             obj.set_parent_name(model)
         name = config.get("name")
@@ -220,7 +231,7 @@ def _write_handler(type_key):
             obj = manager.validate_object(config)
         except Exception as error:
             hints = "".join(f"\nHint: {hint}" for hint in _write_hints(type_key, error))
-            raise ToolError(f"Invalid {_singular(type_key)}: {error}{hints}")
+            raise ToolError(f"Invalid {_singular(type_key)}: {_error_text(error)}{hints}")
         if model:
             obj.set_parent_name(model)
 
