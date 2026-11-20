@@ -2,7 +2,7 @@
 
 Visivo runs in three phases (**compile**, **run**, and **serve**) that turn YAML into a live, interactive dashboard, with the heavy lifting split between a server that prepares data once and a browser that explores it instantly.
 
-This page is the mental model for how those pieces fit together. For the worked example with real data, see [How It Works](../how_it_works.md); for the individual objects, start at the [Concepts overview](index.md).
+This page is the mental model for how those pieces fit together. For the worked example with real data, see [How It Works](../how_it_works.md); for the individual objects, start at the [Concepts overview](./index.md).
 
 ## The three-phase model
 
@@ -110,7 +110,7 @@ flowchart LR
 This is the same lineage Visivo computes during compile and renders in the
 Explorer. The object-type colors are fixed across the docs, the marketing site,
 and Visivo Cloud, so a Source always reads orange and a Dashboard always reads
-rose. Each object links down into its [concept page](index.md) and the generated
+rose. Each object links down into its [concept page](./index.md) and the generated
 [configuration reference](../reference/configuration/Dashboards/Dashboard/index.md).
 
 !!! visivo "Insights, not traces"
@@ -182,5 +182,5 @@ The split keeps dashboards fast and cheap:
 ## Where to go next
 
 - Walk through the phases with real data in [How It Works](../how_it_works.md).
-- Learn each object on its [concept page](index.md).
+- Learn each object on its [concept page](./index.md).
 - Ship a project to a shared URL with [Visivo Cloud](../cloud/index.md).

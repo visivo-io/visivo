@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 import re
 
+from visivo.models.sources.ducklake import validation_error_text
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
 
 
@@ -54,4 +55,4 @@ class LineValidationError(Exception):
         if file_found:
             return message
         else:
-            return str(self.validation_error)
+            return validation_error_text(self.validation_error)

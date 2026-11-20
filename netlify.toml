@@ -1,4 +1,10 @@
 # netlify.toml
+# visivo.sh deploys only from a release. The release workflow commits
+# "Build viewer for Python package" to main; every other push and every
+# PR preview is skipped (exit 0 skips the build).
+[build]
+  ignore = "git log -1 --pretty=%s | grep -q '^Build viewer for Python package' && exit 1 || exit 0"
+
 [[headers]]
   for = "/install.sh"
   [headers.values]

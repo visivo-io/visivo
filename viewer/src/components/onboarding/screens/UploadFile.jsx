@@ -19,6 +19,9 @@ export function sourceNameFor(filename, taken = []) {
 }
 
 const DATABASE_FILE_TYPES = ['duckdb', 'sqlite'];
+// Spreadsheet headers are written for people ("Status (checked Nov 3)"); the
+// source renames them so models can name each column without quotes.
+const TIDY_COLUMN_TYPES = ['csv', 'xls'];
 
 export function sourceConfigFor(file, formats, name) {
   const format = formats.find(f => f.format === file.format);
@@ -29,6 +32,7 @@ export function sourceConfigFor(file, formats, name) {
     type,
     [pathKey]: file.path,
     ...(file.path.toLowerCase().endsWith('.tsv') && { delimiter: '\t' }),
+    ...(TIDY_COLUMN_TYPES.includes(type) && { normalize_names: true }),
   };
 }
 

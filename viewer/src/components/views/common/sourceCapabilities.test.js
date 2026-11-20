@@ -28,6 +28,11 @@ describe('isLocalFileSource', () => {
     expect(isLocalFileSource({ type: 'duckdb', database: 'https://h/x.duckdb' })).toBe(false);
   });
 
+  it('is false for a DuckLake object', () => {
+    const database = { catalog: 'ducklake:sqlite:local/catalog.sqlite' };
+    expect(isLocalFileSource({ type: 'duckdb', database })).toBe(false);
+  });
+
   it('is false when there is no database at all', () => {
     expect(isLocalFileSource({ type: 'duckdb' })).toBe(false);
     expect(isLocalFileSource({})).toBe(false);

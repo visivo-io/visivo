@@ -66,6 +66,9 @@ def test_serve(output_dir):
     assert response_json["config"]["theme"] == {}
     assert "dashboard_count" in response_json
     assert "source_count" in response_json
+    project_file = response_json["project_file_path"]
+    assert os.path.isabs(project_file)
+    assert os.path.realpath(os.path.dirname(project_file)) == os.path.realpath(working_dir)
 
     response = client.get("/api/error/")
     response_json = json.loads(response.data)

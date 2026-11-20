@@ -166,6 +166,9 @@ export const parsePortInput = text => (/^\d+$/.test(text) ? Number(text) : text)
 // Get schema for a source type (returns empty fields if type not found)
 export { toSecretRef, secretRefName };
 
+// A DuckDB `database` can be a DuckLake object, which a text box cannot edit.
+export const isStructuredValue = value => value !== null && typeof value === 'object';
+
 export const getSourceSchema = type => {
   return SOURCE_SCHEMAS[type] || { fields: [] };
 };
@@ -173,6 +176,29 @@ export const getSourceSchema = type => {
 const ENV_VAR_DOCS_URL = 'https://docs.visivo.io/topics/environment-variables/';
 const toEnvName = name => name.toUpperCase().replace(/^CREDENTIALS_BASE64$/, 'SERVICE_ACCOUNT_KEY');
 const envRefExample = name => `\${env.${toEnvName(name)}}`;
+
+/** What happens to a typed cloud secret: it becomes an account secret (VIS-1758). */
+const CloudSecretHint = ({ value, stored }) => {
+  const reference = secretRefName(typeof value === 'string' ? value : '');
+  if (reference && stored && secretRefName(stored.reference) === reference) {
+    return (
+      <>
+        Stored as the account secret <code className="font-mono">{reference}</code>. The project
+        keeps only the reference.
+      </>
+    );
+  }
+  if (reference) {
+    return (
+      <>
+        Read from the account secret <code className="font-mono">{reference}</code>.
+      </>
+    );
+  }
+  return (
+    <>Stored as an account secret when you test or save. Only a reference goes in the project.</>
+  );
+};
 
 /** What happens to a local secret field's value, in the words of what the server really does. */
 const SecretHint = ({ field, value, stored }) => {
@@ -221,16 +247,33 @@ const SourceFormGenerator = ({
   onRefreshSecrets,
   // The secrets stored on the last Test or Save: [{field, reference}].
   storedCredentials = [],
+  // Cloud only: whether this user may add an account secret. Then a secret
+  // field takes a typed value, stored as a secret on Test or Save, and the
+  // picker is one click away. Without it the field is the picker.
+  canTypeSecrets = false,
 }) => {
   const schema = getSourceSchema(sourceType);
   // Track visibility state for masked fields
   const [visibleFields, setVisibleFields] = useState({});
 
-  const isSecretPicker = field => field.type === 'secret' && secretsRequired;
+  // Per field, what the user chose: 'pick' or 'type'. Unset means the default.
+  const [secretMode, setSecretMode] = useState({});
+  const listed = value =>
+    secretKeys.includes(secretRefName(typeof value === 'string' ? value : ''));
+  const isSecretPicker = field => {
+    if (field.type !== 'secret' || !secretsRequired) return false;
+    if (!canTypeSecrets) return true;
+    const chosen = secretMode[field.name];
+    return chosen ? chosen === 'pick' : listed(values[field.name]);
+  };
   // Locally a secret field is still a masked text box — a real password here
-  // never leaves the machine.
+  // never leaves the machine. In cloud it is one too when the value is typed.
   const isMasked = field =>
-    (field.type === 'secret' && !secretsRequired) || field.type === 'password';
+    (field.type === 'secret' && !isSecretPicker(field)) || field.type === 'password';
+  const switchSecretMode = (field, mode) => {
+    setSecretMode(prev => ({ ...prev, [field.name]: mode }));
+    handleFieldChange(field.name, '');
+  };
 
   const handleFieldChange = (fieldName, value) => {
     onChange({
@@ -274,17 +317,41 @@ const SourceFormGenerator = ({
   return (
     <div className="space-y-4">
       {schema.fields.map(field =>
-        isSecretPicker(field) ? (
-          <SecretPicker
-            key={field.name}
-            field={field}
-            value={values[field.name] ?? ''}
-            onChange={handleFieldChange}
-            secretKeys={secretKeys}
-            error={errors[field.name]}
-            secretsUrl={secretsUrl}
-            onRefreshSecrets={onRefreshSecrets}
-          />
+        isStructuredValue(values[field.name]) ? (
+          <div key={field.name} data-testid={`${field.name}-structured`}>
+            <p className="text-sm font-medium text-gray-700">{field.label}</p>
+            <pre className="mt-1 px-3 py-2.5 text-xs text-gray-900 bg-gray-50 rounded-md border border-gray-300 whitespace-pre-wrap break-words">
+              {JSON.stringify(values[field.name], null, 2)}
+            </pre>
+            <p className="mt-1 text-xs text-gray-500">
+              This value is an object, for example a DuckLake. Edit it in the project file.
+            </p>
+            {errors[field.name] && (
+              <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>
+            )}
+          </div>
+        ) : isSecretPicker(field) ? (
+          <div key={field.name}>
+            <SecretPicker
+              field={field}
+              value={values[field.name] ?? ''}
+              onChange={handleFieldChange}
+              secretKeys={secretKeys}
+              error={errors[field.name]}
+              secretsUrl={secretsUrl}
+              onRefreshSecrets={onRefreshSecrets}
+            />
+            {canTypeSecrets && (
+              <button
+                type="button"
+                onClick={() => switchSecretMode(field, 'type')}
+                className="mt-1 text-xs font-medium text-primary-600 hover:underline"
+                data-testid={`${field.name}-type-secret`}
+              >
+                Type a new value instead
+              </button>
+            )}
+          </div>
         ) : (
           <div key={field.name}>
             <div className="relative">
@@ -362,7 +429,28 @@ const SourceFormGenerator = ({
             {errors[field.name] && (
               <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>
             )}
-            {field.type === 'secret' && (
+            {field.type === 'secret' && secretsRequired && (
+              <p className="mt-1 text-xs text-gray-500" data-testid={`${field.name}-env-hint`}>
+                <CloudSecretHint
+                  value={values[field.name]}
+                  stored={storedCredentials.find(c => c.field === field.name)}
+                />
+                {secretKeys.length > 0 && (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      onClick={() => switchSecretMode(field, 'pick')}
+                      className="font-medium text-primary-600 hover:underline"
+                      data-testid={`${field.name}-pick-secret`}
+                    >
+                      Choose an existing secret
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
+            {field.type === 'secret' && !secretsRequired && (
               <p className="mt-1 text-xs text-gray-500" data-testid={`${field.name}-env-hint`}>
                 <SecretHint
                   field={field}

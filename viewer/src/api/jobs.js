@@ -19,6 +19,10 @@ import { apiFetch } from './utils';
 
 const DEFAULT_INTERVAL_MS = 300;
 const DEFAULT_TIMEOUT_MS = 120000;
+// Cloud's runner pool scales to zero; its first pod has taken up to ~4 minutes to start.
+const DEFAULT_QUEUED_TIMEOUT_MS = 360000;
+const QUEUED_INTERVAL_MS = 2000;
+const QUEUED_FAST_POLLS_MS = 5000;
 
 /**
  * Poll a job to a terminal state.
@@ -30,13 +34,23 @@ const DEFAULT_TIMEOUT_MS = 120000;
  * Polls immediately, then waits between attempts — a job that is already done
  * shouldn't pay the interval, and locally most of them are.
  *
+ * `timeoutMs` counts from when the job leaves `queued`. A job still waiting for
+ * a runner gets `queuedTimeoutMs`, and is polled more slowly after a few seconds.
+ *
  * Returns `{ok, result, error}` rather than throwing: for every caller here a
  * failed job is an outcome to render, not an exception. Callers that want to
  * throw can, at their own boundary.
  */
-export const pollJob = async (fetchStatus, { intervalMs, timeoutMs, onProgress } = {}) => {
+export const pollJob = async (
+  fetchStatus,
+  { intervalMs, timeoutMs, queuedTimeoutMs, onProgress } = {}
+) => {
   const interval = intervalMs ?? DEFAULT_INTERVAL_MS;
-  const deadline = Date.now() + (timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const runLimit = timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const queuedLimit = queuedTimeoutMs ?? DEFAULT_QUEUED_TIMEOUT_MS;
+  const started = Date.now();
+  let runningSince = null;
+  let sawQueued = false;
 
   for (;;) {
     let job;
@@ -53,10 +67,21 @@ export const pollJob = async (fetchStatus, { intervalMs, timeoutMs, onProgress }
       return { ok: false, error: job.error || `Job ${job.status}`, job };
     }
 
-    if (Date.now() >= deadline) {
+    const now = Date.now();
+    const queued = job.status === 'queued';
+    if (queued) sawQueued = true;
+    else if (runningSince === null) runningSince = sawQueued ? now : started;
+    if (queued && now - started >= queuedLimit) {
+      return { ok: false, error: 'Timed out waiting for a runner to start the job', job };
+    }
+    if (!queued && now - runningSince >= runLimit) {
       return { ok: false, error: 'Timed out waiting for the job', job };
     }
-    await new Promise(resolve => setTimeout(resolve, interval));
+    const wait =
+      queued && now - started >= QUEUED_FAST_POLLS_MS
+        ? Math.max(interval, QUEUED_INTERVAL_MS)
+        : interval;
+    await new Promise(resolve => setTimeout(resolve, wait));
   }
 };
 

@@ -10,10 +10,13 @@ import AgentView from './AgentView';
 import { fetchAgentActions } from '../api/agent';
 import { subscribe, canDeliver } from '../events/eventSource';
 import { futureFlags } from '../router-config';
+import { writeOnboardingState } from './onboarding/onboardingState';
 
 jest.mock('../api/agent', () => ({ fetchAgentActions: jest.fn() }));
 // Tested on its own; here it only has to be on the page.
-jest.mock('./AgentPrompt', () => () => <div data-testid="agent-prompt" />);
+jest.mock('./AgentPrompt', () => ({ autoSend }) => (
+  <div data-testid="agent-prompt" data-auto-send={autoSend || ''} />
+));
 jest.mock('../events/eventSource', () => ({
   subscribe: jest.fn(() => jest.fn()),
   canDeliver: jest.fn(() => true),
@@ -32,9 +35,9 @@ const action = (overrides = {}) => ({
   ...overrides,
 });
 
-const renderView = () =>
+const renderView = (entry = '/agent') =>
   render(
-    <MemoryRouter future={futureFlags}>
+    <MemoryRouter future={futureFlags} initialEntries={[entry]}>
       <AgentView />
     </MemoryRouter>
   );
@@ -80,7 +83,7 @@ describe('what is listed', () => {
     expect(screen.queryByText('write_model')).not.toBeInTheDocument();
   });
 
-  test('unattributed calls are the cloud loop\'s and are not listed either', async () => {
+  test("unattributed calls are the cloud loop's and are not listed either", async () => {
     fetchAgentActions.mockResolvedValue([action({ source: undefined })]);
 
     renderView();
@@ -210,5 +213,39 @@ describe('use your own agent panel', () => {
     renderView();
     await screen.findByTestId('agent-prompt');
     expect(screen.queryByRole('region', { name: 'Use your own agent' })).not.toBeInTheDocument();
+  });
+});
+
+describe('the first session from onboarding (VIS-1759)', () => {
+  beforeEach(() => window.localStorage.clear());
+
+  test('says what will happen, and starts the session with the source', async () => {
+    writeOnboardingState({ first_session: { source: 'sales', requested_at: 'then' } });
+
+    renderView('/agent?first_session=sales');
+
+    const intro = await screen.findByRole('region', { name: 'Your first session' });
+    expect(intro).toHaveTextContent('sales');
+    expect(intro).toHaveTextContent('Nothing is committed');
+    expect(screen.getByTestId('agent-prompt').dataset.autoSend).toMatch(/"sales"/);
+  });
+
+  test('once started, a reload does not send it again', async () => {
+    writeOnboardingState({
+      first_session: { source: 'sales', requested_at: 'then', started_at: 'later' },
+    });
+
+    renderView('/agent?first_session=sales');
+
+    await screen.findByRole('region', { name: 'Your first session' });
+    expect(screen.getByTestId('agent-prompt').dataset.autoSend).toBe('');
+  });
+
+  test('the ordinary Agent tab has neither', async () => {
+    renderView();
+
+    await waitFor(() => expect(fetchAgentActions).toHaveBeenCalled());
+    expect(screen.queryByRole('region', { name: 'Your first session' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('agent-prompt').dataset.autoSend).toBe('');
   });
 });
