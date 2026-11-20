@@ -36,7 +36,7 @@ from visivo.agent.charting.schema import Intent
 from visivo.agent.data_tools import DATA_TOOLS
 from visivo.agent.schema import SchemaSlicer
 from visivo.agent.screenshot import SCREENSHOT_TOOLS
-from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
+from visivo.agent.tool_types import Tool, ToolError, reads, writes  # noqa: F401 — re-exported
 from visivo.agent.write_errors import clean_message, generic_hints
 from visivo.jobs.run_model_data_job import QueryTimeout
 from visivo.query.patterns import is_valid_name, ref_name
@@ -392,25 +392,38 @@ _CONFIG_SCHEMA = {
 
 _EMPTY_SCHEMA = {"type": "object", "properties": {}}
 
-# verb -> (schema, handler factory, description template)
+# The types whose write runs a query on the source and returns what it found.
+_PROBES_SOURCE = ("models", "relations", "insights", "inputs")
+
+# verb -> (schema, handler factory, description template, annotations)
 _PER_TYPE = {
     "list": (
         _EMPTY_SCHEMA,
         _list_handler,
         "List every {plural} in the project, draft and published.",
+        lambda singular, plural: reads(f"List {plural}"),
     ),
-    "get": (_NAME_SCHEMA, _get_handler, "Read one {singular}'s configuration by name."),
+    "get": (
+        _NAME_SCHEMA,
+        _get_handler,
+        "Read one {singular}'s configuration by name.",
+        lambda singular, plural: reads(f"Get {singular}"),
+    ),
     "validate": (
         _CONFIG_SCHEMA,
         _validate_handler,
         "Check a {singular} configuration without saving it. Returns whether it is valid, "
         "and the warnings write_{singular} gives a config that is valid but reads wrong.",
+        lambda singular, plural: reads(f"Validate {singular}"),
     ),
     "write": (
         _CONFIG_SCHEMA,
         _write_handler,
         "Create or replace a {singular} in the draft tier. Never writes to a file — "
         "the change appears as an uncommitted edit for a person to review and commit.",
+        lambda singular, plural: writes(
+            f"Write {singular}", destructive=True, open_world=plural in _PROBES_SOURCE
+        ),
     ),
 }
 
@@ -432,7 +445,7 @@ def _generated_tools():
     tools = {}
     for type_key in TYPE_TO_MANAGER:
         singular = _singular(type_key)
-        for verb, (schema, factory, description) in _PER_TYPE.items():
+        for verb, (schema, factory, description, annotations) in _PER_TYPE.items():
             name = f"{verb}_{singular}" if verb != "list" else f"list_{type_key}"
             if verb in ("write", "validate") and type_key in _MODEL_SCOPED:
                 description += _SCOPED_NOTE
@@ -443,6 +456,7 @@ def _generated_tools():
                 description=description.format(singular=singular, plural=type_key),
                 input_schema=schema,
                 handler=factory(type_key),
+                annotations=annotations(singular, type_key),
             )
     return tools
 
@@ -777,6 +791,7 @@ _HAND_WRITTEN = {
             },
         },
         handler=_recommend_charts_handler,
+        annotations=reads("Recommend charts"),
     ),
     "recommend_inputs": Tool(
         name="recommend_inputs",
@@ -811,6 +826,7 @@ _HAND_WRITTEN = {
             "required": ["cards"],
         },
         handler=_recommend_inputs_handler,
+        annotations=reads("Recommend inputs"),
     ),
     "check_input_wiring": Tool(
         name="check_input_wiring",
@@ -830,6 +846,7 @@ _HAND_WRITTEN = {
             "required": ["inputs", "insights"],
         },
         handler=_check_input_wiring_handler,
+        annotations=reads("Check input wiring"),
     ),
     "score_candidates": Tool(
         name="score_candidates",
@@ -881,6 +898,7 @@ _HAND_WRITTEN = {
             },
         },
         handler=_score_candidates_handler,
+        annotations=reads("Score candidate models", open_world=True),
     ),
     "recommend_layout": Tool(
         name="recommend_layout",
@@ -940,6 +958,7 @@ _HAND_WRITTEN = {
             "required": ["items"],
         },
         handler=_recommend_layout_handler,
+        annotations=reads("Recommend layout"),
     ),
     "read_skill": Tool(
         name="read_skill",
@@ -959,6 +978,7 @@ _HAND_WRITTEN = {
             "required": ["name"],
         },
         handler=_read_skill_handler,
+        annotations=reads("Read skill"),
     ),
     "get_theme": Tool(
         name="get_theme",
@@ -969,6 +989,7 @@ _HAND_WRITTEN = {
         ),
         input_schema={"type": "object", "properties": {}},
         handler=_get_theme_handler,
+        annotations=reads("Get theme"),
     ),
     "validate_theme": Tool(
         name="validate_theme",
@@ -979,6 +1000,7 @@ _HAND_WRITTEN = {
             "required": ["config"],
         },
         handler=_validate_theme_handler,
+        annotations=reads("Validate theme"),
     ),
     "write_theme": Tool(
         name="write_theme",
@@ -994,6 +1016,7 @@ _HAND_WRITTEN = {
             "required": ["config"],
         },
         handler=_write_theme_handler,
+        annotations=writes("Write theme", destructive=True),
     ),
     "get_schema": Tool(
         name="get_schema",
@@ -1013,6 +1036,7 @@ _HAND_WRITTEN = {
             "required": ["type"],
         },
         handler=_get_schema_handler,
+        annotations=reads("Get schema"),
     ),
     "list_runs": Tool(
         name="list_runs",
@@ -1024,6 +1048,7 @@ _HAND_WRITTEN = {
         ),
         input_schema={"type": "object", "properties": {}},
         handler=_list_runs_handler,
+        annotations=reads("List runs"),
     ),
     "check_runs": Tool(
         name="check_runs",
@@ -1039,6 +1064,7 @@ _HAND_WRITTEN = {
         ),
         input_schema={"type": "object", "properties": {}},
         handler=_check_runs_handler,
+        annotations=reads("Check runs"),
     ),
     "get_run": Tool(
         name="get_run",
@@ -1057,6 +1083,7 @@ _HAND_WRITTEN = {
             },
         },
         handler=_get_run_handler,
+        annotations=reads("Get run"),
     ),
 }
 
