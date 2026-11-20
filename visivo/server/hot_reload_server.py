@@ -4,6 +4,7 @@ from watchdog.events import FileSystemEventHandler
 from threading import Thread, Event, Lock
 import time
 from visivo.logger.logger import Logger
+from visivo.tokens.log_redaction import install_request_log_redaction
 import os
 from flask_socketio import SocketIO
 import logging
@@ -69,6 +70,7 @@ class HotReloadServer:
         self.stop_event = Event()
         self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode="threading")
         self.pause_lock = Lock()  # Lock for pausing file watcher during operations
+        install_request_log_redaction()
 
         if not os.environ.get("DEBUG"):
             # Suppress Flask logging

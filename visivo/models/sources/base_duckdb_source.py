@@ -400,8 +400,12 @@ class DuckdbConnection:
 
     def __enter__(self):
         self.connection = self.source.get_connection(read_only=self.read_only)
-        # Let the source set up the connection (create views, attach DBs, etc.)
-        self.source._setup_connection(self.connection, **self.kwargs)
+        try:
+            self.source._setup_connection(self.connection, read_only=self.read_only, **self.kwargs)
+        except Exception:
+            self.connection.close()
+            self.connection = None
+            raise
         return self.connection
 
     def __exit__(self, exc_type, exc_val, exc_tb):

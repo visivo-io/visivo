@@ -35,6 +35,7 @@ from sqlglot import exp
 from sqlglot.optimizer import qualify
 import re
 from typing import Tuple, Dict, Optional, List, TYPE_CHECKING
+from pydantic import BaseModel as PydanticBaseModel
 
 if TYPE_CHECKING:
     from visivo.models.insight import Insight
@@ -308,8 +309,9 @@ class InsightQueryBuilder:
         self.is_dynamic = force_dynamic or insight.is_dynamic(dag)
         self.models = insight.get_all_dependent_models(dag)
         source = insight.get_dependent_source(dag, output_dir)
-        self.default_schema = source.db_schema
-        self.default_database = source.database
+        self.default_schema = getattr(source, "db_schema", None)
+        database = getattr(source, "database", None)
+        self.default_database = None if isinstance(database, PydanticBaseModel) else database
         self.source_dialect = source.get_sqlglot_dialect()
         self.native_dialect = "duckdb" if self.is_dynamic else self.source_dialect
         field_resolver = FieldResolver(

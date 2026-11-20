@@ -1551,6 +1551,11 @@
 .onb-start .onb-start-alt {
   justify-content: center;
 }
+/* One path (a host that backs only Your data): a centred card, not half a grid. */
+.onb-door.onb-door--single {
+  grid-template-columns: minmax(0, 640px);
+  justify-content: center;
+}
 @media (max-width: 850px) {
   .onb-start {
     --onb-door-pad: 23px;
