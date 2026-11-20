@@ -1,0 +1,7 @@
+{
+  "EV Sales": [
+    "Build a dashboard called revenue-by-region with total revenue at the top and revenue by region for each quarter below it.",
+    "Which powertrain is growing faster? Build a dashboard called powertrain-growth with units sold per quarter, split by powertrain.",
+    "Build a dashboard called region-explorer where I pick a region and see units sold and revenue by quarter for it."
+  ]
+}
