@@ -66,6 +66,50 @@ describe('pollJob', () => {
     expect(fetchStatus).toHaveBeenCalledTimes(1);
   });
 
+  it('waits longer for a queued job, so a runner can cold-start', async () => {
+    const fetchStatus = seq(
+      { status: 'queued' },
+      { status: 'queued' },
+      { status: 'completed', result: 'ok' }
+    );
+    await expect(
+      pollJob(fetchStatus, { intervalMs: 1, timeoutMs: 0, queuedTimeoutMs: 60000 })
+    ).resolves.toMatchObject({ ok: true, result: 'ok' });
+  });
+
+  it('gives up on a job no runner ever starts, and says so', async () => {
+    const fetchStatus = jest.fn(async () => ({ status: 'queued' }));
+    await expect(
+      pollJob(fetchStatus, { intervalMs: 1, queuedTimeoutMs: 0 })
+    ).resolves.toMatchObject({
+      ok: false,
+      error: 'Timed out waiting for a runner to start the job',
+    });
+    expect(fetchStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts the run deadline when the job leaves the queue', async () => {
+    const fetchStatus = seq({ status: 'queued' }, { status: 'running' });
+    await expect(
+      pollJob(fetchStatus, { intervalMs: 1, timeoutMs: 0, queuedTimeoutMs: 60000 })
+    ).resolves.toMatchObject({ ok: false, error: 'Timed out waiting for the job' });
+    expect(fetchStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it('slows down polling a job that stays queued', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchStatus = jest.fn(async () => ({ status: 'queued' }));
+      pollJob(fetchStatus, { intervalMs: 100, queuedTimeoutMs: 60000 });
+      await jest.advanceTimersByTimeAsync(5000);
+      const fastCalls = fetchStatus.mock.calls.length;
+      await jest.advanceTimersByTimeAsync(10000);
+      expect(fetchStatus.mock.calls.length - fastCalls).toBeLessThanOrEqual(6);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('reports every envelope to onProgress, terminal one included', async () => {
     const onProgress = jest.fn();
     await pollJob(seq({ status: 'running', progress: 0.5 }, { status: 'completed' }), {

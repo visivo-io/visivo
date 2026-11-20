@@ -66,7 +66,8 @@ class RemoteRunManager:
     def get(self, run_id):
         for run in self._client.runs():
             if str(run.get("id")) == str(run_id):
-                return _RemoteRun(run)
+                logs = run.get("logs") or self._client.run_logs(run.get("id"))
+                return _RemoteRun({**run, "logs": logs})
         return None
 
 
@@ -89,6 +90,9 @@ class RemoteProject:
     Presents ``<type>_manager`` for every registered type, so
     ``tools._manager(app, type_key)`` finds what it always finds.
     """
+
+    # A cloud build can wait minutes for a runner to start.
+    run_settle_timeout = 240
 
     def __init__(self, client, working_dir=None):
         self._client = client

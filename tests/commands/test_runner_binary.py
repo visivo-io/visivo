@@ -67,3 +67,28 @@ sys.exit(result.exit_code)
         assert (output_dir / "main/schemas/model.json").exists()
         insight = json.loads((output_dir / "main/insights/insight.json").read_text())
         assert insight["name"] == "insight"
+
+
+@pytest.mark.parametrize("stacktrace", [False, True])
+def test_an_invalid_project_prints_its_error_not_a_trace(tmp_path, stacktrace):
+    (tmp_path / "project.visivo.yml").write_text(
+        "name: p\nmetrics:\n  - name: m\n    expression: count(*)\n    parentModel: gigs\n"
+    )
+    env = {**os.environ, "VISIVO_TELEMETRY_DISABLED": "true"}
+    env.pop("STACKTRACE", None)
+    if stacktrace:
+        env["STACKTRACE"] = "true"
+
+    result = subprocess.run(
+        [sys.executable, "-m", "visivo.runner_binary", "run", "--working-dir", str(tmp_path)],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+    output = result.stdout + result.stderr
+    assert result.returncode == 1, output
+    assert "metrics.0.parentModel" in output
+    assert ("Traceback" in output) is stacktrace, output
