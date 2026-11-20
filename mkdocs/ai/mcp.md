@@ -27,7 +27,54 @@ If you start `visivo serve --port 8001`, use port `8001` in the client configura
 The local MCP endpoint does not require device authorization. Keep access to the
 development server limited to trusted clients.
 
+## Or let your client start Visivo
+
+Some clients start an MCP server themselves and talk to it over stdio. For
+these, use `visivo mcp` instead of `visivo serve`. Do not run both for one
+project.
+
+```bash
+visivo mcp --working-dir /path/to/my-dashboard
+```
+
+`visivo mcp` serves the same tools as the HTTP endpoint. It also serves the
+local web app at `http://localhost:8000`, where you review and commit the drafts
+your agent writes. Pass `--port` to use a different port. If the port is in use,
+the command stops and tells you so.
+
+A client can start the command from any directory, so always pass
+`--working-dir`. The command writes its output to `target` in that directory
+unless you pass `--output-dir`.
+
+The command writes only MCP messages to standard output. Logs go to standard
+error. It ends when the client closes standard input, and drafts that you did
+not commit end with it.
+
+Most stdio clients take a command and its arguments. With
+[uv](https://docs.astral.sh/uv/) installed, a client can run Visivo without a
+separate install:
+
+```json
+{
+  "mcpServers": {
+    "visivo": {
+      "command": "uvx",
+      "args": ["visivo", "mcp", "--working-dir", "/path/to/my-dashboard"]
+    }
+  }
+}
+```
+
+If Visivo is already installed, use `"command": "visivo"` and drop `"visivo"`
+from `args`. For Claude Code, from the project directory:
+
+```bash
+claude mcp add visivo -- visivo mcp
+```
+
 ## Connect a client
+
+The examples in this section use the HTTP endpoint of `visivo serve`.
 
 ### Claude Code
 
@@ -179,7 +226,10 @@ permission to bypass [your request or the draft boundary](../ai-usage.md#shared-
 
 - Confirm `visivo serve` is running in the intended project and the port matches
   the configuration. Keep the trailing `/api/mcp/` path.
-- Use HTTP transport, not a stdio command or an SSE `/sse` URL.
+- For `visivo serve`, use HTTP transport, not an SSE `/sse` URL. For a client
+  that starts the server itself, use the `visivo mcp` command.
+- If `visivo mcp` stops with a message that the port is in use, stop the other
+  server or pass `--port`.
 - Reconnect the client after changing settings or restarting the server.
 - To check tool discovery directly:
 

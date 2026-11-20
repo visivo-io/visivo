@@ -2,6 +2,15 @@ import sys as _sys
 from time import time
 
 start_time = time()
+from visivo.logger.stdio import claim_stdout, subcommand
+
+QUIET_ARGUMENTS = {"--version", "--help"}
+
+# `visivo mcp` speaks MCP on stdout, so everything else moves to stderr before
+# anything can print.
+if subcommand(_sys.argv[1:]) == "mcp" and not QUIET_ARGUMENTS & set(_sys.argv[1:]):
+    claim_stdout()
+
 from visivo.commands.options import verbose
 from visivo.logger.logger import Logger, TypeEnum
 
@@ -10,7 +19,7 @@ from visivo.logger.logger import Logger, TypeEnum
 # Note: "-h" is NOT a help alias in this CLI — it is the short flag for
 # --host on deploy/archive/authorize — so only the long forms are quiet.
 # A bare `visivo` prints usage, which is help-shaped output too.
-QUIET_INVOCATION = len(_sys.argv) <= 1 or bool({"--version", "--help"} & set(_sys.argv[1:]))
+QUIET_INVOCATION = len(_sys.argv) <= 1 or bool(QUIET_ARGUMENTS & set(_sys.argv[1:]))
 
 if not QUIET_INVOCATION:
     Logger.instance().info("Starting Visivo...")
@@ -39,6 +48,7 @@ from visivo.commands.aggregate import aggregate
 from visivo.commands.archive import archive
 from visivo.commands.authorize import authorize
 from visivo.commands.list import list
+from visivo.commands.mcp import mcp
 from visivo.commands.migrate import migrate
 from visivo.commands.telemetry import telemetry
 from visivo.version import VISIVO_VERSION
@@ -93,6 +103,7 @@ visivo.add_command(archive)
 visivo.add_command(authorize)
 visivo.add_command(create)
 visivo.add_command(list)
+visivo.add_command(mcp)
 visivo.add_command(migrate)
 visivo.add_command(telemetry)
 

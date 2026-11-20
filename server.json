@@ -1,0 +1,42 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.visivo-io/visivo",
+  "title": "Visivo",
+  "description": "Build BI dashboards as code. Read, validate and draft a Visivo project's models and charts.",
+  "repository": {
+    "url": "https://github.com/visivo-io/visivo",
+    "source": "github"
+  },
+  "websiteUrl": "https://docs.visivo.io/ai/mcp/",
+  "version": "2.3.2",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "visivo",
+      "version": "2.3.2",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        },
+        {
+          "type": "named",
+          "name": "--working-dir",
+          "description": "Path to the Visivo project",
+          "isRequired": true,
+          "format": "filepath"
+        },
+        {
+          "type": "named",
+          "name": "--port",
+          "description": "Port of the local web app where you review drafts. The default is 8000.",
+          "format": "number"
+        }
+      ]
+    }
+  ]
+}

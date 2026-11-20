@@ -186,6 +186,7 @@ def serve_phase(
 
     # Pass the server reference to the Flask app so it can control the file watcher
     app.hot_reload_server = server
+    server.project_app = app
 
     # A signal, not the action: the viewer refetches the log, so a dropped
     # emit costs a late update rather than a missing entry.
