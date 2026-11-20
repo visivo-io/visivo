@@ -1554,6 +1554,9 @@ describe('Dashboard', () => {
       markdowns = {},
       inputs = {},
       models = [],
+      insights = [],
+      modelsLoaded = true,
+      insightsLoaded = true,
       insightJobs = {},
       props = {},
     } = {}
@@ -1568,7 +1571,11 @@ describe('Dashboard', () => {
         fetchMarkdowns: jest.fn(),
         fetchInputs: jest.fn(),
         fetchModels: jest.fn(),
+        fetchInsights: jest.fn(),
         models,
+        insights,
+        modelsLoaded,
+        insightsLoaded,
         insightJobs,
         getChartByName: jest.fn(name => charts[name] ?? null),
         getTableByName: jest.fn(name => tables[name] ?? null),
@@ -2170,40 +2177,75 @@ describe('Dashboard', () => {
       expect(lastInsightNames()).toContain('embedded-insight-data');
     });
 
-    it('routes pivot refs to insights when known, models otherwise', () => {
+    const pivotOnly = (refs, name = 'pivot-table') => ({
+      [name]: {
+        config: { name, columns: [refs[0]], rows: [refs[1]], values: [refs[2]] },
+      },
+    });
+    const pivotDashboard = items => ({
+      name: 'pivot-refs',
+      rows: [{ height: 'medium', items }],
+    });
+
+    it('routes a pivot ref to insights when a chart on the dashboard uses the insight', () => {
       mountDashboard(
-        {
-          name: 'pivot-refs',
-          rows: [
-            {
-              height: 'medium',
-              items: [
-                // The chart makes `test-insight` a KNOWN insight name.
-                { chart: 'test-chart', width: 1 },
-                { table: 'pivot-table', width: 1 },
-              ],
-            },
-          ],
-        },
+        pivotDashboard([
+          { chart: 'test-chart', width: 1 },
+          { table: 'pivot-table', width: 1 },
+        ]),
         {
           charts: { 'test-chart': mockChart },
-          tables: {
-            'pivot-table': {
-              config: {
-                name: 'pivot-table',
-                columns: ['${ref(colref-model)}'],
-                rows: ['${ref(rowref-model)}'],
-                values: ['${ref(test-insight)}'],
-              },
-            },
-          },
+          models: [{ name: 'colref-model' }, { name: 'rowref-model' }],
+          tables: pivotOnly([
+            '${ref(colref-model)}',
+            '${ref(rowref-model)}',
+            '${ref(test-insight)}',
+          ]),
         }
       );
-      expect(lastModelNames()).toEqual(
-        expect.arrayContaining(['colref-model', 'rowref-model'])
-      );
-      expect(lastModelNames()).not.toContain('test-insight');
-      expect(lastInsightNames()).toContain('test-insight');
+      expect(lastModelNames()).toEqual(['colref-model', 'rowref-model']);
+      expect(lastInsightNames()).toEqual(['test-insight']);
+    });
+
+    it('routes a pivot ref to insights when no chart uses the insight (VIS-1701)', () => {
+      mountDashboard(pivotDashboard([{ table: 'pivot-table', width: 1 }]), {
+        insights: [{ name: 'lonely-insight' }],
+        tables: pivotOnly([
+          '${ref(lonely-insight).region}',
+          '${ref(lonely-insight).month}',
+          'sum(${ref(lonely-insight).amount})',
+        ]),
+      });
+      expect(lastInsightNames()).toEqual(['lonely-insight']);
+      expect(lastModelNames()).toEqual([]);
+    });
+
+    it('asks both hooks for a pivot ref that no registry knows', () => {
+      mountDashboard(pivotDashboard([{ table: 'pivot-table', width: 1 }]), {
+        tables: pivotOnly([
+          '${ref(unlisted).region}',
+          '${ref(unlisted).month}',
+          'sum(${ref(unlisted).amount})',
+        ]),
+      });
+      expect(lastInsightNames()).toEqual(['unlisted']);
+      expect(lastModelNames()).toEqual(['unlisted']);
+    });
+
+    it.each([
+      ['models', { modelsLoaded: false }],
+      ['insights', { insightsLoaded: false }],
+    ])('holds an unknown pivot ref until the %s registry has settled a fetch', (_label, loading) => {
+      mountDashboard(pivotDashboard([{ table: 'pivot-table', width: 1 }]), {
+        ...loading,
+        tables: pivotOnly([
+          '${ref(unlisted).region}',
+          '${ref(unlisted).month}',
+          'sum(${ref(unlisted).amount})',
+        ]),
+      });
+      expect(lastInsightNames()).toEqual([]);
+      expect(lastModelNames()).toEqual([]);
     });
   });
   /* eslint-enable no-template-curly-in-string */

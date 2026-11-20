@@ -7,9 +7,10 @@ import Markdown from '../items/Markdown';
 import Input from '../items/Input';
 import { useInsightsData } from '../../hooks/useInsightsData';
 import { useModelsData } from '../../hooks/useModelsData';
+import { classifyTableData, classifyTableDataNames } from '../../utils/tableDataNames';
 import { useInputsData } from '../../hooks/useInputsData';
 import { useVisibleRows } from '../../hooks/useVisibleRows';
-import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
+import { parseRefValue } from '../../utils/refString';
 import TemplateDashboard from './template/TemplateDashboard';
 import { prepareTemplate } from './template/templateHtml';
 import { chartDataFromInsightData } from '../../models/Insight';
@@ -164,40 +165,6 @@ const resolveItem = (itemRef, getItemByName) => {
 };
 
 /**
- * Collect all insight names from visible rows for centralized prefetching.
- */
-const isModelData = data => data && (data.sql || data.args || data.models);
-
-/**
- * Resolve a table's `data` ref into a `{ name, isModel }` classification used to
- * route the name into the right prefetch bucket (insightNames vs modelNames).
- *
- * A table's `data` can be (per the Table Pydantic model) a ${ ref() } to EITHER
- * a model OR an insight, and it arrives from the `/api/tables/` store endpoint in
- * one of two shapes:
- *   - a STRING context-ref ("${ref(wide-columns-table)}") — the common case, and
- *     the one that regressed (VIS-827). The string alone carries no model/insight
- *     signal, so we consult the model registry: a name that is a known model is
- *     model-data; otherwise it's treated as an insight (preserving the prior
- *     behavior for insight-backed simple tables).
- *   - an OBJECT carrying `name` + `sql|args|models` (an embedded/inlined model
- *     definition) — classified directly via isModelData().
- *
- * Returns null when no data name can be derived.
- */
-const classifyTableData = (tableData, isKnownModel) => {
-  if (!tableData) return null;
-  if (typeof tableData === 'string') {
-    const name = parseRefValue(tableData);
-    if (!name) return null;
-    return { name, isModel: isKnownModel(name) };
-  }
-  const name = tableData?.name;
-  if (!name) return null;
-  return { name, isModel: isModelData(tableData) };
-};
-
-/**
  * Recursively yield every Item across a list of rows, descending through
  * `item.rows` row-containers. Used by the data-collection helpers below so
  * nested charts/tables/inputs are also prefetched.
@@ -215,10 +182,9 @@ const forEachItemDeep = (rows, callback) => {
   }
 };
 
-const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByName, getTableByName, knownInsightNames = new Set(), isKnownModel = () => false) => {
+const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByName, getTableByName, registry) => {
   const insightNames = new Set();
   const modelNames = new Set();
-  const pivotRefStrings = [];
 
   // Visible top-level rows define the seed; once we descend into an item's nested rows,
   // every item in that subtree is treated as visible (the parent slot's visibility
@@ -237,32 +203,10 @@ const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByNam
     });
 
     const table = resolveItem(item.table, getTableByName);
-    if (table?.data) {
-      // A string-ref `data` (the common case) carries no model/insight signal on
-      // its own; classifyTableData consults the model registry so model-data
-      // tables route into modelNames (VIS-827). Previously every string ref fell
-      // into insightNames, so useModelsData never fetched the model and the table
-      // spun forever.
-      const classified = classifyTableData(table.data, isKnownModel);
-      if (classified) {
-        (classified.isModel ? modelNames : insightNames).add(classified.name);
-      }
-    }
-    const tableConfig = table?.config || table || {};
-    pivotRefStrings.push(
-      ...(tableConfig.columns || []),
-      ...(tableConfig.rows || []),
-      ...(tableConfig.values || []),
-    );
-  });
-
-  // Classify pivot refs: known insights go to insightNames, everything else to modelNames
-  const allKnown = new Set([...insightNames, ...knownInsightNames]);
-  extractRefNamesFromStrings(pivotRefStrings).forEach(n => {
-    if (allKnown.has(n)) {
-      insightNames.add(n);
-    } else {
-      modelNames.add(n);
+    if (table) {
+      const classified = classifyTableDataNames(table, registry);
+      classified.insightNames.forEach(n => insightNames.add(n));
+      classified.modelNames.forEach(n => modelNames.add(n));
     }
   });
 
@@ -341,6 +285,7 @@ const Dashboard = ({
   // model/insight signal, so we look the name up against the fetched model list.
   const fetchModels = useStore(state => state.fetchModels);
   const models = useStore(state => state.models);
+  const modelsLoaded = useStore(state => state.modelsLoaded);
 
   // Markdown store
   const fetchMarkdowns = useStore(state => state.fetchMarkdowns);
@@ -357,6 +302,10 @@ const Dashboard = ({
   // without a run (VIS-1023). Optional so older/other shells that don't provide
   // the slice don't break.
   const fetchInsights = useStore(state => state.fetchInsights);
+  // The insight registry also tells a pivot ref to an insight from a pivot ref
+  // to a model when no chart on the dashboard uses the insight (VIS-1701).
+  const insights = useStore(state => state.insights);
+  const insightsLoaded = useStore(state => state.insightsLoaded);
   // Bumped by the run poller when a draft run succeeds; threaded into the data
   // hooks as a cacheKey so they refetch + force-reload the rebuilt output.
   const runDataVersion = useStore(state => state.runDataVersion);
@@ -545,7 +494,7 @@ const Dashboard = ({
   }, [layoutRows, shouldShowItem]);
 
   const knownInsightNames = useMemo(() => {
-    const names = new Set();
+    const names = new Set((insights || []).map(i => i.name));
     forEachItemDeep(layoutRows, item => {
       const chart = resolveItem(item.chart, getChartByName);
       chart?.insights?.forEach(i => {
@@ -565,7 +514,7 @@ const Dashboard = ({
       }
     });
     return names;
-  }, [layoutRows, getChartByName, getTableByName, isKnownModel]);
+  }, [layoutRows, getChartByName, getTableByName, isKnownModel, insights]);
 
   const { visibleInsightNames, visibleModelNames } = useMemo(() => {
     if (!layoutRows) return { visibleInsightNames: [], visibleModelNames: [] };
@@ -576,12 +525,15 @@ const Dashboard = ({
       shouldShowItem,
       getChartByName,
       getTableByName,
-      knownInsightNames,
-      isKnownModel
+      {
+        isKnownModel,
+        isKnownInsight: name => knownInsightNames.has(name),
+        registriesLoading: !(modelsLoaded && (insightsLoaded || !fetchInsights)),
+      }
     );
     return { visibleInsightNames: insightNames, visibleModelNames: modelNames };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layoutRows, charts, tables, models, getChartByName, getTableByName, shouldShowItem, knownInsightNames, isKnownModel]);
+  }, [layoutRows, charts, tables, models, getChartByName, getTableByName, shouldShowItem, knownInsightNames, isKnownModel, modelsLoaded, insightsLoaded, fetchInsights]);
 
   // Inputs an insight DEPENDS ON (referenced via `${input.value}` inside its
   // query / static_props) must be prefetched too. Otherwise an input-driven

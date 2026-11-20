@@ -90,6 +90,32 @@ test('derives the data source from ref strings in columns/rows/values', async ()
   expect(screen.getByText('plain text, 100')).toBeInTheDocument();
 });
 
+test('renders the insight job when an empty model job has the same name (VIS-1701)', async () => {
+  useStore.setState(s => ({
+    insightJobs: s.insightJobs,
+    modelJobs: { 'my-insight': { name: 'my-insight', data: [], files: [], error: null } },
+  }));
+
+  render(<Table table={table} shouldLoad={true} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(screen.getByText('plain text, 100')).toBeInTheDocument();
+  });
+});
+
+test('renders the model job when the insight job of the same name has no output', async () => {
+  useStore.setState({
+    insightJobs: { 'my-insight': { name: 'my-insight', data: null, missing: true } },
+    modelJobs: { 'my-insight': { name: 'my-insight', data: [{ a: 'model-row', b: 7 }] } },
+  });
+
+  render(<Table table={table} shouldLoad={true} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(screen.getByText('model-row, 7')).toBeInTheDocument();
+  });
+});
+
 test('reads model-backed data from modelJobs when table.data is a model object', async () => {
   useStore.setState({
     insightJobs: {},
