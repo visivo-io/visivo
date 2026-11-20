@@ -110,6 +110,7 @@ jobs:
           uv version ${{ inputs.version }}
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo/version.py
           uv run write-schema-json
+          cp visivo/src/visivo_project_schema.json viewer/src/schemas/visivo_project_schema.json
           uv run copy-install-script
 
       # Before the tag and the GitHub release, so a package PyPI would refuse stops the release here.
