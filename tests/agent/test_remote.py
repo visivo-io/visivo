@@ -37,6 +37,9 @@ class FakeCore:
         self.headers = {}
 
     def get(self, url, timeout=None):
+        if "/api/runs/" in url and url.endswith("/logs/"):
+            run_id = url.split("/api/runs/")[1].split("/")[0]
+            return FakeResponse({"logs": self.rows.get("run_logs", {}).get(run_id, "")})
         if "/run/" in url:
             return FakeResponse(self.rows.get("runs", []))
         type_key = url.split("/api/")[1].split("/")[0]
@@ -205,6 +208,44 @@ class TestRuns:
         )
 
         assert "Binder Error" in call(project, "get_run", {"run_id": "r1"})["logs"]
+
+    def test_a_failed_run_is_explained_by_its_log(self):
+        """Core's runs list carries no log, and a failed build's error_json is
+        only its phase, so without the log check_runs cannot say why."""
+        project, _ = _project(
+            {
+                "runs": [{"id": "r1", "state": "failed", "error_json": {"phase": "run"}}],
+                "run_logs": {"r1": "metrics.0.parentModel\n  Extra inputs are not permitted"},
+            }
+        )
+
+        verdict = call(project, "check_runs", {})
+
+        assert verdict["ok"] is False
+        assert "parentModel" in verdict["logs"]
+
+    def test_a_write_that_core_builds_reports_ran(self):
+        """The prompt has the agent check_runs after a write that reports
+        `change: "ran"`. Without it a cloud agent never checked its build."""
+        project, _ = _project({"runs": [{"id": "r1", "state": "queued"}]})
+
+        result = call(project, "write_markdown", {"config": {"name": "notes", "content": "# hi"}})
+
+        assert result["change"] == "ran"
+
+    def test_a_write_with_nothing_building_reports_no_change(self):
+        project, _ = _project({"runs": [{"id": "r1", "state": "succeeded"}]})
+
+        result = call(project, "write_markdown", {"config": {"name": "notes", "content": "# hi"}})
+
+        assert "change" not in result
+
+    def test_a_cloud_build_gets_time_for_a_runner_to_start(self):
+        from visivo.agent.runs import RUN_SETTLE_TIMEOUT_SECONDS
+
+        project, _ = _project()
+
+        assert project.run_settle_timeout > RUN_SETTLE_TIMEOUT_SECONDS
 
 
 class TestWhenCoreWillNotAnswer:
