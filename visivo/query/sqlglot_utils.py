@@ -567,10 +567,12 @@ def _leaf_names(schema: dict):
 
 def _match_quoted_source_columns(expr, schema: dict) -> None:
     """Unquote a quoted column reference that names a source column in another
-    case, such as ``z."Borough"``. The schema lookup lowercases the source's
-    names, as it does for every unquoted reference, so the quoted one would
-    otherwise miss. A name the query itself defines as an alias keeps its quotes."""
-    source = {name.lower() for name in _leaf_names(schema)}
+    case, such as ``z."Borough"``. The schema lookup lowercases a source name
+    that is a plain identifier, as it does every unquoted reference, so the
+    quoted one would otherwise miss. A name that can only be written quoted
+    (``"Date found"``) keeps its case in the schema, so its reference stays
+    quoted. A name the query itself defines as an alias keeps its quotes."""
+    source = {name.lower() for name in _leaf_names(schema) if not exp.to_identifier(name).quoted}
     aliases = {alias.alias for alias in expr.find_all(exp.Alias)}
     for column in expr.find_all(exp.Column):
         identifier = column.this

@@ -3,6 +3,7 @@ from visivo.models.sources.source import Source
 from visivo.logger.logger import Logger
 from sqlalchemy import text
 from typing import Optional, Tuple, Any, List, Dict
+from visivo.models.sources.ducklake import validation_error_text
 from visivo.models.sources.fields import SourceField
 from pydantic import ValidationError, TypeAdapter
 import json
@@ -61,7 +62,9 @@ def validate_source_from_config(
         return result
 
     except ValidationError as e:
-        Logger.instance().debug(f"Source configuration validation failed: {e}")
+        Logger.instance().debug(
+            f"Source configuration validation failed: {validation_error_text(e)}"
+        )
         first_error = e.errors()[0]
         return {
             "status": "connection_failed",

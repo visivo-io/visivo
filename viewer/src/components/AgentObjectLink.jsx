@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { getTypeColors, getTypeIcon } from './views/common/objectTypeConfigs';
+import { viewerPath } from '../contexts/viewerBase';
 
 /**
  * An object an agent touched, rendered as somewhere you can go.
@@ -14,7 +15,7 @@ const AgentObjectLink = ({ object }) => {
   const Icon = getTypeIcon(object.type);
   return (
     <Link
-      to={`/workspace?edit=${encodeURIComponent(`${object.type}:${object.name}`)}`}
+      to={viewerPath(`/workspace?edit=${encodeURIComponent(`${object.type}:${object.name}`)}`)}
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-medium ${bg} ${text} ${border} hover:underline`}
       data-testid={`agent-action-object-${object.name}`}
     >

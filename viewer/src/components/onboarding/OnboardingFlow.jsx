@@ -4,9 +4,10 @@ import './onboarding.css';
 import { CONCEPTS } from './concepts';
 import Role from './screens/Role';
 import Concept from './screens/Concept';
-import Start from './screens/Start';
+import Start, { ALL_PATHS } from './screens/Start';
 import { fireEvent } from './telemetry';
 import { readOnboardingState, writeOnboardingState } from './onboardingState';
+import { firstSessionPath, recordFirstSessionRequest } from './firstSession';
 import SourceEditForm from '../views/common/SourceEditForm';
 import useStore from '../../stores/store';
 import logo from '../../images/logo.png';
@@ -25,11 +26,26 @@ export function sampleDestination(sample) {
   return sample?.dashboard ? `/project/${encodeURIComponent(sample.dashboard)}` : '/project';
 }
 
-export default function OnboardingFlow() {
+/**
+ * `paths` limits the Start screen to the paths the host can back. `openConnect`
+ * opens the source form on mount, and `openUpload` the upload step, for a host
+ * that asked which one before this flow was mounted. `loadSample` replaces the
+ * local example import for a host that seeds and opens examples itself. `tour` and `startEmpty` show those links.
+ */
+export default function OnboardingFlow({
+  paths = ALL_PATHS,
+  openConnect = false,
+  openUpload = false,
+  loadSample = null,
+  tour = true,
+  startEmpty = true,
+} = {}) {
   const navigate = useViewerNavigate();
   const project = useStore(s => s.project);
   const fetchProject = useStore(s => s.fetchProject);
   const saveSource = useStore(s => s.saveSource);
+  // Null under local serve, where credentials go to the project's .env.
+  const inCloud = useStore(s => Boolean(s.capabilities));
 
   const projectDir = project?.project_dir ?? '';
   const projectName = project?.name || 'Quickstart Visivo';
@@ -57,7 +73,7 @@ export default function OnboardingFlow() {
       return nextRole;
     });
   }, []);
-  const [showSourceModal, setShowSourceModal] = useState(false);
+  const [showSourceModal, setShowSourceModal] = useState(openConnect);
   const [sampleLoading, setSampleLoading] = useState(false);
   const [sampleLoadingText, setSampleLoadingText] = useState('');
   const [errorMessage, setErrorMessage] = useState(null);
@@ -140,7 +156,7 @@ export default function OnboardingFlow() {
   }, [stepIdx, current, showSourceModal]);
 
   const completeAndNavigate = useCallback(
-    ({ destination, path, sample = null, sourceConnected = false }) => {
+    ({ destination, path, sample = null, sourceConnected = false, source = null }) => {
       const totalDurationMs = Date.now() - startTs.current;
       fire('onboarding_completed', {
         path,
@@ -148,8 +164,11 @@ export default function OnboardingFlow() {
         source_connected: sourceConnected,
         cloud_connected: false,
       });
+      const base = source
+        ? recordFirstSessionRequest(persisted.current, source)
+        : persisted.current;
       writeOnboardingState({
-        ...persisted.current,
+        ...base,
         completed_at: new Date().toISOString(),
         path,
         sample,
@@ -158,13 +177,14 @@ export default function OnboardingFlow() {
         total_duration_ms: totalDurationMs,
         destination,
       });
-      // Refresh the project so isNewProject flips and Home renders the real app
-      const refreshed = fetchProject ? fetchProject() : Promise.resolve();
+      // Refresh the project so isNewProject flips and Home renders the real app.
+      // A cloud host loaded the draft itself and has no such route.
+      const refreshed = fetchProject && !inCloud ? fetchProject() : Promise.resolve();
       Promise.resolve(refreshed).finally(() => {
         navigate(destination, { replace: true });
       });
     },
-    [navigate, fetchProject, fire]
+    [navigate, fetchProject, fire, inCloud]
   );
 
   const handleSkip = useCallback(() => {
@@ -184,6 +204,15 @@ export default function OnboardingFlow() {
       setSampleLoading(true);
       setSampleLoadingText(`Building ${sample.title}…`);
       setErrorMessage(null);
+      if (loadSample) {
+        try {
+          await loadSample(sample);
+        } catch (err) {
+          setErrorMessage(err.message || 'Failed to import sample.');
+          setSampleLoading(false);
+        }
+        return;
+      }
       try {
         const res = await fetch('/api/project/load_example/', {
           method: 'POST',
@@ -209,17 +238,19 @@ export default function OnboardingFlow() {
         setSampleLoading(false);
       }
     },
-    [projectDir, projectName, completeAndNavigate]
+    [projectDir, projectName, completeAndNavigate, loadSample]
   );
 
+  // A ready source goes straight into the AI-led first session (VIS-1759).
   const handleConnected = useCallback(
-    sourceType => {
+    (sourceType, sourceName) => {
       fire('onboarding_data_connect_succeeded', { source_type: sourceType });
       setShowSourceModal(false);
       completeAndNavigate({
-        destination: '/workspace/exploration',
+        destination: sourceName ? firstSessionPath(sourceName) : '/workspace/exploration',
         path: 'data',
         sourceConnected: true,
+        source: sourceName || null,
       });
     },
     [fire, completeAndNavigate]
@@ -232,7 +263,7 @@ export default function OnboardingFlow() {
       try {
         const saved = await saveSource(name, config);
         if (!saved.success) throw new Error(saved.error || 'Failed to save the source.');
-        handleConnected(config?.type || 'unknown');
+        handleConnected(config?.type || 'unknown', name);
         return { success: true };
       } catch (err) {
         setErrorMessage(err.message || 'Failed to connect the source.');
@@ -245,7 +276,7 @@ export default function OnboardingFlow() {
   );
 
   const handleFileImported = useCallback(
-    config => handleConnected(config?.type || 'file'),
+    config => handleConnected(config?.type || 'file', config?.name),
     [handleConnected]
   );
 
@@ -258,11 +289,13 @@ export default function OnboardingFlow() {
         onConnectClick={() => setShowSourceModal(true)}
         onFileImported={handleFileImported}
         onSamplePick={handleSamplePick}
-        onStartEmpty={handleSkip}
-        onTakeTour={goNext}
+        onStartEmpty={startEmpty ? handleSkip : undefined}
+        onTakeTour={tour ? goNext : undefined}
+        paths={paths}
         fire={fire}
         isLoadingSample={sampleLoading}
         loadingText={sampleLoadingText}
+        openUpload={openUpload}
       />
     );
   } else if (current.kind === 'role') {
@@ -385,8 +418,17 @@ export default function OnboardingFlow() {
                 <div>
                   <h3 className="onb-modal__title">Add a Source</h3>
                   <div style={{ fontSize: 12, color: 'var(--onb-fg-muted)', marginTop: 2 }}>
-                    Credentials are saved to a local <code>.env</code> file and referenced securely
-                    — never written into your project.
+                    {inCloud ? (
+                      <>
+                        Credentials are saved as account secrets and referenced securely — never
+                        written into your project.
+                      </>
+                    ) : (
+                      <>
+                        Credentials are saved to a local <code>.env</code> file and referenced
+                        securely — never written into your project.
+                      </>
+                    )}
                   </div>
                 </div>
                 <button

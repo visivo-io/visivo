@@ -137,7 +137,7 @@ Visivo uses MkDocs with Material theme for documentation generation. The system 
 
 ### MkDocs Configuration
 - **Main config**: `mkdocs.yml` - Material theme with custom branding, navigation, and plugins
-- **Plugins**: Includes spellcheck, video, autolinks, macros, and include-markdown
+- **Plugins**: Includes spellcheck, video, autolinks, macros, include-markdown, and redirects (old and guessed URLs go in `redirect_maps`)
 - **Theme**: Material theme with custom colors (`mkdocs/stylesheets/brand_colors.css`)
 - **Source directory**: `mkdocs/` contains all documentation content
 - **Build directory**: `mkdocs_build/` (generated)

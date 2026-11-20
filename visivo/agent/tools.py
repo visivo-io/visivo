@@ -37,10 +37,15 @@ from visivo.agent.data_tools import DATA_TOOLS
 from visivo.agent.schema import SchemaSlicer
 from visivo.agent.screenshot import SCREENSHOT_TOOLS
 from visivo.agent.tool_types import Tool, ToolError  # noqa: F401 — re-exported
+from visivo.agent.write_errors import clean_message, generic_hints
 from visivo.jobs.run_model_data_job import QueryTimeout
 from visivo.query.patterns import is_valid_name, ref_name
 from visivo.server.managers.object_manager import NameTakenError, SaveRefusedError
 from visivo.server.rename_service import TYPE_TO_MANAGER
+
+
+def _article(noun):
+    return f"{'An' if noun[:1] in 'aeiou' else 'A'} {noun}"
 
 
 def _singular(type_key):
@@ -184,6 +189,17 @@ def _agent_config(app, type_key, arguments):
     return _source_reference(app, type_key, config), model
 
 
+def _error_text(error):
+    """A validation error without the secrets that pydantic repeats from the config."""
+    from pydantic import ValidationError
+
+    if isinstance(error, ValidationError):
+        from visivo.models.sources.ducklake import validation_error_text
+
+        return validation_error_text(error)
+    return str(error)
+
+
 def _validate_handler(type_key):
     def handler(app, arguments):
         config, model = _agent_config(app, type_key, arguments)
@@ -193,7 +209,7 @@ def _validate_handler(type_key):
         except ToolError:
             raise
         except Exception as error:
-            return {"valid": False, "error": str(error)}
+            return {"valid": False, "error": _invalid_text(type_key, error)}
         if model:
             obj.set_parent_name(model)
         name = config.get("name")
@@ -209,6 +225,19 @@ def _validate_handler(type_key):
     return handler
 
 
+def _host_run_outcome(app):
+    """For a host that builds on save (cloud): "ran" if its newest run is queued or running, else None."""
+    manager = getattr(app, "run_manager", None)
+    if manager is None:
+        return None
+    from visivo.agent.runs import _active_states
+
+    latest = (manager.list(limit=1) or [None])[0]
+    if latest and latest.get("state") in _active_states():
+        return "ran"
+    return None
+
+
 def _write_handler(type_key):
     def handler(app, arguments):
         config, model = _agent_config(app, type_key, arguments)
@@ -219,8 +248,7 @@ def _write_handler(type_key):
         try:
             obj = manager.validate_object(config)
         except Exception as error:
-            hints = "".join(f"\nHint: {hint}" for hint in _write_hints(type_key, error))
-            raise ToolError(f"Invalid {_singular(type_key)}: {error}{hints}")
+            raise ToolError(f"Invalid {_singular(type_key)}: {_invalid_text(type_key, error)}")
         if model:
             obj.set_parent_name(model)
 
@@ -245,7 +273,9 @@ def _write_handler(type_key):
         # POST /api/<type>/<name>/. The agent saves in-process, so without this
         # its writes stage nothing (leaving the top bar on Deploy) and never
         # trigger a run, however run_trigger is set.
-        outcome = stage_and_maybe_run(app, type_key, name, before) if staging else None
+        outcome = (
+            stage_and_maybe_run(app, type_key, name, before) if staging else _host_run_outcome(app)
+        )
         result = {"name": name, "status": "draft"}
         if outcome:
             result["change"] = outcome
@@ -312,6 +342,11 @@ def _write_handler(type_key):
 _INTERACTION_FIELDS = ("filter", "split", "sort")
 
 
+def _invalid_text(type_key, error):
+    hints = "".join(f"\nHint: {hint}" for hint in _write_hints(type_key, error))
+    return f"{clean_message(_error_text(error))}{hints}"
+
+
 def _write_hints(type_key, error):
     errors = error.errors() if callable(getattr(error, "errors", None)) else []
     hints = []
@@ -325,7 +360,7 @@ def _write_hints(type_key, error):
             )
         elif field == "model" and problem.get("type") == "extra_forbidden":
             hints.append(
-                f"A {_singular(type_key)} has no `model` field. Name the model inside its "
+                f"{_article(_singular(type_key))} has no `model` field. Name the model inside its "
                 "expressions, e.g. `?{ sum(${ref(trips).fare}) }`."
             )
         elif type_key == "models" and field == "source":
@@ -335,7 +370,7 @@ def _write_hints(type_key, error):
                 f"Write the source as a reference to one of the project's sources, e.g. "
                 f"`source: ${{ref({name})}}`; list_sources names them."
             )
-    return list(dict.fromkeys(hints))
+    return list(dict.fromkeys(hints + generic_hints(type_key, errors)))
 
 
 _NAME_SCHEMA = {

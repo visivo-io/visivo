@@ -8,10 +8,13 @@ import {
   startAgentSession,
 } from '../api/agent';
 import AgentToolCalls, { ActionRow } from './AgentToolCalls';
+import AgentReply from './AgentReply';
 import { subscribe } from '../events/eventSource';
 import { AGENT_ACTIVITY } from '../events/topics';
 import AgentAuthorize from './AgentAuthorize';
 import useAuthorization from '../hooks/useAuthorization';
+import AgentFailure from './AgentFailure';
+import { agentProgressLine } from '../utils/agentFailureCopy';
 import starterPrompts from './agentStarterPrompts.json';
 
 /**
@@ -48,7 +51,12 @@ const FIRST_PLACEHOLDER =
 const REPLY_PLACEHOLDER =
   'Reply, or ask for the next change, e.g. “make that a line chart” or “add it to the dashboard”';
 
-const AgentPrompt = () => {
+/**
+ * `autoSend` is sent once, as the first message, when the project has no
+ * conversation yet; `onAutoSent` is told when it goes. Onboarding uses it to
+ * start the first session without a click (VIS-1759).
+ */
+const AgentPrompt = ({ autoSend = null, onAutoSent } = {}) => {
   // Addressed per project, so the same component drives a local loop and a
   // cloud one without knowing which it has.
   const projectId = useStore(state => state.project?.id);
@@ -66,12 +74,21 @@ const AgentPrompt = () => {
   const tick = useRef(null);
   // One idea of "authorized", shared with Deploy (VIS-1377). Until this the
   // tab's answer to a first-time user was the resolver's BYO error.
-  const { authorized, host, working: authorizing, message: authMessage, authorize } =
-    useAuthorization();
+  const {
+    authorized,
+    host,
+    working: authorizing,
+    message: authMessage,
+    authorize,
+  } = useAuthorization();
   // Whether this person has started talking. The resume below must never
   // overwrite a conversation they began while it was still asking the server
   // what the last one was.
   const spokeFirst = useRef(false);
+  // Whether the resume below has finished looking, so an automatic first
+  // message never races a conversation the server already has.
+  const [looked, setLooked] = useState(false);
+  const autoSent = useRef(false);
 
   const stopPolling = useCallback(() => {
     if (timer.current) {
@@ -132,10 +149,7 @@ const AgentPrompt = () => {
           consecutiveFailures += 1;
           if (consecutiveFailures >= POLL_FAILURES_BEFORE_GIVING_UP) {
             stopPolling();
-            setNotice({
-              kind: 'error',
-              text: `Lost contact with the agent: ${error.message}`,
-            });
+            setNotice({ kind: 'error', context: 'poll', text: error.message });
           }
         }
       };
@@ -174,6 +188,8 @@ const AgentPrompt = () => {
         // A project with no agent history is the ordinary case, and a list
         // that cannot be read is not worth interrupting someone with: they
         // came here to ask for something, and Send still works.
+      } finally {
+        if (current) setLooked(true);
       }
     };
     resume();
@@ -182,8 +198,9 @@ const AgentPrompt = () => {
     };
   }, [projectId, poll]);
 
-  const onSend = async () => {
-    const asked = prompt.trim();
+  const onSend = () => send(prompt.trim());
+
+  const send = async asked => {
     if (!asked || starting) return;
     spokeFirst.current = true;
     setStarting(true);
@@ -227,11 +244,23 @@ const AgentPrompt = () => {
       setModelSource(result.session.model_source || null);
       poll(result.session.id);
     } catch (error) {
-      setNotice({ kind: 'error', text: error.message });
+      setNotice({ kind: 'error', context: 'start', text: error.message });
     } finally {
       setStarting(false);
     }
   };
+
+  useEffect(() => {
+    if (!autoSend || autoSent.current || !looked || authorized !== true) return;
+    if (session || spokeFirst.current) return;
+    autoSent.current = true;
+    // In the box too, so a refusal (no credit, no key) leaves it there to send
+    // again once that is fixed.
+    setPrompt(autoSend);
+    send(autoSend);
+    onAutoSent?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSend, looked, authorized, session]);
 
   const onStop = async () => {
     if (!session) return;
@@ -240,7 +269,7 @@ const AgentPrompt = () => {
       setSession(result.session);
       stopPolling();
     } catch (error) {
-      setNotice({ kind: 'error', text: error.message });
+      setNotice({ kind: 'error', context: 'stop', text: error.message });
     }
   };
 
@@ -264,10 +293,7 @@ const AgentPrompt = () => {
   }
 
   return (
-    <div
-      className="bg-white border border-gray-200 rounded-lg p-4 mb-4"
-      data-testid="agent-prompt"
-    >
+    <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4" data-testid="agent-prompt">
       {(turns > 0 || ended) && (
         <div className="mb-3">
           {turns > 0 && <Transcript entries={session.transcript} running={running} />}
@@ -319,12 +345,20 @@ const AgentPrompt = () => {
         )}
         {running && (
           <span className="text-sm text-gray-500" data-testid="agent-working">
-            Working… every change lands as a draft you can review.
+            {agentProgressLine(session.state)}
           </span>
         )}
       </div>
 
-      {notice && (
+      {notice?.kind === 'error' && (
+        <AgentFailure
+          error={notice.text}
+          context={notice.context}
+          className="mt-3"
+          testId="agent-notice-error"
+        />
+      )}
+      {notice && notice.kind !== 'error' && (
         <div
           className={`mt-3 rounded-md p-3 text-sm ${
             // Both of these are "here is what to do", so they read as
@@ -338,7 +372,6 @@ const AgentPrompt = () => {
           {notice.text}
         </div>
       )}
-
 
       {modelSource && (
         <div className="mt-2 text-xs text-gray-400" data-testid="agent-model-source">
@@ -435,13 +468,11 @@ export function AgentTimeline({ items }) {
           it was collapsed. */}
       {groups.map((entry, index) =>
         entry.kind === 'text' ? (
-          <p
+          <AgentReply
             key={`text-${index}`}
-            className="whitespace-pre-wrap"
+            text={entry.text}
             data-testid="agent-timeline-text"
-          >
-            {entry.text}
-          </p>
+          />
         ) : (
           <ToolGroup
             key={`actions-${index}`}
@@ -479,7 +510,11 @@ export function Transcript({ entries, running }) {
           ) : (
             <>
               <AgentToolCalls actions={entry.actions} />
-              {entry.text}
+              {entry.role === 'user' ? (
+                <p className="whitespace-pre-wrap">{entry.text}</p>
+              ) : (
+                <AgentReply text={entry.text} data-testid="agent-reply" />
+              )}
             </>
           )}
         </div>
@@ -513,11 +548,7 @@ function Outcome({ session }) {
       </div>
     );
   }
-  return (
-    <div className="mt-3 rounded-md bg-highlight-50 p-3 text-sm text-highlight-900" data-testid="agent-failed">
-      {session.error || 'The agent failed.'}
-    </div>
-  );
+  return <AgentFailure error={session.error} className="mt-3" testId="agent-failed" />;
 }
 
 export default AgentPrompt;
