@@ -33,6 +33,7 @@ from pydantic import SecretStr
 
 from visivo.models.base.named_model import new_name_error
 from visivo.models.dashboards.template_dashboard import TemplateDashboard
+from visivo.server.managers.object_manager import SaveRefusedError, deferred_type_rules
 
 TYPE_TO_MANAGER = {
     "sources": "source_manager",
@@ -192,26 +193,62 @@ def rename_impact(flask_app, *, type_key, old_name, new_name):
     }
 
 
+def _refused_now(manager, name, obj):
+    """True when ``manager`` refuses ``obj`` as it is before the rename."""
+    try:
+        manager.check_save(name, obj)
+    except SaveRefusedError:
+        return True
+    return False
+
+
 def rename_object(flask_app, *, type_key, old_name, new_name):
     """Apply the rename to the cached tier. Returns the same shape as the
-    preview, describing what was changed."""
+    preview, describing what was changed.
+
+    The rename writes every object or none. The type rules are judged when all
+    the objects are written, because a rule can read more than one of them. A
+    refusal that the rename causes becomes a ``RenameError`` and the cached tier
+    goes back to what it was. An object that was refused before the rename is
+    renamed as it is, because the rename does not cause that problem.
+    """
     impact = rename_impact(flask_app, type_key=type_key, old_name=old_name, new_name=new_name)
     manager, target = _validate(flask_app, type_key, old_name, new_name)
     pattern = _ref_pattern(old_name)
 
-    config = _config_of(target)
-    config["name"] = new_name
-    manager.save_from_config(config)
-    # Only an object with a published name has a YAML entry for the commit to
-    # rename; a draft is just re-keyed. Either way the old name's draft now
-    # lives under the new name, so it must not be committed as well.
-    if old_name in manager.published_objects or manager.renamed_from(old_name):
-        manager.record_rename(old_name, new_name)
-    manager.delete_from_cache(old_name)
-
+    references = []
     for reference in impact["references"]:
         other_manager = getattr(flask_app, TYPE_TO_MANAGER[reference["type"]])
         obj = _current_objects(other_manager)[reference["name"]]
-        other_manager.save_from_config(_rewrite(_config_of(obj), pattern, new_name))
+        references.append((other_manager, reference["name"], obj))
+    judged = [(manager, new_name)] if not _refused_now(manager, old_name, target) else []
+    judged += [(m, name) for m, name, obj in references if not _refused_now(m, name, obj)]
+
+    touched = {id(m): m for m in [manager] + [m for m, _name, _obj in references]}.values()
+    before = [(m, dict(m.cached_objects), dict(m.renames)) for m in touched]
+    try:
+        with deferred_type_rules():
+            config = _config_of(target)
+            config["name"] = new_name
+            manager.save_from_config(config)
+            # Only an object with a published name has a YAML entry for the commit
+            # to rename; a draft is just re-keyed. Either way the old name's draft
+            # now lives under the new name, so it must not be committed as well.
+            if old_name in manager.published_objects or manager.renamed_from(old_name):
+                manager.record_rename(old_name, new_name)
+            manager.delete_from_cache(old_name)
+            for other_manager, _name, obj in references:
+                other_manager.save_from_config(_rewrite(_config_of(obj), pattern, new_name))
+        for judged_manager, name in judged:
+            judged_manager.check_save(name, judged_manager.cached_objects[name])
+    except Exception as error:
+        for restored, cached, renames in before:
+            restored.cached_objects.clear()
+            restored.cached_objects.update(cached)
+            restored.renames.clear()
+            restored.renames.update(renames)
+        if isinstance(error, SaveRefusedError):
+            raise RenameError(str(error), error.status) from error
+        raise
 
     return impact

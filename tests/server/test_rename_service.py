@@ -16,8 +16,15 @@ class FakeManager:
         self.cached_objects = dict(cached or {})
         self._renames = {}
 
+    @property
+    def renames(self):
+        return self._renames
+
     def save_from_config(self, config):
         raise NotImplementedError  # set per-test
+
+    def check_save(self, name, obj):
+        return None
 
     def record_rename(self, old_name, new_name):
         self._renames[new_name] = self._renames.pop(old_name, old_name)

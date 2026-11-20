@@ -1,6 +1,8 @@
 import copy
 import re
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
+from contextvars import ContextVar
 from enum import Enum
 from threading import Lock
 from typing import Any, Dict, Generic, List, Optional, TypeVar
@@ -73,6 +75,23 @@ class NameTakenError(SaveRefusedError):
     """A save under a name another object already holds."""
 
     status = 409
+
+
+_type_rules_deferred: ContextVar[bool] = ContextVar("type_rules_deferred", default=False)
+
+
+@contextmanager
+def deferred_type_rules():
+    """In the block, ``check_save`` judges names only and skips ``save_error``.
+
+    For a writer that saves a set of objects that are valid only together, as a
+    rename does. That writer calls ``check_save`` on each object after the block.
+    """
+    token = _type_rules_deferred.set(True)
+    try:
+        yield
+    finally:
+        _type_rules_deferred.reset(token)
 
 
 class ObjectManager(ABC, Generic[T]):
@@ -169,6 +188,8 @@ class ObjectManager(ABC, Generic[T]):
             clash = self.name_clash(name, obj) if self.name_clash else None
             if clash:
                 raise NameTakenError(clash)
+        if _type_rules_deferred.get():
+            return
         refusal = self.save_error(obj)
         if refusal:
             raise SaveRefusedError(refusal)
