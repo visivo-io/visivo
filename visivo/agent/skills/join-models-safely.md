@@ -16,10 +16,12 @@ high, and nothing fails. This is fan-out.
 1. Find the key of each model: the column that is unique per row. Check it
    with `query_source`: `select count(*), count(distinct account_id) from accounts`.
 2. Join on that key. One side of the condition must be unique.
-3. `write_relation` measures both sides and returns `cardinality`
-   (`one_to_one`, `one_to_many` or `many_to_many`). If it is
-   `many_to_many`, do not keep it: write a model with one row per key on
-   one side, and relate to that model.
+3. `write_relation` measures both sides and returns `cardinality`. Its
+   `kind` is `one_to_one`, `one_to_many`, `many_to_one` or `many_to_many`,
+   in the order of the two models in the join equality. The `cardinality`
+   field of a relation reads in the same order. If `kind` is
+   `many_to_many`, do not keep the relation: write a model with one row per
+   key on one side, and relate to that model.
 
 ## When a chart reads both models
 

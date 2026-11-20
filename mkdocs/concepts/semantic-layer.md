@@ -57,6 +57,9 @@ relations:
     is_default: true
 ```
 
+A Relation can also declare its `cardinality`, and a SQL Model its `primary_key`. See
+[Declare cardinality and primary keys](../topics/semantic-layer.md#declare-cardinality-and-primary-keys).
+
 ## Learn more
 
 - [Insight](insight.md) — how Insights consume Metrics and Dimensions.

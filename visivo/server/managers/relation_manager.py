@@ -5,6 +5,7 @@ from pydantic import TypeAdapter, ValidationError
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.relation import Relation
+from visivo.models.relation_keys import cardinality_error
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
@@ -22,6 +23,19 @@ class RelationManager(ObjectManager[Relation]):
     def __init__(self):
         super().__init__()
         self._relation_adapter = TypeAdapter(Relation)
+        # name -> model or None. FlaskApp installs ``find_model``; a bare manager
+        # knows no model, so it checks no cardinality against a primary key.
+        self.model_lookup = None
+
+    def save_error(self, relation: Relation) -> Optional[str]:
+        """A cardinality that disagrees with a declared primary key is refused."""
+        if self.model_lookup is None:
+            return None
+        return cardinality_error(relation, self.model_lookup)
+
+    def restore_error(self, name: str) -> Optional[str]:
+        published = self._published_objects.get(name)
+        return self.save_error(published) if published is not None else None
 
     def validate_object(self, obj_data: dict) -> Relation:
         """
@@ -139,6 +153,9 @@ class RelationManager(ObjectManager[Relation]):
         """
         try:
             relation = self.validate_object(config)
+            refusal = self.save_error(relation)
+            if refusal:
+                return {"valid": False, "error": refusal}
             return {
                 "valid": True,
                 "name": relation.name,

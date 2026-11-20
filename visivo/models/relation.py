@@ -1,5 +1,5 @@
 from typing import Optional, Literal, Set
-from pydantic import Field, ConfigDict, field_validator
+from pydantic import Field, ConfigDict, field_validator, model_validator
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.query.patterns import extract_ref_names, validate_ref_syntax, count_model_references
@@ -22,6 +22,18 @@ class Relation(NamedModel, ParentModel):
             condition: "${ref(orders).user_id} = ${ref(users).id}"
             is_default: true
         ```
+
+    A relation can declare its `cardinality`. Read it in the order of the two models in
+    the join equality of the condition: `many_to_one` here means many `orders` rows match
+    one `users` row.
+
+    !!! example
+        ```yaml
+        relations:
+          - name: orders_to_users
+            condition: "${ref(orders).user_id} = ${ref(users).id}"
+            cardinality: many_to_one
+        ```
     """
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
@@ -41,6 +53,30 @@ class Relation(NamedModel, ParentModel):
         description="Whether this is the default relation to use when joining these two models. "
         "Useful when multiple relations exist between the same pair of models.",
     )
+
+    cardinality: Optional[Literal["many_to_one", "one_to_many", "one_to_one"]] = Field(
+        None,
+        description="How many rows of each model match across the join, read in the order of "
+        "the two models in the first equality of the condition that joins a column of one model "
+        "to a column of the other. When that equality has an orders column on the left and a "
+        "users column on the right, 'many_to_one' means many orders rows match one users row. "
+        "A filter in the condition does not change the order. Visivo uses it to warn "
+        "when an aggregate counts a row once per match (fan-out). It does not change the "
+        "SQL of the join.",
+    )
+
+    @model_validator(mode="after")
+    def validate_cardinality_has_two_models(self):
+        if self.cardinality is None:
+            return self
+        models = extract_ref_names(self.condition)
+        if len(models) != 2:
+            raise ValueError(
+                f"Relation '{self.name}' declares cardinality '{self.cardinality}', but its "
+                f"condition names {len(models)} models. A cardinality needs a condition "
+                f"that names exactly two models."
+            )
+        return self
 
     def get_referenced_models(self) -> Set[str]:
         """

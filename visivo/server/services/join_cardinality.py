@@ -5,8 +5,10 @@ A relation is a plain join. When one ``accounts`` row matches many
 ``subscriptions_monthly`` rows, the join repeats the ``accounts`` row once per
 match, so a SUM, COUNT or AVG of an ``accounts`` column comes out too high and
 nothing fails. The checks here measure the key on each side against the source
-and name the aggregates at risk. They warn; they never refuse a write, because
-a one-to-many relation is valid and needed.
+and name the aggregates at risk. A side that cannot be measured takes what the
+project declares: the relation's ``cardinality``, or a join on the model's
+``primary_key``. They warn; they never refuse a write, because a one-to-many
+relation is valid and needed.
 """
 
 from dataclasses import dataclass
@@ -20,6 +22,7 @@ from visivo.jobs.run_model_data_job import (
     QueryTimeout,
     execute_and_get_result,
 )
+from visivo.models.relation_keys import qualified, declared_unique, join_keys
 from visivo.query.patterns import replace_refs
 from visivo.server.source_resolution import find_model, from_manager, source_for_model
 
@@ -29,13 +32,21 @@ _FAN_OUT_AGGREGATES = (exp.Sum, exp.Count, exp.Avg)
 
 @dataclass
 class KeyStats:
-    keys: int
-    rows: int
-    most: int
+    """How a join key repeats on one side. A measured side has the three
+    counts. A declared side has only ``declared_unique``."""
+
+    keys: Optional[int] = None
+    rows: Optional[int] = None
+    most: Optional[int] = None
+    declared_unique: Optional[bool] = None
+
+    @property
+    def measured(self):
+        return self.most is not None
 
     @property
     def unique(self):
-        return self.most <= 1
+        return self.most <= 1 if self.measured else bool(self.declared_unique)
 
 
 @dataclass
@@ -43,32 +54,6 @@ class Side:
     model: str
     columns: List[str]
     stats: KeyStats
-
-
-def _qualified(model, field):
-    return f'"{model}"."{field}"'
-
-
-def join_keys(condition) -> Dict[str, List[str]]:
-    """``{model: [column, ...]}`` for the equalities in a relation condition
-    that compare a column of one model with a column of another."""
-    try:
-        tree = sqlglot.parse_one(
-            replace_refs(condition, lambda m, f: _qualified(m, f) if f else f'"{m}"')
-        )
-    except Exception:
-        return {}
-    keys: Dict[str, List[str]] = {}
-    for eq in tree.find_all(exp.EQ):
-        left, right = eq.this, eq.expression
-        if not (isinstance(left, exp.Column) and isinstance(right, exp.Column)):
-            continue
-        if not left.table or not right.table or left.table == right.table:
-            continue
-        for column in (left, right):
-            if column.name not in keys.setdefault(column.table, []):
-                keys[column.table].append(column.name)
-    return keys if len(keys) == 2 else {}
 
 
 def key_stats(app, model_name, columns) -> Optional[KeyStats]:
@@ -102,27 +87,56 @@ def key_stats(app, model_name, columns) -> Optional[KeyStats]:
 
 def relation_sides(app, relation) -> Optional[List[Side]]:
     """Both sides of ``relation`` with their key stats, or ``None`` when the
-    condition is not a column equality or a side cannot be measured."""
+    condition is not a column equality, or a side can be neither measured nor
+    read from a declared ``cardinality`` or ``primary_key``."""
     keys = join_keys(relation.condition)
     if not keys:
         return None
+    declared = declared_unique(relation, lambda name: find_model(app, name))
     sides = []
     for model, columns in keys.items():
         stats = key_stats(app, model, columns)
+        if stats is None and declared.get(model) is not None:
+            stats = KeyStats(declared_unique=declared[model])
         if stats is None:
             return None
         sides.append(Side(model, columns, stats))
     return sides
 
 
+def declaration_warning(app, relation, sides) -> Optional[str]:
+    """Why a side that the project declares unique, by ``cardinality`` or by
+    ``primary_key``, repeats its key in the data, or ``None``. A declared many
+    side that is unique in the data gets no warning: new or sampled data can
+    hold one row per key."""
+    declared = declared_unique(relation, lambda name: find_model(app, name))
+    for side in sides:
+        expected = declared.get(side.model)
+        if not expected or not side.stats.measured or side.stats.unique:
+            continue
+        source = (
+            f"cardinality `{relation.cardinality}`"
+            if getattr(relation, "cardinality", None)
+            else f"the primary_key of `{side.model}`"
+        )
+        return (
+            f"Relation `{relation.name}`: {source} says that `{_key(side)}` is unique, "
+            f"but one key matches up to {side.stats.most} `{side.model}` rows in the "
+            "data. Correct the declaration, or join on a key that is unique."
+        )
+    return None
+
+
+def _most(stats) -> str:
+    return f"up to {stats.most}" if stats.measured else "more than one"
+
+
 def cardinality(sides) -> str:
-    """``one_to_one``, ``one_to_many`` (first side unique) or ``many_to_many``."""
+    """``one_to_one``, ``one_to_many``, ``many_to_one`` or ``many_to_many``, read
+    in the order of ``sides``. That is the order a relation's ``cardinality``
+    field reads, so the measured value of a relation can go into the field."""
     a, b = sides
-    if a.stats.unique and b.stats.unique:
-        return "one_to_one"
-    if a.stats.unique or b.stats.unique:
-        return "one_to_many"
-    return "many_to_many"
+    return f"{'one' if a.stats.unique else 'many'}_to_{'one' if b.stats.unique else 'many'}"
 
 
 def _key(side):
@@ -138,17 +152,19 @@ def relation_warning(relation, sides) -> Optional[str]:
     if kind == "many_to_many":
         a, b = sides
         return (
-            f"Relation `{relation.name}` is many-to-many: neither `{_key(a)}` (up to "
-            f"{a.stats.most} rows per key) nor `{_key(b)}` (up to {b.stats.most}) is unique. "
+            f"Relation `{relation.name}` is many-to-many: neither `{_key(a)}` "
+            f"({_most(a.stats)} rows per key) nor `{_key(b)}` ({_most(b.stats)}) is unique. "
             "Every SUM, COUNT and AVG across this join counts rows more than once. Join on a "
             "key that is unique on one side, or write a model that has one row per key on "
             "one side and relate to it."
         )
     one, many = sorted(sides, key=lambda side: not side.stats.unique)
-    average = many.stats.rows / many.stats.keys
+    average = (
+        f" ({many.stats.rows / many.stats.keys:.1f} on average)" if many.stats.measured else ""
+    )
     return (
         f"Relation `{relation.name}` is one-to-many: `{_key(one)}` is unique, and one key "
-        f"matches up to {many.stats.most} `{many.model}` rows ({average:.1f} on average). A "
+        f"matches {_most(many.stats)} `{many.model}` rows{average}. A "
         f"query that joins them repeats each `{one.model}` row once per `{many.model}` row, "
         f"so a SUM, COUNT or AVG of any `{one.model}` column across this join is too high. "
         f"Count `{one.model}` with COUNT(DISTINCT {_key(one)}) when a chart groups or "
@@ -195,7 +211,7 @@ def _expanded_sql(app, text, model=None, depth=0):
         metric, owner = _metric(app, model_name, field)
         if metric is not None:
             return f"({_expanded_sql(app, metric.expression, owner, depth + 1)})"
-        return _qualified(model_name, field) if field else f'"{model_name}"'
+        return qualified(model_name, field) if field else f'"{model_name}"'
 
     tree = sqlglot.parse_one(replace_refs(text, replace))
     if model:
@@ -277,7 +293,7 @@ def insight_fanout_warnings(app, config) -> List[str]:
             warnings.append(
                 f"`{path}` takes {function} over `{model}` rows, but this query joins "
                 f"`{model}` to `{other.model}` through relation `{relation.name}`, where one "
-                f"`{_key(side)}` matches up to {other.stats.most} `{other.model}` rows. Each "
+                f"`{_key(side)}` matches {_most(other.stats)} `{other.model}` rows. Each "
                 f"`{model}` row is counted once per match, so the number is too high "
                 f"(fan-out). Use COUNT(DISTINCT ${{ref({model}).{side.columns[0]}}}) to count "
                 f"`{model}`; for a SUM or AVG, write a model at one row per "

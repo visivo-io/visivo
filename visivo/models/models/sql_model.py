@@ -1,7 +1,7 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from visivo.models.base.base_model import generate_ref_field
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 from visivo.query.schema_aggregator import (
     SchemaAggregator,
 )  # We might want to change the name of the SchemaAggregator, it's kinda more of reader/writer class
@@ -11,6 +11,8 @@ from visivo.models.sources.fields import SourceRefField
 from visivo.models.sources.source import DefaultSource
 from visivo.models.metric import Metric
 from visivo.models.dimension import Dimension
+
+PRIMARY_KEY_FORBIDDEN = ".\"'`"
 
 
 class SqlModel(Model, ParentModel):
@@ -49,6 +51,16 @@ class SqlModel(Model, ParentModel):
                   - name: order_month
                     expression: date_trunc('month', created_at)
             ```
+
+        === "With a Primary Key"
+
+            ``` yaml
+            models:
+              - name: orders
+                source: ref(sql_source)
+                sql: select * from orders
+                primary_key: order_id
+            ```
     {% endraw %}
     """
 
@@ -72,6 +84,31 @@ class SqlModel(Model, ParentModel):
     dimensions: List[Dimension] = Field(
         [], description="A list of computed dimensions (row-level calculations) for this model."
     )
+
+    primary_key: Optional[Union[str, List[str]]] = Field(
+        None,
+        description="The column, or the list of columns, that has one value per row of this "
+        "model. A relation that joins this model on its primary key matches at most one row "
+        "of this model, so Visivo knows that the join does not repeat rows of the other model.",
+    )
+
+    @field_validator("primary_key")
+    @classmethod
+    def validate_primary_key(cls, value):
+        if value is None:
+            return value
+        columns = [column.strip() for column in ([value] if isinstance(value, str) else value)]
+        if not columns or not all(columns):
+            raise ValueError("primary_key must name at least one column, and no name can be empty.")
+        for column in columns:
+            if any(character in column for character in PRIMARY_KEY_FORBIDDEN):
+                raise ValueError(
+                    f"primary_key column '{column}' must be the name of the column only, "
+                    "with no model name, no dot and no quotes."
+                )
+        if len({column.casefold() for column in columns}) != len(columns):
+            raise ValueError("primary_key names the same column more than once.")
+        return columns[0] if isinstance(value, str) else columns
 
     @model_validator(mode="after")
     def set_parent_names_on_nested_objects(self):
