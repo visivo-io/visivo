@@ -53,6 +53,7 @@ TYPE_LIST = "/api/{type_key}/"
 TYPE_DETAIL = "/api/{type_key}/{name}/"
 PROJECT = "/api/projects/{project_id}"
 PROJECT_RUNS = "/run/"
+PROJECT_CHANGES = "/changes/"
 RUN_LOGS = "/api/runs/{run_id}/logs/"
 AGENT_RENDER_TOKEN = "/agent/render-token/"
 AGENT_CAPTURES = "/agent/captures/"
@@ -143,12 +144,31 @@ class CloudApi:
         return response.json()
 
     def runs(self):
-        """Recent runs. Empty on failure: the Runs list is context, and a turn
-        should not die because core was slow to describe its history."""
-        response = self.session.get(self._scoped(PROJECT_RUNS), timeout=FETCH_TIMEOUT_SECONDS)
+        """Recent runs, newest first. Raises rather than answering empty: an
+        agent reads "no runs" as "nothing failed"."""
+        url = self._scoped(PROJECT_RUNS)
+        response = self.session.get(url, timeout=FETCH_TIMEOUT_SECONDS)
         if response.status_code != 200:
-            return []
+            raise CloudApiError(_why("read runs", url, response))
         return response.json() or []
+
+    def staged(self):
+        """The changes no run has built, as core's Run view lists them."""
+        url = self._scoped(PROJECT_CHANGES)
+        response = self.session.get(url, timeout=FETCH_TIMEOUT_SECONDS)
+        if response.status_code != 200:
+            raise CloudApiError(_why("read unbuilt changes", url, response))
+        return (response.json() or {}).get("staged") or []
+
+    def start_run(self):
+        """Build what is staged. A run already in flight is left to finish."""
+        url = self._scoped(PROJECT_RUNS)
+        response = self.session.post(url, json={}, timeout=SAVE_TIMEOUT_SECONDS)
+        if response.status_code == 409:
+            return (response.json() or {}).get("run")
+        if response.status_code not in (200, 201):
+            raise CloudApiError(_why("start a run", url, response))
+        return response.json()
 
     def run_logs(self, run_id):
         """A run's build output from core's logs endpoint, since the runs list leaves it out. "" if core does not answer."""

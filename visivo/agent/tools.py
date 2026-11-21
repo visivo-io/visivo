@@ -232,7 +232,10 @@ def _host_run_outcome(app):
         return None
     from visivo.agent.runs import _active_states
 
-    latest = (manager.list(limit=1) or [None])[0]
+    try:
+        latest = (manager.list(limit=1) or [None])[0]
+    except Exception:
+        return None
     if latest and latest.get("state") in _active_states():
         return "ran"
     return None
