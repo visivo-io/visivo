@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from visivo.utils import SCHEMA_FILE
 from visivo.logger.logger import Logger
 from importlib import reload, import_module
@@ -24,22 +26,31 @@ def reload_and_generate_schema():
     return schema_string
 
 
-def write_schema_json() -> None:
-    """
-    Write the Visivo Project schema for the current CLI version to the output directory
-    if it doesn't exist for the current verison of visivo.
+# Only present in a source checkout; an installed package has no viewer sources.
+VIEWER_SCHEMA_FILE = (
+    Path(__file__).resolve().parent.parent
+    / "viewer"
+    / "src"
+    / "schemas"
+    / "visivo_project_schema.json"
+)
 
-    Args:
-        output_dir: Directory to write schema file
-    """
+
+def write_schema_json() -> None:
+    """Write the Visivo Project schema for the current CLI version, and the viewer's
+    copy of it when the viewer sources are here."""
 
     try:
         Logger.instance().info(f"Generating schema file: {SCHEMA_FILE}...")
 
         schema = reload_and_generate_schema()
-        with open(SCHEMA_FILE, "w") as f:
-            f.write(schema)
-        Logger.instance().info(f"Schema file written to: {SCHEMA_FILE}")
+        targets = [SCHEMA_FILE]
+        if VIEWER_SCHEMA_FILE.parent.is_dir():
+            targets.append(VIEWER_SCHEMA_FILE)
+        for target in targets:
+            with open(target, "w") as f:
+                f.write(schema)
+            Logger.instance().info(f"Schema file written to: {target}")
     except Exception as e:
         Logger.instance().error(f"Error writing schema file: {str(e)}")
         raise e
