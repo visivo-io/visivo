@@ -46,17 +46,16 @@ CAPABILITY_PATH = "/api/inference/"
 # --- the routes core exposes, and the only place any of them is written -----
 #
 # Core takes the project two ways: a query parameter on the per-type endpoints
-# the viewer uses, and a path segment on the agent and run ones. Both shapes
-# are real, so both are here, and the methods below pick one rather than
-# spelling a path.
+# the viewer uses, and a path segment on the agent and run ones. SCOPED_* are
+# suffixes that `_scoped` puts after PROJECT.
 TYPE_LIST = "/api/{type_key}/"
 TYPE_DETAIL = "/api/{type_key}/{name}/"
-PROJECT = "/api/projects/{project_id}"
-PROJECT_RUNS = "/run/"
-PROJECT_CHANGES = "/changes/"
 RUN_LOGS = "/api/runs/{run_id}/logs/"
-AGENT_RENDER_TOKEN = "/agent/render-token/"
-AGENT_CAPTURES = "/agent/captures/"
+PROJECT = "/api/projects/{project_id}"
+SCOPED_RUNS = "/run/"
+SCOPED_CHANGES = "/changes/"
+SCOPED_AGENT_RENDER_TOKEN = "/agent/render-token/"
+SCOPED_AGENT_CAPTURES = "/agent/captures/"
 
 
 class CloudApiError(Exception):
@@ -146,7 +145,7 @@ class CloudApi:
     def runs(self):
         """Recent runs, newest first. Raises rather than answering empty: an
         agent reads "no runs" as "nothing failed"."""
-        url = self._scoped(PROJECT_RUNS)
+        url = self._scoped(SCOPED_RUNS)
         response = self.session.get(url, timeout=FETCH_TIMEOUT_SECONDS)
         if response.status_code != 200:
             raise CloudApiError(_why("read runs", url, response))
@@ -154,7 +153,7 @@ class CloudApi:
 
     def staged(self):
         """The changes no run has built, as core's Run view lists them."""
-        url = self._scoped(PROJECT_CHANGES)
+        url = self._scoped(SCOPED_CHANGES)
         response = self.session.get(url, timeout=FETCH_TIMEOUT_SECONDS)
         if response.status_code != 200:
             raise CloudApiError(_why("read unbuilt changes", url, response))
@@ -162,7 +161,7 @@ class CloudApi:
 
     def start_run(self):
         """Build what is staged. A run already in flight is left to finish."""
-        url = self._scoped(PROJECT_RUNS)
+        url = self._scoped(SCOPED_RUNS)
         response = self.session.post(url, json={}, timeout=SAVE_TIMEOUT_SECONDS)
         if response.status_code == 409:
             return (response.json() or {}).get("run")
@@ -193,7 +192,7 @@ class CloudApi:
         credentialed browser then loads. A dashboard core does not have is a
         404, before any browser starts.
         """
-        url = self._scoped(AGENT_RENDER_TOKEN)
+        url = self._scoped(SCOPED_AGENT_RENDER_TOKEN)
         response = self.session.post(
             url, json={"dashboard": dashboard}, timeout=SAVE_TIMEOUT_SECONDS
         )
@@ -212,7 +211,7 @@ class CloudApi:
         tool should be making.
         """
         name = f"{dashboard}-{uuid.uuid4().hex[:8]}.png"
-        url = self._scoped(AGENT_CAPTURES)
+        url = self._scoped(SCOPED_AGENT_CAPTURES)
         response = self.session.post(url, json=[{"filename": name}], timeout=SAVE_TIMEOUT_SECONDS)
         if response.status_code not in (200, 201):
             raise CloudApiError(_why("get an upload URL for a screenshot", url, response))
