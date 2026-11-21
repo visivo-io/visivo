@@ -24,6 +24,15 @@ def empty_log():
     log().clear()
 
 
+@pytest.fixture(autouse=True)
+def no_real_builds(monkeypatch):
+    """The end-of-turn build has its own tests below; elsewhere it would build
+    the integration project after every turn that wrote."""
+    from visivo.agent import loop
+
+    monkeypatch.setattr(loop, "_build_check", lambda app: None)
+
+
 def _model(*turns):
     """A model that replays `turns` in order, then stops with text."""
     seen = {"n": 0}
@@ -502,3 +511,127 @@ class TestWhatTheAgentIsToldAboutBuilds:
         """Prose telling the agent to call something it has not been given is
         the one failure mode this cannot afford."""
         assert "check_runs" in TOOLS
+
+
+_MARKDOWN = {"config": {"name": "notes", "content": "# hi"}}
+
+
+def _builds(*results):
+    """A build check that answers ``results`` in order and counts its calls."""
+    seen = []
+
+    def check(app):
+        seen.append(app)
+        return results[min(len(seen), len(results)) - 1]
+
+    check.calls = seen
+    return check
+
+
+def _retry_prompts(messages):
+    from pydantic_ai.messages import RetryPromptPart
+
+    return [
+        part.content
+        for message in messages
+        for part in getattr(message, "parts", [])
+        if isinstance(part, RetryPromptPart)
+    ]
+
+
+class TestItBuildsBeforeItReplies:
+    """VIS-1862: the agent said a dashboard was created when nothing had been
+    built, and that runs were successful while two had failed."""
+
+    def test_a_reply_after_a_write_waits_for_the_build(self, integration_app):
+        check = _builds({"settled": True, "ok": True, "state": "succeeded"})
+        agent = build_agent(
+            integration_app, _model(_calls("write_markdown", _MARKDOWN)), build_check=check
+        )
+
+        result = agent.run_sync("add notes")
+
+        assert result.output == "Done."
+        assert len(check.calls) == 1
+
+    def test_a_reply_with_no_write_builds_nothing(self, integration_app):
+        check = _builds({"settled": True, "ok": True})
+        agent = build_agent(integration_app, _model(_calls("list_models", {})), build_check=check)
+
+        agent.run_sync("what is here?")
+
+        assert check.calls == []
+
+    def test_a_failed_build_goes_back_to_the_model(self, integration_app):
+        failed = {"settled": True, "ok": False, "state": "failed", "logs": "no column 'total'"}
+        check = _builds(failed, {"settled": True, "ok": True, "state": "succeeded"})
+        model = _model(
+            _calls("write_markdown", _MARKDOWN),
+            lambda messages, info: ModelResponse(parts=[TextPart("Built it.")]),
+            _calls("write_markdown", _MARKDOWN),
+        )
+        agent = build_agent(integration_app, model, build_check=check)
+
+        result = agent.run_sync("add notes")
+
+        retries = _retry_prompts(result.all_messages())
+        assert len(retries) == 1
+        assert "no column 'total'" in retries[0]
+        assert result.output == "Done."
+        assert len(check.calls) == 2
+
+    def test_a_build_that_keeps_failing_is_stated_in_the_reply(self, integration_app):
+        from visivo.agent.loop import MAX_BUILD_FIX_ROUNDS
+
+        failed = {"settled": True, "ok": False, "state": "failed", "logs": "no column 'total'"}
+        check = _builds(failed)
+        agent = build_agent(
+            integration_app, _model(_calls("write_markdown", _MARKDOWN)), build_check=check
+        )
+
+        result = agent.run_sync("add notes")
+
+        assert len(check.calls) == MAX_BUILD_FIX_ROUNDS + 1
+        assert result.output.startswith("Done.")
+        assert "The last build of these changes failed" in result.output
+        assert "no column 'total'" in result.output
+
+    def test_an_unfinished_build_is_not_reported_as_done(self, integration_app):
+        from visivo.agent.loop import BUILD_NOT_SETTLED_RETRY
+
+        check = _builds({"settled": False, "ok": False}, {"settled": True, "ok": True})
+        agent = build_agent(
+            integration_app, _model(_calls("write_markdown", _MARKDOWN)), build_check=check
+        )
+
+        result = agent.run_sync("add notes")
+
+        assert _retry_prompts(result.all_messages()) == [BUILD_NOT_SETTLED_RETRY]
+
+    def test_a_build_that_never_finishes_is_not_called_a_failure(self, integration_app):
+        check = _builds({"settled": False, "ok": False})
+        agent = build_agent(
+            integration_app, _model(_calls("write_markdown", _MARKDOWN)), build_check=check
+        )
+
+        result = agent.run_sync("add notes")
+
+        assert "could not check the build" in result.output
+        assert "still running" in result.output
+        assert "failed" not in result.output
+
+    def test_a_build_that_cannot_be_checked_is_stated_in_the_reply(self, integration_app):
+        def unreachable(app):
+            raise RuntimeError("core refused the runs list (401)")
+
+        agent = build_agent(
+            integration_app, _model(_calls("write_markdown", _MARKDOWN)), build_check=unreachable
+        )
+
+        result = agent.run_sync("add notes")
+
+        assert "could not check the build" in result.output
+        assert "401" in result.output
+
+    def test_the_model_is_told_the_build_happens_when_it_replies(self):
+        assert "Visivo builds what you wrote before the user sees your reply" in INSTRUCTIONS
