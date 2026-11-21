@@ -306,3 +306,96 @@ class TestAModelsInlineFieldMayNotShadowAProjectLevelName:
         )
 
         assert response.status_code == 201
+
+
+def _inline_chart(*insight_names):
+    return {"insights": [{"name": name, **INSIGHT} for name in insight_names]}
+
+
+DEFINED_AGAIN = "Refer to the existing one as ${ref(trips)} instead of defining it again."
+
+
+class TestAnInlineDefinitionMayNotTakeAName:
+    """VIS-1863: the agent wrote an insight, then a chart holding a copy of it.
+    Every write succeeded and the project failed to build: "Insight name ... is
+    not unique in the project"."""
+
+    def test_the_api_refuses_a_chart_that_redefines_an_insight(
+        self, integration_app, integration_client
+    ):
+        assert _post(integration_client, "insights", "trips", INSIGHT).status_code == 201
+
+        response = _post(integration_client, "charts", "by_day", _inline_chart("trips"))
+
+        assert response.status_code == 409
+        assert "'trips' is already the name of an insight" in response.get_json()["error"]
+        assert DEFINED_AGAIN in response.get_json()["error"]
+        assert integration_app.chart_manager.get("by_day") is None
+
+    def test_the_agent_cannot_either(self, integration_app):
+        call(integration_app, "write_insight", {"config": {"name": "trips", **INSIGHT}})
+
+        with pytest.raises(ToolError, match=r"'trips' is already the name of an insight"):
+            call(
+                integration_app,
+                "write_chart",
+                {"config": {"name": "by_day", **_inline_chart("trips")}},
+            )
+
+        assert integration_app.chart_manager.get("by_day") is None
+
+    def test_a_ref_to_it_is_fine(self, integration_client):
+        _post(integration_client, "insights", "trips", INSIGHT)
+
+        response = _post(integration_client, "charts", "by_day", {"insights": ["${ref(trips)}"]})
+
+        assert response.status_code == 201
+
+    def test_an_insight_may_not_take_a_name_a_chart_defines_inline(
+        self, integration_app, integration_client
+    ):
+        assert (
+            _post(integration_client, "charts", "by_day", _inline_chart("trips")).status_code == 201
+        )
+
+        response = _post(integration_client, "insights", "trips", INSIGHT)
+
+        assert response.status_code == 409
+        assert (
+            "'trips' is already the name of an insight defined inside chart 'by_day'"
+            in response.get_json()["error"]
+        )
+        with pytest.raises(ToolError, match="defined inside chart 'by_day'"):
+            call(integration_app, "write_insight", {"config": {"name": "trips", **INSIGHT}})
+
+    def test_two_charts_may_not_define_the_same_insight(self, integration_client):
+        _post(integration_client, "charts", "by_day", _inline_chart("trips"))
+
+        response = _post(integration_client, "charts", "by_week", _inline_chart("trips"))
+
+        assert response.status_code == 409
+        assert "defined inside chart 'by_day'" in response.get_json()["error"]
+
+    def test_one_chart_may_not_define_it_twice(self, integration_client):
+        response = _post(integration_client, "charts", "by_day", _inline_chart("trips", "trips"))
+
+        assert response.status_code == 409
+
+    def test_a_chart_read_from_the_project_keeps_its_inline_insight(
+        self, integration_app, integration_client
+    ):
+        """The integration project's dashboard defines chart 'chart' inline, with
+        insight 'insight' inline in it. Editing either must still work."""
+        assert integration_app.chart_manager.get("chart") is not None
+
+        chart = _post(integration_client, "charts", "chart", _inline_chart("insight"))
+        insight = _post(integration_client, "insights", "insight", INSIGHT)
+
+        assert chart.status_code == 200
+        assert insight.status_code == 200
+
+    def test_a_new_chart_may_not_copy_a_published_inline_insight(self, integration_client):
+        response = _post(integration_client, "charts", "copy", _inline_chart("insight"))
+
+        assert response.status_code == 409
+        assert "'insight' is already the name of an insight" in response.get_json()["error"]
