@@ -611,14 +611,6 @@ entries:
     - studio
     - dist
     reason: 'Cloud gap: core renders thumbnails in a job, not on request. The viewer does not call it in the cloud.'
-  mePreferences:
-    path: /api/me/preferences/
-    verbs:
-    - GET
-    - PUT
-    serves:
-    - studio
-    - cloud
   workspaceTelemetry:
     path: /api/telemetry/workspace-event/
     verbs: []

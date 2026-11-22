@@ -31,7 +31,7 @@ const failedJobCount = run => diagnosticsFrom(run?.error_json).length;
 
 // What the staged panel says when nothing is staged. "Everything built" is only
 // true when the newest run succeeded (or there is no run to contradict it).
-const idleStatus = lastRun => {
+const idleStatus = (lastRun, runTrigger) => {
   if (lastRun?.state === 'failed') {
     const jobs = failedJobCount(lastRun);
     return {
@@ -53,7 +53,10 @@ const idleStatus = lastRun => {
   return {
     key: 'built',
     title: 'No changes waiting to run',
-    body: 'Everything built. Editing a query, model or source will queue work here.',
+    body:
+      runTrigger === 'manual'
+        ? 'Everything built. Your edits to a query, model or source will wait here.'
+        : 'Everything built. Editing a query, model or source will queue work here.',
   };
 };
 
@@ -67,10 +70,8 @@ const scopeLabel = run => run.dag_filter || (run.state === 'queued' ? '—' : 'a
  * The list is exactly what the run will build — the server derives the scope from
  * the same unbuilt set it lists here, so the two can't drift apart.
  *
- * "Run all" (a deliberate full rebuild) and the Automatic/Manual toggle live
- * ABOVE this box, not in it: both are global — they act on everything, not on
- * this project's staged set — so mixing them into the changes box read as if
- * "Run all" were one of the changes. The box holds only the button that runs
+ * "Run all" (a deliberate full rebuild) sits ABOVE this box, not in it: it acts
+ * on everything, not on this project's staged set. The box holds only the button that runs
  * the changes it lists. Run all stays available even with changes staged: it's
  * the only way back when outputs are missing or corrupt but the fingerprints
  * say they're built.
@@ -80,7 +81,7 @@ function StagedPanel({ heading, lastRun, onViewRun }) {
   const queryClient = useQueryClient();
   const staged = useStore(s => s.stagedChanges);
   const runTrigger = useStore(s => s.runTrigger);
-  const setRunTrigger = useStore(s => s.setRunTrigger);
+  const preferencesUrl = useStore(s => s.preferencesUrl);
   const triggerRun = useStore(s => s.triggerRun);
   const latestRun = useStore(s => s.latestRun);
   const [error, setError] = useState(null);
@@ -89,7 +90,7 @@ function StagedPanel({ heading, lastRun, onViewRun }) {
   const running = latestRun ? isActiveRun(latestRun) : false;
   const count = staged.length;
   const busy = running || starting;
-  const idle = idleStatus(lastRun);
+  const idle = idleStatus(lastRun, runTrigger);
   const showFailure = lastRun?.state === 'failed';
 
   const startRun = async opts => {
@@ -124,7 +125,7 @@ function StagedPanel({ heading, lastRun, onViewRun }) {
       <div className="flex items-center justify-between gap-3 mb-3">
         {heading}
         <div className="flex items-center gap-3">
-          <RunTriggerToggle value={runTrigger} onChange={setRunTrigger} />
+          <RunTriggerHint value={runTrigger} href={preferencesUrl} />
           <button
             type="button"
             onClick={onRunAll}
@@ -214,42 +215,19 @@ function StagedTypeBadge({ type }) {
   );
 }
 
-/**
- * Automatic vs manual. Lives here rather than in the top bar because this is the
- * only screen where the consequence is visible — and it's where the tab dot sends
- * someone wondering why their changes aren't running.
- *
- * The scope caption is deliberately visible text, not a tooltip: assuming this is
- * per-project is the obvious mistake to make.
- */
-function RunTriggerToggle({ value, onChange }) {
-  if (!onChange) return null;
+function RunTriggerHint({ value, href }) {
+  if (!href || !value) return null;
   return (
-    <div className="text-right">
-      <div
-        className="inline-flex rounded border overflow-hidden text-xs"
-        role="group"
-        aria-label="When to run"
-      >
-        {[
-          ['automatic', 'Automatic'],
-          ['manual', 'Manual'],
-        ].map(([mode, label]) => (
-          <button
-            key={mode}
-            type="button"
-            aria-pressed={value === mode}
-            onClick={() => value !== mode && onChange(mode)}
-            className={`px-2 py-1 ${
-              value === mode ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <p className="text-[10px] text-gray-400 mt-0.5">Applies to all your projects.</p>
-    </div>
+    <p className="text-xs text-gray-600" data-testid="runs-trigger-hint">
+      Your edits:{' '}
+      <span className="font-semibold text-gray-900">
+        {value === 'manual' ? 'Manual' : 'Automatic'}
+      </span>
+      {' · '}
+      <a href={href} className="text-primary underline">
+        Change in profile
+      </a>
+    </p>
   );
 }
 

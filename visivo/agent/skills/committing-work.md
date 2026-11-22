@@ -16,8 +16,7 @@ prefer making the change over asking permission for each step.
 # A change you have not built is not finished
 
 A draft is configuration; only a build turns it into data a chart can read. A
-data write reports `change: "ran"` (a build started) or `"staged"` (nothing
-built).
+data write reports `change: "ran"` when it started a build.
 
 Before saying the work is done, call `check_runs`: it reports whether the newest
 run succeeded.
@@ -27,7 +26,7 @@ run succeeded.
   build succeeded; if you cannot fix it, say so and quote them.
 - `settled: false` — still building. Check again rather than reporting a failure
   you have not seen.
-- Nothing ran — say the change is staged and unverified.
+- Nothing ran — say the change is unverified.
 
 # Look before you say it is not there
 

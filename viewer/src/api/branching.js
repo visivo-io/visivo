@@ -5,7 +5,7 @@ import { apiFetch } from './utils';
  * Branching API — the shape of the project you are editing: capabilities,
  * draft, branch, discard, the pending-changes set, and commit.
  *
- * Runs live in api/runs.js and user preferences in api/preferences.js. They were
+ * Runs live in api/runs.js. They were
  * here once only because the cloud endpoints landed together; a run is the
  * execution of a project, not an operation on its branching state.
  *

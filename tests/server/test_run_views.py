@@ -10,7 +10,6 @@ import pytest
 
 from visivo.constants import DEFAULT_RUN_ID
 
-from visivo.server import user_config
 from visivo.server.managers.run_manager import Run, RunManager, RunState
 from visivo.server.managers.staged_manager import StagedManager
 from visivo.server.managers.model_manager import ModelManager
@@ -23,7 +22,7 @@ from visivo.server.views.run_views import (
     RESOURCE_META,
     _resource_fingerprint,
     resource_fingerprint,
-    stage_and_maybe_run,
+    stage_and_run,
 )
 from tests.factories.model_factories import (
     SqlModelFactory,
@@ -47,15 +46,6 @@ def clean_run_state():
         save_run_executor._pending_timer = None
         save_run_executor._pending_names.clear()
     yield
-
-
-@pytest.fixture(autouse=True)
-def automatic_trigger(monkeypatch):
-    """The existing suite was written when every data save ran immediately, so
-    keep that as the baseline. The manual path has its own class below."""
-    monkeypatch.setattr(
-        "visivo.server.views.run_views.get_run_trigger", lambda: user_config.AUTOMATIC
-    )
 
 
 class TestRunManager:
@@ -608,7 +598,7 @@ class TestUnmappedAndFailurePaths:
     run-on-save hooks or the run endpoints can turn a save into a 500."""
 
     def test_an_unmapped_type_neither_stages_nor_fingerprints(self, integration_app):
-        assert stage_and_maybe_run(integration_app, "explorations", "x", None) is None
+        assert stage_and_run(integration_app, "explorations", "x", None) is None
         assert resource_fingerprint(integration_app, "explorations", "x") is None
 
     def test_a_missing_manager_has_no_fingerprint(self):
@@ -622,9 +612,7 @@ class TestUnmappedAndFailurePaths:
         assert r.status_code == 201
 
     def test_a_failing_run_on_save_does_not_break_the_save(self, integration_client):
-        with patch(
-            "visivo.server.views.run_views.stage_and_maybe_run", side_effect=RuntimeError("x")
-        ):
+        with patch("visivo.server.views.run_views.stage_and_run", side_effect=RuntimeError("x")):
             r = integration_client.post("/api/models/m/", json={"sql": "select 1 as x"})
         assert r.status_code == 201
 
@@ -636,32 +624,13 @@ class TestUnmappedAndFailurePaths:
         assert triggered.status_code == 500 and triggered.get_json() == {"error": "down"}
 
 
-class TestTriggerMode:
-    """Whether a save fires a run is the user's choice; whether it *stages* is
-    not. Both modes record the change — that's what the Run view lists, and what
-    the Run button builds."""
+class TestASaveStagesAndRuns:
+    """Local serve has no run trigger: every data save is staged and run."""
 
     def _save_insight(self, client, name, props):
         return client.post(f"/api/insights/{name}/", json={"props": props})
 
-    def _manual(self, monkeypatch):
-        monkeypatch.setattr(
-            "visivo.server.views.run_views.get_run_trigger", lambda: user_config.MANUAL
-        )
-
-    def test_manual_stages_without_running(self, integration_client, monkeypatch):
-        self._manual(monkeypatch)
-        with patch("visivo.server.views.run_views.request_run") as req:
-            r = self._save_insight(
-                integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).a} }"}
-            )
-        assert r.status_code == 201
-        req.assert_not_called()
-        assert StagedManager.instance().list() == [
-            {"name": "w", "type": "insight", "status": "modified"}
-        ]
-
-    def test_automatic_stages_and_runs(self, integration_client):
+    def test_a_save_stages_and_runs(self, integration_client):
         with patch("visivo.server.views.run_views.request_run") as req:
             self._save_insight(
                 integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).a} }"}
@@ -669,10 +638,7 @@ class TestTriggerMode:
         req.assert_called_once()
         assert [i["name"] for i in StagedManager.instance().list()] == ["w"]
 
-    def test_a_presentation_only_edit_stages_nothing_in_either_mode(
-        self, integration_client, monkeypatch
-    ):
-        self._manual(monkeypatch)
+    def test_a_presentation_only_edit_stages_nothing(self, integration_client):
         with patch("visivo.server.views.run_views.request_run"):
             self._save_insight(
                 integration_client,
@@ -687,8 +653,7 @@ class TestTriggerMode:
             )
         assert StagedManager.instance().list() == []
 
-    def test_a_deleted_new_resource_unstages(self, integration_client, monkeypatch):
-        self._manual(monkeypatch)
+    def test_a_deleted_new_resource_unstages(self, integration_client):
         with patch("visivo.server.views.run_views.request_run"):
             self._save_insight(
                 integration_client, "w", {"type": "scatter", "x": "?{ ${ref(M).a} }"}
@@ -722,23 +687,19 @@ class TestDiscardedCreations:
             **{RESOURCE_META[type_key][0]: manager_class()},
         )
 
-    @pytest.mark.parametrize("trigger", [user_config.MANUAL, user_config.AUTOMATIC])
-    def test_create_then_delete_cancels_the_staged_change(
-        self, type_key, manager_class, factory, trigger, monkeypatch
-    ):
-        monkeypatch.setattr("visivo.server.views.run_views.get_run_trigger", lambda: trigger)
+    def test_create_then_delete_cancels_the_staged_change(self, type_key, manager_class, factory):
         app = self._app(type_key, manager_class)
         manager = getattr(app, RESOURCE_META[type_key][0])
         app.staged_manager.record("model", "keep", "keep-hash")
         before = resource_fingerprint(app, type_key, "new")
         manager.save("new", factory(name="new"))
         with patch("visivo.server.views.run_views.request_run") as req:
-            stage_and_maybe_run(app, type_key, "new", before)
+            stage_and_run(app, type_key, "new", before)
             assert "new" in [item["name"] for item in app.staged_manager.list()]
             req.reset_mock()
             before = resource_fingerprint(app, type_key, "new")
             manager.mark_for_deletion("new")
-            stage_and_maybe_run(app, type_key, "new", before, deleted=True)
+            stage_and_run(app, type_key, "new", before, deleted=True)
             req.assert_not_called()
         assert app.staged_manager.list() == [
             {"type": "model", "name": "keep", "status": "modified"}
@@ -747,11 +708,8 @@ class TestDiscardedCreations:
 
     @pytest.mark.parametrize("published", [False, True])
     def test_deletion_of_a_built_or_published_object_stays_staged(
-        self, type_key, manager_class, factory, published, monkeypatch
+        self, type_key, manager_class, factory, published
     ):
-        monkeypatch.setattr(
-            "visivo.server.views.run_views.get_run_trigger", lambda: user_config.MANUAL
-        )
         app = self._app(type_key, manager_class)
         manager = getattr(app, RESOURCE_META[type_key][0])
         obj = factory(name="existing")
@@ -760,11 +718,11 @@ class TestDiscardedCreations:
         else:
             before = resource_fingerprint(app, type_key, obj.name)
             manager.save(obj.name, obj)
-            stage_and_maybe_run(app, type_key, obj.name, before)
+            stage_and_run(app, type_key, obj.name, before)
             app.staged_manager.mark_built()
         before = resource_fingerprint(app, type_key, obj.name)
         manager.mark_for_deletion(obj.name)
-        stage_and_maybe_run(app, type_key, obj.name, before, deleted=True)
+        stage_and_run(app, type_key, obj.name, before, deleted=True)
         assert app.staged_manager.list() == [
             {"type": type_key[:-1], "name": obj.name, "status": "deleted"}
         ]
@@ -778,10 +736,10 @@ class TestDiscardedCreations:
         before = resource_fingerprint(app, type_key, "new")
         manager.save("new", factory(name="new"))
         with patch.object(save_run_executor.threading, "Timer") as timer:
-            stage_and_maybe_run(app, type_key, "new", before)
+            stage_and_run(app, type_key, "new", before)
             before = resource_fingerprint(app, type_key, "new")
             manager.mark_for_deletion("new")
-            stage_and_maybe_run(app, type_key, "new", before, deleted=True)
+            stage_and_run(app, type_key, "new", before, deleted=True)
             timer.return_value.cancel.assert_called_once()
         with patch.object(save_run_executor, "run_now") as run_now:
             save_run_executor._fire(app)
@@ -970,30 +928,11 @@ class TestTriggerRunEndpoint:
         assert "created_at" in body
 
 
-class TestPreferencesEndpoint:
-    @pytest.fixture(autouse=True)
-    def config_in_tmp(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(
-            user_config, "user_config_path", lambda: tmp_path / ".visivo" / "config.yml"
-        )
-
-    def test_get_reports_the_local_default(self, integration_client):
-        r = integration_client.get("/api/me/preferences/")
-        assert r.status_code == 200
-        assert r.get_json() == {"run_trigger": "automatic"}
-
-    def test_put_round_trips(self, integration_client):
-        r = integration_client.put("/api/me/preferences/", json={"run_trigger": "manual"})
-        assert r.status_code == 200
-        assert r.get_json()["run_trigger"] == "manual"
-        assert integration_client.get("/api/me/preferences/").get_json() == {
-            "run_trigger": "manual"
-        }
-
-    def test_an_unknown_value_is_rejected(self, integration_client):
-        r = integration_client.put("/api/me/preferences/", json={"run_trigger": "sometimes"})
-        assert r.status_code == 400
-        assert user_config.get_run_trigger() == "automatic"
+class TestNoRunTriggerLocally:
+    def test_there_is_no_preferences_endpoint(self, integration_client):
+        assert integration_client.put(
+            "/api/me/preferences/", json={"run_trigger": "manual"}
+        ).status_code in (404, 405)
 
 
 class TestChangesCarriesStaged:
@@ -1005,4 +944,4 @@ class TestChangesCarriesStaged:
         # …and the new ones sit alongside them.
         assert body["staged"] == [{"name": "db", "type": "source", "status": "modified"}]
         assert body["staged_dag_filter"] == "+db+"
-        assert body["run_trigger"] in ("automatic", "manual")
+        assert "run_trigger" not in body

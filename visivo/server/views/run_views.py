@@ -31,7 +31,6 @@ from visivo.logger.logger import Logger
 from visivo.server.hash.data_fingerprint import data_fingerprint
 from visivo.server.jobs.save_run_executor import cancel_pending_run, request_run, run_now
 from visivo.server.managers.object_manager import location_free_dump
-from visivo.server.user_config import AUTOMATIC, get_run_trigger
 
 # URL segment -> (manager attr, fingerprint mode, data_producing). Public so the
 # resource→data-mode mapping is easy to find. Mirrors core's per-type DATA_MODE /
@@ -73,16 +72,15 @@ _RESOURCE_ROUTE_RE = re.compile(
 )
 
 
-def stage_and_maybe_run(flask_app, type_key, name, before, *, deleted=False):
-    """Stage a write and, when the trigger is AUTOMATIC, run it.
+def stage_and_run(flask_app, type_key, name, before, *, deleted=False):
+    """Stage a write and run it.
 
     Shared by the ``after_request`` hook below and the agent's write tools,
     which save in-process and so never pass through a request.
 
-    Returns ``"ran"``, ``"staged"``, or ``None`` when the write did not move the
-    data fingerprint. Staging happens whether or not a run fires: the staged set
-    is what the Run view lists and what makes the top bar offer Commit instead
-    of Deploy.
+    Returns ``"ran"``, or ``None`` when the write did not move the data
+    fingerprint. The write is staged as well: the staged set is what the Run
+    view lists and what makes the top bar offer Commit instead of Deploy.
     """
     if type_key not in RESOURCE_META:
         return None
@@ -104,10 +102,8 @@ def stage_and_maybe_run(flask_app, type_key, name, before, *, deleted=False):
         after,
         status="deleted" if deleted else "modified",
     )
-    if get_run_trigger() == AUTOMATIC:
-        request_run(flask_app, [name])
-        return "ran"
-    return "staged"
+    request_run(flask_app, [name])
+    return "ran"
 
 
 def resource_fingerprint(flask_app, type_key, name, *, deleted=False):
@@ -160,7 +156,7 @@ def register_run_views(app, flask_app, output_dir):
                 if resource:
                     segment, name = resource
                     deleted = request.method == "DELETE"
-                    stage_and_maybe_run(
+                    stage_and_run(
                         flask_app,
                         segment,
                         name,

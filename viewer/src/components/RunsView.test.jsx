@@ -348,17 +348,16 @@ describe('RunsView staged panel', () => {
 
   const setup = (state = {}) => {
     const triggerRun = jest.fn().mockResolvedValue({ success: true });
-    const setRunTrigger = jest.fn();
     useStore.setState({
       project: { id: 'p1' },
       stagedChanges: staged,
       runTrigger: 'manual',
+      preferencesUrl: '/profile',
       latestRun: null,
       triggerRun,
-      setRunTrigger,
       ...state,
     });
-    return { triggerRun, setRunTrigger };
+    return { triggerRun };
   };
 
   test('lists what a run would build', () => {
@@ -517,23 +516,43 @@ describe('RunsView staged panel', () => {
     expect(screen.getByRole('button', { name: 'Run all' })).toBeEnabled();
   });
 
-  test('the toggle reflects and changes the trigger mode', () => {
-    const { setRunTrigger } = setup();
-    mockQueries({ runs: [] });
-    render(<RunsView />);
-    expect(screen.getByRole('button', { name: 'Manual' })).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Automatic' }));
-    expect(setRunTrigger).toHaveBeenCalledWith('automatic');
-  });
-
-  test('the scope is stated in the control, not hidden in a tooltip', () => {
+  test('the header names the setting and links to the profile, with no toggle', () => {
     setup();
     mockQueries({ runs: [] });
     render(<RunsView />);
-    expect(screen.getByText('Applies to all your projects.')).toBeInTheDocument();
+    expect(screen.getByTestId('runs-trigger-hint')).toHaveTextContent('Your edits: Manual');
+    expect(screen.getByRole('link', { name: 'Change in profile' })).toHaveAttribute(
+      'href',
+      '/profile'
+    );
+    expect(screen.queryByRole('button', { name: 'Automatic' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Manual' })).not.toBeInTheDocument();
+  });
+
+  test('a server without the setting shows no hint', () => {
+    setup({ runTrigger: null, preferencesUrl: null });
+    mockQueries({ runs: [] });
+    render(<RunsView />);
+    expect(screen.queryByTestId('runs-trigger-hint')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Run all' })).toBeInTheDocument();
+  });
+
+  test('on Manual, an empty panel says edits wait here', () => {
+    setup({ stagedChanges: [] });
+    mockQueries({ runs: [] });
+    render(<RunsView />);
+    expect(
+      screen.getByText('Everything built. Your edits to a query, model or source will wait here.')
+    ).toBeInTheDocument();
+  });
+
+  test('on Automatic, an empty panel says edits queue work', () => {
+    setup({ stagedChanges: [], runTrigger: 'automatic' });
+    mockQueries({ runs: [] });
+    render(<RunsView />);
+    expect(
+      screen.getByText('Everything built. Editing a query, model or source will queue work here.')
+    ).toBeInTheDocument();
   });
 });
 

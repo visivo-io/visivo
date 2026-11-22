@@ -499,12 +499,8 @@ def _project_files(output_dir):
 
 
 class TestAWriteStagesAndRuns:
-    """A person's edit reaches staging and the run trigger through the
-    ``after_request`` hook on ``POST /api/<type>/<name>/``. The agent saves
-    in-process, so it never passed through a request — its writes staged
-    nothing (leaving the top bar offering Deploy rather than Commit) and never
-    triggered a run, however ``run_trigger`` was set.
-    """
+    """The agent saves in-process, so it misses the ``after_request`` hook that
+    stages and runs a person's edit. Its write tool stages and runs instead."""
 
     def _staged_names(self, app):
         records = app.staged_manager.list() if hasattr(app.staged_manager, "list") else []
@@ -531,11 +527,10 @@ class TestAWriteStagesAndRuns:
         assert "change" not in result
         assert "agent-note-only" not in self._staged_names(integration_app)
 
-    def test_an_automatic_trigger_requests_a_run(self, integration_app, monkeypatch):
+    def test_a_write_requests_a_run(self, integration_app, monkeypatch):
         import visivo.server.views.run_views as run_views
 
         requested = []
-        monkeypatch.setattr(run_views, "get_run_trigger", lambda: run_views.AUTOMATIC)
         monkeypatch.setattr(
             run_views, "request_run", lambda app, names: requested.append(list(names))
         )
@@ -548,27 +543,6 @@ class TestAWriteStagesAndRuns:
 
         assert requested == [["agent-model"]]
         assert result["change"] == "ran"
-
-    def test_a_manual_trigger_stages_without_running(self, integration_app, monkeypatch):
-        """The staged set still has to be recorded — it is what the Run view
-        lists and what offers Commit — but nothing runs until asked."""
-        import visivo.server.views.run_views as run_views
-
-        requested = []
-        monkeypatch.setattr(run_views, "get_run_trigger", lambda: "manual")
-        monkeypatch.setattr(
-            run_views, "request_run", lambda app, names: requested.append(list(names))
-        )
-
-        result = call(
-            integration_app,
-            "write_model",
-            {"config": {"name": "agent-manual", "sql": "select 1 as n"}},
-        )
-
-        assert requested == []
-        assert result["change"] == "staged"
-        assert "agent-manual" in self._staged_names(integration_app)
 
 
 class TestRecommendChartsKnowsTheProjectsMetrics:
