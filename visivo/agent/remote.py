@@ -121,23 +121,13 @@ class RemoteProject:
             else (tempfile.mkdtemp(prefix="visivo-agent-"))
         )
         os.makedirs(self.output_dir, exist_ok=True)
-        # There is no parsed Project in cloud — the objects live in core and
-        # arrive as managers, not as a file this process read. Explicitly None
-        # rather than absent, so the callers that already reach for it
-        # defensively (`getattr(app.project, "defaults", None)`) get a None
-        # they handle instead of an AttributeError they do not.
-        #
-        # The cost is real and worth naming: no project defaults, so a model
-        # whose source is only implied by `defaults.source_name` cannot be
-        # resolved here. That degrades the SQL probe to "not judged", which is
-        # a documented outcome of it, rather than failing the write.
-        self.project = None
         self.run_manager = RemoteRunManager(client)
         self._managers = {}
         for type_key, attribute in TYPE_TO_MANAGER.items():
             manager = _hydrated(client, type_key)
             self._managers[type_key] = manager
             setattr(self, attribute, manager)
+        self.project = _published_project(self._managers)
         self.model_manager.dialect_lookup = partial(dialect_for_model, self)
         self.insight_manager.input_lookup = self.input_manager.get
         self.insight_manager.dialect_lookup = partial(dialect_for_insight, self)
@@ -145,6 +135,32 @@ class RemoteProject:
     @property
     def managers(self):
         return dict(self._managers)
+
+
+def _published_project(managers):
+    """The published tier as a ``Project``. Drafts are overlaid per call by
+    ``inject_cached_objects``, as they are locally."""
+    from copy import deepcopy
+
+    from pydantic import ValidationError
+
+    from visivo.models.project import Project
+    from visivo.server.jobs.project_injection import MANAGER_TO_PROJECT_FIELD
+    from visivo.server.rename_service import TYPE_TO_MANAGER
+
+    by_attribute = {TYPE_TO_MANAGER[key]: manager for key, manager in managers.items()}
+    fields = {}
+    for attribute, field in MANAGER_TO_PROJECT_FIELD:
+        manager = by_attribute.get(attribute)
+        if manager is not None:
+            fields[field] = [deepcopy(obj) for obj in manager.published_objects.values() if obj]
+    try:
+        return Project(**fields)
+    except ValidationError as error:
+        # A published ref that points at a draft or a missing row. Each call
+        # that needs the DAG reports it; the session still starts.
+        Logger.instance().debug(f"Published objects do not compile together: {error}")
+        return Project.model_construct(**fields)
 
 
 def _manager_for(type_key):
