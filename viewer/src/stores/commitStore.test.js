@@ -9,7 +9,6 @@
  */
 import useStore from './store';
 import * as branchingApi from '../api/branching';
-import * as preferencesApi from '../api/preferences';
 import * as commitApi from '../api/commit';
 import { emitFirstPublishTelemetry } from '../components/views/workspace/telemetry';
 import { restoreObject } from '../api/restore';
@@ -22,10 +21,6 @@ jest.mock('../api/branching', () => ({
 
 jest.mock('../api/restore', () => ({
   restoreObject: jest.fn(),
-}));
-
-jest.mock('../api/preferences', () => ({
-  savePreferences: jest.fn(),
 }));
 
 jest.mock('../api/commit', () => ({
@@ -405,6 +400,7 @@ describe('commitStore staged changes', () => {
       staged,
       staged_dag_filter: '+db+',
       run_trigger: 'manual',
+      preferences_url: '/profile',
     });
     await useStore.getState().checkCommitStatus();
     const state = useStore.getState();
@@ -412,6 +408,7 @@ describe('commitStore staged changes', () => {
     expect(state.stagedCount).toBe(1);
     expect(state.stagedDagFilter).toBe('+db+');
     expect(state.runTrigger).toBe('manual');
+    expect(state.preferencesUrl).toBe('/profile');
   });
 
   test('a server older than this viewer sends no staged keys and still works', () => {
@@ -429,6 +426,8 @@ describe('commitStore staged changes', () => {
         expect(useStore.getState().stagedChanges).toEqual([]);
         expect(useStore.getState().stagedCount).toBe(0);
         expect(useStore.getState().stagedDagFilter).toBe('');
+        expect(useStore.getState().runTrigger).toBeNull();
+        expect(useStore.getState().preferencesUrl).toBeNull();
       });
   });
 
@@ -437,22 +436,6 @@ describe('commitStore staged changes', () => {
     branchingApi.fetchChanges.mockRejectedValue(new Error('offline'));
     await useStore.getState().checkCommitStatus();
     expect(useStore.getState().stagedCount).toBe(0);
-  });
-
-  test('setRunTrigger applies immediately and keeps what the server stored', async () => {
-    preferencesApi.savePreferences.mockResolvedValue({ run_trigger: 'manual' });
-    const ok = await useStore.getState().setRunTrigger('manual');
-    expect(ok).toBe(true);
-    expect(preferencesApi.savePreferences).toHaveBeenCalledWith({ run_trigger: 'manual' });
-    expect(useStore.getState().runTrigger).toBe('manual');
-  });
-
-  test('setRunTrigger reverts when the save fails, so the toggle never lies', async () => {
-    useStore.setState({ runTrigger: 'automatic' });
-    preferencesApi.savePreferences.mockResolvedValue(null);
-    const ok = await useStore.getState().setRunTrigger('manual');
-    expect(ok).toBe(false);
-    expect(useStore.getState().runTrigger).toBe('automatic');
   });
 });
 

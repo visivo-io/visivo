@@ -179,10 +179,6 @@ const URL_PATTERNS = {
     dashboardThumbnail: '/api/dashboards/{name}.png/',
 
     // ---- Per-user / telemetry -------------------------------------------
-    // Both servers implement preferences — cloud off the User row, local off
-    // ~/.visivo/config.yml — with different defaults, which is how the viewer
-    // stays free of local-vs-cloud branching.
-    mePreferences: '/api/me/preferences/',
     // The local Flask server relays workspace events through the CLI's PostHog
     // client so the CLI telemetry opt-out + anonymization apply (VIS-822).
     workspaceTelemetry: '/api/telemetry/workspace-event/',

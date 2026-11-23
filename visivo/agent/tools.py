@@ -263,7 +263,7 @@ def _write_handler(type_key):
         if staging:
             from visivo.server.views.run_views import (
                 resource_fingerprint,
-                stage_and_maybe_run,
+                stage_and_run,
             )
 
             before = resource_fingerprint(app, type_key, name)
@@ -272,13 +272,9 @@ def _write_handler(type_key):
             manager.save(name, obj)
         except SaveRefusedError as error:
             raise ToolError(_refusal_text(type_key, name, error))
-        # A person's edit reaches this through the after_request hook on
-        # POST /api/<type>/<name>/. The agent saves in-process, so without this
-        # its writes stage nothing (leaving the top bar on Deploy) and never
-        # trigger a run, however run_trigger is set.
-        outcome = (
-            stage_and_maybe_run(app, type_key, name, before) if staging else _host_run_outcome(app)
-        )
+        # The agent saves in-process, so it misses the after_request hook that
+        # stages and runs a person's edit.
+        outcome = stage_and_run(app, type_key, name, before) if staging else _host_run_outcome(app)
         result = {"name": name, "status": "draft"}
         if outcome:
             result["change"] = outcome

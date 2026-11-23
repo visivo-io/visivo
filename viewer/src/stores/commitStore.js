@@ -1,5 +1,4 @@
 import * as branchingApi from '../api/branching';
-import * as preferencesApi from '../api/preferences';
 import { restoreObject } from '../api/restore';
 import { emitFirstPublishTelemetry } from '../components/views/workspace/telemetry';
 
@@ -64,9 +63,10 @@ const createCommitSlice = (set, get) => ({
   stagedChanges: [], // [{name, type, status}]
   stagedCount: 0,
   stagedDagFilter: '',
-  // 'automatic' | 'manual' — the user's own setting, echoed here for first
-  // paint. GET/PUT /api/me/preferences/ is the source of truth.
-  runTrigger: 'automatic',
+  // The person's own 'automatic' | 'manual' setting and where they change it.
+  // Only a server that has the setting sends them.
+  runTrigger: null,
+  preferencesUrl: null,
   commitLoading: false,
   commitError: null,
   // The machine-readable reason a commit was refused ('run_required' /
@@ -118,26 +118,13 @@ const createCommitSlice = (set, get) => ({
         stagedChanges: staged,
         stagedCount: staged.length,
         stagedDagFilter: changes.staged_dag_filter || '',
-        runTrigger: changes.run_trigger || get().runTrigger,
+        runTrigger: changes.run_trigger || null,
+        preferencesUrl: changes.preferences_url || null,
       });
     } catch (error) {
       // Endpoint may be unavailable (e.g. dist mode) — fail closed.
       set({ ...EMPTY_CHANGES });
     }
-  },
-
-  // Flip the run trigger. Optimistic so the toggle doesn't lag the click, then
-  // reconciled with whatever the server actually stored.
-  setRunTrigger: async runTrigger => {
-    const previous = get().runTrigger;
-    set({ runTrigger });
-    const saved = await preferencesApi.savePreferences({ run_trigger: runTrigger });
-    if (!saved) {
-      set({ runTrigger: previous });
-      return false;
-    }
-    set({ runTrigger: saved.run_trigger });
-    return true;
   },
 
   // Kept for callers that fetch the list directly; same source as the badge.

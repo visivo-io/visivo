@@ -6,7 +6,6 @@ from visivo.logger.logger import Logger
 from visivo.parsers.file_names import PROJECT_FILE_NAME
 from visivo.server.managers.object_manager import ObjectStatus, location_free_dump
 from visivo.server.project_writer import ProjectWriter
-from visivo.server.user_config import get_run_trigger
 
 
 def _env_file_keys(flask_app):
@@ -276,7 +275,6 @@ def register_commit_views(app, flask_app, output_dir):
                     "has_changes": bool(to_publish or to_remove),
                     "staged": flask_app.staged_manager.list(),
                     "staged_dag_filter": flask_app.staged_manager.dag_filter(),
-                    "run_trigger": get_run_trigger(),
                 }
             )
         except Exception as e:
