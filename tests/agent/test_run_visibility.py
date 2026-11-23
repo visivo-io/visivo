@@ -9,7 +9,9 @@ agent authors confidently and never learns it was wrong.
 import pytest
 
 from visivo.agent.tools import RUN_LOG_TAIL, ToolError, call
+from visivo.agent import runs as agent_runs
 from visivo.server.managers.run_manager import RunManager, RunState
+from visivo.server.managers.staged_manager import StagedManager
 
 
 @pytest.fixture
@@ -19,9 +21,11 @@ def runs(integration_app):
     would depend on test order."""
     manager = RunManager.instance()
     manager._init()
+    StagedManager.instance().clear()
     integration_app.run_manager = manager
     yield manager
     manager._init()
+    StagedManager.instance().clear()
 
 
 class TestListing:
@@ -308,3 +312,82 @@ class TestWaitingForABuild:
         integration_app.run_manager = None
 
         assert run_helpers.wait_for_runs(integration_app) is True
+
+
+class TestUnbuiltChangesAreNotOk:
+    """VIS-1862: with the run trigger on Manual nothing builds, and zero runs
+    read as success."""
+
+    def test_no_runs_with_staged_changes_is_not_built(self, integration_app, runs):
+        integration_app.staged_manager.record("model", "orders", "fp-1")
+
+        result = call(integration_app, "check_runs", {})
+
+        assert result["ok"] is False
+        assert result["unbuilt"] == ["orders"]
+        assert "orders" in result["note"]
+
+    def test_a_change_after_the_last_good_run_is_not_built(self, integration_app, runs):
+        run = runs.create(dag_filter="+orders+")
+        runs.set_state(run.id, RunState.SUCCEEDED, logs="built")
+        integration_app.staged_manager.record("model", "orders", "fp-2")
+
+        result = call(integration_app, "check_runs", {})
+
+        assert result["ok"] is False
+        assert result["state"] == "succeeded"
+        assert result["unbuilt"] == ["orders"]
+
+
+class TestTheEndOfTurnBuild:
+    @pytest.fixture
+    def started(self, integration_app, runs, monkeypatch):
+        """Runs the loop starts, built at once instead of on a thread."""
+        from visivo.server.jobs import save_run_executor
+
+        dag_filters = []
+
+        def run_now(app, dag_filter):
+            dag_filters.append(dag_filter)
+            run = runs.create(dag_filter)
+            save_run_executor.mark_staged_built(app, dag_filter)
+            runs.set_state(run.id, RunState.SUCCEEDED, logs="built")
+            return run
+
+        monkeypatch.setattr(save_run_executor, "run_now", run_now)
+        return dag_filters
+
+    def test_it_builds_what_is_staged_whatever_the_trigger(self, integration_app, started):
+        integration_app.staged_manager.record("model", "orders", "fp-1")
+
+        result = agent_runs.build(integration_app, timeout=0)
+
+        assert started == ["+orders+"]
+        assert result["ok"] is True
+
+    def test_nothing_staged_starts_nothing(self, integration_app, runs, started):
+        result = agent_runs.build(integration_app, timeout=0)
+
+        assert started == []
+        assert result["ok"] is True
+
+    def test_a_failed_build_says_why(self, integration_app, runs, monkeypatch):
+        from visivo.server.jobs import save_run_executor
+
+        def run_now(app, dag_filter):
+            run = runs.create(dag_filter)
+            runs.set_state(run.id, RunState.FAILED, logs="FAILED: no column 'total'")
+            return run
+
+        monkeypatch.setattr(save_run_executor, "run_now", run_now)
+        integration_app.staged_manager.record("model", "orders", "fp-1")
+
+        result = agent_runs.build(integration_app, timeout=0)
+
+        assert result["ok"] is False
+        assert "no column 'total'" in result["logs"]
+
+    def test_a_host_with_no_run_manager_builds_nothing(self, integration_app):
+        integration_app.run_manager = None
+
+        assert agent_runs.build(integration_app, timeout=0) is None

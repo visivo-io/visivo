@@ -62,12 +62,11 @@ heatmap") is a request to go and find out what there is to chart, not a reason \
 to ask the user what they have. Ask them only once you have looked and found \
 nothing.
 
-A change you have not built is a change you have not finished. When a write \
-reports `change: "ran"`, call `check_runs` before you reply: it waits for the \
-build and tells you whether it worked. If `ok` is false, read the diagnostics, \
-fix what they name, and check again — never reply as though a failed build \
-succeeded. If the write reported `change: "staged"` instead, nothing was \
-built: say the change is staged and you could not verify it.
+A change you have not built is a change you have not finished. When you reply \
+after a turn that wrote anything, Visivo builds what you wrote before the user \
+sees your reply. If that build fails, the failure comes back to you instead: \
+fix what it names and reply again. Never reply as though a failed build \
+succeeded. To check a build part-way through a turn, call `check_runs`.
 
 Finish the job within this turn. The turn ends the moment you reply without \
 calling a tool, so never reply with a plan or a promise ("I will now create \
@@ -114,6 +113,67 @@ def _no_plan_only_replies(ctx: RunContext, output: str) -> str:
     return output
 
 
+# Fix attempts after a failed end-of-turn build before the reply goes out with
+# the failure stated.
+MAX_BUILD_FIX_ROUNDS = 2
+
+BUILD_FAILED_RETRY = (
+    "Your changes were built and the build failed, so do not reply yet. "
+    "Fix what this names, then reply:\n{failure}"
+)
+BUILD_NOT_SETTLED_RETRY = (
+    "Your changes are still building, so nobody knows yet whether they work. "
+    "Say that in your reply instead of reporting them as done."
+)
+BUILD_STILL_FAILING = "\n\nThe last build of these changes failed: {failure}"
+BUILD_NOT_CHECKED = "\n\nI could not check the build of these changes: {reason}"
+
+_FAILURE_LIMIT = 3000
+
+
+def _failure_text(result):
+    detail = {
+        key: result[key]
+        for key in ("state", "note", "unbuilt", "diagnostics", "error", "logs")
+        if result.get(key)
+    }
+    return json.dumps(detail, default=str)[:_FAILURE_LIMIT]
+
+
+def _build_check(app):
+    from visivo.agent import runs
+
+    timeout = getattr(app, "run_settle_timeout", runs.RUN_SETTLE_TIMEOUT_SECONDS)
+    return runs.build(app, timeout=timeout)
+
+
+def _built_before_reply(app, turn, build_check):
+    """An output validator: a reply after a write waits for its build."""
+
+    def validate(ctx: RunContext, output: str) -> str:
+        if not turn["wrote"] or not isinstance(output, str):
+            return output
+        turn["wrote"] = False
+        try:
+            result = (build_check or _build_check)(app)
+        except Exception as error:
+            return output + BUILD_NOT_CHECKED.format(reason=error)
+        if result is None or result.get("ok"):
+            return output
+        settled = result.get("settled", True)
+        if turn["rounds"] >= MAX_BUILD_FIX_ROUNDS:
+            if not settled:
+                return output + BUILD_NOT_CHECKED.format(reason="it was still running")
+            return output + BUILD_STILL_FAILING.format(failure=_failure_text(result))
+        turn["rounds"] += 1
+        turn["wrote"] = True
+        if not settled:
+            raise ModelRetry(BUILD_NOT_SETTLED_RETRY)
+        raise ModelRetry(BUILD_FAILED_RETRY.format(failure=_failure_text(result)))
+
+    return validate
+
+
 # How many identical failures before the refusal starts saying so. Two is a
 # model trying again, which is fair. Three is a model that has stopped reading.
 REPEAT_WARNING_AT = 3
@@ -128,7 +188,7 @@ def _signature(name, arguments):
         return name, repr(arguments)
 
 
-def _bind(app, tool, repeats):
+def _bind(app, tool, repeats, turn):
     """One registry entry as a pydantic-ai tool.
 
     Goes through `call`, not `tool.handler` — `call` is where recording and
@@ -164,6 +224,8 @@ def _bind(app, tool, repeats):
         # well be right again later, and a count that only ever grows would
         # scold a model for a problem it had already solved.
         repeats.pop(_signature(tool.name, arguments), None)
+        if tool.name.startswith("write_"):
+            turn["wrote"] = True
         return result
 
     invoke.__name__ = tool.name
@@ -187,7 +249,7 @@ def _instructions_for(app, base):
     return f"{base}\n\n{extra}" if extra else base
 
 
-def build_agent(app, model, instructions=INSTRUCTIONS):
+def build_agent(app, model, instructions=INSTRUCTIONS, build_check=None):
     """An agent over the whole registry.
 
     `model` is anything pydantic-ai accepts — a settings string like
@@ -197,12 +259,15 @@ def build_agent(app, model, instructions=INSTRUCTIONS):
     """
     # Per agent, so the counts are a turn's and not a process's.
     repeats = {}
+    turn = {"wrote": False, "rounds": 0}
     agent = Agent(
         model,
-        tools=[_bind(app, tool, repeats) for tool in TOOLS.values()],
+        tools=[_bind(app, tool, repeats, turn) for tool in TOOLS.values()],
         instructions=_instructions_for(app, instructions),
+        retries={"output": MAX_BUILD_FIX_ROUNDS + 1},
     )
     agent.output_validator(_no_plan_only_replies)
+    agent.output_validator(_built_before_reply(app, turn, build_check))
     return agent
 
 
