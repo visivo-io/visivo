@@ -50,11 +50,10 @@ RemoteProjectError = CloudApiError
 
 
 class RemoteRunManager:
-    """Enough of a run manager for `list_runs` / `get_run`.
+    """Core's runs, in the shape the run tools read.
 
-    Read-only, like its local counterpart is for the agent: starting a run
-    executes SQL and can run a source's seed subprocesses, which is the
-    escalation path VIS-1340 identified.
+    No tool starts a run (VIS-1340); only the loop's end-of-turn build calls
+    ``start``.
     """
 
     def __init__(self, client):
@@ -69,6 +68,12 @@ class RemoteRunManager:
                 logs = run.get("logs") or self._client.run_logs(run.get("id"))
                 return _RemoteRun({**run, "logs": logs})
         return None
+
+    def staged(self):
+        return [item.get("name") for item in self._client.staged() if item.get("name")]
+
+    def start(self):
+        return self._client.start_run()
 
 
 class _RemoteRun:

@@ -37,6 +37,8 @@ class FakeCore:
         self.headers = {}
 
     def get(self, url, timeout=None):
+        if url.endswith("/changes/"):
+            return FakeResponse({"staged": self.rows.get("staged", [])})
         if "/api/runs/" in url and url.endswith("/logs/"):
             run_id = url.split("/api/runs/")[1].split("/")[0]
             return FakeResponse({"logs": self.rows.get("run_logs", {}).get(run_id, "")})
@@ -46,6 +48,11 @@ class FakeCore:
         return FakeResponse({type_key: self.rows.get(type_key, [])})
 
     def post(self, url, json=None, timeout=None):
+        if url.endswith("/run/"):
+            self.started = getattr(self, "started", 0) + 1
+            if self.rows.get("run_in_progress"):
+                return FakeResponse({"action": "run_in_progress", "run": {"id": "r0"}}, 409)
+            return FakeResponse({"id": "r9", "state": "queued"}, 201)
         parts = url.split("/api/")[1].split("?")[0].strip("/").split("/")
         type_key, name = parts[0], parts[1]
         self.saved.append((type_key, name, json))
@@ -239,6 +246,57 @@ class TestRuns:
         result = call(project, "write_markdown", {"config": {"name": "notes", "content": "# hi"}})
 
         assert "change" not in result
+
+    def test_a_refused_runs_list_is_an_error_not_no_runs(self):
+        """VIS-1862: core refused the agent's token, the client answered an
+        empty list, and the agent read that as every run succeeding."""
+
+        class Refusing(FakeCore):
+            def get(self, url, timeout=None):
+                if "/run/" in url:
+                    return FakeResponse(
+                        {"detail": "Authentication credentials were not provided."}, 401
+                    )
+                return super().get(url, timeout)
+
+        project, _ = _project(core=Refusing())
+
+        with pytest.raises(ToolError) as refused:
+            call(project, "check_runs", {})
+
+        assert "401" in str(refused.value)
+
+    def test_staged_changes_with_no_runs_are_not_built(self):
+        project, _ = _project({"staged": [{"name": "orders", "type": "model"}]})
+
+        verdict = call(project, "check_runs", {})
+
+        assert verdict["ok"] is False
+        assert verdict["unbuilt"] == ["orders"]
+
+    def test_the_end_of_turn_build_starts_a_run_in_core(self):
+        from visivo.agent.runs import build
+
+        project, core = _project({"staged": [{"name": "orders", "type": "model"}]})
+
+        build(project, timeout=0)
+
+        assert core.started == 1
+
+    def test_a_run_already_in_flight_is_not_an_error(self):
+        project, core = _project(
+            {"staged": [{"name": "orders", "type": "model"}], "run_in_progress": True}
+        )
+
+        assert project.run_manager.start() == {"id": "r0"}
+
+    def test_nothing_staged_starts_no_run_in_core(self):
+        from visivo.agent.runs import build
+
+        project, core = _project({"runs": [{"id": "r1", "state": "succeeded"}]})
+
+        assert build(project, timeout=0)["ok"] is True
+        assert getattr(core, "started", 0) == 0
 
     def test_a_cloud_build_gets_time_for_a_runner_to_start(self):
         from visivo.agent.runs import RUN_SETTLE_TIMEOUT_SECONDS

@@ -1,6 +1,6 @@
 // Coverage for the branching API (api/branching.js): the cloud-editing
-// draft / branch / discard / changes / commit endpoints. Run and preference
-// calls live in api/runs.js and api/preferences.js with their own suites.
+// draft / branch / discard / changes / commit endpoints. Run
+// calls live in api/runs.js with their own suite.
 // apiFetch + getUrl are mocked; getUrl echoes the key + id so we can assert the
 // endpoint hit and (for writes) the method/body. Each function's success,
 // error, and edge (non-JSON body) paths are exercised.

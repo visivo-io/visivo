@@ -142,7 +142,7 @@ class TestChangesEndpoint:
         data = client.get("/api/projects/proj1/changes/").get_json()
         assert data["staged"] == []
         assert data["staged_dag_filter"] == ""
-        assert data["run_trigger"] in ("automatic", "manual")
+        assert "run_trigger" not in data
 
 
 class TestProjectScopedContract:
