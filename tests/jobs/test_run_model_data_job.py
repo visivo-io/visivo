@@ -101,12 +101,20 @@ class TestTheDeadline:
         monkeypatch.setattr(module, "_query_slots", threading.BoundedSemaphore(1))
         with pytest.raises(QueryTimeout):
             execute_and_get_result(_Source(delay=0.5), "select 1", timeout_s=0.01)
-        before = threading.active_count()
+        started = []
+        real_thread = threading.Thread
+
+        def spy(*args, **kwargs):
+            if kwargs.get("name") == BOUNDED_QUERY_THREAD_NAME:
+                started.append(kwargs["name"])
+            return real_thread(*args, **kwargs)
+
+        monkeypatch.setattr(module.threading, "Thread", spy)
 
         with pytest.raises(QueryTimeout, match="did not return within 0.01s"):
             execute_and_get_result(_Source(), "select 1", timeout_s=0.01)
 
-        assert threading.active_count() == before
+        assert started == []
 
     def test_a_finished_query_frees_its_slot(self, monkeypatch):
         monkeypatch.setattr(module, "_query_slots", threading.BoundedSemaphore(MAX_BOUNDED_QUERIES))
