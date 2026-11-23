@@ -261,7 +261,7 @@ export default function OnboardingFlow({
       setSourceSaving(true);
       setErrorMessage(null);
       try {
-        const saved = await saveSource(name, config);
+        const saved = await saveSource(name, config, { runAlways: true });
         if (!saved.success) throw new Error(saved.error || 'Failed to save the source.');
         handleConnected(config?.type || 'unknown', name);
         return { success: true };

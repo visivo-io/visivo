@@ -133,7 +133,7 @@ export default function UploadFile({ onBack, onImported }) {
       if (tested?.status !== 'connected') {
         throw new Error(`Could not read ${version.path}: ${tested?.error || 'unknown error'}`);
       }
-      const saved = await saveSource(config.name, config);
+      const saved = await saveSource(config.name, config, { runAlways: true });
       if (id !== run.current) return;
       if (!saved.success) throw new Error(saved.error);
       onImported(config);

@@ -279,7 +279,9 @@ describe('OnboardingFlow', () => {
         normalize_names: true,
       };
       expect(testSourceConnection).toHaveBeenCalledWith(config);
-      expect(storeState.saveSource).toHaveBeenCalledWith('sales_q3_2', config);
+      expect(storeState.saveSource).toHaveBeenCalledWith('sales_q3_2', config, {
+        runAlways: true,
+      });
       expect(readOnboardingState()).toMatchObject({ path: 'data', source_connected: true });
       const succeeded = getEventBuffer().find(e => e.event === 'onboarding_data_connect_succeeded');
       expect(succeeded.props).toMatchObject({ source_type: 'csv' });
@@ -553,10 +555,11 @@ describe('OnboardingFlow', () => {
       );
       expect(readOnboardingState().first_session).toMatchObject({ source: 'demo' });
       expect(readOnboardingState().first_session.started_at).toBeUndefined();
-      expect(storeState.saveSource).toHaveBeenCalledWith('demo', {
-        type: 'postgresql',
-        name: 'demo',
-      });
+      expect(storeState.saveSource).toHaveBeenCalledWith(
+        'demo',
+        { type: 'postgresql', name: 'demo' },
+        { runAlways: true }
+      );
       expect(global.fetch).not.toHaveBeenCalled();
       expect(readOnboardingState()).toMatchObject({ path: 'data', source_connected: true });
       expect(getEventBuffer().map(e => e.event)).toEqual(

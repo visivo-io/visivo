@@ -7,12 +7,17 @@
 //
 // The point of these is the RETURN SHAPE: it is unchanged by the conversion, so
 // sourceStore/SourceEditForm/SourceEditorModal needed no edit.
-import { testSourceConnection } from './sources';
+import { saveSource, testSourceConnection } from './sources';
 import { apiFetch } from './utils';
 
 jest.mock('./utils', () => ({ apiFetch: jest.fn() }));
 jest.mock('../contexts/URLContext', () => ({
-  getUrl: (key, params) => (params?.jobId ? `/api/${key}/${params.jobId}/` : `/api/${key}/`),
+  getUrl: (key, params) =>
+    params?.jobId
+      ? `/api/${key}/${params.jobId}/`
+      : params?.name
+        ? `/api/${key}/${params.name}/`
+        : `/api/${key}/`,
 }));
 
 const accepted = jobId => ({ status: 202, json: async () => ({ job_id: jobId }) });
@@ -98,5 +103,25 @@ describe('testSourceConnection', () => {
       status: 'connection_failed',
       error: 'Lost track of the job',
     });
+  });
+});
+
+describe('saveSource', () => {
+  const saved = { ok: true, json: async () => ({ name: 'db' }) };
+
+  it('asks for a run when the caller says it always runs', async () => {
+    apiFetch.mockResolvedValueOnce(saved);
+
+    await saveSource('db', { name: 'db' }, 'p1', { runAlways: true });
+
+    expect(apiFetch.mock.calls[0][0]).toBe('/api/sourceDetail/db/?project_id=p1&run=always');
+  });
+
+  it('leaves the run to the person by default', async () => {
+    apiFetch.mockResolvedValueOnce(saved);
+
+    await saveSource('db', { name: 'db' });
+
+    expect(apiFetch.mock.calls[0][0]).toBe('/api/sourceDetail/db/');
   });
 });
