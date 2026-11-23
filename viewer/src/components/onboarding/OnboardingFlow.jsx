@@ -29,7 +29,8 @@ export function sampleDestination(sample) {
 /**
  * `paths` limits the Start screen to the paths the host can back. `openConnect`
  * opens the source form on mount, and `openUpload` the upload step, for a host
- * that asked which one before this flow was mounted. `loadSample` replaces the
+ * that asked which one before this flow was mounted. That host already showed this
+ * screen, so Start does not animate in a second time. `loadSample` replaces the
  * local example import for a host that seeds and opens examples itself. `tour` and `startEmpty` show those links.
  */
 export default function OnboardingFlow({
@@ -296,6 +297,7 @@ export default function OnboardingFlow({
         isLoadingSample={sampleLoading}
         loadingText={sampleLoadingText}
         openUpload={openUpload}
+        animateIn={!(openConnect || openUpload)}
       />
     );
   } else if (current.kind === 'role') {
