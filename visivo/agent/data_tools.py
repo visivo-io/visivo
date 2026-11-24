@@ -624,6 +624,23 @@ def _stored_schema(app, source, refresh=False):
     return stored, run_id
 
 
+def _sql_name(source, stored, key):
+    """How a query names the table stored under ``key``: qualified only where the
+    source's default database and schema would not find it."""
+    meta = (stored.get("tables") or {}).get(key, {}).get("metadata") or {}
+    name = meta.get("table_name")
+    if not name:
+        return key
+    qualified = key != name
+    catalog = meta.get("database") if qualified else None
+    schema = meta.get("schema") if qualified else None
+    if catalog and catalog == (stored.get("metadata") or {}).get("database"):
+        catalog = None
+        if schema and schema == source.get_default_context().get("schema"):
+            schema = None
+    return exp.table_(name, db=schema, catalog=catalog).sql(dialect=source.get_sqlglot_dialect())
+
+
 def _describe_source_handler(app, arguments):
     source = _source_argument(app, arguments, key="name")
     missing = missing_database_file_warning(app, source)
@@ -650,7 +667,7 @@ def _describe_source_handler(app, arguments):
     truncated = len(names) > MAX_TABLES
     listed = [
         {
-            "name": name,
+            "name": _sql_name(source, stored, name),
             "columns": [
                 {"name": col, "type": info.get("type")}
                 for col, info in (tables[name].get("columns") or {}).items()

@@ -1259,3 +1259,51 @@ class TestPreviewInsightInputHint:
 
         assert "Query-based input options not yet available" in str(refused.value)
         assert "pass 'input_values'" in str(refused.value)
+
+
+class TestDescribeSourceNamesWorkInSql:
+    """A table name `describe_source` returns runs in `query_source` as given."""
+
+    def _app(self, output_dir, source):
+        from tests.factories.model_factories import ProjectFactory
+        from visivo.server.flask_app import FlaskApp
+
+        root = os.path.abspath(output_dir)
+        return FlaskApp(root, ProjectFactory(sources=[source]), working_dir=root)
+
+    def _names_query(self, app, source):
+        names = [t["name"] for t in call(app, "describe_source", {"name": source.name})["tables"]]
+        for name in names:
+            result = call(
+                app, "query_source", {"source": source.name, "sql": f"SELECT * FROM {name}"}
+            )
+            assert result["rows"], name
+        return names
+
+    def test_a_csv_table_is_named_without_the_in_memory_database(self, output_dir):
+        from visivo.models.sources.csv_source import CSVFileSource
+
+        os.makedirs(output_dir, exist_ok=True)
+        path = os.path.join(os.path.abspath(output_dir), "gig_tracker.csv")
+        with open(path, "w") as f:
+            f.write("a,b\n1,2\n")
+        source = CSVFileSource(name="gig_tracker", type="csv", file=path)
+
+        assert self._names_query(self._app(output_dir, source), source) == ["gig_tracker"]
+
+    def test_a_table_outside_the_default_schema_keeps_its_schema(self, output_dir):
+        import duckdb
+
+        from tests.factories.model_factories import DuckdbSourceFactory
+
+        os.makedirs(output_dir, exist_ok=True)
+        database = os.path.join(os.path.abspath(output_dir), "two_schemas.duckdb")
+        with duckdb.connect(database) as connection:
+            connection.execute("CREATE TABLE orders AS SELECT 1 AS id")
+            connection.execute("CREATE SCHEMA sales")
+            connection.execute('CREATE TABLE sales."Order Lines" AS SELECT 1 AS id')
+        source = DuckdbSourceFactory(name="shop", database=database)
+
+        names = self._names_query(self._app(output_dir, source), source)
+
+        assert names == ["orders", 'sales."Order Lines"']
