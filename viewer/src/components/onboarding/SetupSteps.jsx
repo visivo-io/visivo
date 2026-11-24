@@ -23,7 +23,12 @@ export default function SetupSteps({ steps, phase, failed = false, label }) {
           else if (i === at) state = failed ? 'is-failed' : 'is-active';
           return (
             <li key={key} className={state} data-testid={`onb-setup-${key}`} data-state={state}>
-              <span aria-hidden="true">{i < at ? '✓' : i === at && failed ? '✕' : '•'}</span>
+              <span aria-hidden="true">
+                {state === 'is-active' ? <i className="onb-spin" /> : null}
+                {state === 'is-done' ? '✓' : null}
+                {state === 'is-failed' ? '✕' : null}
+                {state === '' ? '•' : null}
+              </span>
               {text}
             </li>
           );

@@ -1544,6 +1544,13 @@
 .onb-upload__steps li.is-active {
   color: var(--onb-ink);
 }
+.onb-upload__steps .onb-spin {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  vertical-align: -1px;
+  border-top-color: var(--onb-brand);
+}
 .onb-upload__steps li.is-done span {
   color: #3c7650;
 }
@@ -1551,7 +1558,8 @@
   color: #b4443c;
 }
 @media (prefers-reduced-motion: reduce) {
-  .onb-upload__bar i {
+  .onb-upload__bar i,
+  .onb-upload__steps .onb-spin {
     animation: none;
   }
 }
