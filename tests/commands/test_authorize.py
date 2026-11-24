@@ -180,6 +180,65 @@ def test_authorize_includes_machine_id_when_telemetry_enabled(monkeypatch):
     assert query.get("name") is not None
 
 
+def _authorize_query(monkeypatch, telemetry, source=None):
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    monkeypatch.setattr("visivo.commands.authorize.is_telemetry_enabled", lambda: telemetry)
+    monkeypatch.setattr("visivo.commands.authorize.get_machine_id", lambda: "machine")
+    monkeypatch.setattr(token_received_event, "wait", lambda timeout=None: True)
+    if source is None:
+        monkeypatch.delenv("VISIVO_AUTHORIZE_SOURCE", raising=False)
+    else:
+        monkeypatch.setenv("VISIVO_AUTHORIZE_SOURCE", source)
+    captured = _capture_opened_url(monkeypatch)
+
+    result = CliRunner().invoke(authorize, ["--host", "http://localhost:3030"])
+
+    assert result.exit_code == 0
+    assert len(captured) == 1
+    return urllib.parse.parse_qs(urllib.parse.urlparse(captured[0]).query)
+
+
+def test_authorize_sends_the_source_from_the_environment(monkeypatch):
+    query = _authorize_query(monkeypatch, telemetry=True, source="plugin")
+
+    assert query.get("source") == ["plugin"]
+    assert "redirect_url" in query
+
+
+def test_authorize_sends_no_source_when_the_variable_is_unset(monkeypatch):
+    assert "source" not in _authorize_query(monkeypatch, telemetry=True)
+
+
+def test_authorize_sends_no_source_when_telemetry_is_off(monkeypatch):
+    assert "source" not in _authorize_query(monkeypatch, telemetry=False, source="plugin")
+
+
+@pytest.mark.parametrize(
+    "value", ["Plugin", "two words", "a&machine_id=x", "http://evil.example", "x" * 33, "-lead", ""]
+)
+def test_authorize_drops_a_source_that_is_not_a_short_label(monkeypatch, value):
+    assert "source" not in _authorize_query(monkeypatch, telemetry=True, source=value)
+
+
+def test_authorize_sends_the_source_when_the_machine_id_fails(monkeypatch):
+    def broken():
+        raise RuntimeError("no machine id")
+
+    monkeypatch.setenv("VISIVO_AUTHORIZE_SOURCE", "plugin")
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    monkeypatch.setattr("visivo.commands.authorize.is_telemetry_enabled", lambda: True)
+    monkeypatch.setattr("visivo.commands.authorize.get_machine_id", broken)
+    monkeypatch.setattr(token_received_event, "wait", lambda timeout=None: True)
+    captured = _capture_opened_url(monkeypatch)
+
+    result = CliRunner().invoke(authorize, ["--host", "http://localhost:3030"])
+
+    assert result.exit_code == 0
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(captured[0]).query)
+    assert query.get("source") == ["plugin"]
+    assert "machine_id" not in query
+
+
 def test_authorize_excludes_machine_id_when_telemetry_disabled(monkeypatch):
     """
     When telemetry is disabled (opt-out), the opened authorize URL must NOT carry

@@ -1,0 +1,16 @@
+{
+  "name": "visivo",
+  "owner": {
+    "name": "Visivo",
+    "url": "https://visivo.io"
+  },
+  "description": "The Visivo plugin for Claude Code: BI as code, from project YAML to dashboards.",
+  "plugins": [
+    {
+      "name": "visivo",
+      "source": "./claude-plugin",
+      "description": "Build Visivo dashboards from Claude Code: project YAML, the visivo CLI, and the local Visivo MCP server.",
+      "category": "database"
+    }
+  ]
+}
