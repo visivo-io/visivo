@@ -15,7 +15,7 @@
     "",
     "Each case: `request` is the JSON-RPC body to POST. `expect` says what must",
     "be true of the response — `status`, `result_keys`, `jsonrpc_error_code`,",
-    "`is_error`, or `text_contains`. Shapes, not values: the cases must not",
+    "`is_error`, `tools_are_annotated`, or `text_contains`. Shapes, not values: the cases must not",
     "depend on which project is loaded, because the two sides load different",
     "ones."
   ],
@@ -57,6 +57,11 @@
       "name": "every advertised tool has a description and an object schema",
       "request": {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
       "expect": {"status": 200, "tools_are_well_formed": true}
+    },
+    {
+      "name": "every advertised tool declares a title and its read, destructive and open-world hints",
+      "request": {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+      "expect": {"status": 200, "tools_are_annotated": true}
     },
     {
       "name": "no advertised tool promotes work",
