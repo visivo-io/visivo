@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { listProjectFiles, uploadProjectFile } from '../../../api/projectFiles';
 import { testSourceConnection } from '../../../api/sources';
 import useStore from '../../../stores/store';
+import SetupSteps from '../SetupSteps';
+import { currentRunIds, waitForSourceRun } from '../waitForSourceRun';
 
 export const UPLOAD_ICON = <path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5" />;
 
@@ -43,21 +45,29 @@ const extensionOf = name => {
   return dot === -1 ? '' : name.slice(dot).toLowerCase();
 };
 
-function Steps({ phase }) {
-  const steps = [
-    ['uploading', 'Copying the file into the project'],
-    ['creating', 'Creating a source you can query'],
-  ];
-  const at = steps.findIndex(([key]) => key === phase);
+export const UPLOAD_STEPS = [
+  ['uploading', 'Copying the file into the project'],
+  ['checking', 'Checking that Visivo can read it'],
+  ['creating', 'Creating the source'],
+  ['running', 'Running the source job'],
+];
+const BUSY = UPLOAD_STEPS.map(([key]) => key);
+
+export function RunFailed({ error, onContinue }) {
   return (
-    <ol className="onb-upload__steps">
-      {steps.map(([key, label], i) => (
-        <li key={key} className={i < at ? 'is-done' : i === at ? 'is-active' : ''}>
-          <span aria-hidden="true">{i < at ? '✓' : '•'}</span>
-          {label}
-        </li>
-      ))}
-    </ol>
+    <>
+      <div className="onb-upload__error" role="alert" data-testid="onb-run-failed">
+        The source was created, but its first run failed: {error}
+      </div>
+      <button
+        type="button"
+        className="onb-btn onb-btn--primary"
+        onClick={onContinue}
+        data-testid="onb-run-failed-continue"
+      >
+        Continue anyway
+      </button>
+    </>
   );
 }
 
@@ -70,6 +80,7 @@ export default function UploadFile({ onBack, onImported }) {
   const [phase, setPhase] = useState('choose');
   const [file, setFile] = useState(null);
   const [storedPath, setStoredPath] = useState(null);
+  const [runFailure, setRunFailure] = useState(null);
   const [error, setError] = useState(null);
   const [over, setOver] = useState(false);
   const inputRef = useRef(null);
@@ -94,7 +105,7 @@ export default function UploadFile({ onBack, onImported }) {
 
   const extensions = (formats || []).flatMap(f => f.extensions);
   const labels = (formats || []).map(f => f.label).join(', ');
-  const busy = phase === 'uploading' || phase === 'creating';
+  const busy = BUSY.includes(phase);
 
   const fail = message => {
     setError(message);
@@ -116,6 +127,7 @@ export default function UploadFile({ onBack, onImported }) {
     setFile(picked);
     setStoredPath(null);
     setError(null);
+    setRunFailure(null);
     setPhase('uploading');
     try {
       const version = await uploadProjectFile(picked, {
@@ -124,7 +136,7 @@ export default function UploadFile({ onBack, onImported }) {
       });
       if (id !== run.current) return;
       setStoredPath(version.path);
-      setPhase('creating');
+      setPhase('checking');
       await fetchSources?.();
       const taken = (useStore.getState().sources || []).map(s => s.name);
       const config = sourceConfigFor(version, formats, sourceNameFor(version.filename, taken));
@@ -133,9 +145,23 @@ export default function UploadFile({ onBack, onImported }) {
       if (tested?.status !== 'connected') {
         throw new Error(`Could not read ${version.path}: ${tested?.error || 'unknown error'}`);
       }
+      setPhase('creating');
+      const before = await currentRunIds(projectId);
       const saved = await saveSource(config.name, config, { runAlways: true });
       if (id !== run.current) return;
       if (!saved.success) throw new Error(saved.error);
+      setPhase('running');
+      const built = await waitForSourceRun({
+        projectId,
+        before,
+        sourceName: config.name,
+        isCancelled: () => id !== run.current,
+      });
+      if (id !== run.current) return;
+      if (built.outcome === 'failed') {
+        setRunFailure({ error: built.error, config });
+        return;
+      }
       onImported(config);
     } catch (err) {
       if (id !== run.current) return;
@@ -164,13 +190,22 @@ export default function UploadFile({ onBack, onImported }) {
           <strong>{file?.name}</strong>
           <small>{storedPath ? `Saved as ${storedPath}` : 'Copying into files/'}</small>
         </div>
-        <div className="onb-upload__bar" role="progressbar" aria-label="Adding your file">
-          <i />
-        </div>
-        <Steps phase={phase} />
-        <button type="button" className="onb-text-link" onClick={cancel}>
-          Cancel
-        </button>
+        <SetupSteps
+          steps={UPLOAD_STEPS}
+          phase={phase}
+          failed={Boolean(runFailure)}
+          label="Adding your file"
+        />
+        {runFailure ? (
+          <RunFailed
+            error={runFailure.error}
+            onContinue={() => onImported(runFailure.config)}
+          />
+        ) : (
+          <button type="button" className="onb-text-link" onClick={cancel}>
+            Cancel
+          </button>
+        )}
       </div>
     );
   }

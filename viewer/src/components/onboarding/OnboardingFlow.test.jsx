@@ -9,6 +9,7 @@ import { clearOnboardingState, readOnboardingState, writeOnboardingState } from 
 import { clearEventBuffer, getEventBuffer } from './telemetry';
 import { listProjectFiles, uploadProjectFile } from '../../api/projectFiles';
 import { testSourceConnection } from '../../api/sources';
+import { fetchRuns } from '../../api/runs';
 
 const CSV_FORMAT = {
   format: 'csv',
@@ -28,6 +29,7 @@ let storeState;
 jest.mock('../../stores/store');
 jest.mock('../../api/projectFiles');
 jest.mock('../../api/sources');
+jest.mock('../../api/runs');
 jest.mock('../views/common/SourceEditForm', () => ({ onSave }) => {
   const [error, setError] = require('react').useState(null);
   return (
@@ -80,7 +82,16 @@ beforeEach(() => {
   listProjectFiles.mockResolvedValue({ files: [], formats: [CSV_FORMAT], max_bytes: 104857600 });
   uploadProjectFile.mockResolvedValue(VERSION);
   testSourceConnection.mockResolvedValue({ source: 'sales_q3_2', status: 'connected' });
+  fetchRuns.mockReset();
+  fetchRuns.mockRejectedValue(new Error('no runs here'));
 });
+
+const runsAfterSave = (...states) => {
+  fetchRuns.mockResolvedValueOnce([{ id: 'old', state: 'succeeded' }]);
+  states.forEach(run =>
+    fetchRuns.mockResolvedValueOnce([{ id: 'new', ...run }, { id: 'old', state: 'succeeded' }])
+  );
+};
 
 afterEach(() => {
   delete global.fetch;
@@ -306,7 +317,58 @@ describe('OnboardingFlow', () => {
       dropFile(salesFile());
 
       expect(await screen.findByText('Saved as files/Sales_Q3.csv')).toBeInTheDocument();
-      expect(screen.getByText('Creating a source you can query')).toBeInTheDocument();
+      expect(screen.getByTestId('onb-setup-uploading')).toHaveAttribute('data-state', 'is-done');
+      expect(screen.getByTestId('onb-setup-checking')).toHaveAttribute('data-state', 'is-active');
+      expect(screen.getByTestId('onb-setup-creating')).toHaveTextContent('Creating the source');
+      expect(screen.getByTestId('onb-setup-running')).toHaveTextContent('Running the source job');
+    });
+
+    test('waits for the source job before opening the first session', async () => {
+      runsAfterSave({ state: 'running' });
+      fetchRuns.mockReturnValueOnce(new Promise(() => {}));
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(salesFile());
+
+      await waitFor(() =>
+        expect(screen.getByTestId('onb-setup-running')).toHaveAttribute('data-state', 'is-active')
+      );
+      expect(screen.getByTestId('onb-setup-creating')).toHaveAttribute('data-state', 'is-done');
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    test('a finished source job opens the first session', async () => {
+      runsAfterSave({ state: 'succeeded' });
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(salesFile());
+
+      await waitFor(() =>
+        expect(mockNavigate).toHaveBeenCalledWith('/agent?first_session=sales_q3_2', {
+          replace: true,
+        })
+      );
+    });
+
+    test('a failed source job shows why, and the user can go on anyway', async () => {
+      runsAfterSave({ state: 'failed', error_json: { message: 'file is empty' } });
+      renderFlow();
+      openUpload();
+      await screen.findByText('CSV files up to 100 MB');
+      dropFile(salesFile());
+
+      expect(await screen.findByTestId('onb-run-failed')).toHaveTextContent('file is empty');
+      expect(screen.getByTestId('onb-setup-running')).toHaveAttribute('data-state', 'is-failed');
+      expect(mockNavigate).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId('onb-run-failed-continue'));
+      await waitFor(() =>
+        expect(mockNavigate).toHaveBeenCalledWith('/agent?first_session=sales_q3_2', {
+          replace: true,
+        })
+      );
     });
 
     test('a file of an unlisted type is refused before upload', async () => {
@@ -575,6 +637,36 @@ describe('OnboardingFlow', () => {
       expect(readOnboardingState()).toMatchObject({ path: 'data', source_connected: true });
       expect(getEventBuffer().map(e => e.event)).toEqual(
         expect.arrayContaining(['onboarding_data_connect_succeeded', 'onboarding_completed'])
+      );
+    });
+
+    test('shows the source job running in place of the form', async () => {
+      runsAfterSave({ state: 'queued' });
+      fetchRuns.mockReturnValueOnce(new Promise(() => {}));
+      renderFlow();
+      connectDatabase();
+      fireEvent.click(screen.getByText('mock-connect'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('onb-setup-running')).toHaveAttribute('data-state', 'is-active')
+      );
+      expect(screen.getByTestId('onb-setup-creating')).toHaveAttribute('data-state', 'is-done');
+      expect(screen.getByTestId('source-edit-form')).not.toBeVisible();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    test('a failed source job keeps the modal open until the user goes on', async () => {
+      runsAfterSave({ state: 'failed', error_json: 'relation "orders" does not exist' });
+      renderFlow();
+      connectDatabase();
+      fireEvent.click(screen.getByText('mock-connect'));
+
+      expect(await screen.findByTestId('onb-run-failed')).toHaveTextContent(
+        'relation "orders" does not exist'
+      );
+      fireEvent.click(screen.getByTestId('onb-run-failed-continue'));
+      await waitFor(() =>
+        expect(mockNavigate).toHaveBeenCalledWith('/agent?first_session=demo', { replace: true })
       );
     });
 

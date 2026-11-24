@@ -1513,14 +1513,18 @@
 }
 .onb-upload__bar i {
   display: block;
-  width: 65%;
   height: 100%;
   background: var(--onb-brand);
+  transition: width 0.4s var(--onb-ease-out);
   animation: onb-upload-pulse 1s infinite alternate;
+}
+.onb-upload__bar.is-failed i {
+  background: #b4443c;
+  animation: none;
 }
 @keyframes onb-upload-pulse {
   to {
-    width: 90%;
+    opacity: 0.6;
   }
 }
 .onb-upload__steps {
@@ -1542,6 +1546,9 @@
 }
 .onb-upload__steps li.is-done span {
   color: #3c7650;
+}
+.onb-upload__steps li.is-failed {
+  color: #b4443c;
 }
 @media (prefers-reduced-motion: reduce) {
   .onb-upload__bar i {
