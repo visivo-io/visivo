@@ -2,6 +2,7 @@ from flask import jsonify, request
 from pydantic import ValidationError
 from visivo.logger.logger import Logger
 from visivo.models.defaults import Defaults
+from visivo.server.field_rules import dependents_error
 
 
 def register_defaults_views(app, flask_app, output_dir):
@@ -33,6 +34,9 @@ def register_defaults_views(app, flask_app, output_dir):
                 return jsonify({"error": "Defaults configuration is required"}), 400
 
             defaults = Defaults(**config)
+            refusal = dependents_error(flask_app, defaults=defaults)
+            if refusal:
+                return jsonify({"error": refusal}), 400
             flask_app._cached_defaults = defaults
             return (
                 jsonify({"message": "Defaults saved to cache"}),

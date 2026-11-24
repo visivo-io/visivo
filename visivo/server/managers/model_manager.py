@@ -6,6 +6,7 @@ from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.sql_model import SqlModel
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
+from visivo.server.field_rules import nested_metric_aggregate_error
 from visivo.server.model_sql_validation import validate_model_sql
 
 
@@ -24,11 +25,20 @@ class ModelManager(ObjectManager[SqlModel]):
         # config -> SQLGlot dialect or None. FlaskApp installs ``dialect_for_model``;
         # without it the generic dialect parses.
         self.dialect_lookup = None
+        # model -> why its save makes a field read two sources.
+        # ``install_field_rules`` sets it.
+        self.dependents_error = None
 
     def save_error(self, model: SqlModel) -> Optional[str]:
-        """SQL that does not parse, or a projection with no name, is refused."""
+        """SQL that does not parse, a projection with no name, a nested metric that
+        does not aggregate, or a source that makes a field read two sources is
+        refused."""
         dialect = self.dialect_lookup({"source": model.source}) if self.dialect_lookup else None
-        return validate_model_sql(model.sql, dialect, model.name)
+        return (
+            validate_model_sql(model.sql, dialect, model.name)
+            or nested_metric_aggregate_error(model, self.get(model.name), dialect)
+            or (self.dependents_error(model) if self.dependents_error else None)
+        )
 
     def validate_object(self, obj_data: dict) -> SqlModel:
         """

@@ -23,6 +23,7 @@ from visivo.server.managers.dashboard_manager import DashboardManager
 from visivo.server.managers.project_manager import ProjectManager
 from visivo.server.managers.run_manager import RunManager
 from visivo.server.managers.staged_manager import StagedManager
+from visivo.server.field_rules import install_field_rules
 from visivo.server.model_sql_validation import dialect_for_insight, dialect_for_model
 from visivo.server.names import name_clash
 
@@ -120,6 +121,7 @@ class FlaskApp:
         self.model_manager.dialect_lookup = partial(dialect_for_model, self)
         self.insight_manager.input_lookup = self.input_manager.get
         self.insight_manager.dialect_lookup = partial(dialect_for_insight, self)
+        install_field_rules(self)
 
         # Initialize project manager (doesn't use DAG, just stores project and cache dir)
         self.project_manager = ProjectManager(project, output_dir)
