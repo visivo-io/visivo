@@ -104,8 +104,9 @@ A few things differ from a local server:
 - **`check_runs` answers at once.** If a build is still running it returns
   `settled: false`, so call it again until the build finishes.
 - **Warehouse tools have 45 seconds.** `query_source`, `preview_table`,
-  `preview_insight`, `describe_source`, `profile_columns`, `profile_model`,
-  `infer_columns` and `screenshot_dashboard` run in Visivo's runner, which has the
+  `preview_insight`, `get_chart_or_dashboard_data`, `describe_source`,
+  `profile_columns`, `profile_model`, `infer_columns` and `screenshot_dashboard`
+  run in Visivo's runner, which has the
   warehouse drivers and a browser. A call that takes longer is stopped, and the
   error says to ask for less, for example with a `LIMIT`.
 
@@ -133,6 +134,37 @@ Additional tools include `get_schema`, `read_skill`, `list_runs`, and `get_run`.
 Theme tools read, validate, and replace the whole project's theme rather than a
 named object.
 
+### Show a saved chart or dashboard
+
+Two read-only tools let a client show a chart or a dashboard that the project
+already has, with its data:
+
+| Tool | Returns |
+| --- | --- |
+| `list_charts_and_dashboards` | Each dashboard's name, description, charts and tables. Each chart's name, title, Insights and the dashboards that show it. The result names the project. Visivo Cloud also names the branch. |
+| `get_chart_or_dashboard_data` | The spec of one chart or dashboard and the rows that each of its Insights reads from the Source. A dashboard also returns each chart and Table that it shows. |
+
+The arguments to `get_chart_or_dashboard_data` are:
+
+```json
+{"type": "dashboard", "name": "sales-overview"}
+```
+
+- `limit` sets the rows for each Insight. The maximum is 100.
+- `input_values` sets a selection for an Input. Without it, each Input uses its
+  default.
+- The answer has a size limit. When rows do not fit, the dataset has
+  `truncated: true`. When the answer is too large with no rows, the specs are
+  left out and the answer has `specs_omitted`. Read a spec with `get_chart`,
+  `get_insight`, `get_table` or `get_dashboard`. When the names alone are too
+  large, the call is refused. Get each chart alone.
+- A query that fails does not stop the call. Its dataset has an `error` and the
+  other datasets return.
+- The call has a time limit of 30 seconds for its queries. No new query starts
+  after 15 seconds, and a dataset that was not read has `skipped`. Get that
+  chart alone. A query that is not complete at 30 seconds puts an `error` on
+  its dataset.
+
 Each tool in `tools/list` carries a `title` and MCP annotations, so your client
 can decide which calls need approval:
 
@@ -140,7 +172,7 @@ can decide which calls need approval:
 | --- | --- |
 | `readOnlyHint` | `true` for every tool that only reads, including `validate_*`. `false` for `write_*`. |
 | `destructiveHint` | `true` for `write_*`, because a write replaces the draft of the object. `false` for every read. |
-| `openWorldHint` | `true` for tools that return data from a Source: `query_source`, `preview_*`, `describe_source`, `profile_*`, `infer_columns`, `score_candidates` and `screenshot_dashboard`. Also `true` for `write_model`, `write_relation`, `write_insight` and `write_input`, because each checks the draft against the Source and returns what the Source answered. `false` for the rest. |
+| `openWorldHint` | `true` for tools that return data from a Source: `query_source`, `preview_*`, `get_chart_or_dashboard_data`, `describe_source`, `profile_*`, `infer_columns`, `score_candidates` and `screenshot_dashboard`. Also `true` for `write_model`, `write_relation`, `write_insight` and `write_input`, because each checks the draft against the Source and returns what the Source answered. `false` for the rest. |
 
 Ask the agent to read existing objects, call `get_schema` before authoring a new
 type, validate non-trivial configuration, then write a draft. For example, the

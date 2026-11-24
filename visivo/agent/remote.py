@@ -25,6 +25,7 @@ person reviews. Nothing here can publish.
 
 import os
 import tempfile
+from copy import deepcopy
 from functools import partial
 
 from visivo.cloud_api import CloudApi, CloudApiError
@@ -42,6 +43,9 @@ SAVE_TIMEOUT_SECONDS = 30
 
 # Core marks anything that is not this as a draft.
 PUBLISHED = "published"
+
+# A Project needs a name, and the objects that arrive carry none for it.
+PUBLISHED_PROJECT_NAME = "project"
 
 
 # The agent's name for it. `CloudApi` raises `CloudApiError`; everything that
@@ -133,6 +137,10 @@ class RemoteProject:
         # resolved here. That degrades the SQL probe to "not judged", which is
         # a documented outcome of it, rather than failing the write.
         self.project = None
+        # The names a tool gives for the project it answers for. The host sets
+        # them when it knows them.
+        self.project_name = None
+        self.branch_name = None
         self.run_manager = RemoteRunManager(client)
         self._managers = {}
         for type_key, attribute in TYPE_TO_MANAGER.items():
@@ -147,6 +155,30 @@ class RemoteProject:
     @property
     def managers(self):
         return dict(self._managers)
+
+    def published_project(self, fields):
+        """A Project that holds the published objects of ``fields``, for the
+        code that builds an insight's query from a Project and its DAG.
+
+        The fields are set after construction, as ``inject_cached_objects``
+        sets a draft, so a metric scoped to a model can go under its model
+        before anything reads it. Each object is a copy, so the managers keep
+        what they hold. There are no project defaults here: see ``project``
+        above.
+        """
+        from visivo.models.project import Project
+        from visivo.server.jobs.project_injection import (
+            MANAGER_TO_PROJECT_FIELD,
+            renest_model_scoped_fields,
+        )
+
+        project = Project(name=PUBLISHED_PROJECT_NAME)
+        for attribute, field in MANAGER_TO_PROJECT_FIELD:
+            if field in fields:
+                published = getattr(self, attribute).published_objects.values()
+                setattr(project, field, [deepcopy(obj) for obj in published])
+        renest_model_scoped_fields(project)
+        return project
 
 
 def _manager_for(type_key):

@@ -515,3 +515,108 @@ class TestWritingInCloud:
         )
 
         assert result["name"] == "staged_notes"
+
+
+class TestAnInsightPreviewsAgainstTheSource:
+    """A remote project holds objects and no parsed Project (VIS-1820). The
+    preview builds its query from a Project, so it refused every insight:
+    "This project has not compiled"."""
+
+    @pytest.fixture
+    def rows(self, tmp_path):
+        from tests.factories.model_factories import SourceFactory
+        from visivo.commands.utils import create_file_database
+
+        source = SourceFactory(database=f"{tmp_path}/test.sqlite")
+        create_file_database(url=source.url(), output_dir=str(tmp_path))
+        props = {"type": "bar", "x": "?{${ref(orders_q).x}}", "y": "?{sum(${ref(orders_q).y})}"}
+        return {
+            "sources": [_envelope(source.name, source.model_dump(exclude_none=True, mode="json"))],
+            "models": [
+                _envelope(
+                    "orders_q",
+                    {"sql": "SELECT x, y FROM test_table", "source": f"ref({source.name})"},
+                )
+            ],
+            "insights": [_envelope("by_x", {"props": props})],
+            "charts": [_envelope("orders_chart", {"insights": ["ref(by_x)"]})],
+        }
+
+    def test_a_published_insight_previews(self, rows):
+        project, core = _project(rows)
+
+        result = call(project, "preview_insight", {"name": "by_x"})
+
+        assert result["row_count"] == 6 and result["models"] == ["orders_q"]
+        assert core.saved == []
+
+    def test_a_drafted_model_replaces_the_published_one(self, rows):
+        drafted = dict(rows["models"][0]["config"], sql="SELECT x, y FROM test_table WHERE x > 4")
+        rows["models"] = [rows["models"][0], _envelope("orders_q", drafted, status="modified")]
+        project, _ = _project(rows)
+
+        result = call(project, "preview_insight", {"name": "by_x"})
+
+        assert result["row_count"] == 2
+
+    def test_a_metric_scoped_to_its_model_resolves(self, rows):
+        rows["metrics"] = [
+            _envelope("total_y", {"expression": "sum(y)", "parentModel": "orders_q"})
+        ]
+        project, _ = _project(rows)
+        config = {
+            "name": "scoped",
+            "props": {
+                "type": "bar",
+                "x": "?{${ref(orders_q).x}}",
+                "y": "?{${ref(orders_q).total_y}}",
+            },
+        }
+
+        result = call(project, "preview_insight", {"config": config})
+
+        assert result["row_count"] == 6
+
+    def test_the_published_project_holds_only_the_fields_asked_for(self, rows):
+        project, _ = _project(rows)
+
+        published = project.published_project(("models", "sources"))
+
+        assert [model.name for model in published.models] == ["orders_q"]
+        assert len(published.sources) == 1
+        assert published.insights == [] and published.charts == []
+
+    def test_it_holds_the_published_tier_and_not_the_drafts(self, rows):
+        rows["models"].append(_envelope("wip", {"sql": "select 1 as x"}, status="new"))
+        project, _ = _project(rows)
+
+        published = project.published_project(("models",))
+
+        assert [model.name for model in published.models] == ["orders_q"]
+
+    def test_the_project_itself_stays_none(self, rows):
+        """The tools that read `app.project` for defaults still get the None
+        they handle."""
+        project, _ = _project(rows)
+
+        call(project, "preview_insight", {"name": "by_x"})
+
+        assert project.project is None
+
+    def test_a_preview_leaves_what_the_managers_hold_unchanged(self, rows):
+        """The Project is built from copies: a metric scoped to a model goes
+        under the copy of its model, not under the model the tools read."""
+        rows["metrics"] = [
+            _envelope("total_y", {"expression": "sum(y)", "parentModel": "orders_q"})
+        ]
+        project, core = _project(rows)
+        before = call(project, "get_model", {"name": "orders_q"})
+
+        call(project, "preview_insight", {"name": "by_x"})
+        published = project.published_project(("models", "metrics"))
+
+        assert [metric.name for metric in published.models[0].metrics] == ["total_y"]
+        assert call(project, "get_model", {"name": "orders_q"}) == before
+        assert not project.model_manager.published_objects["orders_q"].metrics
+        assert published.models[0] is not project.model_manager.published_objects["orders_q"]
+        assert core.saved == []

@@ -183,6 +183,15 @@ def _inject_draft_objects(project, draft_objects):
         setattr(project, field_name, merge_objects_into_list(obj_list, new_objects))
 
 
+def _base_project(flask_app):
+    """The published project the overlay starts from. A host that holds the
+    project as objects, with no parsed file, builds one with ``published_project``."""
+    if flask_app.project is not None:
+        return flask_app.project
+    build = getattr(flask_app, "published_project", None)
+    return build(_INSIGHT_DEPENDENCY_FIELDS) if callable(build) else None
+
+
 def build_draft_overlay(
     flask_app,
     insight_config: dict,
@@ -206,13 +215,14 @@ def build_draft_overlay(
     Raises ``DraftOverlayError`` for a malformed draft object (never lets a
     Pydantic ``ValidationError`` escape uncaught to the view).
     """
-    if flask_app.project is None:
+    base = _base_project(flask_app)
+    if base is None:
         raise DraftOverlayError(
             "This project has not compiled, so there is nothing to preview against. "
             "Its last build failed — call list_runs, read the error with get_run, "
             "and fix that before previewing."
         )
-    project = deepcopy(flask_app.project)
+    project = deepcopy(base)
     inject_cached_objects(flask_app, project, fields=_INSIGHT_DEPENDENCY_FIELDS)
     _inject_draft_objects(
         project,

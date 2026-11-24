@@ -59,6 +59,7 @@ class TestEveryToolIsAnnotated:
 
         assert open_world == {
             "describe_source",
+            "get_chart_or_dashboard_data",
             "infer_columns",
             "preview_insight",
             "preview_table",
