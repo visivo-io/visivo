@@ -37,10 +37,12 @@ const createSourceSlice = (set, get) => ({
   },
 
   // Save source to cache
-  saveSource: async (name, config) => {
+  saveSource: async (name, config, options) => {
     try {
       const projectId = get().project?.id;
-      const result = await sourcesApi.saveSource(name, config, projectId);
+      const result = options
+        ? await sourcesApi.saveSource(name, config, projectId, options)
+        : await sourcesApi.saveSource(name, config, projectId);
       // Cached exploration results are keyed by source name, not config.
       invalidateResultsForSource(name);
       // Refresh sources list to get updated status

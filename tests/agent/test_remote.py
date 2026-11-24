@@ -515,3 +515,57 @@ class TestWritingInCloud:
         )
 
         assert result["name"] == "staged_notes"
+
+
+class TestPreviewInCloud:
+    """VIS-1866: a cloud turn previews what it wrote, against the source."""
+
+    @pytest.fixture
+    def project(self, tmp_path):
+        import duckdb
+
+        database = str(tmp_path / "orders.duckdb")
+        with duckdb.connect(database) as connection:
+            connection.execute("CREATE TABLE orders AS SELECT * FROM range(6) t(x)")
+        project, _ = _project(
+            {
+                "sources": [
+                    _envelope("warehouse", {"type": "duckdb", "database": database}),
+                ],
+                "models": [
+                    _envelope(
+                        "orders_q",
+                        {"sql": "SELECT x, x * 2 AS y FROM orders", "source": "ref(warehouse)"},
+                        status="new",
+                    )
+                ],
+            }
+        )
+        return project
+
+    def _config(self, name="by_x"):
+        return {
+            "name": name,
+            "props": {
+                "type": "bar",
+                "x": "?{${ref(orders_q).x}}",
+                "y": "?{sum(${ref(orders_q).y})}",
+            },
+        }
+
+    def test_an_insight_previews_against_the_source(self, project):
+        result = call(project, "preview_insight", {"config": self._config()})
+
+        assert result["row_count"] == 6 and result["models"] == ["orders_q"]
+
+    def test_a_valid_insight_writes_without_a_warning(self, project):
+        result = call(project, "write_insight", {"config": self._config(name="saved")})
+
+        assert not result.get("warnings"), result.get("warnings")
+
+    def test_a_saved_insight_previews_by_name(self, project):
+        call(project, "write_insight", {"config": self._config(name="saved")})
+
+        result = call(project, "preview_insight", {"name": "saved"})
+
+        assert result["insight"] == "saved" and result["row_count"] == 6

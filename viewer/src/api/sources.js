@@ -32,9 +32,13 @@ export const fetchSource = async name => {
 /**
  * Save a source configuration to cache (draft state)
  */
-export const saveSource = async (name, config, projectId = null) => {
-  let url = getUrl('sourceDetail', { name });
-  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+export const saveSource = async (name, config, projectId = null, { runAlways = false } = {}) => {
+  const params = new URLSearchParams();
+  if (projectId) params.set('project_id', projectId);
+  // Onboarding's source builds even when the person stages their own edits.
+  if (runAlways) params.set('run', 'always');
+  const query = params.toString();
+  const url = getUrl('sourceDetail', { name }) + (query ? `?${query}` : '');
   const response = await apiFetch(url, {
     method: 'POST',
     headers: {
