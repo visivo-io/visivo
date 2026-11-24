@@ -210,6 +210,17 @@ describe('OnboardingFlow', () => {
       expect(await screen.findByText('CSV files up to 100 MB')).toBeInTheDocument();
     });
 
+    test('the start screen animates in on its own', () => {
+      renderFlow();
+      expect(screen.getByTestId('onb-start')).toHaveClass('onb-screen-enter');
+    });
+
+    test('a host that already showed the start screen gets it without a second fade', async () => {
+      renderFlow({ openUpload: true });
+      expect(screen.getByTestId('onb-start')).not.toHaveClass('onb-screen-enter');
+      expect(await screen.findByText('CSV files up to 100 MB')).toBeInTheDocument();
+    });
+
     test('a host that handles the upload click is asked before any file call', () => {
       const onUploadClick = jest.fn();
       render(

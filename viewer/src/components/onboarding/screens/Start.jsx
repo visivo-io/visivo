@@ -153,6 +153,7 @@ export default function Start({
   paths = ALL_PATHS,
   footer = null,
   openUpload = false,
+  animateIn = true,
 }) {
   const [openPath, setOpenPath] = useState(openUpload ? 'data' : null);
   const [dataStep, setDataStep] = useState(openUpload ? 'upload' : 'choose');
@@ -165,7 +166,10 @@ export default function Start({
   const defaultSample = PERSONA_CONTENT[role]?.sample || DEFAULT_SAMPLE;
 
   return (
-    <div className="onb-screen-inner onb-screen-enter onb-start">
+    <div
+      className={`onb-screen-inner onb-start ${animateIn ? 'onb-screen-enter' : ''}`}
+      data-testid="onb-start"
+    >
       <div className="onb-start__intro">
         <div className="onb-start__eyebrow">Your first project</div>
         <h1 className="onb-start__h">Start with something to explore.</h1>
