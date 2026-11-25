@@ -14,7 +14,9 @@ from visivo.server.project_files import (
     InvalidExtension,
     list_project_files,
     parse_extensions,
+    referenced_paths,
 )
+from visivo.server.source_resolution import list_sources
 
 
 def error(message, code, status):
@@ -43,10 +45,35 @@ def register_project_files_views(app, flask_app, output_dir):
             extensions = parse_extensions(request.args.get("ext"))
         except InvalidExtension as exc:
             return error(str(exc), "invalid_request", 400)
+        uses = used_by()
         files = []
         for entry in list_project_files(project_root(), extensions):
-            files.append(store().version_at(entry["path"]) or entry)
+            entry = store().version_at(entry["path"]) or entry
+            files.append({**entry, "uploaded_by": None, "used_by": uses.get(entry["path"], [])})
         return jsonify({"files": files, "formats": FORMATS, "max_bytes": MAX_BYTES})
+
+    def used_by():
+        """Path -> the sources, and models with an inline source, that name it."""
+        project = getattr(flask_app, "project", None)
+        model_manager = getattr(flask_app, "model_manager", None)
+        models = model_manager.get_models_list() if model_manager is not None else []
+        found = {}
+        for kind, objects in (("source", list_sources(flask_app)), ("model", models)):
+            for obj in sorted(objects, key=lambda o: o.name or ""):
+                config = obj.model_dump(mode="json", exclude_none=True)
+                for path in sorted(referenced_paths(config, project_root())):
+                    found.setdefault(path, []).append(
+                        {
+                            "type": kind,
+                            "name": obj.name,
+                            "project_id": None,
+                            "project_name": getattr(project, "name", None),
+                            "branch": None,
+                            "draft": False,
+                            "draft_owner": None,
+                        }
+                    )
+        return found
 
     @app.route("/api/project-files/uploads/", methods=["POST"])
     def create_project_file_upload():

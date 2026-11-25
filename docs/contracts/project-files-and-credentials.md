@@ -60,7 +60,9 @@ serves them too (VIS-1755).
   "format": "csv",
   "size": 48213,
   "sha256": "9f2c…",
-  "created_at": "2026-11-10T21:04:11Z"
+  "created_at": "2026-11-10T21:04:11Z",
+  "uploaded_by": "Tim S",
+  "used_by": [FileUse]
 }
 ```
 
@@ -76,6 +78,30 @@ serves them too (VIS-1755).
   through upload, such as one copied into the project folder by hand. For such a file
   `original_filename` equals `filename`, and `created_at` is its last-modified time. Studio keeps
   upload versions in memory, so after a restart its listing shows every file this way.
+
+- `uploaded_by` is the uploader's name, or their email when the name is empty. It is `null` in
+  Studio and for a file that did not arrive through upload.
+- `used_by` is filled in a listing. In an upload response it is `[]`.
+
+**FileUse**: one source or model whose config names the file in a `file` or `database` field.
+
+```json
+{
+  "type": "source",
+  "name": "sales",
+  "project_id": "8f0c…",
+  "project_name": "Revenue",
+  "branch": "main",
+  "draft": false,
+  "draft_owner": null
+}
+```
+
+- `type` is `source`, or `model` for a model that defines its source inline.
+- Cloud lists the account's drafts and the head of each branch. Older commits are not listed.
+  `draft_owner` is the draft owner's name when `draft` is true.
+- Studio lists the served project's sources and models. `project_id` and `branch` are `null` and
+  `draft` is false. An inline source is listed both as its model and as a source.
 
 **Format**: one entry in the capability list a server advertises.
 

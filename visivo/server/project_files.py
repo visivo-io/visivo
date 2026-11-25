@@ -1,6 +1,7 @@
 """List the data files in a served project (docs/contracts/project-files-and-credentials.md)."""
 
 import os
+import posixpath
 import re
 import subprocess
 from datetime import datetime, timezone
@@ -104,3 +105,34 @@ def list_project_files(project_root, extensions=frozenset()):
             break
 
     return sorted(entries, key=lambda entry: entry["path"])
+
+
+PATH_FIELDS = ("file", "database")
+
+
+def referenced_paths(node, project_root, found=None):
+    """Project-relative paths that ``file`` and ``database`` fields name, at any depth."""
+    found = set() if found is None else found
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key in PATH_FIELDS and isinstance(value, str):
+                path = _project_relative(value, project_root)
+                if path:
+                    found.add(path)
+            else:
+                referenced_paths(value, project_root, found)
+    elif isinstance(node, list):
+        for item in node:
+            referenced_paths(item, project_root, found)
+    return found
+
+
+def _project_relative(value, project_root):
+    value = value.strip()
+    if not value or "://" in value or value == ":memory:":
+        return None
+    root = os.path.realpath(project_root)
+    absolute = os.path.realpath(os.path.join(root, value))
+    if not _within(root, absolute):
+        return None
+    return posixpath.normpath(os.path.relpath(absolute, root).replace(os.sep, "/"))

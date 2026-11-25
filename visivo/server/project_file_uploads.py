@@ -272,6 +272,8 @@ class ProjectFileStore:
                 "size": upload.size,
                 "sha256": upload.received_sha256,
                 "created_at": _iso(datetime.now(timezone.utc)),
+                "uploaded_by": None,
+                "used_by": [],
             }
             self._versions[upload.path] = upload.file
             return upload.file

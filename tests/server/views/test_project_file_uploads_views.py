@@ -18,6 +18,8 @@ def flask_app(tmp_path):
     app = Mock()
     app._working_dir = str(tmp_path)
     app.source_manager = SourceManager(project_dir=str(tmp_path))
+    app.model_manager = None
+    app.project = None
     return app
 
 

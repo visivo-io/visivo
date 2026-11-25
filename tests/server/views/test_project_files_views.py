@@ -10,7 +10,7 @@ from visivo.server.views.project_files_views import register_project_files_views
 
 def make_client(working_dir):
     app = Flask(__name__)
-    flask_app = Mock()
+    flask_app = Mock(spec=["_working_dir"])
     flask_app._working_dir = working_dir
     register_project_files_views(app, flask_app, "/tmp/output")
     return app.test_client()
@@ -130,3 +130,69 @@ def test_lists_the_served_root_not_the_process_directory(tmp_path, monkeypatch):
     monkeypatch.chdir(elsewhere)
 
     assert paths(make_client(str(served)).get("/api/project-files/?ext=csv")) == ["files/sales.csv"]
+
+
+class TestUsedBy:
+    """The Files page's "Used by" column: the sources, and models with an
+    inline source, whose config names the file."""
+
+    def _client(self, root, sources, models=()):
+        from tests.factories.model_factories import ProjectFactory
+        from visivo.server.flask_app import FlaskApp
+
+        project = ProjectFactory(sources=list(sources), models=list(models), dashboards=[])
+        return FlaskApp(root, project, working_dir=root).app.test_client()
+
+    def _csv(self, name, file):
+        from visivo.models.sources.csv_source import CSVFileSource
+
+        return CSVFileSource(name=name, type="csv", file=file)
+
+    def _listed(self, client):
+        return {f["path"]: f for f in client.get("/api/project-files/").get_json()["files"]}
+
+    def test_a_file_lists_each_source_that_names_it(self, tmp_path):
+        root = str(tmp_path / "project")
+        os.makedirs(os.path.join(root, "files"))
+        for name in ("sales.csv", "unused.csv"):
+            with open(os.path.join(root, "files", name), "w") as f:
+                f.write("a,b\n1,2\n")
+        client = self._client(
+            root,
+            [
+                self._csv("by_relative", "./files/sales.csv"),
+                self._csv("by_absolute", os.path.join(root, "files", "sales.csv")),
+            ],
+        )
+
+        listed = self._listed(client)
+
+        assert [(u["type"], u["name"]) for u in listed["files/sales.csv"]["used_by"]] == [
+            ("source", "by_absolute"),
+            ("source", "by_relative"),
+        ]
+        assert listed["files/unused.csv"]["used_by"] == []
+        assert listed["files/sales.csv"]["uploaded_by"] is None
+
+    def test_a_model_with_an_inline_source_is_a_use(self, tmp_path):
+        from tests.factories.model_factories import SqlModelFactory
+
+        root = str(tmp_path / "project")
+        os.makedirs(os.path.join(root, "files"))
+        with open(os.path.join(root, "files", "sales.csv"), "w") as f:
+            f.write("a,b\n1,2\n")
+        model = SqlModelFactory(name="orders", source=self._csv("inline", "files/sales.csv"))
+        client = self._client(root, [], [model])
+
+        used = self._listed(client)["files/sales.csv"]["used_by"]
+
+        assert ("model", "orders") in [(u["type"], u["name"]) for u in used]
+
+    def test_a_path_outside_the_project_is_never_a_use(self, tmp_path):
+        root = str(tmp_path / "project")
+        os.makedirs(os.path.join(root, "files"))
+        with open(os.path.join(root, "files", "sales.csv"), "w") as f:
+            f.write("a,b\n1,2\n")
+        client = self._client(root, [self._csv("outside", str(tmp_path / "sales.csv"))])
+
+        assert self._listed(client)["files/sales.csv"]["used_by"] == []
