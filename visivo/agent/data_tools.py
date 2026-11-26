@@ -11,7 +11,7 @@ import json
 import sqlglot
 from sqlglot import exp
 
-from visivo.agent.tool_types import Tool, ToolError
+from visivo.agent.tool_types import Tool, ToolError, reads
 from visivo.jobs.run_model_data_job import (
     AGENT_QUERY_TIMEOUT_S,
     QueryTimeout,
@@ -727,6 +727,7 @@ DATA_TOOLS = {
             },
         },
         handler=_preview_insight_handler,
+        annotations=reads("Preview insight", open_world=True),
     ),
     "profile_columns": Tool(
         name="profile_columns",
@@ -756,6 +757,7 @@ DATA_TOOLS = {
             "required": ["source"],
         },
         handler=_profile_columns_handler,
+        annotations=reads("Profile columns", open_world=True),
     ),
     "profile_model": Tool(
         name="profile_model",
@@ -772,6 +774,7 @@ DATA_TOOLS = {
             "required": ["name"],
         },
         handler=_profile_model_handler,
+        annotations=reads("Profile model", open_world=True),
     ),
     "infer_columns": Tool(
         name="infer_columns",
@@ -790,6 +793,7 @@ DATA_TOOLS = {
             },
         },
         handler=_infer_columns_handler,
+        annotations=reads("Infer columns", open_world=True),
     ),
     "query_source": Tool(
         name="query_source",
@@ -815,6 +819,7 @@ DATA_TOOLS = {
             "required": ["source", "sql"],
         },
         handler=_query_source_handler,
+        annotations=reads("Query source", open_world=True),
     ),
     "describe_source": Tool(
         name="describe_source",
@@ -839,6 +844,7 @@ DATA_TOOLS = {
             "required": ["name"],
         },
         handler=_describe_source_handler,
+        annotations=reads("Describe source", open_world=True),
     ),
     "preview_table": Tool(
         name="preview_table",
@@ -860,5 +866,6 @@ DATA_TOOLS = {
             "required": ["source", "table"],
         },
         handler=_preview_table_handler,
+        annotations=reads("Preview table", open_world=True),
     ),
 }

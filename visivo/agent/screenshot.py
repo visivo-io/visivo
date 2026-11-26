@@ -48,7 +48,7 @@ from visivo.frozen import is_frozen
 from visivo.agent.actions import log as action_log
 from visivo.agent.runs import wait_for_runs
 from visivo.agent.images import image_result
-from visivo.agent.tool_types import Tool, ToolError
+from visivo.agent.tool_types import Tool, ToolError, reads
 from visivo.logger.logger import Logger
 
 # A desktop-ish viewport. Width drives the dashboard's own responsive layout,
@@ -459,5 +459,6 @@ SCREENSHOT_TOOLS = {
             "required": ["name"],
         },
         handler=_screenshot_handler,
+        annotations=reads("Screenshot dashboard", open_world=True),
     ),
 }

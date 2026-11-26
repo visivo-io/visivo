@@ -83,14 +83,19 @@ def read_resource(params):
 
 
 def tool_list():
-    return [
-        {
-            "name": tool.name,
-            "description": tool.description,
-            "inputSchema": tool.input_schema,
-        }
-        for tool in sorted(TOOLS.values(), key=lambda t: t.name)
-    ]
+    return [_listed(tool) for tool in sorted(TOOLS.values(), key=lambda t: t.name)]
+
+
+def _listed(tool):
+    listed = {
+        "name": tool.name,
+        "description": tool.description,
+        "inputSchema": tool.input_schema,
+    }
+    if tool.annotations:
+        listed["title"] = tool.annotations.title
+        listed["annotations"] = tool.annotations.as_mcp()
+    return listed
 
 
 def version():

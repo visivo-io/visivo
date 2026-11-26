@@ -82,6 +82,25 @@ class TestListing:
             assert tool["description"].strip()
             assert tool["inputSchema"]["type"] == "object"
 
+    def test_each_tool_carries_its_annotations(self, integration_client):
+        listed = {t["name"]: t for t in _result(_rpc(integration_client, "tools/list"))["tools"]}
+
+        assert listed["list_models"]["title"] == "List models"
+        assert listed["list_models"]["annotations"] == {
+            "title": "List models",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "openWorldHint": False,
+        }
+        assert listed["write_model"]["annotations"] == {
+            "title": "Write model",
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "openWorldHint": True,
+        }
+        assert listed["write_chart"]["annotations"]["openWorldHint"] is False
+        assert listed["query_source"]["annotations"]["openWorldHint"] is True
+
     def test_still_no_commit_tool_over_the_wire(self, integration_client):
         """The safety rule has to hold at the surface an agent actually sees,
         not only in the registry it is built from."""
