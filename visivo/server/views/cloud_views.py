@@ -1,6 +1,7 @@
 import json
 import os
 from threading import Thread
+from urllib.parse import urljoin
 from uuid import uuid4
 from flask import copy_current_request_context, jsonify, request
 import requests
@@ -16,6 +17,21 @@ def register_cloud_views(app, flask_app, output_dir):
     # talks to production.
     def _host():
         return flask_app.host
+
+    def _account_default_branch(branches, json_headers):
+        """The account's default branch name, so the deploy dialog can preselect it."""
+        names = [b.get("name") for b in branches if isinstance(b, dict) and b.get("name")]
+        if len(names) <= 1:
+            return names[0] if names else None
+        try:
+            response = requests.get(
+                f"{_host()}/api/projects/home/", headers=json_headers, timeout=10
+            )
+            default = response.json().get("default_branch") if response.status_code == 200 else None
+        except Exception as e:
+            Logger.instance().debug(f"Could not fetch the account default branch: {e}")
+            default = None
+        return default if default in names else names[0]
 
     @app.route("/api/cloud/branches/", methods=["GET"])
     def cloud_branches():
@@ -42,6 +58,7 @@ def register_cloud_views(app, flask_app, output_dir):
                 {
                     "message": "Branches fetched successfully",
                     "branches": payload,
+                    "default_branch": _account_default_branch(payload, json_headers),
                 }
             )
 
@@ -129,4 +146,7 @@ def register_cloud_views(app, flask_app, output_dir):
             job = background_jobs.get(deploy_id)
             if not job:
                 return jsonify({"error": "Invalid deploy ID"}), 404
-            return jsonify(job)
+            job = dict(job)
+        if job.get("project_url"):
+            job["project_url"] = urljoin(f"{_host()}/", job["project_url"])
+        return jsonify(job)

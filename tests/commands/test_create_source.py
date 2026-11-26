@@ -151,3 +151,26 @@ def test_create_source_sqlite_creates_missing_parent_directories():
         db_path = Path(source.database)
         assert db_path.exists()
         assert _sqlite_table_names(db_path) == set()
+
+
+def test_create_source_duckdb_keeps_a_uri_database_verbatim():
+    for database in ("md:my_db", "s3://bucket/warehouse.duckdb", "https://host/db.duckdb"):
+        with tempfile.TemporaryDirectory() as project_dir:
+            source = create_source(
+                source_name="remote",
+                source_type=SourceTypeEnum.duckdb,
+                database=database,
+                project_dir=project_dir,
+            )
+            assert source.database == database
+            assert list(Path(project_dir).iterdir()) == []
+
+
+def test_ensure_file_database_does_not_create_files_for_a_uri_database(tmp_path, monkeypatch):
+    from visivo.commands.utils import ensure_file_database
+    from visivo.models.sources.duckdb_source import DuckdbSource
+
+    monkeypatch.chdir(tmp_path)
+    source = DuckdbSource(name="remote", database="md:my_db", type="duckdb")
+    ensure_file_database(source, str(tmp_path / "out"))
+    assert list(tmp_path.iterdir()) == []

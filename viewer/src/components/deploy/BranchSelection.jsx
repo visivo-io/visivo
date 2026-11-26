@@ -15,6 +15,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { readOnboardingState, writeOnboardingState } from '../onboarding/onboardingState';
 
+export const FIRST_BRANCH = 'main';
+
 const BranchSelection = ({ status }) => {
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState('');
@@ -25,6 +27,7 @@ const BranchSelection = ({ status }) => {
   const [deploymentSuccess, setDeploymentSuccess] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [branchesLoaded, setBranchesLoaded] = useState(false);
 
   useEffect(() => {
     if (status !== 'branch') return;
@@ -34,9 +37,17 @@ const BranchSelection = ({ status }) => {
       try {
         const res = await fetch('/api/cloud/branches/');
         const data = await res.json();
-        setBranches(data.branches || []);
+        const fetched = Array.isArray(data.branches) ? data.branches : null;
+        setBranches(fetched || []);
+        setBranchesLoaded(fetched !== null);
+        if (fetched) {
+          const names = fetched.map(branch => branch.name);
+          const preferred = names.includes(data.default_branch) ? data.default_branch : names[0];
+          setSelectedBranch(preferred || FIRST_BRANCH);
+        }
       } catch (err) {
         setBranches([]);
+        setBranchesLoaded(false);
       } finally {
         setLoading(false);
       }
@@ -121,6 +132,10 @@ const BranchSelection = ({ status }) => {
 
   if (loading) return <DeployLoader message="Loading Branches..." />;
 
+  const isNewBranch = !!selectedBranch && !branches.some(branch => branch.name === selectedBranch);
+  const branchOptions = branches.map(branch => ({ value: branch.name, label: branch.name }));
+  if (isNewBranch) branchOptions.push({ value: selectedBranch, label: `${selectedBranch} (new)` });
+
   return (
     <div className="w-full max-w-md space-y-6">
       {/* Header */}
@@ -196,7 +211,7 @@ const BranchSelection = ({ status }) => {
               data-testid="branch-select"
               placeholder="Select a branch..."
               value={selectedBranch}
-              options={branches.map(branch => ({ value: branch.name, label: branch.name }))}
+              options={branchOptions}
               onChange={value => setSelectedBranch(value || '')}
               disabled={deploying}
             />
@@ -234,7 +249,9 @@ const BranchSelection = ({ status }) => {
                 <div className="text-sm">
                   <p className="font-medium text-blue-800">Ready to deploy to {selectedBranch}</p>
                   <p className="text-blue-600 mt-1">
-                    Make sure your code is ready for the {selectedBranch} environment.
+                    {isNewBranch
+                      ? `The first deploy creates the ${selectedBranch} branch.`
+                      : `Make sure your code is ready for the ${selectedBranch} environment.`}
                   </p>
                 </div>
               </div>
@@ -283,7 +300,7 @@ const BranchSelection = ({ status }) => {
       )}
 
       {/* No Branches Warning */}
-      {branches.length === 0 && !loading && !deploymentSuccess && (
+      {branches.length === 0 && !branchesLoaded && !loading && !deploymentSuccess && (
         <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-md">
           <FontAwesomeIcon
             icon={faTriangleExclamation}
