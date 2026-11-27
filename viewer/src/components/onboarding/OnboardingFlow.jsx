@@ -5,6 +5,9 @@ import { CONCEPTS } from './concepts';
 import Role from './screens/Role';
 import Concept from './screens/Concept';
 import Start, { ALL_PATHS } from './screens/Start';
+import { RunFailed } from './screens/UploadFile';
+import SetupSteps from './SetupSteps';
+import { currentRunIds, waitForSourceRun } from './waitForSourceRun';
 import { fireEvent } from './telemetry';
 import { readOnboardingState, writeOnboardingState } from './onboardingState';
 import { firstSessionPath, recordFirstSessionRequest } from './firstSession';
@@ -33,6 +36,11 @@ export function sampleDestination(sample) {
  * screen, so Start does not animate in a second time. `loadSample` replaces the
  * local example import for a host that seeds and opens examples itself. `tour` and `startEmpty` show those links.
  */
+const CONNECT_STEPS = [
+  ['creating', 'Creating the source'],
+  ['running', 'Running the source job'],
+];
+
 export default function OnboardingFlow({
   paths = ALL_PATHS,
   openConnect = false,
@@ -50,6 +58,7 @@ export default function OnboardingFlow({
 
   const projectDir = project?.project_dir ?? '';
   const projectName = project?.name || 'Quickstart Visivo';
+  const projectId = project?.id ?? null;
 
   const persisted = useRef(readOnboardingState() || {});
   const startTs = useRef(Date.now());
@@ -79,6 +88,13 @@ export default function OnboardingFlow({
   const [sampleLoadingText, setSampleLoadingText] = useState('');
   const [errorMessage, setErrorMessage] = useState(null);
   const [sourceSaving, setSourceSaving] = useState(false);
+  const [connectPhase, setConnectPhase] = useState(null);
+  const [connectRunFailure, setConnectRunFailure] = useState(null);
+  useEffect(() => {
+    if (showSourceModal) return;
+    setConnectPhase(null);
+    setConnectRunFailure(null);
+  }, [showSourceModal]);
 
   useEscapeToClose(showSourceModal, () => !sourceSaving && setShowSourceModal(false));
 
@@ -261,19 +277,30 @@ export default function OnboardingFlow({
     async (_type, name, config) => {
       setSourceSaving(true);
       setErrorMessage(null);
+      setConnectRunFailure(null);
+      setConnectPhase('creating');
       try {
+        const before = await currentRunIds(projectId);
         const saved = await saveSource(name, config, { runAlways: true });
         if (!saved.success) throw new Error(saved.error || 'Failed to save the source.');
-        handleConnected(config?.type || 'unknown', name);
+        setConnectPhase('running');
+        const built = await waitForSourceRun({ projectId, before, sourceName: name });
+        const connect = () => handleConnected(config?.type || 'unknown', name);
+        if (built.outcome === 'failed') {
+          setConnectRunFailure({ error: built.error, connect });
+        } else {
+          connect();
+        }
         return { success: true };
       } catch (err) {
+        setConnectPhase(null);
         setErrorMessage(err.message || 'Failed to connect the source.');
         return { success: false, error: err.message };
       } finally {
         setSourceSaving(false);
       }
     },
-    [saveSource, handleConnected]
+    [saveSource, handleConnected, projectId]
   );
 
   const handleFileImported = useCallback(
@@ -442,11 +469,30 @@ export default function OnboardingFlow({
                 </button>
               </div>
               <div className="onb-modal__body">
-                <SourceEditForm
-                  isCreate
-                  onClose={() => !sourceSaving && setShowSourceModal(false)}
-                  onSave={handleSourceFormSave}
-                />
+                {connectPhase && (
+                  <div className="onb-upload" data-testid="onb-connect-progress">
+                    <h3 className="onb-upload__h">Adding your source</h3>
+                    <SetupSteps
+                      steps={CONNECT_STEPS}
+                      phase={connectPhase}
+                      failed={Boolean(connectRunFailure)}
+                      label="Adding your source"
+                    />
+                    {connectRunFailure && (
+                      <RunFailed
+                        error={connectRunFailure.error}
+                        onContinue={connectRunFailure.connect}
+                      />
+                    )}
+                  </div>
+                )}
+                <div hidden={Boolean(connectPhase)}>
+                  <SourceEditForm
+                    isCreate
+                    onClose={() => !sourceSaving && setShowSourceModal(false)}
+                    onSave={handleSourceFormSave}
+                  />
+                </div>
               </div>
             </div>
           </div>
