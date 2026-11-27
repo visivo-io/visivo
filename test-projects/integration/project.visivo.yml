@@ -1063,11 +1063,7 @@ dashboards:
                 scope: table
                 min_color: "#ffffff"
                 max_color: "#713b57"
-      # The same insight as a plain `data:` table. Mirrors new-tables-dashboard,
-      # where `pivot-source-insight` is ALSO referenced via `data:` — a pivot
-      # whose insight appears on the dashboard only through columns/rows/values
-      # is classified as a model by the viewer's collectDataNames and never
-      # loads (adjacent defect noted in the VIS-1463 PR, not fixed there).
+      # The same insight as a plain `data:` table.
       - height: medium
         items:
           - width: 12
@@ -1075,6 +1071,26 @@ dashboards:
               name: gradient-grid-source-table
               data: ${ref(gradient-grid-insight)}
               rows_per_page: 10
+
+  # Dashboard used by the pivot-insight-only E2E story: the pivot is the only
+  # item that reads its insight. No chart and no `data:` table uses it.
+  - name: pivot-insight-only-dashboard
+    level: 1
+    tags:
+      - "tables"
+    rows:
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: insight-only-pivot-table
+              columns:
+                - ${ref(pivot-only-insight).x}
+              rows:
+                - ${ref(pivot-only-insight).text}
+              values:
+                - sum(${ref(pivot-only-insight).y})
+              rows_per_page: 25
 
   # Dashboard used by the table-dates E2E story: date and timestamp cells in
   # data, column-select and pivot tables.
