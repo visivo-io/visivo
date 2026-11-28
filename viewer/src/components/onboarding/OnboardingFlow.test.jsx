@@ -319,7 +319,9 @@ describe('OnboardingFlow', () => {
       expect(await screen.findByText('Saved as files/Sales_Q3.csv')).toBeInTheDocument();
       expect(screen.getByTestId('onb-setup-uploading')).toHaveAttribute('data-state', 'is-done');
       expect(screen.getByTestId('onb-setup-checking')).toHaveAttribute('data-state', 'is-active');
+      // eslint-disable-next-line testing-library/no-node-access
       expect(screen.getByTestId('onb-setup-checking').querySelector('.onb-spin')).not.toBeNull();
+      // eslint-disable-next-line testing-library/no-node-access, testing-library/prefer-presence-queries
       expect(screen.getByTestId('onb-setup-uploading').querySelector('.onb-spin')).toBeNull();
       expect(screen.getByTestId('onb-setup-creating')).toHaveTextContent('Creating the source');
       expect(screen.getByTestId('onb-setup-running')).toHaveTextContent('Running the source job');
